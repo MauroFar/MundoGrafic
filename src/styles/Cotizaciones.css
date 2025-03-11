@@ -1,0 +1,396 @@
+/*Boton Regresar*/
+/* 🔹 Botón de Regresar */
+.btn-regresar {
+  position: fixed; /* 🔹 Se mantiene fijo en la pantalla */
+  top: 10px; /* 🔹 Distancia desde la parte superior */
+  left: 10px; /* 🔹 Distancia desde la parte izquierda */
+  background-color: #007bff; /* 🔹 Azul */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  z-index: 1000; /* 🔹 Asegura que esté sobre otros elementos */
+}
+
+.btn-regresar:hover {
+  background-color: #0056b3; /* 🔹 Azul más oscuro al pasar el mouse */
+}
+
+/* ✅ Contenedor Principal */
+.cotizaciones-container {
+  height: 210mm;
+  width: 297mm;
+  display: flex;
+  flex-direction: column;
+
+  padding: 50px;
+  align-items: center; /* Centrar horizontalmente */
+  background-color: #cbc6c6;
+  margin-left: 150px;
+  justify-content: space-between; /* 🔹 Mantiene el pie de página abajo */
+  min-height: 100vh
+}
+
+/*************************** ✅ Encabezado General ****************************************/
+.encabezado-content {
+  display: flex;
+  justify-content: space-between; /* Separa izquierda y derecha */
+  align-items: center; /* Asegura alineación vertical */
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* ✅ Izquierda: MUNDOGRAFIC */
+.encabezado-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 20px; /* 🔹 Mueve MUNDO GRAFIC un poco a la derecha */
+}
+
+/* 🔹 "MUNDOGRAFIC" */
+.mundografic {
+  font-size: 36px;
+  font-weight: bold;
+  color: black;
+  position: relative;
+}
+
+/* 🔹 "CORPORACION" (Encima de "GRAFIC") */
+.corporacion {
+  font-size: 10px;
+  color: #959191;
+  font-weight: bold;
+  position: relative;
+  top: 35px;
+  left: 145px; /* 🔹 Ajustado para mover más a la derecha */
+  letter-spacing: 6px;
+}
+
+/* 🔹 "GRAFIC" (Color rojo) */
+.grafic {
+  color: red;
+  position: relative;
+}
+
+/* 🔹 Símbolo de marca registrada (®) */
+.marca-registrada {
+  font-size: 12px;
+  vertical-align: baseline;
+  position: relative;
+  bottom: -2px;
+  margin-left: 2px;
+}
+
+/* 🔹 Subtítulo debajo de "MUNDOGRAFIC" */
+.subtitulo {
+  font-size: 11px;
+  font-weight: normal;
+  color: #333;
+  margin-top: -25px;
+  text-transform: uppercase;
+}
+
+/* ✅ Derecha: COTIZACIÓN y R.U.C */
+.cotizacion-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: flex-start; /* 🔹 Asegura que se alinee con MUNDOGRAFIC */
+  margin-top: 20px;
+}
+
+/* 🔹 "COTIZACIÓN" */
+.cotizacion-box {
+  margin-top: -10px;
+  display: flex;
+  align-items: center;
+}
+
+.numero-cotizacion {
+  color: #d94444;
+  font-size: 18px;
+  margin-top: 5px;
+  margin-left: 10px;
+}
+.cotizacion-label{
+  color: #000;
+}
+
+/* 🔹 R.U.C */
+.ruc-box {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.ruc-label {
+  font-weight: bold;
+  margin-right: 10px;
+  color: #000;
+}
+
+.ruc-select {
+  padding: 5px;
+  border-radius: 5px;
+}
+
+/* ✅ Sección de las 7 Columnas */
+.seccion-columnas {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100vw;
+  max-width: 1200px;
+  margin-top: 5px;
+  padding: 5px; /* 🔹 Reducir el espacio interno */
+}
+
+/* ✅ Estilos de cada columna */
+.columna {
+  text-align: center;
+  font-size: 7px; /* 🔹 Reducir tamaño del texto */
+  color: #333;
+  padding: 5px; /* 🔹 Reducir padding */
+  line-height: 1; /* 🔹 Compactar espacio entre líneas */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  border-right: 1px solid #000;
+}
+
+/* ✅ Eliminar la línea en la última columna */
+.columna:last-child {
+  border-right: none;
+}
+
+/********************************************************** Cuerpo de datos **************************************/
+.cuerpo-datos{
+  border-radius: 0%;
+  background-color: #d9534f;
+  margin-top:0px;
+  width: 108%; /* Mantiene el tamaño de la hoja A4 */
+  max-width: 110%;
+}
+
+.fila {
+  display: flex;
+  justify-content: space-between; /* 🔹 Separa los elementos */
+  width: 100%;
+  align-items: center; /* 🔹 Alinea los elementos verticalmente */
+  margin-bottom: 10px;
+}
+
+
+/********************************************************** Cuerpo de cotizacion **************************************/
+.cuerpo-cotizacion {
+    width: 108%; /* Mantiene el tamaño de la hoja A4 */
+    border-radius: 0%;
+    background-color: aqua;
+    flex-grow: 1;
+}
+
+/* ✅ Ajuste de anchos en la tabla de cotización */
+.col-cant {
+  width: 15%; /* 🔹 Más angosto para cantidad */
+  text-align: center;
+}
+/* ✅ Mantiene el título "DETALLE" centrado */
+.col-detalle {
+  text-align: center;
+  width: 55%; /* 🔹 Asegura que la columna ocupe más espacio */
+}
+
+/* ✅ Asegura que el contenido dentro de la celda esté en flex */
+/* ✅ Contenedor del textarea y botón */
+.detalle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ✅ Ajuste del textarea */
+.col-detalle textarea {
+  width: 100%;
+  min-height: 50px;
+  resize: vertical;
+  text-align: left;
+}
+
+/* ✅ Botón "Insertar Imagen" */
+.btn-insertar-imagen {
+  width: 40px;
+  height: 40px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-insertar-imagen:hover {
+  background-color: #0056b3;
+}
+
+/* ✅ La nueva fila que contiene la imagen (NO AFECTA LOS INPUTS) */
+.detalle-imagen-row {
+  text-align: center;
+}
+
+/* ✅ Contenedor de la imagen debajo del textarea (tamaño fijo) */
+.detalle-imagen-container {
+  width: 250px; /* 🔹 Ancho fijo para la imagen */
+  height: 250px; /* 🔹 Alto fijo para la imagen */
+  display: flex;
+  
+  border: 1px solid #ccc; /* 🔹 Borde opcional */
+  border-radius: 5px;
+  padding: 5px;
+  overflow: hidden;
+  margin: auto;
+}
+
+/* ✅ Imagen dentro del contenedor (ajustada sin deformarse) */
+.detalle-imagen {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 🔹 Ajusta la imagen dentro del contenedor sin deformarla */
+}
+
+
+.col-unitario {
+  width: 15%; /* 🔹 Más angosto para valor unitario */
+  text-align: center;
+}
+
+.col-total {
+  width: 15%; /* 🔹 Más angosto para valor total */
+  text-align: right;
+}
+
+.tabla-cotizacion input {
+  width: 80%;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  text-align: center  ;
+}
+
+
+
+/***************************************Pie de Cotización (Sticky) ******************************************/
+.cotizaciones-footer{
+  background-color: #007bff;
+  width: 108%;
+}
+
+.pie-cotizacion { 
+  display: flex;
+}
+
+/* ✅ Sección Izquierda */
+.pie-izquierda {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+.pie-izquierda input {
+  display: flex;
+  flex-direction: column;
+  background-color: #d94444;
+  align-items: center;
+}
+
+/* ✅ Sección Derecha */
+.pie-derecha {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 50%;
+  align-items: flex-end;
+}
+
+/* ✅ Estilos para los campos */
+.campoPie {
+  display: flex;
+  margin-left: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+.campoPie label {
+  font-weight: bold;
+  width: 250px;
+}
+
+.campoPie input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 150px;
+  text-align: right;
+}
+
+.campoPie span {
+  font-weight: bold;
+}
+
+/* ✅ Estilo para el total */
+.total {
+  font-size: 18px;
+  font-weight: bold;
+  color: #d9534f;
+}
+
+
+@media print {
+  /* ✅ Mantiene la cotización dentro de los márgenes de la hoja */
+  .cotizaciones-container {
+    flex-grow: unset;
+    width: 210mm; /* Mantiene el tamaño de la hoja A4 */
+    height: 297mm;
+    padding-top: 0mm;
+    margin: 0 auto; /* Centra la cotización */
+    padding-right: 10mm; /* 🔹 Ajusta el espacio derecho para evitar que se corte */
+    box-sizing: border-box; /* Asegura que el padding no altere el tamaño total */
+    transform: scale(0.95); /* Reduce el tamaño un 95% */
+    page-break-after: always;
+    
+  }
+  .cuerpo-datos{
+    margin-left: 15px
+  }
+  .pie-cotizacion {
+    margin-left: -10mm; /* 🔹 Mueve el pie un poco a la izquierda */
+    width: 100%; /* Asegura que ocupe toda la anchura */
+  }
+
+  /* ✅ Ajusta los campos para que los inputs no estén tan separados */
+  .campoPie {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* 🔹 Mantiene el input cerca del título */
+    gap: -200px; /* 🔹 Reduce el espacio entre el título y el input */
+  
+  }
+
+
+  /* ✅ Ocultar botones y elementos interactivos en la impresión */
+  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-image, .btn-regresar,.btn-eliminar-imagen {
+    display: none;
+  }
+
+  .col-accion {
+    display: none;
+  }
+  
+}
