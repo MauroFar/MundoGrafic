@@ -1,9 +1,56 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { data, useNavigate } from "react-router-dom";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import "../styles/Cotizaciones.css";
 
 
+
 function Cotizaciones() {
+
+  const [rucs, setRucs] = useState([]); // Lista de RUCs con ejecutivos
+  const [selectedRuc, setSelectedRuc] = useState(""); // RUC seleccionado
+  const [ejecutivo, setEjecutivo] = useState(""); // Nombre del ejecutivo
+
+  // Cargar los RUCs y sus ejecutivos desde el backend
+  useEffect(() => {
+    fetch("http://localhost:5000/api/rucs")
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Datos recibidos del backend:", data); // Verifica que los datos estén correctos
+        setRucs(data);
+      })
+      .catch((error) => console.error("Error al obtener los RUCs:", error));
+  }, []);
+
+  // Mostrar los RUCs cargados para ver si la API está devolviendo lo correcto
+  useEffect(() => {
+    console.log("RUCs cargados:", rucs);
+  }, [rucs]);
+
+  // Manejar el cambio de selección de RUC
+  const handleRucChange = (event) => {
+    const rucSeleccionado = event.target.value;
+    setSelectedRuc(rucSeleccionado);
+
+    // Buscar el Ejecutivo en el array de RUCs
+    const rucObj = rucs.find((r) => r.ruc === rucSeleccionado);
+    const ejecutivoSeleccionado = rucObj ? rucObj.ejecutivo : "";
+    setEjecutivo(ejecutivoSeleccionado);
+    console.log("Ejecutivo actualizado:", ejecutivoSeleccionado); // Verifica el valor del ejecutivo
+  };
+
+  // Mostrar el nombre del ejecutivo en la consola cuando cambie
+  useEffect(() => {
+    if (ejecutivo) {
+      console.log("Ejecutivo seleccionado:", ejecutivo);
+    }
+  }, [ejecutivo]); // Se ejecutará cada vez que el valor de 'ejecutivo' cambie
+ 
+
+
+  
+
+  
   //OBTENER FECHA
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
@@ -45,6 +92,9 @@ useEffect(() => {
 
     const navigate = useNavigate();
 
+    const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
+
+
 
   return (
     <>
@@ -52,6 +102,8 @@ useEffect(() => {
       
     <button className="btn-regresar" onClick={() => navigate('/Dashboard')}>
   ← Regresar
+
+  
 </button>
     </div>
     <div className="cotizaciones-container">
@@ -73,14 +125,13 @@ useEffect(() => {
             <div className="cotizacion-box">
               <span className="cotizacion-label">COTIZACIÓN</span>
               <div className="numero-cotizacion">000000001</div> {/* Se manejará con BBDD en el futuro */}
-            </div>
+            </div> 
 
             <div className="ruc-box">
               <span className="ruc-label">R.U.C</span>
-              <select className="ruc-select">
-                <option value="1710047984001">1710047984001</option>
-                <option value="1798745632001">1798745632001</option>
-                <option value="1800987654001">1800987654001</option>
+              <select className="ruc-select" id="ruc" value={selectedRuc} onChange={handleRucChange}>
+                <option value="">Seleccione un ruc</option>
+                {rucs.map((ruc)=>(<option key={ruc.id} value={ruc.ruc}>{ruc.ruc}</option>))}
               </select>
             </div>
           
@@ -154,7 +205,7 @@ useEffect(() => {
 
     <div className="campo campo-derecha">
       <label>Ejecutivo de Cuenta:</label>
-      <input type="text" placeholder="Nombre del ejecutivo" />
+      <input type="text" value={ejecutivo} />
     </div>
   </div>
 
@@ -302,7 +353,9 @@ useEffect(() => {
     <footer className="cotizaciones-footer">
       <div className="pie-cotizacion">
         <div className="pie-izquierda">
-          <div className="campoPie"><label>Tiempo de Entrega:</label> <input type="text" /></div>
+          <div className="campoPie"><label>Tiempo de Entrega:</label> <input 
+          type="text" value={TxttiempoEntrega} onChange={(e) => setTxtTiempoEntrega(e.target.value)}/>
+          </div>
           <div className="campoPie"><label>Forma de Pago:</label> <input type="text" /></div>
           <div className="campoPie"><label>Validez de Proforma:</label> <input type="text" /></div>
           <div className="campoPie"><label>Observaciones:</label> <input type="text" /></div>
@@ -310,13 +363,29 @@ useEffect(() => {
         <div className="pie-derecha">
           <div className="campoPie"><label>Subtotal:</label> <span>${subtotal.toFixed(2)}</span></div>
           <div className="campoPie"><label>IVA 15%:</label> <span>${iva.toFixed(2)}</span></div>
-          <div className="campoPie"><label>Descuento:</label> <input type="number" /></div>
-          <div className="campoPie total"><label>Total:</label> <span>${total.toFixed(2)}</span></div>
-          <button className="btn-imprimir" onClick={() => window.print()}>Imprimir</button>
+          <div className="campoPie"><label>Descuento:</label> <input type="text" className="input-descuento"></input></div>
+          <div className="campoPie"><label>Total:</label> <span>${total.toFixed(2)}</span></div>
+      
         </div>
       </div>
+
+        <div className="pie-pagina">
+    <p>Quito: Pasaje  San Luis N12-87 y Antonio Ante, Edif Apolo 1 Telefax:2589134 - Tumbaco:Norberto Salazar E7-224X y pasaje San Martin Telf:2379320 E-mail:ventas@mundografic.com Cel:099661572</p>
+    <p>
+    <a href="https://www.mundografic.com" target="_blank">www.mundografic.com</a> |
+    <a href="https://instagram.com" target="_blank"><i className="fab fa-instagram"></i>/mundografic</a>
+    <a href="https://youtube.com" target="_blank"><i className="fab fa-youtube"></i>/mundografic</a>
+    <a href="https://facebook.com" target="_blank"><i className="fab fa-facebook"></i>/mundografic</a>
+    <a href="https://twitter.com" target="_blank"><i className="fab fa-twitter"></i>@mundografic</a>
+  </p>
+  </div>
+
     </footer>
-      
+    <div className="btn-opciones">
+    <button className="btn-imprimir" onClick={() => window.print()}>Imprimir</button>
+          <button className="btn-imprimir" onClick={() => window.print()}>Guardar BBDD</button>
+          <button className="btn-imprimir" onClick={() => window.print()}>Descargar</button>
+          </div>
     </div>
     </>
   );

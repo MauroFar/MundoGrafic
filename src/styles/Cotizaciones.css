@@ -33,6 +33,7 @@
   margin-left: 150px;
   justify-content: space-between; /* 🔹 Mantiene el pie de página abajo */
   min-height: 100vh
+  
 }
 
 /*************************** ✅ Encabezado General ****************************************/
@@ -175,6 +176,7 @@
   max-width: 110%;
 }
 
+
 .fila {
   display: flex;
   justify-content: space-between; /* 🔹 Separa los elementos */
@@ -182,6 +184,14 @@
   align-items: center; /* 🔹 Alinea los elementos verticalmente */
   margin-bottom: 10px;
 }
+.cuerpo-datos input{
+    border: none;
+    outline: none;
+    background: transparent; /* Esto es opcional, pero puede ayudar */
+  
+}
+/* Cambiar el tamaño del texto para los números de RUC en la interfaz */
+
 
 
 /********************************************************** Cuerpo de cotizacion **************************************/
@@ -191,6 +201,10 @@
     background-color: aqua;
     flex-grow: 1;
 }
+.cuerpo-cotizacion .tabla-cotizacion th {
+  border: 1px solid black;
+}
+
 
 /* ✅ Ajuste de anchos en la tabla de cotización */
 .col-cant {
@@ -292,72 +306,81 @@
   width: 108%;
 }
 
-.pie-cotizacion { 
+
+.pie-cotizacion {
   display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+.input-descuento {
+  width: 80px; /* Reduce el tamaño del input */
+  text-align: right; /* Alinea el texto dentro del input a la derecha */
+  padding: 4px; /* Ajusta el padding para que se vea bien */
+  border: none;
 }
 
-/* ✅ Sección Izquierda */
-.pie-izquierda {
+.campoPie {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  justify-content: space-between; /* Asegura que el label y el input/span estén alineados en la misma línea */
+  align-items: center;
   width: 100%;
 }
 .pie-izquierda input {
-  display: flex;
-  flex-direction: column;
-  background-color: #d94444;
-  align-items: center;
+  border: none; /* Elimina el borde */
+
 }
 
-/* ✅ Sección Derecha */
 .pie-derecha {
-  display: flex;
-  flex-direction: column;
+  transform: translateX(-30px); /* Mueve el elemento ligeramente a la izquierda */
+  border: none;
+}
+
+.btn-opciones {
   gap: 10px;
-  width: 50%;
-  align-items: flex-end;
-}
-
-/* ✅ Estilos para los campos */
-.campoPie {
   display: flex;
-  margin-left: 10px;
-  width: 100%;
-  align-items: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.campoPie label {
-  font-weight: bold;
-  width: 250px;
+.btn-imprimir:hover {
+  background: #0056b3;
+}
+.pie-pagina {
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.campoPie input {
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 150px;
-  text-align: right;
+.pie-pagina p, .pie-pagina a {
+  font-family: inherit;
+  font-size: inherit;
+  color: black;
+  text-decoration: none;
+  margin: 0 5px;
 }
 
-.campoPie span {
-  font-weight: bold;
+.pie-pagina i {
+  font-size: 12px; /* Ajusta el tamaño de los iconos */
+  margin-right: 3px;
 }
 
-/* ✅ Estilo para el total */
-.total {
-  font-size: 18px;
-  font-weight: bold;
-  color: #d9534f;
-}
+
 
 
 @media print {
   /* ✅ Mantiene la cotización dentro de los márgenes de la hoja */
   .cotizaciones-container {
     flex-grow: unset;
-    width: 210mm; /* Mantiene el tamaño de la hoja A4 */
-    height: 297mm;
+    width: 210mm; /* Mantiene el tamaño de la hoja A4 */  
+    height: 300mm;
     padding-top: 0mm;
     margin: 0 auto; /* Centra la cotización */
     padding-right: 10mm; /* 🔹 Ajusta el espacio derecho para evitar que se corte */
@@ -369,28 +392,31 @@
   .cuerpo-datos{
     margin-left: 15px
   }
-  .pie-cotizacion {
-    margin-left: -10mm; /* 🔹 Mueve el pie un poco a la izquierda */
-    width: 100%; /* Asegura que ocupe toda la anchura */
-  }
-
-  /* ✅ Ajusta los campos para que los inputs no estén tan separados */
-  .campoPie {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start; /* 🔹 Mantiene el input cerca del título */
-    gap: -200px; /* 🔹 Reduce el espacio entre el título y el input */
-  
-  }
-
 
   /* ✅ Ocultar botones y elementos interactivos en la impresión */
-  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-image, .btn-regresar,.btn-eliminar-imagen {
+  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar,.btn-eliminar-imagen {
     display: none;
   }
 
   .col-accion {
     display: none;
   }
-  
+   /* Ocultar la flecha del desplegable */
+   select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none; /* Elimina el borde del cuadro */
+    background: transparent; /* Elimina el fondo si es necesario */
+    padding: 0; /* Elimina el padding si es necesario */
+  }
+
+  /* Opcional: si quieres que el texto se vea sin bordes o con un formato diferente en la impresión */
+  select option {
+    border: none;
+    background: transparent;
+  }
+  select option {
+    font-size: 30px; /* Ajusta el tamaño de fuente a tu preferencia */
+  }
 }
