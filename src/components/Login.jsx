@@ -1,14 +1,19 @@
 import { useState } from "react";
-import "../styles/login.css"; // Asegúrate de tener este archivo para los estilos
+import { useNavigate } from "react-router-dom";
+import "../styles/login.css";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Intentando iniciar sesión con:", { email, password });
-
+    if (email === "admin" && password === "admin") {
+      navigate("/dashboard");
+    } else {
+      alert("Credenciales incorrectas. Intenta nuevamente.");
+    }
   };
 
   return (
@@ -16,8 +21,8 @@ function Login() {
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Iniciar Sesión</h2>
         <input
-          type="email"
-          placeholder="Correo Electrónico"
+          type="text"
+          placeholder="Usuario"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -36,3 +41,5 @@ function Login() {
 }
 
 export default Login;
+
+

@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-
+import "../styles/Dashboard.css";
 function Dashboard() {
   return (
     <div className="dashboard-container">
+      <form className="dashboard-form">
       <h2>Dashboard</h2>
       <div className="dashboard-buttons">
         <Link to="/cotizaciones">
@@ -15,6 +16,7 @@ function Dashboard() {
           <button>Órdenes de Trabajo</button>
         </Link>
       </div>
+      </form>
     </div>
   );
 }
