@@ -1,11 +1,14 @@
 /*Boton Regresar*/
 /* 🔹 Botón de Regresar */
-.btn-regresar {
+.btnadministracion {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
   position: fixed; /* 🔹 Se mantiene fijo en la pantalla */
   top: 10px; /* 🔹 Distancia desde la parte superior */
   left: 10px; /* 🔹 Distancia desde la parte izquierda */
-  background-color: #007bff; /* 🔹 Azul */
-  color: white;
+  
+  color: rgb(35, 158, 78);
   border: none;
   padding: 10px 15px;
   font-size: 16px;
@@ -14,6 +17,9 @@
   cursor: pointer;
   transition: background-color 0.3s ease-in-out;
   z-index: 1000; /* 🔹 Asegura que esté sobre otros elementos */
+}
+.btnadministracion button {
+  background-color: aqua;
 }
 
 .btn-regresar:hover {
@@ -153,7 +159,7 @@
 /* ✅ Estilos de cada columna */
 .columna {
   text-align: center;
-  font-size: 7px; /* 🔹 Reducir tamaño del texto */
+  font-size: 5px; /* 🔹 Reducir tamaño del texto */
   color: #333;
   padding: 5px; /* 🔹 Reducir padding */
   line-height: 1; /* 🔹 Compactar espacio entre líneas */
@@ -166,11 +172,16 @@
 .columna:last-child {
   border-right: none;
 }
+.resaltado {
+  color: red;
+  font-weight: bold;
+}
+
 
 /********************************************************** Cuerpo de datos **************************************/
 .cuerpo-datos{
   border-radius: 0%;
-  background-color: #d9534f;
+  background-color: #d8d8d8;
   margin-top:0px;
   width: 108%; /* Mantiene el tamaño de la hoja A4 */
   max-width: 110%;
@@ -297,6 +308,17 @@
   border-radius: 3px;
   text-align: center  ;
 }
+.tabla-cotizacion {
+  width: 100%;
+  border-collapse: collapse; /* Para evitar espacios extra */
+}
+
+.tabla-cotizacion th, 
+.tabla-cotizacion td {
+
+  padding: 8px;
+  text-align: left;
+}
 
 
 
@@ -378,20 +400,23 @@
 @media print {
   /* ✅ Mantiene la cotización dentro de los márgenes de la hoja */
   .cotizaciones-container {
-    flex-grow: unset;
-    width: 210mm; /* Mantiene el tamaño de la hoja A4 */  
-    height: 300mm;
-    padding-top: 0mm;
-    margin: 0 auto; /* Centra la cotización */
-    padding-right: 10mm; /* 🔹 Ajusta el espacio derecho para evitar que se corte */
-    box-sizing: border-box; /* Asegura que el padding no altere el tamaño total */
-    transform: scale(0.95); /* Reduce el tamaño un 95% */
-    page-break-after: always;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column; /* Mantiene la estructura en columna */
     
+    width: 210mm; /* Tamaño de A4 */
+    height: 297mm; /* A4 en vertical */
+    
+    padding: 0 10mm; /* Mantiene márgenes adecuados */
+    box-sizing: border-box;
+
+    transform: none; /* Elimina la escala que puede estar afectando la alineación */
+    page-break-after: always;
+    margin-left: -8px;
   }
-  .cuerpo-datos{
-    margin-left: 15px
-  }
+
+
 
   /* ✅ Ocultar botones y elementos interactivos en la impresión */
   .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar,.btn-eliminar-imagen {
@@ -419,4 +444,5 @@
   select option {
     font-size: 30px; /* Ajusta el tamaño de fuente a tu preferencia */
   }
+
 }

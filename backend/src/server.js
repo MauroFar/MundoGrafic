@@ -23,11 +23,15 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas
-const rucRoutes = require("./routes/rucs"); // Asegúrate de crear este archivo
-app.use("/api/rucs", rucRoutes); 
+const rucRoutes = require("./routes/rucs");
+app.use("/api/rucs", rucRoutes(client)); // Pasamos el cliente como argumento
+const cotizacionRoutes = require("./routes/cotizaciones");
+app.use("/api/cotizaciones", cotizacionRoutes(client));
 
 // Puerto
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
+
+module.exports = client;  // Exportamos el cliente para usarlo en otras rutas si es necesario

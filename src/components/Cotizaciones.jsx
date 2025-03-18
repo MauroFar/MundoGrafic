@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { data, useNavigate } from "react-router-dom";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "../styles/Cotizaciones.css";
-
-
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import axios from 'axios';
 
 function Cotizaciones() {
 
@@ -95,16 +96,125 @@ useEffect(() => {
     const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
 
 
+////////////descargar en pdf//////////////////////
+// Función para generar el PDF
+const downloadPDF = () => {
+  const doc = new jsPDF({
+    orientation: 'p', // 'p' para vertical
+    unit: 'mm',
+    format: 'a4', // Tamaño A4
+  });
+
+  // Obtener el contenido que se mostrará en la vista previa de impresión
+  const cotizacionContent = document.querySelector('.cotizaciones-container');
+
+  // Clonar el contenido para evitar modificar el DOM original
+  const clonedContent = cotizacionContent.cloneNode(true);
+
+  // Aplicar el estilo de impresión al contenido clonado
+  clonedContent.style.display = 'flex';
+  clonedContent.style.justifyContent = 'center';
+  clonedContent.style.alignItems = 'center';
+  clonedContent.style.flexDirection = 'column';
+  clonedContent.style.width = '210mm';  // Asegura el tamaño A4
+  clonedContent.style.height = '297mm'; // A4 en vertical
+  clonedContent.style.padding = '0 10mm'; 
+  clonedContent.style.boxSizing = 'border-box';
+  clonedContent.style.marginLeft = '-8px';
+
+  // Ocultar los botones y elementos interactivos
+  const buttons = clonedContent.querySelectorAll('.btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar, .btn-eliminar-imagen');
+  buttons.forEach(button => button.style.display = 'none');
+
+  // Ocultar las columnas de acción
+  const accionColumns = clonedContent.querySelectorAll('.col-accion');
+  accionColumns.forEach(col => col.style.display = 'none');
+
+  // Ocultar la flecha del desplegable (select)
+  const selects = clonedContent.querySelectorAll('select');
+  selects.forEach(select => {
+    select.style.webkitAppearance = 'none';
+    select.style.mozAppearance = 'none';
+    select.style.appearance = 'none';
+    select.style.border = 'none';
+    select.style.background = 'transparent';
+    select.style.padding = '0';
+  });
+
+  const options = clonedContent.querySelectorAll('select option');
+  options.forEach(option => {
+    option.style.fontSize = '30px';
+    option.style.border = 'none';
+    option.style.background = 'transparent';
+  });
+
+  // Generar el PDF con el contenido estilizado
+  doc.html(clonedContent, {
+    callback: function (doc) {
+      // Guardar el PDF generado
+      doc.save('cotizacion.pdf');
+    },
+    margin: [10, 10, 10, 10], // Márgenes
+    x: 10, // Alineación horizontal
+    y: 10, // Alineación vertical
+  });
+}
+//////////////////////////guardar cotizacion ////////////////////
+const [cotizacion, setCotizacion] = useState({
+cliente: '',
+        ejecutivo_id: 1,  // ID del ejecutivo de cuenta
+        fecha: new Date().toISOString().split('T')[0], // Fecha actual
+        ruc_id: '', // ID del RUC seleccionado
+        subtotal: 0,
+        iva: 0,
+        descuento: 0,
+        total: 0,
+        detalles: []  // Array de detalles (productos)
+    });
+
+    // Función para manejar el clic en el botón "Guardar BBDD"
+    const handleGuardarCotizacion = async () => {
+      // Crear el objeto de cotización actualizado
+      const cotizacionParaGuardar = {
+          cliente: "Nombre del cliente",  // Este valor lo tomas de tu input de cliente
+          ejecutivo_id: ejecutivo,  // Este es el ejecutivo seleccionado
+          fecha: fecha,  // Fecha de la cotización
+          ruc_id: selectedRuc,  // ID del RUC seleccionado
+          subtotal: subtotal,  // El subtotal calculado
+          iva: iva,  // IVA calculado
+          descuento: descuento,  // Descuento, si aplica
+          total: total,  // Total calculado
+          detalles: filas.map((fila) => ({
+              cantidad: fila.cantidad,
+              detalle: fila.detalle,
+              unitario: fila.unitario,
+              total: fila.total,
+          })),  // Asegúrate de enviar los detalles de la cotización
+      };
+  
+      try {
+          const response = await axios.post('http://localhost:5000/api/cotizaciones/guardar-cotizacion', cotizacionParaGuardar);
+          console.log('Cotización guardada:', response.data);
+          alert('Cotización guardada con éxito');
+      } catch (error) {
+          console.error('Error al guardar la cotización:', error);
+          alert('Hubo un error al guardar la cotización');
+      }
+  };
+  
 
   return (
     <>
-    <div>
-      
-    <button className="btn-regresar" onClick={() => navigate('/Dashboard')}>
-  ← Regresar
+      <div className="btnadministracion">
+        
+      <button className="btn-regresar" onClick={() => navigate('/Dashboard')}>
+    ← Regresar
+  </button>
+  <button className="btn-regresar" onClick={() => navigate('/Dashboard')}>
+    Buscar
+  </button>
 
-  
-</button>
+
     </div>
     <div className="cotizaciones-container">
     <div className="encabezado-container">
@@ -124,7 +234,7 @@ useEffect(() => {
           <div className="cotizacion-section">
             <div className="cotizacion-box">
               <span className="cotizacion-label">COTIZACIÓN</span>
-              <div className="numero-cotizacion">000000001</div> {/* Se manejará con BBDD en el futuro */}
+              <div className="numero-cotizacion">00000020</div> {/* Se manejará con BBDD en el futuro */}
             </div> 
 
             <div className="ruc-box">
@@ -141,7 +251,7 @@ useEffect(() => {
 
       <div className="seccion-columnas">
           <div className="columna">
-            ESTUDIO DE DISEÑO GRAFIO PUBLICITARIO CREATIVO,
+          <span className="resaltado">ESTUDIO DE DISEÑO GRAFICO</span> PUBLICITARIO CREATIVO,
             IMAGEN CORPORATIVA,
             PAPELERIA EMPRESARIAL,
             CAMPAÑAS PUBLICITARIAS,
@@ -383,8 +493,8 @@ useEffect(() => {
     </footer>
     <div className="btn-opciones">
     <button className="btn-imprimir" onClick={() => window.print()}>Imprimir</button>
-          <button className="btn-imprimir" onClick={() => window.print()}>Guardar BBDD</button>
-          <button className="btn-imprimir" onClick={() => window.print()}>Descargar</button>
+          <button className="btn-imprimir" onClick={handleGuardarCotizacion}>Guardar BBDD</button>
+          <button className="btn-imprimir" onClick={downloadPDF}>Descargar</button>
           </div>
     </div>
     </>
