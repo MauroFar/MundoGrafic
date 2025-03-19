@@ -11,7 +11,7 @@
   color: rgb(35, 158, 78);
   border: none;
   padding: 10px 15px;
-  font-size: 16px;
+  font-size: 10px;
   font-weight: bold;
   border-radius: 5px;
   cursor: pointer;
@@ -47,7 +47,7 @@
   display: flex;
   justify-content: space-between; /* Separa izquierda y derecha */
   align-items: center; /* Asegura alineación vertical */
-  width: 100%;
+  width: 95%;
   max-width: 1200px;
 }
 
@@ -106,24 +106,27 @@
 .cotizacion-section {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   align-self: flex-start; /* 🔹 Asegura que se alinee con MUNDOGRAFIC */
   margin-top: 20px;
 }
 
 /* 🔹 "COTIZACIÓN" */
+/* 🔹 "COTIZACIÓN" */
 .cotizacion-box {
-  margin-top: -10px;
   display: flex;
   align-items: center;
+  margin-top: -10px; 
 }
 
+/* 🔹 Número de cotización */
 .numero-cotizacion {
   color: #d94444;
   font-size: 18px;
-  margin-top: 5px;
+  margin-top: 0; /* Ajustar a 0 o eliminar si no es necesario */
   margin-left: 10px;
 }
+
 .cotizacion-label{
   color: #000;
 }
@@ -159,7 +162,7 @@
 /* ✅ Estilos de cada columna */
 .columna {
   text-align: center;
-  font-size: 5px; /* 🔹 Reducir tamaño del texto */
+  font-size: 8px; /* 🔹 Reducir tamaño del texto */
   color: #333;
   padding: 5px; /* 🔹 Reducir padding */
   line-height: 1; /* 🔹 Compactar espacio entre líneas */
@@ -176,149 +179,152 @@
   color: red;
   font-weight: bold;
 }
-
-
-/********************************************************** Cuerpo de datos **************************************/
-.cuerpo-datos{
-  border-radius: 0%;
-  background-color: #d8d8d8;
-  margin-top:0px;
-  width: 108%; /* Mantiene el tamaño de la hoja A4 */
-  max-width: 110%;
+/* Estilo para la numeración de cotización */
+#cotizacion-numero {
+  font-size: 16px;
+  text-align: right;
+  margin-bottom: 20px;
 }
 
+    
+    .ruc-box {
+      width: 100%;
+      display: flex; /* Asegúrate de que el campo de RUC no se sobrepase */
+    }
+/* Estilo para la etiqueta R.U.C. */
+.ruc-label {
+  font-size: 16px; /* Tamaño de fuente de la etiqueta */
+  margin-bottom: 5px; /* Espacio entre la etiqueta y el select */
+}
+
+/* Estilo para el select (cuadro del R.U.C.) */
+.ruc-select {
+  width: 100%; /* El select ocupará todo el ancho disponible */
+  height: 40px; /* Ajusta la altura del cuadro */
+  font-size: 16px; /* Tamaño de la fuente dentro del select */
+  padding: 5px; /* Espacio interior del select */
+  border-radius: 4px; /* Bordes redondeados (opcional) */
+  border: 1px solid #ccc; /* Borde del select */
+  box-sizing: border-box; /* Asegura que el padding no afecte el tamaño */
+}
+/*//////////cuerpo datos/////////////*/
+.cuerpo-datos {
+  border-radius: 0%;
+  background-color: #d8d8d8;
+  margin-top: 0px;
+  width: 105%;
+  max-width: 110%;
+}
 
 .fila {
   display: flex;
   justify-content: space-between; /* 🔹 Separa los elementos */
+  align-items: center; /* 🔹 Asegura que todo esté alineado verticalmente */
   width: 100%;
-  align-items: center; /* 🔹 Alinea los elementos verticalmente */
   margin-bottom: 10px;
 }
-.cuerpo-datos input{
-    border: none;
-    outline: none;
-    background: transparent; /* Esto es opcional, pero puede ayudar */
-  
+
+.campo {
+  display: flex;
+  align-items: center; /* 🔹 Asegura que el label y el input estén alineados verticalmente */
+  gap: 10px; /* 🔹 Espacio entre el label y el input */
+  width: 48%; /* 🔹 Ajusta el tamaño de cada campo */
+}
+
+.campo label {
+  font-size: 16px; /* 🔹 Ajusta el tamaño del texto */
+  white-space: nowrap; /* 🔹 Evita que el texto se divida en varias líneas */
+}
+
+.campo input {
+  height: 40px; /* 🔹 Ajusta la altura del input */
+  font-size: 16px; /* 🔹 Tamaño del texto dentro del input */
+  padding: 8px 10px; /* 🔹 Espaciado dentro del input */
+  width: 100%; /* 🔹 El input ocupa todo el espacio disponible */
+  box-sizing: border-box; /* 🔹 Evita que el padding afecte el tamaño */
+  border-radius: 4px; /* 🔹 Bordes redondeados */
+  border: 1px solid #ccc; /* 🔹 Borde gris claro */
+}
+/* 🔹 Ajuste especial para el campo de fecha */
+input[type="date"] {
+  width: 140%; /* 🔹 Ensancha un poco el input de fecha */
 }
 /* Cambiar el tamaño del texto para los números de RUC en la interfaz */
-
-
-
-/********************************************************** Cuerpo de cotizacion **************************************/
-.cuerpo-cotizacion {
-    width: 108%; /* Mantiene el tamaño de la hoja A4 */
-    border-radius: 0%;
-    background-color: aqua;
-    flex-grow: 1;
-}
-.cuerpo-cotizacion .tabla-cotizacion th {
-  border: 1px solid black;
+@media print {
+  .botones-flotantes {
+    display: none !important;
+  }
 }
 
-
-/* ✅ Ajuste de anchos en la tabla de cotización */
-.col-cant {
-  width: 15%; /* 🔹 Más angosto para cantidad */
-  text-align: center;
+.botones-flotantes {
+  position: absolute;
+  right: -40px; /* Mueve los botones fuera del div */
+  top: 5px;
+  display: flex;
+  gap: 5px;
 }
-/* ✅ Mantiene el título "DETALLE" centrado */
+
+
+/*/////////////////////////////////////Cuerpo Cotizaciones///////////////////////////////////////////////////////////*/
+.tabla-cotizacion {
+  width: 100%; 
+  table-layout: fixed; 
+}
+
+.col-cant,
+.col-unitario,
+.col-total,
+.col-accion {
+  width: 15%; /* Estas columnas ocupan un 15% del ancho cada una */
+}
+
 .col-detalle {
-  text-align: center;
-  width: 55%; /* 🔹 Asegura que la columna ocupe más espacio */
+  width: 40%; /* Esta columna ocupa un 40% del ancho */
 }
 
-/* ✅ Asegura que el contenido dentro de la celda esté en flex */
-/* ✅ Contenedor del textarea y botón */
 .detalle-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  align-items: center; /* Centrar los elementos verticalmente */
+  gap: 2px; /* Añadir espacio entre el textarea y los botones */
+}
+
+.detalle-container button {
+  width: 15px; /* Ajusta el ancho del botón */
+  height: 15px; /* Ajusta la altura del botón */
+  font-size: 18px; /* Ajusta el tamaño del texto dentro del botón */
+  display: flex; /* Asegura que los botones sean elementos de bloque */
+  align-items: center; /* Centra el contenido dentro del botón */
+  justify-content: center; /* Centra el contenido dentro del botón */
+  border: none; /* Elimina el borde por defecto */
+  background-color: #f0f0f0; /* Color de fondo opcional */
+  border-radius: 5px; /* Bordes redondeados para los botones */
+  cursor: pointer; /* Cambia el cursor al pasar sobre el botón */
+}
+
+.detalle-container button:hover {
+  background-color: #e0e0e0; /* Cambia el color al pasar el mouse */
+}
+
+textarea {
+  flex-grow: 1; /* Hace que el textarea ocupe todo el espacio disponible */
+  resize: none; /* Evita que el textarea cambie de tamaño manualmente */
+}
+
+button {
+  margin-left: 5px; /* Opcional, agrega un pequeño margen a los botones */
+}
+
+.col-detalle {
+  padding: 0; /* Ajusta el padding de la columna */
+}
+
+
+input[type="number"] {
   width: 100%;
-}
-
-/* ✅ Ajuste del textarea */
-.col-detalle textarea {
-  width: 100%;
-  min-height: 50px;
-  resize: vertical;
-  text-align: left;
-}
-
-/* ✅ Botón "Insertar Imagen" */
-.btn-insertar-imagen {
-  width: 40px;
-  height: 40px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.btn-insertar-imagen:hover {
-  background-color: #0056b3;
-}
-
-/* ✅ La nueva fila que contiene la imagen (NO AFECTA LOS INPUTS) */
-.detalle-imagen-row {
-  text-align: center;
-}
-
-/* ✅ Contenedor de la imagen debajo del textarea (tamaño fijo) */
-.detalle-imagen-container {
-  width: 250px; /* 🔹 Ancho fijo para la imagen */
-  height: 250px; /* 🔹 Alto fijo para la imagen */
-  display: flex;
-  
-  border: 1px solid #ccc; /* 🔹 Borde opcional */
-  border-radius: 5px;
-  padding: 5px;
-  overflow: hidden;
-  margin: auto;
-}
-
-/* ✅ Imagen dentro del contenedor (ajustada sin deformarse) */
-.detalle-imagen {
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* 🔹 Ajusta la imagen dentro del contenedor sin deformarla */
+  box-sizing: border-box;
 }
 
 
-.col-unitario {
-  width: 15%; /* 🔹 Más angosto para valor unitario */
-  text-align: center;
-}
-
-.col-total {
-  width: 15%; /* 🔹 Más angosto para valor total */
-  text-align: right;
-}
-
-.tabla-cotizacion input {
-  width: 80%;
-  padding: 2px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  text-align: center  ;
-}
-.tabla-cotizacion {
-  width: 100%;
-  border-collapse: collapse; /* Para evitar espacios extra */
-}
-
-.tabla-cotizacion th, 
-.tabla-cotizacion td {
-
-  padding: 8px;
-  text-align: left;
-}
 
 
 
