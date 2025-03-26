@@ -1,37 +1,31 @@
-// routes/cotizaciones.js
+const express = require("express");
+const router = express.Router();
 
-module.exports = (client) => {
-    const express = require('express');
-    const router = express.Router();
-  
-    // Ruta POST para crear una cotización
-    router.post('/crear', async (req, res) => {
-      const { cliente } = req.body;  // Extraemos el nombre del cliente desde el cuerpo de la solicitud
-  
-      if (!cliente) {
-        return res.status(400).json({ error: 'El nombre del cliente es requerido' });
-      }
-  
-      try {
-        // Insertamos el nombre del cliente y la fecha en la base de datos
-        const query = `
-          INSERT INTO cotizaciones (cliente, fecha) 
-          VALUES ($1, CURRENT_DATE) 
-          RETURNING id, cliente, fecha
-        `;
-        const values = [cliente];
-  
-        // Ejecutamos la consulta
-        const result = await client.query(query, values);
-        const nuevaCotizacion = result.rows[0];  // Obtiene la cotización recién insertada
-  
-        return res.status(201).json(nuevaCotizacion);  // Retornamos la cotización creada
-      } catch (err) {
-        console.error('Error al insertar cotización:', err);
-        return res.status(500).json({ error: 'Error al crear cotización' });
-      }
-    });
-  
-    return router;  // Devolvemos el router para ser utilizado en el servidor
-  };
-  
+const createCotizacion = (client) => {
+  // Ruta para crear una cotización y guardar todos los datos del cliente
+  router.post("/", async (req, res) => {
+    const { nombre, ruc_id } = req.body; // Solo el nombre se recibe del frontend
+    const direccion = "Dirección de prueba"; // Puedes llenar estos valores manualmente
+    const telefono = "1234567890"; // Llenado manualmente
+    const email = "cliente@correo.com"; // Llenado manualmente
+    
+    // Consulta SQL para insertar todos los datos en la tabla 'clientes'
+    const query = `
+      INSERT INTO clientes (nombre_cliente, direccion_cliente, telefono_cliente, email_cliente, ruc_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, nombre_cliente, direccion_cliente, telefono_cliente, email_cliente, ruc_id
+    `;
+
+    try {
+      const result = await client.query(query, [nombre, direccion, telefono, email, ruc_id]); // Ejecutamos la consulta
+      res.json(result.rows[0]); // Devolver la respuesta con el id y los datos insertados
+    } catch (error) {
+      console.error('Error al insertar cliente:', error);
+      res.status(500).json({ error: 'Error al insertar cliente' });
+    }
+  });
+
+  return router;
+};
+
+module.exports = createCotizacion;

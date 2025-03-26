@@ -28,17 +28,16 @@
 
 /* ✅ Contenedor Principal */
 .cotizaciones-container {
-  height: 210mm;
   width: 297mm;
   display: flex;
   flex-direction: column;
-
+  border: 2px solid black;
   padding: 50px;
   align-items: center; /* Centrar horizontalmente */
-  background-color: #cbc6c6;
+  background-color: white;
   margin-left: 150px;
   justify-content: space-between; /* 🔹 Mantiene el pie de página abajo */
-  min-height: 100vh
+  min-height: 1610px
   
 }
 
@@ -47,8 +46,9 @@
   display: flex;
   justify-content: space-between; /* Separa izquierda y derecha */
   align-items: center; /* Asegura alineación vertical */
-  width: 95%;
+  width:98%;
   max-width: 1200px;
+  margin-left:5px;
 }
 
 /* ✅ Izquierda: MUNDOGRAFIC */
@@ -154,7 +154,7 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   width: 100vw;
-  max-width: 1200px;
+  max-width: 1120px;
   margin-top: 5px;
   padding: 5px; /* 🔹 Reducir el espacio interno */
 }
@@ -186,6 +186,7 @@
   margin-bottom: 20px;
 }
 
+
     
     .ruc-box {
       width: 100%;
@@ -207,15 +208,15 @@
   border: 1px solid #ccc; /* Borde del select */
   box-sizing: border-box; /* Asegura que el padding no afecte el tamaño */
 }
-/*//////////cuerpo datos/////////////*/
+/*//////////cuerpo datos/////////////////////////////////////////////////////////////////////*/
 .cuerpo-datos {
-  border-radius: 0%;
-  background-color: #d8d8d8;
-  margin-top: 0px;
-  width: 105%;
-  max-width: 110%;
+  position: relative !important;
+  border-radius: 0% !important;
+  background-color: white;
+  width: 155% !important;
+  max-width: 100% !important;
+  margin-top: 15px ;
 }
-
 .fila {
   display: flex;
   justify-content: space-between; /* 🔹 Separa los elementos */
@@ -250,11 +251,6 @@ input[type="date"] {
   width: 140%; /* 🔹 Ensancha un poco el input de fecha */
 }
 /* Cambiar el tamaño del texto para los números de RUC en la interfaz */
-@media print {
-  .botones-flotantes {
-    display: none !important;
-  }
-}
 
 .botones-flotantes {
   position: absolute;
@@ -263,12 +259,24 @@ input[type="date"] {
   display: flex;
   gap: 5px;
 }
-
-
 /*/////////////////////////////////////Cuerpo Cotizaciones///////////////////////////////////////////////////////////*/
+.cuerpo-cotizacion {
+  border-radius: 0%;
+  background-color: rgb(199, 172, 172);
+  margin-top: 5px;
+  width: 100%;
+  max-width: 110%;
+  margin-top: 1%;
+}
 .tabla-cotizacion {
-  width: 100%; 
-  table-layout: fixed; 
+ 
+  
+  width: 95%;
+  table-layout: fixed;
+}
+
+table input {
+  height: 30px;
 }
 
 .col-cant,
@@ -276,16 +284,49 @@ input[type="date"] {
 .col-total,
 .col-accion {
   width: 15%; /* Estas columnas ocupan un 15% del ancho cada una */
+  display: table-cell; /* Asegura que todas las celdas se comporten igual */
+
+}
+.col-accion{
+  display: flex;
 }
 
 .col-detalle {
-  width: 40%; /* Esta columna ocupa un 40% del ancho */
+ 
+  width: 90%; /* Esta columna ocupa un 40% del ancho */
+  display: table-cell;
+  padding: 0; /* Ajusta el padding de la columna */
 }
 
 .detalle-container {
   display: flex;
-  align-items: center; /* Centrar los elementos verticalmente */
+
   gap: 2px; /* Añadir espacio entre el textarea y los botones */
+}
+.detalle-container textarea {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.5 !important;
+  width: 100%; /* Ocupa todo el ancho disponible */
+  min-height: 30px; /* Altura mínima */
+  height: auto; /* Permite que crezca */
+  resize: none; /* Evita que el usuario lo redimensione manualmente */
+  overflow: hidden; /* Oculta la barra de desplazamiento */
+}
+
+textarea {
+  flex-grow: 1; /* Hace que el textarea ocupe todo el espacio disponible */
+}
+
+input[type="number"] {
+  width: 95%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+button {
+  margin-left: 5px; /* Opcional, agrega un pequeño margen a los botones */
 }
 
 .detalle-container button {
@@ -305,42 +346,68 @@ input[type="date"] {
   background-color: #e0e0e0; /* Cambia el color al pasar el mouse */
 }
 
-textarea {
-  flex-grow: 1; /* Hace que el textarea ocupe todo el espacio disponible */
-  resize: none; /* Evita que el textarea cambie de tamaño manualmente */
-}
-
 button {
   margin-left: 5px; /* Opcional, agrega un pequeño margen a los botones */
 }
 
-.col-detalle {
-  padding: 0; /* Ajusta el padding de la columna */
+/* Evitar que las celdas se desajusten al cambiar el tamaño del textarea */
+.tabla-cotizacion td {
+  vertical-align: top; /* Mantiene el texto en la parte superior */
+}
+.tabla-cotizacion th {
+  border: 2px solid #333; /* Borde de 2px de grosor y color gris oscuro */
+  padding: 10px; /* Espaciado interno para que el texto no toque los bordes */
+  text-align: center; /* Alineación del texto en las celdas */  
+  background-color: white; /* Fondo gris claro para los títulos */
+}
+.tabla-cotizacion tr {
+  border-bottom: 2px solid #ccc; /* Línea entre filas */
 }
 
-
-input[type="number"] {
-  width: 100%;
-  box-sizing: border-box;
+/**************imagen**********************/
+.detalle-imagen-row {
+  text-align: center; /* Centra la fila de la imagen */
 }
+
+.detalle-imagen-container {
+  width: 100%; /* Asegura que el contenedor ocupe todo el ancho de la columna */
+  max-width: 100%; /* No se desborde del ancho de la columna */
+  display: flex;
+  margin-left: 190px;
+}
+
+.detalle-imagen {
+  width: 100%;  /* Hace que la imagen ocupe todo el ancho del contenedor */
+  height: auto; /* Mantiene la proporción de la imagen */
+  max-width: 500px;  /* Puedes ajustar este valor a tu gusto */
+  max-height: 500px;  /* Ajusta el tamaño para que sea un cuadrado */
+  object-fit: cover;  /* Hace que la imagen se ajuste al cuadrado, recortando si es necesario */
+}
+
 
 
 
 
 
 /***************************************Pie de Cotización (Sticky) ******************************************/
-.cotizaciones-footer{
-  background-color: #007bff;
-  width: 108%;
+.cotizaciones-footer {
+  background-color: white;
+  width: 100%;
+  position: relative; /* Esto asegura que se comporte como un contenedor normal */
+  margin-top: auto; /* Esto asegura que el pie se mueva hacia abajo */
+  padding: 10px;
+  transform: translateY(15px) !important;
 }
 
-
+/* ✅ Ajuste del Pie */
 .pie-cotizacion {
   display: flex;
   justify-content: space-between;
   width: 100%;
   gap: 10px;
-}
+  border-top: 2px solid #9a9797;
+  border-bottom: 2px solid #9a9797;
+} 
 .input-descuento {
   width: 80px; /* Reduce el tamaño del input */
   text-align: right; /* Alinea el texto dentro del input a la derecha */
@@ -356,6 +423,12 @@ input[type="number"] {
 }
 .pie-izquierda input {
   border: none; /* Elimina el borde */
+  height: 20px;
+
+}
+.pie-derecha input {
+  border: none; /* Elimina el borde */
+  height: 20px;
 
 }
 
@@ -401,33 +474,36 @@ input[type="number"] {
 }
 
 
-
-
 @media print {
   /* ✅ Mantiene la cotización dentro de los márgenes de la hoja */
-  .cotizaciones-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column; /* Mantiene la estructura en columna */
+    .cotizaciones-container {
+      margin: 0 !important;  /* Elimina cualquier margen */
+      padding: 10px !important; /* Ajusta el padding para que no deje espacios grandes */
+      height: auto !important; /* Permite que la altura se ajuste */
+      max-width: 92%;
+      page-break-after: avoid;
+      min-height: 1510px
     
-    width: 210mm; /* Tamaño de A4 */
-    height: 297mm; /* A4 en vertical */
-    
-    padding: 0 10mm; /* Mantiene márgenes adecuados */
-    box-sizing: border-box;
+    }
+    .ruc-select {
+      border: none;
+    }
 
-    transform: none; /* Elimina la escala que puede estar afectando la alineación */
-    page-break-after: always;
-    margin-left: -8px;
+  /*//////////////////////cuerpo datos*/
+  .cuerpo-datos {
+    position: absolute;
+    border: none;
+    background-color: #d8d8d8;
+    margin-top: 0px;
+    width: 97%;
+    max-width: 170%;
+    margin-top: 30px;
+  }
+  .cuerpo-datos input {
+    border: none;
+    outline: none;
   }
 
-
-
-  /* ✅ Ocultar botones y elementos interactivos en la impresión */
-  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar,.btn-eliminar-imagen {
-    display: none;
-  }
 
   .col-accion {
     display: none;
@@ -437,9 +513,20 @@ input[type="number"] {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    border: none; /* Elimina el borde del cuadro */
+    border: none; /* Elimina el borde del cuadro */ 
     background: transparent; /* Elimina el fondo si es necesario */
     padding: 0; /* Elimina el padding si es necesario */
+  }
+  .detalle-container textarea {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.5 !important;
+    width: 100%; /* Ocupa todo el ancho disponible */
+    min-height: 30px; /* Altura mínima */
+    height: auto; /* Permite que crezca */
+    resize: none; /* Evita que el usuario lo redimensione manualmente */
+    overflow: hidden; /* Oculta la barra de desplazamiento */
   }
 
   /* Opcional: si quieres que el texto se vea sin bordes o con un formato diferente en la impresión */
@@ -450,5 +537,28 @@ input[type="number"] {
   select option {
     font-size: 30px; /* Ajusta el tamaño de fuente a tu preferencia */
   }
+
+  /* ✅ Ocultar botones y elementos interactivos en la impresión */
+  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar,.btn-eliminar-imagen {
+    display: none !important;
+  }
+  /*/////////////////////////Cuerpo de cotizacion///////////*/
+  .cuerpo-cotizacion{
+    margin-left: 20px !important;
+    max-width: 930% !important;
+  }
+ 
+/*/////////////////////////footer///////////*/
+.cotizaciones-footer {
+  bottom: 20px !important; /* 🔹 Sube el footer (ajusta este valor según necesites) */
+  width: 100%;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+
+.pie-pagina {
+  margin-top: 5px !important; /* 🔹 Reduce el margen superior */
+  position: relative;
+}
 
 }
