@@ -5,8 +5,8 @@ import "../styles/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+function CotizacionesCrear(){
 
-function Cotizaciones() {
   const [rucs, setRucs] = useState([]); // Lista de RUCs con ejecutivos
   const [selectedRuc, setSelectedRuc] = useState({id:"", ruc: ""}); // RUC seleccionado
   const [ejecutivo, setEjecutivo] = useState(""); // Nombre del ejecutivo
@@ -588,4 +588,4 @@ function Cotizaciones() {
   );
 }
 
-export default Cotizaciones;
+export default CotizacionesCrear;

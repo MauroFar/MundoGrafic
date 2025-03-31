@@ -2,8 +2,9 @@ import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard'
-import Cotizaciones from "./components/Cotizaciones";
-
+import CotizacionesMenu from "./components/CotizacionesMenu";
+import CotizacionesCrear from "./components/CotizacionesCrear";
+import BuscarCotizaciones from "./components/BuscarCotizaciones";
 function App() {
   const [count, setCount] = useState(0)
 
@@ -12,7 +13,11 @@ function App() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="Dashboard" element={<Dashboard />}/>
-      <Route path="Cotizaciones" element={<Cotizaciones />}/>
+      <Route path="cotizacionesMenu" element={<CotizacionesMenu />}/>
+     <Route path="cotizacionesCrear" element={<CotizacionesCrear />}/>
+     <Route path="/cotizacionesBuscar" component={BuscarCotizaciones} /> 
+
+      
       
     </Routes>
   </Router>
