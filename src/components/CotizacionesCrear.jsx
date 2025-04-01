@@ -55,9 +55,13 @@ function CotizacionesCrear(){
     }
   }, [ejecutivo]); // Se ejecutará cada vez que el valor de 'ejecutivo' cambie
     
+
+
+
   
 //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 const [nombre, setNombre] = useState(""); // Estado para el nombre del cliente
+
 
 const handleGuardarTodo = async () => {
   const clienteData = {
@@ -93,9 +97,35 @@ const handleGuardarTodo = async () => {
     if (!responseCliente.ok || !responseCotizacion.ok) {
       throw new Error("Error al guardar cliente o cotización");
     }
+      // Obtener la respuesta de la cotización creada
+      const cotizacionResponse = await responseCotizacion.json();
+      const cotizacionId = cotizacionResponse.id;  // Asegúrate de que el ID de la cotización se obtiene aquí
+      console.log("Esta es la id de cotización:", cotizacionId);  // Verificar que cotizacionId esté correcto
+  
+    // preparar los detalles de la cotizacion para enviar
+    const detallesData = {
+      cotizacion_id: cotizacionId,  // Enviar cotizacion_id fuera de los detalles
+      detalles: filas.map((fila) => ({
+        cantidad: fila.cantidad, // Usamos la cantidad dinámica
+        detalle: fila.detalle, // Usamos el detalle del producto
+        valor_unitario: fila.unitario, // Valor unitario ficticio
+        valor_total: fila.total, // Valor total ficticio
+      })),
+    };
+
+    // Enviar detalles en paralelo
+    const responseDetalles = await fetch("http://localhost:5000/api/cotizacionesDetalles/prueba", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(detallesData), // Enviamos los detalles en un array
+    });
+
+    if (!responseDetalles.ok) {
+      throw new Error("Error al guardar detalles de cotización");
+    }
 
     // Si todo se guarda correctamente
-    alert("Cliente y cotización guardados exitosamente!");
+    alert("Cliente, cotización y detalles guardados exitosamente!");
 
     // Limpiar los estados
     setNombre("");
@@ -109,6 +139,14 @@ const handleGuardarTodo = async () => {
     alert("Hubo un problema al guardar los datos.");
   }
 };
+
+
+
+
+
+
+
+
 
 ////////////////obtener num cotizacion ///////////////////
 const [numeroCotizacion, setNumeroCotizacion] = useState(null);

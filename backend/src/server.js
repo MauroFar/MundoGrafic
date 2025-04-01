@@ -37,6 +37,12 @@ const cotizacionRoutes = require("./routes/cotizaciones");
 // Usar las rutas en el servidor
 app.use("/api/cotizaciones", cotizacionRoutes(client)); 
 
+/*Cotizacionesdetalles*/////
+const cotizacionDetRoutes = require("./routes/cotizacionesDetalles");
+// Usar las rutas en el servidor
+app.use("/api/cotizacionesDetalles", cotizacionDetRoutes(client)); 
+
+
 
 // Puerto
 const PORT = process.env.PORT || 5000;
