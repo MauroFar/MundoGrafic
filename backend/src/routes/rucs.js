@@ -10,6 +10,7 @@ module.exports = function(client) {
         FROM rucs
         LEFT JOIN ejecutivos ON rucs.ejecutivo_id = ejecutivos.id
       `);
+      console.log(result.rows); 
       res.json(result.rows);
     } catch (err) {
       console.error("Error al obtener los RUCs:", err);

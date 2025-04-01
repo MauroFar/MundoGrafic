@@ -4,12 +4,15 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import "../styles/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import axios from 'axios';
+
 
 function CotizacionesCrear(){
 
   const [rucs, setRucs] = useState([]); // Lista de RUCs con ejecutivos
   const [selectedRuc, setSelectedRuc] = useState({id:"", ruc: ""}); // RUC seleccionado
   const [ejecutivo, setEjecutivo] = useState(""); // Nombre del ejecutivo
+
 
 
   // Cargar los RUCs y sus ejecutivos desde el backend
@@ -51,8 +54,86 @@ function CotizacionesCrear(){
       console.log("Ejecutivo seleccionado:", ejecutivo);
     }
   }, [ejecutivo]); // Se ejecutará cada vez que el valor de 'ejecutivo' cambie
+    
+  
+//////////////////////////guardar cotizaciones en la bbdd ////////////////////
+const [nombre, setNombre] = useState(""); // Estado para el nombre del cliente
 
-  //OBTENER FECHA
+const handleGuardarTodo = async () => {
+  const clienteData = {
+    nombre,
+    ruc_id: selectedRuc.id,
+  };
+
+  const cotizacionData = {
+    fecha,
+    subtotal,
+    iva,
+    descuento,
+    total,
+    ruc_id: selectedRuc.id,
+  };
+
+  try {
+    // Enviar cliente y cotización en paralelo
+    const [responseCliente, responseCotizacion] = await Promise.all([
+      fetch("http://localhost:5000/api/clientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clienteData),
+      }),
+      fetch("http://localhost:5000/api/cotizaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cotizacionData),
+      }),
+    ]);
+
+    // Si alguna petición falló
+    if (!responseCliente.ok || !responseCotizacion.ok) {
+      throw new Error("Error al guardar cliente o cotización");
+    }
+
+    // Si todo se guarda correctamente
+    alert("Cliente y cotización guardados exitosamente!");
+
+    // Limpiar los estados
+    setNombre("");
+    setFecha("");
+    setSubtotal(0);
+    setDescuento(0);
+    setSelectedRuc({ id: "", ruc: "" });
+
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Hubo un problema al guardar los datos.");
+  }
+};
+
+////////////////obtener num cotizacion ///////////////////
+const [numeroCotizacion, setNumeroCotizacion] = useState(null);
+
+// Función para obtener el último número de cotización
+const obtenerNumeroCotizacion = async () => {
+  try {
+    const response = await axios.get("http://localhost:5000/api/cotizaciones/ultima");
+    console.log("Número de cotización recibido:", response.data.numero_cotizacion);
+    setNumeroCotizacion(response.data.numero_cotizacion);  // Establecer el número de cotización en el estado
+  } catch (error) {
+    console.error("Error al obtener el número de cotización:", error);
+  }
+};
+
+// Llamada al cargar el componente o antes de crear una cotización
+useEffect(() => {
+  obtenerNumeroCotizacion();
+}, []);
+
+
+
+
+
+  ////////////////////OBTENER FECHA/////////////////////////////////////////////
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
   //estado para almacenar filas dinamicas
@@ -96,40 +177,8 @@ function CotizacionesCrear(){
 
   const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
 
-  
-  //////////////////////////guardar cotizacion en la bbdd ////////////////////
-  // Estado para el campo de nombre
-  const [nombre, setNombre] = useState('');
+    
 
-  // Función para manejar el envío de datos
-  const handleGuardarCliente = async () => {
-    // Crear un objeto con el nombre del cliente
-    const clienteData = { nombre, ruc_id: selectedRuc.id};
-
-    try {
-      // Hacer la solicitud POST al backend
-      const response = await fetch('http://localhost:5000/api/cotizaciones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(clienteData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('Cliente guardado exitosamente!');
-        setNombre(''); // Limpiar el campo de nombre
-        setSelectedRuc({id: "", ruc: ""})
-      } else {
-        alert('Error al guardar cliente');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Hubo un problema al guardar el cliente.');
-    }
-  };
     ///////////////////guardar en formato pdf ////////////////////
     
     const downloadPDF = async () => {
@@ -239,7 +288,7 @@ function CotizacionesCrear(){
           <div className="btnadministracion">
             <button
               className="btn-regresar"
-              onClick={() => navigate("/Dashboard")}
+              onClick={() => navigate("/CotizacionesMenu")}
             >
               ← Regresar
             </button>
@@ -255,7 +304,7 @@ function CotizacionesCrear(){
               Imprimir
             </button>
 
-            <button className="btn-regresar" onClick={handleGuardarCliente}>Guardar BBDD</button>
+            <button className="btn-regresar" onClick={handleGuardarTodo}>Guardar BBDD</button>
 
             <button className="btn-agregar" onClick={agregarFila}>
               Agregar Producto
@@ -288,7 +337,7 @@ function CotizacionesCrear(){
                 <div className="cotizacion-section">
                   <div className="cotizacion-box">
                     <span className="cotizacion-label">COTIZACIÓN</span>
-                    <div className="numero-cotizacion">00000020</div>{" "}
+                    <div className="numero-cotizacion"> {numeroCotizacion ? numeroCotizacion : "Generando..."} {/* Muestra el número de cotización o 'Generando...' */} </div>{" "}
                     {/* Se manejará con BBDD en el futuro */}
                   </div>
 
@@ -360,12 +409,12 @@ function CotizacionesCrear(){
               <div className="campo campo-izquierda">
                 <label>Cliente:</label>
                 <input type="text" placeholder="Nombre del cliente" value={nombre}
-            onChange={(e) => setNombre(e.target.value)}/>
+  onChange={(e) => setNombre(e.target.value) } />
               </div>
 
               <div className="campo campo-derecha">
                 <label>Ejecutivo de Cuenta:</label>
-                <input type="text" value={ejecutivo} />
+                <input type="text" value={ejecutivo}  onChange={(e) => setEjecutivo(e.target.value)} />
               </div>
             </div>
             <div className="fila">

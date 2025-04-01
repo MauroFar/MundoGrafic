@@ -27,10 +27,15 @@ app.use(express.json());
 const rucRoutes = require("./routes/rucs");
 app.use("/api/rucs", rucRoutes(client)); // Pasamos el cliente como argumento
 
-/*cotizaciones*/////
+/*clientes*/////
+const clientesRoutes = require("./routes/clientes");
+// Usar las rutas en el servidor
+app.use("/api/clientes", clientesRoutes(client)); // Pasamos el cliente como argumento
+
+/*Cotizaciones*/////
 const cotizacionRoutes = require("./routes/cotizaciones");
 // Usar las rutas en el servidor
-app.use("/api/cotizaciones", cotizacionRoutes(client)); // Pasamos el cliente como argumento
+app.use("/api/cotizaciones", cotizacionRoutes(client)); 
 
 
 // Puerto
