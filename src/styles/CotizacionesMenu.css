@@ -1,0 +1,43 @@
+
+
+/* Botón de regreso */
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background-color: #ddd;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 5px;
+}
+
+.back-button:hover {
+    background-color: #bbb;
+}
+
+/* Título */
+.title {
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+
+/* Botones */
+.menu-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 200px;
+    transition: background 0.3s;
+}
+
+.menu-button:hover {
+    background-color: #0b7dda;
+}

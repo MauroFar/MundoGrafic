@@ -1,0 +1,97 @@
+/* Contenedor principal de la página */
+.cotizaciones-container {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    text-align: center;
+   
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Título */
+.title {
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 10px; /* Ajusta el espacio entre el título y la tabla */
+}
+
+/* Botón de regreso */
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background-color: #ddd;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.back-button:hover {
+    background-color: #bbb;
+}
+.cotizaciones-content{
+    margin-top: -1200px;
+    background-color: aqua;
+}
+.cotizaciones-table{
+    margin-top: -1500px;
+    background-color: antiquewhite;
+    margin-left: -150px;
+
+}
+.cotizaciones-table {
+    width: 150%;
+    margin-bottom: 20px; /* Espacio abajo */
+    border-collapse: collapse;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+.cotizaciones-table th,
+.cotizaciones-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.cotizaciones-table th {
+    background-color: #f2f2f2;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.cotizaciones-table td {
+    font-size: 16px;
+}
+
+.cotizacion-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.btn-edit {
+    background-color: #4caf50;
+    color: white;
+}
+
+.btn-approve {
+    background-color: #2196f3;
+    color: white;
+}
+
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}

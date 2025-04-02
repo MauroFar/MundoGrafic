@@ -126,13 +126,15 @@ const handleGuardarTodo = async () => {
 
     // Si todo se guarda correctamente
     alert("Cliente, cotización y detalles guardados exitosamente!");
-
+    navigate("/Dashboard"); // Cambia esto por la ruta deseada
     // Limpiar los estados
     setNombre("");
     setFecha("");
     setSubtotal(0);
     setDescuento(0);
     setSelectedRuc({ id: "", ruc: "" });
+
+  
 
   } catch (error) {
     console.error("Error:", error);
