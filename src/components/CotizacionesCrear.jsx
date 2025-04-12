@@ -8,7 +8,7 @@ import axios from 'axios';
 
 
 function CotizacionesCrear(){
-
+  const apiUrl = import.meta.env.VITE_API_URL;
   const [rucs, setRucs] = useState([]); // Lista de RUCs con ejecutivos
   const [selectedRuc, setSelectedRuc] = useState({id:"", ruc: ""}); // RUC seleccionado
   const [ejecutivo, setEjecutivo] = useState(""); // Nombre del ejecutivo
@@ -17,7 +17,7 @@ function CotizacionesCrear(){
 
   // Cargar los RUCs y sus ejecutivos desde el backend
   useEffect(() => {
-    fetch("http://localhost:5000/api/rucs")
+    fetch(`${apiUrl}/api/rucs`)
       .then((response) => response.json())
       .then((data) => {
         console.log("Datos recibidos del backend:", data); // Verifica que los datos estén correctos
@@ -81,12 +81,12 @@ const handleGuardarTodo = async () => {
   try {
     // Enviar cliente y cotización en paralelo
     const [responseCliente, responseCotizacion] = await Promise.all([
-      fetch("http://localhost:5000/api/clientes", {
+      fetch(`${apiUrl}/api/clientes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(clienteData),
       }),
-      fetch("http://localhost:5000/api/cotizaciones", {
+      fetch(`${apiUrl}/api/cotizaciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cotizacionData),
@@ -114,7 +114,7 @@ const handleGuardarTodo = async () => {
     };
 
     // Enviar detalles en paralelo
-    const responseDetalles = await fetch("http://localhost:5000/api/cotizacionesDetalles/prueba", {
+    const responseDetalles = await fetch(`${apiUrl}/api/cotizacionesDetalles/prueba`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(detallesData), // Enviamos los detalles en un array
@@ -156,7 +156,7 @@ const [numeroCotizacion, setNumeroCotizacion] = useState(null);
 // Función para obtener el último número de cotización
 const obtenerNumeroCotizacion = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/cotizaciones/ultima");
+    const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`);
     console.log("Número de cotización recibido:", response.data.numero_cotizacion);
     setNumeroCotizacion(response.data.numero_cotizacion);  // Establecer el número de cotización en el estado
   } catch (error) {

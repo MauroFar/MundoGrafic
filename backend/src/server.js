@@ -22,31 +22,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Importacion de Rutas
-/*********ruc */
-const rucRoutes = require("./routes/rucs");
-app.use("/api/rucs", rucRoutes(client)); // Pasamos el cliente como argumento
-
-/*clientes*/////
-const clientesRoutes = require("./routes/clientes");
-// Usar las rutas en el servidor
-app.use("/api/clientes", clientesRoutes(client)); // Pasamos el cliente como argumento
-
-/*Cotizaciones*/////
-const cotizacionRoutes = require("./routes/cotizaciones");
-// Usar las rutas en el servidor
-app.use("/api/cotizaciones", cotizacionRoutes(client)); 
-
-/*Cotizacionesdetalles*/////
-const cotizacionDetRoutes = require("./routes/cotizacionesDetalles");
-// Usar las rutas en el servidor
-app.use("/api/cotizacionesDetalles", cotizacionDetRoutes(client)); 
-
-
+// Importar las rutas agrupadas en api.js
+const apiRoutes = require("./routes/api");
+app.use("/api", apiRoutes(client)); // Usamos /api como prefijo para todas las rutas
 
 // Puerto
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
-module.exports = client;
