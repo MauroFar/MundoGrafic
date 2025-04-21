@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
 
-function CotizacionesCrear() {
+function CotizacionesEditar() {
   const apiUrl = import.meta.env.VITE_API_URL;
   const [rucs, setRucs] = useState([]);
   const [selectedRuc, setSelectedRuc] = useState({ id: "", ruc: "" });
@@ -740,4 +740,4 @@ useEffect(() => {
   );
 }
 
-export default CotizacionesCrear;
+export default CotizacionesEditar;

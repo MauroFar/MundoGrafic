@@ -1,14 +1,14 @@
-
-/* Contenedor principal centrado horizontalmente y más arriba */
+/* Contenedor principal centrado horizontalmente */
 .container {
-  margin-left:250px;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Centra horizontalmente */
+  align-items: center; /* Centra el contenido horizontalmente */
   text-align: center;
   font-family: Arial, sans-serif;
-  width: 100%; /* Asegurar que use todo el ancho disponible */
-  margin-top: -355px; /* Ajusta el margen superior para subir el contenido */
+  width: 100%; /* Asegura que use todo el ancho disponible */
+  margin-top: -320px; /* Elimina el margen negativo que estaba subiendo el contenido */
+  padding-bottom: 20px; /* Añadido para evitar que el contenido quede pegado al borde inferior */
+  position: absolute;
 }
 
 /* Botón de volver (se mantiene en la parte superior izquierda) */
@@ -40,47 +40,13 @@
   margin-bottom: 20px;
 }
 
-/* Contenedor del input y select */
-.search-container {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  justify-content: center; /* Centrar los elementos dentro del contenedor */
-}
-
-/* Campo de texto */
-.search-input {
-  width: 250px;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-/* Desplegable */
-.search-select {
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-/* Botón de búsqueda */
-.search-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.search-button:hover {
-  background-color: #0056b3;
-}
+/* Contenedor del selector RUC */
 .ruc-selector {
   margin-bottom: 1rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
 }
 
 .ruc-selector select {
@@ -88,20 +54,80 @@
   font-size: 1rem;
   width: 100%;
   max-width: 400px;
+  display: block;
 }
+
+/* Tabla (hacemos la tabla fija dentro de su contenedor) */
+.result-table-container {
+  width: 100%; /* El contenedor de la tabla ocupa todo el ancho */
+  max-height: 400px; /* Altura máxima para la tabla */
+  overflow-y: auto; /* Hacer que la tabla sea desplazable si excede la altura */
+  border: 1px solid #ddd; /* Para visualización */
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: white;
+}
+
 .result-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 2rem;
 }
 
 .result-table th,
 .result-table td {
-  border: 1px solid #ccc;
-  padding: 0.75rem;
-  text-align: left;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid #ddd;
 }
 
 .result-table th {
-  background-color: #f0f0f0;
+  background-color: #f4f4f4;
+}
+
+.detalle {
+  max-width: 300px;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* Estilos de las acciones (aprobar, editar, eliminar) */
+.acciones {
+  display: flex;
+}
+
+.boton {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Botón Aprobar */
+.boton.aprobar {
+  background-color: #28a745;
+  color: white;
+}
+
+.boton.aprobar:hover {
+  background-color: #218838;
+}
+
+/* Botón Editar */
+.boton.editar {
+  background-color: #ffc107;
+  color: white;
+}
+
+.boton.editar:hover {
+  background-color: #e0a800;
+}
+
+/* Botón Eliminar */
+.boton.eliminar {
+  background-color: #dc3545;
+  color: white;
+}
+
+.boton.eliminar:hover {
+  background-color: #c82333;
 }

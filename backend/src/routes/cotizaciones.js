@@ -4,10 +4,9 @@ const router = express.Router();
 const CotizacionDatos = (client) => {
   // Ruta para crear una cotización y guardar todos los datos del cliente
   router.post("/", async (req, res) => {
-    const { fecha, subtotal, iva, descuento, total, ruc_id } = req.body;
+    const { fecha, subtotal, iva, descuento, total, ruc_id, cliente_id } = req.body; // Asegúrate de recibir el cliente_id del frontend
     const estado = "pendiente";
-    const cliente_id = "1";
-    
+
     try {
       // 🔹 1️⃣ Obtener el último número de cotización
       const ultimoNumeroQuery = "SELECT numero_cotizacion FROM cotizaciones ORDER BY numero_cotizacion DESC LIMIT 1";
@@ -27,7 +26,7 @@ const CotizacionDatos = (client) => {
       
       const result = await client.query(insertQuery, [
         nuevoNumeroCotizacion,
-        cliente_id,
+        cliente_id,  // Recibido desde el frontend
         fecha,
         subtotal,
         iva,
@@ -62,6 +61,7 @@ const CotizacionDatos = (client) => {
       res.status(500).json({ error: "Error al obtener la última cotización" });
     }
   });
+
   return router;
 };
 
