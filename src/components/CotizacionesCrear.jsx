@@ -5,6 +5,8 @@ import "../styles/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
+import { useParams } from "react-router-dom";
+
 
 function CotizacionesCrear() {
   const apiUrl = import.meta.env.VITE_API_URL;

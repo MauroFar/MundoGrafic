@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard'
 import CotizacionesMenu from "./components/CotizacionesMenu";
 import CotizacionesCrear from "./components/CotizacionesCrear";
 import CotizacionesBuscar from "./components/CotizacionesBuscar";
-import CotizacionesEditar from "./components/CotizacionesEditar";
+
 function App() {
   const [count, setCount] = useState(0)
 
@@ -16,8 +16,10 @@ function App() {
       <Route path="Dashboard" element={<Dashboard />}/>
       <Route path="cotizacionesMenu" element={<CotizacionesMenu />}/>
      <Route path="cotizacionesCrear" element={<CotizacionesCrear />}/>
+     <Route path="cotizacionesCrear/:id" element={<CotizacionesCrear />} />
      <Route path="/cotizacionesBuscar" element={<CotizacionesBuscar/>} /> 
-     <Route  path="/CotizacionesEditar" element={<CotizacionesEditar/>}/>
+   
+     
 
       
       

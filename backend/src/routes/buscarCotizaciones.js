@@ -12,6 +12,7 @@ module.exports = (client) => {
     try {
       let query = `
         SELECT 
+        co.id AS cotizacion_id,
           c.nombre_cliente,
           co.numero_cotizacion,
           co.fecha,

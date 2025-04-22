@@ -11,14 +11,12 @@ function CotizacionesBuscar() {
   const [resultados, setResultados] = useState([]);
 
   useEffect(() => {
-    // Cargar RUCs desde tu backend al iniciar
     fetch(`${apiUrl}/api/rucs`)
       .then((res) => res.json())
       .then((data) => setRucs(data))
       .catch((error) => console.error("Error al cargar RUCs:", error));
   }, []);
 
-  // Buscar automáticamente cuando se selecciona un RUC
   useEffect(() => {
     if (rucSeleccionado) {
       buscarCotizaciones();
@@ -40,16 +38,26 @@ function CotizacionesBuscar() {
 
       const response = await fetch(`${apiUrl}/api/buscarCotizaciones/buscar?${params}`);
       const data = await response.json();
+      console.log("Cotizaciones recibidas:", data); // 👈 Aquí ves qué campo tiene: `id` o `_id`
       setResultados(data);
+      console.log("Cotizaciones recibidas:", data);
     } catch (error) {
       console.error("Error al buscar cotizaciones:", error);
     }
   };
 
-  const editarCotizacion = (id) => {
-    navigate(`/cotizaciones/editar/${id}`);
+  const aprobarCotizacion = (id) => {
+    console.log("Aprobando cotización con ID:", id);
   };
-  
+
+  const eliminarCotizacion = (id) => {
+    console.log("Eliminando cotización con ID:", id);
+  };
+
+  const editarCotizacion = (id) => {
+    navigate(`/cotizacionescrear/${id}`);
+  };
+
   return (
     <div className="container">
       <button className="back-button" onClick={() => navigate("/cotizacionesMenu")}>
@@ -59,7 +67,6 @@ function CotizacionesBuscar() {
       <h1 className="title">Cotizaciones</h1>
       <h2 className="subtitle">Buscar</h2>
 
-      {/* Selector de RUC */}
       <div className="ruc-selector">
         <label htmlFor="ruc">Filtrar por RUC:</label>
         <select
@@ -76,8 +83,7 @@ function CotizacionesBuscar() {
         </select>
       </div>
 
-    {/* Tabla de resultados */}
-    <table className="result-table">
+      <table className="result-table">
         <thead>
           <tr>
             <th>Cliente</th>
@@ -98,10 +104,16 @@ function CotizacionesBuscar() {
                 <td>{cot.estado}</td>
                 <td>{cot.numero_cotizacion}</td>
                 <td className="acciones">
-                <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>Ver</button>
-                  <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>Aprobar</button>
-                  <button className="boton editar" onClick={() => editarCotizacion(cot.id)}>Editar</button>
-                  <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.id)}>Eliminar</button>
+                  <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>
+                    Ver
+                  </button>
+                  <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>
+                    Aprobar
+                  </button>
+                  <button onClick={() => editarCotizacion(cot.id)}>Editar</button>
+                  <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.id)}>
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             ))
