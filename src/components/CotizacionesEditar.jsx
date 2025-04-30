@@ -5,76 +5,76 @@ import "../styles/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
+import { useParams } from "react-router-dom";
+
 
 function CotizacionesEditar() {
+///////////*aqui se maneja los datos en comunicacion con la api ////////*/
+  const { id } = useParams();
+    // ✅ Esta función es esencial
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }));
+    };
+  
+  useEffect(() => {
+    console.log("ID recibido en CotizacionesEditar:", id); // ✅ Aquí verificas si llega correctamente
+  }, [id]);
+  const [cotizacion, setCotizacion] = useState(null); // Estado para almacenar los datos de la cotización
+  const [formData, setFormData] = useState({
+    numero_cotizacion: "",
+    fecha: "",
+    estado: "",
+  });
+
+  
+  // Obtener la cotización específica al cargar el componente
+  useEffect(() => {
+    const obtenerCotizacion = async () => {
+      try {
+        // Realizamos la solicitud GET para obtener la cotización con el id
+        const response = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`);
+        const data = await response.json();
+        
+        // Si la cotización existe, la guardamos en el estado
+        if (data) {
+          setCotizacion(data); // Guardamos los datos de la cotización en el estado
+          setFormData({
+            numero_cotizacion: data.numero_cotizacion,
+            fecha: data.fecha,
+            estado: data.estado,
+          });
+        } else {
+          alert("Cotización no encontrada");
+        }
+      } catch (error) {
+        console.error("Error al obtener la cotización:", error);
+      }
+    };
+
+    obtenerCotizacion();
+  }, [id]); // Solo se ejecutará cuando el id cambie
+
+
+
+  
+
+
+/////////////////*////////////////////////*/
   const apiUrl = import.meta.env.VITE_API_URL;
-  const [rucs, setRucs] = useState([]);
-  const [selectedRuc, setSelectedRuc] = useState({ id: "", ruc: "" });
-  const [ejecutivo, setEjecutivo] = useState("");
-  const [nombreCliente, setNombreCliente] = useState("");
-  const [sugerencias, setSugerencias] = useState([]);
-
-  const handleInputChange = async (event) => {
-    const valor = event.target.value;
-    setNombreCliente(valor);
-    if (valor.trim() !== "") {
-      await buscarClientes(valor);
-    } else {
-      setSugerencias([]);
-    }
+  const [filas, setFilas] = useState([]);
+   // Función para agregar una nueva fila
+   const agregarFila = () => {
+    setFilas([
+      ...filas,
+      { cantidad: "", detalle: "", unitario: "", total: "" },
+    ]);
   };
 
-  const buscarClientes = async (nombre) => {
-    if (!selectedRuc.id) {
-      console.warn("No se ha seleccionado ningún RUC, no se puede buscar clientes.");
-      return;
-    }
-    try {
-      const response = await fetch(`${apiUrl}/api/clientes/buscar?nombre=${nombre}&ruc_id=${selectedRuc.id}`);
-      const data = await response.json();
-      setSugerencias(data);
-    } catch (error) {
-      console.error("Error al obtener sugerencias de clientes:", error);
-    }
-  };
 
-  const handleSeleccionarCliente = (cliente) => {
-    setNombreCliente(cliente.nombre_cliente);
-    setSugerencias([]);
-  };
-
-  useEffect(() => {
-    fetch(`${apiUrl}/api/rucs`)
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Datos recibidos del backend:", data);
-        setRucs(data);
-      })
-      .catch((error) => console.error("Error al obtener los RUCs:", error));
-  }, []);
-
-  useEffect(() => {
-    console.log("RUCs cargados:", rucs);
-  }, [rucs]);
-
-  const handleRucChange = (event) => {
-    const rucSeleccionado = event.target.value;
-    const rucObj = rucs.find((r) => r.ruc === rucSeleccionado);
-    if (rucObj) {
-      setSelectedRuc({ id: rucObj.id, ruc: rucSeleccionado });
-      setEjecutivo(rucObj.ejecutivo);
-      console.log("RUC seleccionado:", rucObj.id, rucObj.ruc);
-    }
-    const ejecutivoSeleccionado = rucObj ? rucObj.ejecutivo : "";
-    setEjecutivo(ejecutivoSeleccionado);
-    console.log("Ejecutivo actualizado:", ejecutivoSeleccionado);
-  };
-
-  useEffect(() => {
-    if (ejecutivo) {
-      console.log("Ejecutivo seleccionado:", ejecutivo);
-    }
-  }, [ejecutivo]);
 
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
@@ -188,44 +188,6 @@ function CotizacionesEditar() {
 
 
 
-
-////////////////obtener num cotizacion ///////////////////
-const [numeroCotizacion, setNumeroCotizacion] = useState(null);
-
-// Función para obtener el último número de cotización
-const obtenerNumeroCotizacion = async () => {
-  try {
-    const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`);
-    console.log("Número de cotización recibido:", response.data.numero_cotizacion);
-    setNumeroCotizacion(response.data.numero_cotizacion);  // Establecer el número de cotización en el estado
-  } catch (error) {
-    console.error("Error al obtener el número de cotización:", error);
-  }
-};
-
-// Llamada al cargar el componente o antes de crear una cotización
-useEffect(() => {
-  obtenerNumeroCotizacion();
-}, []);
-
-
-
-
-
-  ////////////////////OBTENER FECHA/////////////////////////////////////////////
-  const today = new Date().toISOString().split("T")[0];
-  const [fecha, setFecha] = useState(today);
-  //estado para almacenar filas dinamicas
-  // Estado para almacenar filas dinámicas
-  const [filas, setFilas] = useState([]);
-
-  // Función para agregar una nueva fila
-  const agregarFila = () => {
-    setFilas([
-      ...filas,
-      { cantidad: "", detalle: "", unitario: "", total: "" },
-    ]);
-  };
 
   // Función para eliminar una fila específica
   const eliminarFila = (index) => {
@@ -416,7 +378,10 @@ useEffect(() => {
                 <div className="cotizacion-section">
                   <div className="cotizacion-box">
                     <span className="cotizacion-label">COTIZACIÓN</span>
-                    <div className="numero-cotizacion"> {numeroCotizacion ? numeroCotizacion : "Generando..."} {/* Muestra el número de cotización o 'Generando...' */} </div>{" "}
+                    <div className="numero-cotizacion"> {formData.numero_cotizacion}
+       </div>
+                    {/* Se manejará con BBDD en el futuro */}
+
                     {/* Se manejará con BBDD en el futuro */}
                   </div>
 
@@ -425,15 +390,10 @@ useEffect(() => {
                     <select
                       className="ruc-select"
                       id="ruc"
-                      value={selectedRuc.ruc}
-                      onChange={handleRucChange}
+                  
                     >
                       <option value="">Seleccione un ruc</option>
-                      {rucs.map((ruc) => (
-                        <option key={ruc.id} value={ruc.ruc}>
-                          {ruc.ruc}
-                        </option>
-                      ))}
+               
                     </select>
                   </div>
                 </div>
@@ -490,34 +450,15 @@ useEffect(() => {
   <input
     id="cliente"
     type="text"
-    value={nombreCliente}
-    onChange={handleInputChange}
-    placeholder="Selecciona un Ruc para buscar cliente..."
-    autoComplete="off"  
+ 
   />
-
-  {/* Mostrar las sugerencias personalizadas si hay resultados */}
-  {sugerencias.length > 0 && (
-    <div className="sugerencias-container">
-      <ul className="sugerencias-list">
-        {sugerencias.map((cliente) => (
-          <li
-            key={cliente.id}
-            onClick={() => handleSeleccionarCliente(cliente)}
-          >
-            {cliente.nombre_cliente}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )}
 </div>
 
 
 
               <div className="campo campo-derecha">
                 <label>Ejecutivo de Cuenta:</label>
-                <input type="text" value={ejecutivo}  onChange={(e) => setEjecutivo(e.target.value)} />
+                <input type="text" />
               </div>
             </div>
             <div className="fila">
@@ -525,10 +466,10 @@ useEffect(() => {
                 <div className="campo">
                   <label>Fecha:</label>
                   <input
-                    type="date"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
+  type="date"
+  value={formData.fecha ? formData.fecha.substring(0, 10) : ''}
+  onChange={handleChange}
+/>
                 </div>
               </div>
             </div>
@@ -680,8 +621,7 @@ useEffect(() => {
                     <label>Tiempo de Entrega:</label>{" "}
                     <input
                       type="text"
-                      value={TxttiempoEntrega}
-                      onChange={(e) => setTxtTiempoEntrega(e.target.value)}
+                  
                     />
                   </div>
                   <div className="campoPie">

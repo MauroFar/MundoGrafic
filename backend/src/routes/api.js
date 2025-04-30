@@ -5,7 +5,7 @@ const clientesRoutes = require("./clientes");
 const cotizacionRoutes = require("./cotizaciones");
 const cotizacionDetRoutes = require("./cotizacionesDetalles");
 const buscarCotizaciones = require("./buscarCotizaciones");
-
+const cotizacionesEditar = require("./cotizacionesEditar");
 module.exports = (client) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
 
@@ -15,6 +15,7 @@ module.exports = (client) => {
   router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/buscarCotizaciones", buscarCotizaciones(client));
+  router.use("/cotizacionesEditar",cotizacionesEditar(client));
 
   return router; // Devolvemos el router que agrupa todas las rutas
 };

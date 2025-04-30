@@ -55,9 +55,10 @@ function CotizacionesBuscar() {
   };
 
   const editarCotizacion = (id) => {
-    navigate(`/cotizacionescrear/${id}`);
+    navigate(`/cotizacionesEditar/${id}`); // Redirige a la ruta de edición
   };
 
+  
   return (
     <div className="container">
       <button className="back-button" onClick={() => navigate("/cotizacionesMenu")}>
@@ -95,38 +96,38 @@ function CotizacionesBuscar() {
           </tr>
         </thead>
         <tbody>
-          {resultados.length > 0 ? (
-            resultados.map((cot, index) => (
-              <tr key={`${cot.numero_cotizacion}-${index}`}>
-                <td>{cot.nombre_cliente}</td>
-                <td className="detalle">{cot.detalle}</td>
-                <td>{new Date(cot.fecha).toLocaleDateString()}</td>
-                <td>{cot.estado}</td>
-                <td>{cot.numero_cotizacion}</td>
-                <td className="acciones">
-                  <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>
-                    Ver
-                  </button>
-                  <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.id)}>
-                    Aprobar
-                  </button>
-                  <button onClick={() => editarCotizacion(cot.id)}>Editar</button>
-                  <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.id)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" style={{ textAlign: "center", padding: "1rem" }}>
-                {rucSeleccionado
-                  ? "No se encontraron cotizaciones para este RUC."
-                  : "Selecciona un RUC para ver las cotizaciones."}
-              </td>
-            </tr>
-          )}
-        </tbody>
+  {resultados.length > 0 ? (
+    resultados.map((cot, index) => (
+      <tr key={`${cot.numero_cotizacion}-${index}`}>
+        <td>{cot.nombre_cliente}</td>
+        <td className="detalle">{cot.detalle}</td>
+        <td>{new Date(cot.fecha).toLocaleDateString()}</td>
+        <td>{cot.estado}</td>
+        <td>{cot.numero_cotizacion}</td>
+        <td className="acciones">
+          <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.cotizacion_id)}>
+            Ver
+          </button>
+          <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.cotizacion_id)}>
+            Aprobar
+          </button>
+          <button onClick={() => editarCotizacion(cot.cotizacion_id)}>Editar</button>
+          <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.cotizacion_id)}>
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="6" style={{ textAlign: "center", padding: "1rem" }}>
+        {rucSeleccionado
+          ? "No se encontraron cotizaciones para este RUC."
+          : "Selecciona un RUC para ver las cotizaciones."}
+      </td>
+    </tr>
+  )}
+</tbody>
       </table>
     </div>
   );

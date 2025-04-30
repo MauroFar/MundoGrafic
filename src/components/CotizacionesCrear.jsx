@@ -5,7 +5,6 @@ import "../styles/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
-import { useParams } from "react-router-dom";
 
 
 function CotizacionesCrear() {
@@ -15,7 +14,8 @@ function CotizacionesCrear() {
   const [ejecutivo, setEjecutivo] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
   const [sugerencias, setSugerencias] = useState([]);
-
+  
+ 
   const handleInputChange = async (event) => {
     const valor = event.target.value;
     setNombreCliente(valor);

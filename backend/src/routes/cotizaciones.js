@@ -62,6 +62,26 @@ const CotizacionDatos = (client) => {
     }
   });
 
+  ///*Cotizaciones editar*////////
+  router.get("/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      const query = "SELECT * FROM cotizaciones WHERE id = $1";
+      const result = await client.query(query, [id]);
+  
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+  
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error al obtener cotización por ID:", error);
+      res.status(500).json({ error: "Error al obtener cotización por ID" });
+    }
+  });
+  
+
   return router;
 };
 
