@@ -37,7 +37,8 @@
   background-color: white;
   margin-left: 150px;
   justify-content: space-between; /* 🔹 Mantiene el pie de página abajo */
-  min-height: 1610px
+  min-height: 1610px;
+
   
 }
 
@@ -73,7 +74,7 @@
   color: #959191;
   font-weight: bold;
   position: relative;
-  top: 35px;
+  top: 10px;
   left: 145px; /* 🔹 Ajustado para mover más a la derecha */
   letter-spacing: 6px;
 }
@@ -98,7 +99,7 @@
   font-size: 11px;
   font-weight: normal;
   color: #333;
-  margin-top: -25px;
+  margin-top: 2px;
   text-transform: uppercase;
 }
 
@@ -313,6 +314,7 @@ table input {
   height: auto; /* Permite que crezca */
   resize: none; /* Evita que el usuario lo redimensione manualmente */
   overflow: hidden; /* Oculta la barra de desplazamiento */
+  border: none;
 }
 
 textarea {
@@ -365,25 +367,22 @@ button {
 }
 
 /**************imagen**********************/
-.detalle-imagen-row {
-  text-align: center; /* Centra la fila de la imagen */
-}
-
 .detalle-imagen-container {
-  width: 100%; /* Asegura que el contenedor ocupe todo el ancho de la columna */
-  max-width: 100%; /* No se desborde del ancho de la columna */
   display: flex;
-  margin-left: 190px;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  border: none;
 }
 
-.detalle-imagen {
-  width: 100%;  /* Hace que la imagen ocupe todo el ancho del contenedor */
-  height: auto; /* Mantiene la proporción de la imagen */
-  max-width: 500px;  /* Puedes ajustar este valor a tu gusto */
-  max-height: 500px;  /* Ajusta el tamaño para que sea un cuadrado */
-  object-fit: cover;  /* Hace que la imagen se ajuste al cuadrado, recortando si es necesario */
+.detalle-imagen-row {
+  background-color: #f5f5f5;
+  padding: 10px;
 }
 
+.detalle-imagen-container img {
+  cursor: nwse-resize;
+}
 
 
 
@@ -391,12 +390,12 @@ button {
 
 /***************************************Pie de Cotización (Sticky) ******************************************/
 .cotizaciones-footer {
+  margin-top: auto;  /* Empuja el footer al final */
+  padding: 10px;
   background-color: white;
   width: 100%;
-  position: relative; /* Esto asegura que se comporte como un contenedor normal */
-  margin-top: auto; /* Esto asegura que el pie se mueva hacia abajo */
-  padding: 10px;
-  transform: translateY(15px) !important;
+  box-sizing: border-box;
+  
 }
 
 /* ✅ Ajuste del Pie */
@@ -474,7 +473,7 @@ button {
 }
 /* Estilos para la lista de sugerencias */
 .sugerencias-container {
-  position: absolute;
+
   top: 100%; /* Esto asegura que la lista esté justo debajo del input */
   left: 0;
   background-color: white;
@@ -500,95 +499,31 @@ button {
 .sugerencias-list li:hover {
   background-color: #f0f0f0;
 }
-
-
-
-
 @media print {
-  /* ✅ Mantiene la cotización dentro de los márgenes de la hoja */
-    .cotizaciones-container {
-      margin: 0 !important;  /* Elimina cualquier margen */
-      padding: 10px !important; /* Ajusta el padding para que no deje espacios grandes */
-      height: auto !important; /* Permite que la altura se ajuste */
-      max-width: 92%;
-      page-break-after: avoid;
-      min-height: 1510px
-    
-    }
-    .ruc-select {
-      border: none;
-    }
-
-  /*//////////////////////cuerpo datos*/
-  .cuerpo-datos {
-    position: absolute;
-    border: none;
-    background-color: #d8d8d8;
-    margin-top: 0px;
-    width: 97%;
-    max-width: 170%;
-    margin-top: 30px;
-  }
-  .cuerpo-datos input {
-    border: none;
-    outline: none;
-  }
-
-
-  .col-accion {
-    display: none;
-  }
-   /* Ocultar la flecha del desplegable */
-   select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    border: none; /* Elimina el borde del cuadro */ 
-    background: transparent; /* Elimina el fondo si es necesario */
-    padding: 0; /* Elimina el padding si es necesario */
-  }
-  .detalle-container textarea {
-    white-space: pre-wrap !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    line-height: 1.5 !important;
-    width: 100%; /* Ocupa todo el ancho disponible */
-    min-height: 30px; /* Altura mínima */
-    height: auto; /* Permite que crezca */
-    resize: none; /* Evita que el usuario lo redimensione manualmente */
-    overflow: hidden; /* Oculta la barra de desplazamiento */
-  }
-
-  /* Opcional: si quieres que el texto se vea sin bordes o con un formato diferente en la impresión */
-  select option {
-    border: none;
-    background: transparent;
-  }
-  select option {
-    font-size: 30px; /* Ajusta el tamaño de fuente a tu preferencia */
-  }
-
   /* ✅ Ocultar botones y elementos interactivos en la impresión */
-  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar,.btn-eliminar-imagen {
+  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar, .btn-eliminar-imagen {
     display: none !important;
   }
-  /*/////////////////////////Cuerpo de cotizacion///////////*/
-  .cuerpo-cotizacion{
-    margin-left: 20px !important;
-    max-width: 930% !important;
+  .cuerpo-datos input {
+    border: none !important; /* Elimina el borde */
+    outline: none !important; /* Opcional: Elimina el contorno */
+  }
+  .ruc-select {
+    border: none;
+  }
+  /* ✅ Ajuste del contenedor principal */
+  .cotizaciones-container {
+    margin: 0 auto !important;  /* Centrar el contenido */
+    padding: 10px !important;
+    height: auto !important;
+    page-break-after: avoid;
+    min-height: 1565px;
+    transform-origin: top left;
+    transform: scale(0.95) translateX(10px); /* Aumenta el valor para moverlo más a la derecha */
+  }
+  .cotizaciones-footer {
+    page-break-before: auto;  /* Solo salta a la siguiente hoja si no cabe */
+    page-break-inside: avoid; /* Evita que el footer se divida */
   }
  
-/*/////////////////////////footer///////////*/
-.cotizaciones-footer {
-  bottom: 20px !important; /* 🔹 Sube el footer (ajusta este valor según necesites) */
-  width: 100%;
-  page-break-before: avoid;
-  page-break-after: avoid;
-}
-
-.pie-pagina {
-  margin-top: 5px !important; /* 🔹 Reduce el margen superior */
-  position: relative;
-}
-
 }

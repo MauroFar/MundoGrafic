@@ -1,80 +1,85 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; // ❌ 'data' no es un hook válido en react-router-dom
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import "../styles/Cotizaciones.css";
+import "../../styles/cotizaciones/Cotizaciones.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
-import { useParams } from "react-router-dom";
-
-
-function CotizacionesEditar() {
-///////////*aqui se maneja los datos en comunicacion con la api ////////*/
-  const { id } = useParams();
-    // ✅ Esta función es esencial
-    const handleChange = (e) => {
-      const { name, value } = e.target;
-      setFormData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-    };
-  
-  useEffect(() => {
-    console.log("ID recibido en CotizacionesEditar:", id); // ✅ Aquí verificas si llega correctamente
-  }, [id]);
-  const [cotizacion, setCotizacion] = useState(null); // Estado para almacenar los datos de la cotización
-  const [formData, setFormData] = useState({
-    numero_cotizacion: "",
-    fecha: "",
-    estado: "",
-  });
-
-  
-  // Obtener la cotización específica al cargar el componente
-  useEffect(() => {
-    const obtenerCotizacion = async () => {
-      try {
-        // Realizamos la solicitud GET para obtener la cotización con el id
-        const response = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`);
-        const data = await response.json();
-        
-        // Si la cotización existe, la guardamos en el estado
-        if (data) {
-          setCotizacion(data); // Guardamos los datos de la cotización en el estado
-          setFormData({
-            numero_cotizacion: data.numero_cotizacion,
-            fecha: data.fecha,
-            estado: data.estado,
-          });
-        } else {
-          alert("Cotización no encontrada");
-        }
-      } catch (error) {
-        console.error("Error al obtener la cotización:", error);
-      }
-    };
-
-    obtenerCotizacion();
-  }, [id]); // Solo se ejecutará cuando el id cambie
+import { Resizable } from "react-resizable";
+import "react-resizable/css/styles.css";
 
 
 
-  
-
-
-/////////////////*////////////////////////*/
+function CotizacionesCrear() {
   const apiUrl = import.meta.env.VITE_API_URL;
-  const [filas, setFilas] = useState([]);
-   // Función para agregar una nueva fila
-   const agregarFila = () => {
-    setFilas([
-      ...filas,
-      { cantidad: "", detalle: "", unitario: "", total: "" },
-    ]);
+  const [rucs, setRucs] = useState([]);
+  const [selectedRuc, setSelectedRuc] = useState({ id: "", ruc: "" });
+  const [ejecutivo, setEjecutivo] = useState("");
+  const [nombreCliente, setNombreCliente] = useState("");
+  const [sugerencias, setSugerencias] = useState([]);
+  
+ 
+  const handleInputChange = async (event) => {
+    const valor = event.target.value;
+    setNombreCliente(valor);
+    if (valor.trim() !== "") {
+      await buscarClientes(valor);
+    } else {
+      setSugerencias([]);
+    }
   };
 
+  const buscarClientes = async (nombre) => {
+    if (!selectedRuc.id) {
+      console.warn("No se ha seleccionado ningún RUC, no se puede buscar clientes.");
+      return;
+    }
+    try {
+      const response = await fetch(`${apiUrl}/api/clientes/buscar?nombre=${nombre}&ruc_id=${selectedRuc.id}`);
+      const data = await response.json();
+      setSugerencias(data);
+    } catch (error) {
+      console.error("Error al obtener sugerencias de clientes:", error);
+    }
+  };
 
+  const handleSeleccionarCliente = (cliente) => {
+    setNombreCliente(cliente.nombre_cliente);
+    setSugerencias([]);
+  };
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/rucs`)
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Datos recibidos del backend:", data);
+        setRucs(data);
+      })
+      .catch((error) => console.error("Error al obtener los RUCs:", error));
+  }, []);
+
+  useEffect(() => {
+    console.log("RUCs cargados:", rucs);
+  }, [rucs]);
+
+  const handleRucChange = (event) => {
+    const rucSeleccionado = event.target.value;
+    const rucObj = rucs.find((r) => r.ruc === rucSeleccionado);
+    if (rucObj) {
+      setSelectedRuc({ id: rucObj.id, ruc: rucSeleccionado });
+      setEjecutivo(rucObj.ejecutivo);
+      console.log("RUC seleccionado:", rucObj.id, rucObj.ruc);
+    }
+    const ejecutivoSeleccionado = rucObj ? rucObj.ejecutivo : "";
+    setEjecutivo(ejecutivoSeleccionado);
+    console.log("Ejecutivo actualizado:", ejecutivoSeleccionado);
+  };
+
+  useEffect(() => {
+    if (ejecutivo) {
+      console.log("Ejecutivo seleccionado:", ejecutivo);
+    }
+  }, [ejecutivo]);
 
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
@@ -189,6 +194,44 @@ function CotizacionesEditar() {
 
 
 
+////////////////obtener num cotizacion ///////////////////
+const [numeroCotizacion, setNumeroCotizacion] = useState(null);
+
+// Función para obtener el último número de cotización
+const obtenerNumeroCotizacion = async () => {
+  try {
+    const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`);
+    console.log("Número de cotización recibido:", response.data.numero_cotizacion);
+    setNumeroCotizacion(response.data.numero_cotizacion);  // Establecer el número de cotización en el estado
+  } catch (error) {
+    console.error("Error al obtener el número de cotización:", error);
+  }
+};
+
+// Llamada al cargar el componente o antes de crear una cotización
+useEffect(() => {
+  obtenerNumeroCotizacion();
+}, []);
+
+
+
+
+
+  ////////////////////OBTENER FECHA/////////////////////////////////////////////
+  const today = new Date().toISOString().split("T")[0];
+  const [fecha, setFecha] = useState(today);
+  //estado para almacenar filas dinamicas
+  // Estado para almacenar filas dinámicas
+  const [filas, setFilas] = useState([]);
+
+  // Función para agregar una nueva fila
+  const agregarFila = () => {
+    setFilas([
+      ...filas,
+      { cantidad: "", detalle: "", unitario: "", total: "" },
+    ]);
+  };
+
   // Función para eliminar una fila específica
   const eliminarFila = (index) => {
     const nuevasFilas = filas.filter((_, i) => i !== index);
@@ -219,117 +262,180 @@ function CotizacionesEditar() {
   const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
 
     
-
-    ///////////////////guardar en formato pdf ////////////////////
-    
-    const downloadPDF = async () => {
-      const input = document.getElementById('cotizaciones-container');
-    
-      // Crear un clon profundo del contenedor
-      const pdfContent = input.cloneNode(true);
-    
-      // Procesar específicamente los textareas y asegurarnos de que se visualicen bien
-      pdfContent.querySelectorAll('textarea').forEach(textarea => {
-        const span = document.createElement('span');
-        span.textContent = textarea.value;
-        span.style.whiteSpace = 'pre-wrap'; // Asegurar que respete los saltos de línea
-        span.style.display = 'block';
-        span.style.wordBreak = 'break-word'; // Añadir quiebre de palabras
-        textarea.parentNode.replaceChild(span, textarea);
+  const downloadPDF = async () => {
+    const input = document.getElementById('cotizaciones-container');
+  
+    // Crear un clon profundo del contenedor
+    const pdfContent = input.cloneNode(true);
+  
+    // Procesar los textareas
+    pdfContent.querySelectorAll('textarea').forEach(textarea => {
+      const span = document.createElement('span');
+      span.textContent = textarea.value;
+      span.style.whiteSpace = 'pre-wrap';
+      span.style.display = 'block';
+      span.style.wordBreak = 'break-word';
+      textarea.parentNode.replaceChild(span, textarea);
+    });
+  
+    // Procesar el select de RUC
+    pdfContent.querySelectorAll('select').forEach(select => {
+      const span = document.createElement('span');
+      span.textContent = selectedRuc.ruc || 'R.U.C no seleccionado';
+      span.style.whiteSpace = 'pre-wrap';
+      span.style.display = 'block';
+      span.style.wordBreak = 'break-word';
+      select.parentNode.replaceChild(span, select);
+    });
+  
+    // Quitar bordes de los inputs en el clon
+    pdfContent.querySelectorAll('input').forEach(input => {
+      input.style.border = 'none';
+      input.style.outline = 'none';
+      input.style.background = 'transparent';
+    });
+  
+    // Ocultar elementos no deseados
+    pdfContent.querySelectorAll('.col-accion, .btn-cancelar, .btn-eliminar-imagen, .btn-insertar-imagen').forEach(el => {
+      el.style.display = 'none';
+    });
+  
+    try {
+      document.body.appendChild(pdfContent);
+      pdfContent.style.position = 'absolute';
+      pdfContent.style.left = '-9999px';
+      pdfContent.style.top = '-9999px';
+  
+      const canvas = await html2canvas(pdfContent, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        width: pdfContent.scrollWidth,
+        height: pdfContent.scrollHeight,
+        backgroundColor: '#FFFFFF',
+        letterRendering: true,
+        wordwrap: true,
       });
-    
-      // Procesar específicamente el select de RUC
-      pdfContent.querySelectorAll('select').forEach(select => {
-        const span = document.createElement('span');
-        // Usamos el valor del estado selectedRuc
-        span.textContent = selectedRuc.ruc || 'R.U.C no seleccionado'; // Si no hay RUC seleccionado
-        span.style.whiteSpace = 'pre-wrap';
-        span.style.display = 'block'; 
-        span.style.wordBreak = 'break-word'; 
-        select.parentNode.replaceChild(span, select);
+  
+      document.body.removeChild(pdfContent);
+  
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+  
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
       });
-    
-      // Quitar bordes de los inputs en el clon
-      pdfContent.querySelectorAll('input').forEach(input => {
-        input.style.border = 'none';
-        input.style.outline = 'none';
-        input.style.background = 'transparent';
-      });
-    
-      // Ocultar elementos no deseados
-      pdfContent.querySelectorAll('.col-accion, .btn-cancelar, .btn-eliminar-imagen, .btn-insertar-imagen').forEach(el => {
-        el.style.display = 'none';
-      });
-    
-      try {
-        // Añadir el clon temporalmente al documento
-        document.body.appendChild(pdfContent);
-        pdfContent.style.position = 'absolute';
-        pdfContent.style.left = '-9999px';
-        pdfContent.style.top = '-9999px';
-    
-        const canvas = await html2canvas(pdfContent, {
-          scale: 3,
-          useCORS: true,
-          logging: false,
-          allowTaint: true,
-          scrollX: 0,
-          scrollY: -window.scrollY,
-          width: pdfContent.scrollWidth,
-          height: pdfContent.scrollHeight,
-          backgroundColor: '#FFFFFF',
-          letterRendering: true,
-          wordwrap: true
-        });
-    
-        // Remover el clon del documento
-        document.body.removeChild(pdfContent);
-    
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
-    
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-    
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pdfWidth;
-        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-    
-        let heightLeft = imgHeight;
-        let position = 0;
-    
-        const moveRight = 2; // Desplazamiento pequeño
-    
-        // Agregar la imagen al PDF con un pequeño desplazamiento a la derecha
-        pdf.addImage(imgData, 'JPEG', moveRight, position, imgWidth, imgHeight, undefined, 'FAST');
+  
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgWidth = pdfWidth;
+      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+  
+      let heightLeft = imgHeight;
+      let position = 0;
+  
+      const footerContent = `
+        Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif Apolo 1
+        Telefax:2589134 - Tumbaco:Norberto Salazar E7-224X y pasaje San Martin
+        Telf:2379320 E-mail:ventas@mundografic.com Cel:099661572
+        www.mundografic.com /mundografic /mundografic /mundografic @mundografic
+      `;
+  
+      while (heightLeft > 0) {
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+  
+        // Agregar el footer en cada página
+        pdf.setFontSize(10);
+        pdf.setTextColor(100);
+        pdf.text(footerContent, 10, pdfHeight - 20);
+  
         heightLeft -= pdfHeight;
-    
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', moveRight, position, imgWidth, imgHeight, undefined, 'FAST');
-          heightLeft -= pdfHeight;
-        }
-    
-        pdf.save(`Cotizacion_${new Date().toISOString().slice(0, 10)}.pdf`);
-    
-      } catch (error) {
-        console.error('Error al generar PDF:', error);
-        alert('Hubo un problema al generar el PDF');
+        position = -heightLeft;
+  
+        if (heightLeft > 0) pdf.addPage();
       }
+  
+      pdf.save(`Cotizacion_${new Date().toISOString().slice(0, 10)}.pdf`);
+  
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      alert('Hubo un problema al generar el PDF');
+    }
+  };
+  
+    /////////*Para editar tamaño de imagen *//////////////
+    const nuevaFila = {
+      id: Date.now(),
+      cant: "",
+      detalle: "",
+      vUnitario: "",
+      vTotal: "",
+      imagen: null,
+      width: 200,
+      height: 150,
     };
-    
+
+   /******Alternativa generar pdf */
+const handleDownloadPDF = async () => {
+  try {
+    // HTML ficticio de prueba
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cotización</title>
+          body {
+          <div>
+          <h1>holamundo</h1>
+        </div>
+      </body>
+      </html>
+    `;
+
+    console.log("Contenido HTML de prueba enviado al backend:", fullHTML);
+
+    const response = await fetch(`${apiUrl}/api/pdfGenerator/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content: fullHTML }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error al descargar el PDF:", errorText);
+      throw new Error(`Error: ${response.status} - ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "cotizacion.pdf");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    console.error("Error al descargar el PDF:", error.message);
+  }
+};
+
   return (
     <>
         <div className="hoja-general">
           <div className="btnadministracion">
             <button
               className="btn-regresar"
-              onClick={() => navigate("/CotizacionesMenu")}
+              onClick={() => navigate("/Cotizaciones")}
             >
               ← Regresar
             </button>
@@ -351,7 +457,7 @@ function CotizacionesEditar() {
               Agregar Producto
             </button>
 
-            <button className="btn-regresar"onClick={downloadPDF} >Guardar como PDF</button>
+            <button className="btn-regresar"onClick={handleDownloadPDF} >Guardar como PDF</button>
            
          
           </div>
@@ -378,10 +484,7 @@ function CotizacionesEditar() {
                 <div className="cotizacion-section">
                   <div className="cotizacion-box">
                     <span className="cotizacion-label">COTIZACIÓN</span>
-                    <div className="numero-cotizacion"> {formData.numero_cotizacion}
-       </div>
-                    {/* Se manejará con BBDD en el futuro */}
-
+                    <div className="numero-cotizacion"> {numeroCotizacion ? numeroCotizacion : "Generando..."} {/* Muestra el número de cotización o 'Generando...' */} </div>{" "}
                     {/* Se manejará con BBDD en el futuro */}
                   </div>
 
@@ -390,10 +493,15 @@ function CotizacionesEditar() {
                     <select
                       className="ruc-select"
                       id="ruc"
-                  
+                      value={selectedRuc.ruc}
+                      onChange={handleRucChange}
                     >
                       <option value="">Seleccione un ruc</option>
-               
+                      {rucs.map((ruc) => (
+                        <option key={ruc.id} value={ruc.ruc}>
+                          {ruc.ruc}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -450,15 +558,34 @@ function CotizacionesEditar() {
   <input
     id="cliente"
     type="text"
- 
+    value={nombreCliente}
+    onChange={handleInputChange}
+    placeholder="Selecciona un Ruc para buscar cliente..."
+    autoComplete="off"  
   />
+
+  {/* Mostrar las sugerencias personalizadas si hay resultados */}
+  {sugerencias.length > 0 && (
+    <div className="sugerencias-container">
+      <ul className="sugerencias-list">
+        {sugerencias.map((cliente) => (
+          <li
+            key={cliente.id}
+            onClick={() => handleSeleccionarCliente(cliente)}
+          >
+            {cliente.nombre_cliente}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
 </div>
 
 
 
               <div className="campo campo-derecha">
                 <label>Ejecutivo de Cuenta:</label>
-                <input type="text" />
+                <input type="text" value={ejecutivo}  onChange={(e) => setEjecutivo(e.target.value)} />
               </div>
             </div>
             <div className="fila">
@@ -466,10 +593,10 @@ function CotizacionesEditar() {
                 <div className="campo">
                   <label>Fecha:</label>
                   <input
-  type="date"
-  value={formData.fecha ? formData.fecha.substring(0, 10) : ''}
-  onChange={handleChange}
-/>
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -595,18 +722,46 @@ function CotizacionesEditar() {
 
                       {/* Fila extra solo para la imagen */}
                       {fila.imagen && (
-                        <tr>
-                          <td colSpan="5" className="detalle-imagen-row">
-                            <div className="detalle-imagen-container">
-                              <img
-                                src={fila.imagen}
-                                alt="Imagen subida"
-                                className="detalle-imagen"
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+  <tr>
+    <td colSpan="5" className="detalle-imagen-row">
+      <div className="detalle-imagen-container">
+        <Resizable
+          width={fila.width || 200}
+          height={fila.height || 150}
+          onResize={(e, { size }) => {
+            const nuevasFilas = [...filas];
+            nuevasFilas[index] = {
+              ...nuevasFilas[index],
+              width: size.width,
+              height: size.height,
+            };
+            setFilas(nuevasFilas);
+          }}
+        >
+          <div
+            style={{
+              width: fila.width || 200,
+              height: fila.height || 150,
+              overflow: "hidden",
+            }}
+          >
+            <img
+              src={fila.imagen}
+              alt="Imagen subida"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                cursor: "nwse-resize",
+              }}
+            />
+          </div>
+        </Resizable>
+      </div>
+    </td>
+  </tr>
+)}
+
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -621,7 +776,8 @@ function CotizacionesEditar() {
                     <label>Tiempo de Entrega:</label>{" "}
                     <input
                       type="text"
-                  
+                      value={TxttiempoEntrega}
+                      onChange={(e) => setTxtTiempoEntrega(e.target.value)}
                     />
                   </div>
                   <div className="campoPie">
@@ -680,4 +836,4 @@ function CotizacionesEditar() {
   );
 }
 
-export default CotizacionesEditar;
+export default CotizacionesCrear;

@@ -6,7 +6,7 @@
   text-align: center;
   font-family: Arial, sans-serif;
   width: 100%; /* Asegura que use todo el ancho disponible */
-  margin-top: -320px; /* Elimina el margen negativo que estaba subiendo el contenido */
+  margin-top: 20px; /* Elimina el margen negativo que estaba subiendo el contenido */
   padding-bottom: 20px; /* Añadido para evitar que el contenido quede pegado al borde inferior */
   position: absolute;
 }

@@ -7,9 +7,23 @@ module.exports = function(client) {
     const { id } = req.params;
     try {
       const result = await client.query(`
-        SELECT c.id, c.numero_cotizacion, c.fecha, c.estado
-        FROM cotizaciones c
-        WHERE c.id = $1;
+  	SELECT 
+  c.id, 
+  c.numero_cotizacion, 
+  c.fecha, 
+  c.estado,
+  c.subtotal,
+  c.iva,
+  c.descuento,
+  c.total,
+  cl.nombre_cliente,
+  e.nombre AS nombre_ejecutivo,
+  r.ruc 
+FROM cotizaciones c
+JOIN clientes cl ON c.cliente_id = cl.id
+JOIN rucs r ON c.ruc_id = r.id
+JOIN ejecutivos e ON r.ejecutivo_id = e.id
+WHERE c.id = $1;
       `, [id]);
 
       if (result.rows.length > 0) {

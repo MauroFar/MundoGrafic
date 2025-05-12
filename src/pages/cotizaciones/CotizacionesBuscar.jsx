@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/CotizacionesBuscar.css";
+import "../../styles/cotizaciones/CotizacionesBuscar.css";
 
 function CotizacionesBuscar() {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -55,13 +55,17 @@ function CotizacionesBuscar() {
   };
 
   const editarCotizacion = (id) => {
-    navigate(`/cotizacionesEditar/${id}`); // Redirige a la ruta de edición
+    navigate(`/cotizaciones/Editar/${id}`); // Redirige a la ruta de edición
   };
+  const ordendeTrabajo = (id) => {
+    navigate(`/ordendeTrabajo/${id}`); // Redirige a la ruta de edición
+  };
+
 
   
   return (
     <div className="container">
-      <button className="back-button" onClick={() => navigate("/cotizacionesMenu")}>
+      <button className="back-button" onClick={() => navigate("/cotizaciones")}>
         ← Volver
       </button>
 
@@ -105,13 +109,15 @@ function CotizacionesBuscar() {
         <td>{cot.estado}</td>
         <td>{cot.numero_cotizacion}</td>
         <td className="acciones">
-          <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.cotizacion_id)}>
-            Ver
-          </button>
+        <button onClick={() => editarCotizacion(cot.cotizacion_id)}>Editar</button>
+          
           <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.cotizacion_id)}>
             Aprobar
           </button>
-          <button onClick={() => editarCotizacion(cot.cotizacion_id)}>Editar</button>
+          <button className="boton aprobar" onClick={() => ordendeTrabajo(cot.cotizacion_id)}>
+          Generar orden de trabajo
+          </button>
+          
           <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.cotizacion_id)}>
             Eliminar
           </button>

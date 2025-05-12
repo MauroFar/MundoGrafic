@@ -6,14 +6,14 @@ function Dashboard() {
       <form className="dashboard-form">
       <h2>Dashboard</h2>
       <div className="dashboard-buttons">
-        <Link to="/cotizacionesMenu">
+        <Link to="/cotizaciones">
           <button>Cotizaciones</button>
-        </Link>
-        <Link to="/pedidos">
-          <button>Pedidos</button>
         </Link>
         <Link to="/ordenes-trabajo">
           <button>Órdenes de Trabajo</button>
+        </Link>
+        <Link to="/dashboardGeneral">
+          <button>En Produccion</button>
         </Link>
       </div>
       </form>
