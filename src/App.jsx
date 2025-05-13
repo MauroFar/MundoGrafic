@@ -38,6 +38,8 @@ function App() {
 
            {/* Produccion */}
         <Route path="dashboardGeneral" element={<DashboardGeneral /> } />
+        {/* Nueva ruta para generar el PDF */}
+<Route path="/cotizacion/:id" element={<CotizacionesCrear />} />
 
         {/* Otros */}
         <Route path="/pruebaQr" element={<PruebaQr />} />

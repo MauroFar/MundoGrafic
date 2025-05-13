@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; // ❌ 'data' no es un hook válido en react-router-dom
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "../../styles/cotizaciones/Cotizaciones.css";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import axios from 'axios';
-import { Resizable } from "react-resizable";
 import "react-resizable/css/styles.css";
+import { Resizable } from "react-resizable";
+
 
 
 
@@ -189,11 +188,6 @@ function CotizacionesCrear() {
     }
   };
 
-
-
-
-
-
 ////////////////obtener num cotizacion ///////////////////
 const [numeroCotizacion, setNumeroCotizacion] = useState(null);
 
@@ -212,10 +206,6 @@ const obtenerNumeroCotizacion = async () => {
 useEffect(() => {
   obtenerNumeroCotizacion();
 }, []);
-
-
-
-
 
   ////////////////////OBTENER FECHA/////////////////////////////////////////////
   const today = new Date().toISOString().split("T")[0];
@@ -261,174 +251,6 @@ useEffect(() => {
 
   const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
 
-    
-  const downloadPDF = async () => {
-    const input = document.getElementById('cotizaciones-container');
-  
-    // Crear un clon profundo del contenedor
-    const pdfContent = input.cloneNode(true);
-  
-    // Procesar los textareas
-    pdfContent.querySelectorAll('textarea').forEach(textarea => {
-      const span = document.createElement('span');
-      span.textContent = textarea.value;
-      span.style.whiteSpace = 'pre-wrap';
-      span.style.display = 'block';
-      span.style.wordBreak = 'break-word';
-      textarea.parentNode.replaceChild(span, textarea);
-    });
-  
-    // Procesar el select de RUC
-    pdfContent.querySelectorAll('select').forEach(select => {
-      const span = document.createElement('span');
-      span.textContent = selectedRuc.ruc || 'R.U.C no seleccionado';
-      span.style.whiteSpace = 'pre-wrap';
-      span.style.display = 'block';
-      span.style.wordBreak = 'break-word';
-      select.parentNode.replaceChild(span, select);
-    });
-  
-    // Quitar bordes de los inputs en el clon
-    pdfContent.querySelectorAll('input').forEach(input => {
-      input.style.border = 'none';
-      input.style.outline = 'none';
-      input.style.background = 'transparent';
-    });
-  
-    // Ocultar elementos no deseados
-    pdfContent.querySelectorAll('.col-accion, .btn-cancelar, .btn-eliminar-imagen, .btn-insertar-imagen').forEach(el => {
-      el.style.display = 'none';
-    });
-  
-    try {
-      document.body.appendChild(pdfContent);
-      pdfContent.style.position = 'absolute';
-      pdfContent.style.left = '-9999px';
-      pdfContent.style.top = '-9999px';
-  
-      const canvas = await html2canvas(pdfContent, {
-        scale: 3,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: -window.scrollY,
-        width: pdfContent.scrollWidth,
-        height: pdfContent.scrollHeight,
-        backgroundColor: '#FFFFFF',
-        letterRendering: true,
-        wordwrap: true,
-      });
-  
-      document.body.removeChild(pdfContent);
-  
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
-  
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-  
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgWidth = pdfWidth;
-      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-  
-      let heightLeft = imgHeight;
-      let position = 0;
-  
-      const footerContent = `
-        Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif Apolo 1
-        Telefax:2589134 - Tumbaco:Norberto Salazar E7-224X y pasaje San Martin
-        Telf:2379320 E-mail:ventas@mundografic.com Cel:099661572
-        www.mundografic.com /mundografic /mundografic /mundografic @mundografic
-      `;
-  
-      while (heightLeft > 0) {
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-  
-        // Agregar el footer en cada página
-        pdf.setFontSize(10);
-        pdf.setTextColor(100);
-        pdf.text(footerContent, 10, pdfHeight - 20);
-  
-        heightLeft -= pdfHeight;
-        position = -heightLeft;
-  
-        if (heightLeft > 0) pdf.addPage();
-      }
-  
-      pdf.save(`Cotizacion_${new Date().toISOString().slice(0, 10)}.pdf`);
-  
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      alert('Hubo un problema al generar el PDF');
-    }
-  };
-  
-    /////////*Para editar tamaño de imagen *//////////////
-    const nuevaFila = {
-      id: Date.now(),
-      cant: "",
-      detalle: "",
-      vUnitario: "",
-      vTotal: "",
-      imagen: null,
-      width: 200,
-      height: 150,
-    };
-
-   /******Alternativa generar pdf */
-const handleDownloadPDF = async () => {
-  try {
-    // HTML ficticio de prueba
-    const fullHTML = `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Cotización</title>
-          body {
-          <div>
-          <h1>holamundo</h1>
-        </div>
-      </body>
-      </html>
-    `;
-
-    console.log("Contenido HTML de prueba enviado al backend:", fullHTML);
-
-    const response = await fetch(`${apiUrl}/api/pdfGenerator/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ content: fullHTML }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error al descargar el PDF:", errorText);
-      throw new Error(`Error: ${response.status} - ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "cotizacion.pdf");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    console.error("Error al descargar el PDF:", error.message);
-  }
-};
-
   return (
     <>
         <div className="hoja-general">
@@ -448,18 +270,14 @@ const handleDownloadPDF = async () => {
             </button>
 
             <button className="btn-regresar" onClick={() => window.print()}>
-              Imprimir
+              Descargar/Imprimir
             </button>
 
             <button className="btn-regresar" onClick={handleGuardarTodo}>Guardar BBDD</button>
 
             <button className="btn-agregar" onClick={agregarFila}>
               Agregar Producto
-            </button>
-
-            <button className="btn-regresar"onClick={handleDownloadPDF} >Guardar como PDF</button>
-           
-         
+            </button>  
           </div>
 
           <div className="cotizaciones-container" id="cotizaciones-container">
@@ -725,38 +543,54 @@ const handleDownloadPDF = async () => {
   <tr>
     <td colSpan="5" className="detalle-imagen-row">
       <div className="detalle-imagen-container">
-        <Resizable
-          width={fila.width || 200}
-          height={fila.height || 150}
-          onResize={(e, { size }) => {
-            const nuevasFilas = [...filas];
-            nuevasFilas[index] = {
-              ...nuevasFilas[index],
-              width: size.width,
-              height: size.height,
-            };
-            setFilas(nuevasFilas);
-          }}
-        >
-          <div
-            style={{
-              width: fila.width || 200,
-              height: fila.height || 150,
-              overflow: "hidden",
-            }}
-          >
-            <img
-              src={fila.imagen}
-              alt="Imagen subida"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                cursor: "nwse-resize",
-              }}
-            />
-          </div>
-        </Resizable>
+<Resizable
+  width={fila.width || 200}
+  height={fila.height || 150}
+  onResize={(e, { size }) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index] = {
+      ...nuevasFilas[index],
+      width: size.width,
+      height: size.height,
+    };
+    setFilas(nuevasFilas);
+  }}
+  handleStyles={{
+    bottomRight: {
+      width: "15px",
+      height: "15px",
+      backgroundColor: "#3498db",
+      borderRadius: "50%",
+      position: "absolute",
+      right: "5px",
+      bottom: "5px",
+      cursor: "nwse-resize",
+    },
+  }}
+>
+  <div
+    style={{
+      width: fila.width || 200,
+      height: fila.height || 150,
+      overflow: "hidden",
+      position: "relative",
+    }}
+  >
+    <img
+      src={fila.imagen}
+      alt="Imagen subida"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        cursor: "nwse-resize",
+        border: "none",
+        boxShadow: "none",
+      }}
+    />
+  </div>
+</Resizable>
+
       </div>
     </td>
   </tr>
