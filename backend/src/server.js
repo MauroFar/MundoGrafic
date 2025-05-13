@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { Client } = require("pg");
-const generatePDF = require("./routes/pdfGenerator"); // Asegúrate de que la ruta esté correcta
 
 // Conectar con PostgreSQL
 const client = new Client({
@@ -23,38 +22,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Agregar un endpoint de prueba para generar PDF
-app.get("/api/test-pdf", async (req, res) => {
-  try {
-    // HTML de prueba para generar el PDF
-    const testHtmlContent = `
-      <html>
-        <head><title>Prueba PDF</title></head>
-        <body>
-          <h1>Contenido de prueba para PDF</h1>
-          <p>Este es un PDF de prueba generado manualmente.</p>
-        </body>
-      </html>
-    `;
-
-    // Generar el PDF
-    const pdfBuffer = await generatePDF(testHtmlContent);
-
-    // Verificar el tamaño del buffer antes de enviarlo
-    console.log("Tamaño del buffer de PDF:", pdfBuffer.length);
-
-    // Establecer cabeceras para la descarga del archivo PDF
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=test.pdf");
-
-    // Enviar el PDF al cliente
-    res.send(pdfBuffer);
-
-  } catch (error) {
-    console.error("Error generando el PDF:", error.message);
-    res.status(500).send("Error al generar el PDF");
-  }
-});
 
 
 // Importar las rutas agrupadas en api.js
