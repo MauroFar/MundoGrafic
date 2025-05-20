@@ -1,0 +1,34 @@
+/* 🔹 "MUNDOGRAFIC" */
+.mundo {
+  font-size: 26px;
+  font-weight: bold;
+  color: black;
+  position: relative;
+}
+
+/* 🔹 "CORPORACION" (Encima de "GRAFIC") */
+.corp {
+  font-size: 8px;
+  color: #959191;
+  font-weight: bold;
+  position: relative;
+  top: 10px;
+  left: 105px; /* 🔹 Ajustado para mover más a la derecha */
+  letter-spacing: 3px;
+}
+
+/* 🔹 "GRAFIC" (Color rojo) */
+.graf {
+  color: red;
+  position: relative;
+  font-size: 26px;
+}
+
+/* 🔹 Símbolo de marca registrada (®) */
+.marca {
+  font-size: 12px;
+  vertical-align: baseline;
+  position: relative;
+  bottom: -2px;
+  margin-left: 2px;
+}

@@ -37,6 +37,40 @@ module.exports = (client) => {
       res.status(500).json({ error: "Error al buscar cotizaciones" });
     }
   });
+// Nueva ruta para aprobar cotización
+router.put("/:id/aprobar", async (req, res) => {
+  const { id } = req.params;
+  const { ruc_id } = req.body;
+
+  if (!ruc_id) {
+    return res.status(400).json({ error: "El ruc_id es obligatorio" });
+  }
+
+  try {
+    const query = `
+      UPDATE cotizaciones co
+      SET estado = 'aprobada'
+      FROM rucs r
+      WHERE co.id = $1 
+        AND co.ruc_id = r.id 
+        AND r.id = $2
+        AND co.estado = 'pendiente'
+      RETURNING co.*;
+    `;
+
+    const result = await client.query(query, [id, ruc_id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Cotización no encontrada o ya aprobada" });
+    }
+
+    res.json({ message: "Cotización aprobada correctamente", cotizacion: result.rows[0] });
+  } catch (error) {
+    console.error("Error al aprobar cotización:", error);
+    res.status(500).json({ error: "Error al aprobar cotización" });
+  }
+});
+
   
       return router;
     };

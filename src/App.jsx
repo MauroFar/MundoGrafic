@@ -1,51 +1,120 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
+  import React from "react";
+  import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-// Cotizaciones
-import CotizacionesMenu from "./pages/cotizaciones/CotizacionesMenu";
-import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
-import CotizacionesBuscar from "./pages/cotizaciones/CotizacionesBuscar";
-import CotizacionesEditar from "./pages/cotizaciones/CotizacionesEditar";
+  // Páginas
+  import Login from "./pages/Login";
+  import Sidebar from "./components/Sidebar";
+  import Welcome from "./components/Welcome";
 
-// Órdenes de Trabajo
-import OrdenesTrabajoMenu from "./pages/ordendetrabajo/OrdenesTrabajoMenu";
-import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajoEditar";
-////Produccion
-import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
+  // Cotizaciones
+  import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
+  import CotizacionesBuscar from "./pages/cotizaciones/CotizacionesBuscar";
 
-// Otros
-import PruebaQr from "./pages/PruebaQr";
+  // Producción
+  import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
+  import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        {/* Ruta raíz */}
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+  //pagenotfound
+  import PageNotFound from "./pages/PageNotFound";
 
-        {/* Cotizaciones */}
-        <Route path="/cotizaciones" element={<CotizacionesMenu />} />
-        <Route path="/cotizaciones/crear" element={<CotizacionesCrear />} />
-        <Route path="/cotizaciones/buscar" element={<CotizacionesBuscar />} />
-        <Route path="/cotizaciones/editar/:id" element={<CotizacionesEditar />} />
+  // Layout que incluye el Sidebar
+  const Layout = ({ children }) => {
+    const location = useLocation();
+    const isLoginPage = location.pathname === "/";
+    const hideSidebarPaths = 
+    ["/cotizaciones/crear",
+      "/cotizaciones/buscar"
+    ];
 
-        {/* Órdenes de Trabajo */}
-        <Route path="/ordenes-trabajo" element={<OrdenesTrabajoMenu />} />
-        <Route path="/ordenes-trabajo/:id" element={<OrdendeTrabajo />} />
+    const shouldHideSidebar = hideSidebarPaths.includes(location.pathname);
 
-           {/* Produccion */}
-        <Route path="dashboardGeneral" element={<DashboardGeneral /> } />
-        {/* Nueva ruta para generar el PDF */}
-<Route path="/cotizacion/:id" element={<CotizacionesCrear />} />
+    return (
+      <div className="flex">
+        {!isLoginPage && !shouldHideSidebar && <Sidebar />}
+        <div className="flex-grow p-4">{children}</div>
+      </div>
+    );
+  };
 
-        {/* Otros */}
-        <Route path="/pruebaQr" element={<PruebaQr />} />
-      </Routes>
-    </Router>
-  );
-}
+  function App() {
+    return (
+      <Router>
+        <Routes>
+          {/* Ruta Login */}
+          <Route path="/" element={<Login />} />
 
-export default App;
+          {/* Rutas del sistema */}
+          <Route
+            path="/welcome"
+            element={
+              <Layout>
+                <Welcome title="Bienvenido" message="Has iniciado sesión correctamente." />
+              </Layout>
+            }
+          />
+
+          <Route
+            path="/cotizaciones"
+            element={
+              <Layout>
+                <Welcome title="Cotizaciones" message="Bienvenido a Cotizaciones. Selecciona una opción del menú para continuar." />
+              </Layout>
+            }
+          />
+
+          <Route
+            path="/cotizaciones/crear"
+            element={
+              <Layout>
+                <CotizacionesCrear />
+              </Layout>
+            }
+          />
+
+          <Route
+            path="/cotizaciones/buscar"
+            element={
+              <Layout>
+                <CotizacionesBuscar />
+              </Layout>
+            }
+          />
+
+          <Route
+            path="/dashboardGeneral"
+            element={
+              <Layout>
+                <DashboardGeneral />
+              </Layout>
+            }
+          />
+
+          {/* Ordenes de trabajo */}
+          <Route path="/OrdendeTrabajo" element={
+              <Layout>
+                <Welcome title="Cotizaciones" message="Bienvenido a Ordenes de trabajo. Selecciona una opción del menú para continuar." />
+              </Layout>
+            } />
+            
+          <Route
+            path="/ordendeTrabajo/crear/:cotizacionId"
+            element={
+              <Layout>
+                <OrdendeTrabajo/>
+              </Layout>
+            }
+          />
+          <Route path="/ordendeTrabajo/crear" element={
+  <Layout>
+    <OrdendeTrabajo />
+  </Layout>
+} />
+
+          {/* Ruta por defecto */}
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  export default App;

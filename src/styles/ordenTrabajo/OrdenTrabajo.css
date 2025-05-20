@@ -1,0 +1,29 @@
+@media print {
+  @page {
+    margin: 5mm;
+  }
+
+  aside, nav, .sidebar, .botones-opcion {
+    display: none !important;
+  }
+
+  .print-wrapper {
+    padding: 0 !important;
+    min-height: auto !important;
+    background: none !important;
+  }
+
+  /* Ajusta el tamaño del contenido para que use más espacio */
+  .print-wrapper > div { /* o el selector correcto del contenedor interior */
+    width: 95%;
+    margin: 0;
+    padding: 0;
+  }
+   .contenedor {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+}

@@ -45,10 +45,28 @@ function CotizacionesBuscar() {
       console.error("Error al buscar cotizaciones:", error);
     }
   };
+const aprobarCotizacion = async (id, ruc_id) => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/buscarCotizaciones/${id}/aprobar`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ruc_id }),
+    });
 
-  const aprobarCotizacion = (id) => {
-    console.log("Aprobando cotización con ID:", id);
-  };
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Error al aprobar la cotización");
+
+    alert(data.message);
+    buscarCotizaciones(); // Para refrescar la lista después de aprobar
+  } catch (error) {
+    console.error("Error al aprobar cotización:", error);
+    alert("Error al aprobar la cotización.");
+  }
+};
+
+
 
   const eliminarCotizacion = (id) => {
     console.log("Eliminando cotización con ID:", id);
@@ -57,9 +75,9 @@ function CotizacionesBuscar() {
   const editarCotizacion = (id) => {
     navigate(`/cotizaciones/Editar/${id}`); // Redirige a la ruta de edición
   };
-  const ordendeTrabajo = (id) => {
-    navigate(`/ordendeTrabajo/${id}`); // Redirige a la ruta de edición
-  };
+const ordendeTrabajo = (id) => {
+  navigate(`/ordendeTrabajo/crear/${id}`);
+};
 
 
   
@@ -111,9 +129,14 @@ function CotizacionesBuscar() {
         <td className="acciones">
         <button onClick={() => editarCotizacion(cot.cotizacion_id)}>Editar</button>
           
-          <button className="boton aprobar" onClick={() => aprobarCotizacion(cot.cotizacion_id)}>
-            Aprobar
-          </button>
+          <button
+  className="boton aprobar"
+  onClick={() => aprobarCotizacion(cot.cotizacion_id,rucSeleccionado)}
+  disabled={cot.estado === "aprobada"}
+>
+  {cot.estado === "aprobada" ? "Aprobada" : "Aprobar"}
+</button>
+
           <button className="boton aprobar" onClick={() => ordendeTrabajo(cot.cotizacion_id)}>
           Generar orden de trabajo
           </button>

@@ -9,8 +9,10 @@ function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (email === "admin" && password === "admin") {
-      navigate("/dashboard");
+      // Redirigir al componente de bienvenida
+      navigate("/welcome");
     } else {
       alert("Credenciales incorrectas. Intenta nuevamente.");
     }
@@ -41,5 +43,3 @@ function Login() {
 }
 
 export default Login;
-
-

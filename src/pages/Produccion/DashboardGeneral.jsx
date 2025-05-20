@@ -1,38 +1,36 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 
 const DashboardGeneral = () => {
-  const orders = [
-    { id: 1, codigo: 'OT001', cliente: 'Cliente A', area: 'Diseño', estado: 'Pendiente', fechaInicio: '2025-05-12', fechaFin: '-' },
-    { id: 2, codigo: 'OT002', cliente: 'Cliente B', area: 'Impresión', estado: 'En Proceso', fechaInicio: '2025-05-11', fechaFin: '-' },
-    { id: 3, codigo: 'OT003', cliente: 'Cliente C', area: 'Acabado', estado: 'Completado', fechaInicio: '2025-05-10', fechaFin: '2025-05-12' },
-  ];
+    const [ordenes, setOrdenes] = useState([]);
+  const apiUrl = import.meta.env.VITE_API_URL;
 
-  const getStatusColor = (estado) => {
-    switch (estado) {
-      case 'Pendiente':
-        return 'bg-yellow-500';
-      case 'En Proceso':
-        return 'bg-blue-500';
-      case 'Completado':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-300';
-    }
-  };
+  useEffect(() => {
+    const fetchOrdenes = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/ordenTrabajo/listar`);
+        const data = await response.json();
+        console.log(data);
+        setOrdenes(data);
+      } catch (error) {
+        console.error('Error al obtener órdenes de trabajo:', error);
+      }
+    };
 
+    fetchOrdenes();
+  }, []);
+ 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Dashboard General - Producción</h1>
 
       <div className="mb-4">
-        <label className="mr-2">Filtrar por área:</label>
+        <label className="mr-2">Filtrar por estado:</label>
         <select className="border p-2 rounded">
-          <option value="">Todas</option>
-          <option value="Diseño">Diseño</option>
-          <option value="Impresión">Impresión</option>
-          <option value="Acabado">Acabado</option>
-          <option value="Empaque">Empaque</option>
-          <option value="Entrega">Entrega</option>
+          <option value="">Pendiente</option>
+          <option value="Diseño">En Proceso</option>
+          <option value="Impresión">Terminado</option>
+          <option value="Acabado">Entregado</option>
         </select>
       </div>
 
@@ -40,28 +38,30 @@ const DashboardGeneral = () => {
         <table className="min-w-full bg-white shadow-md rounded-lg">
           <thead>
             <tr className="bg-gray-200 text-left">
-              <th className="py-3 px-4">Código</th>
+              <th className="py-3 px-4">Orden de Trabajo</th>
               <th className="py-3 px-4">Cliente</th>
+               <th className="py-3 px-4">Concepto</th>
               <th className="py-3 px-4">Área Actual</th>
               <th className="py-3 px-4">Estado</th>
               <th className="py-3 px-4">Fecha Inicio</th>
               <th className="py-3 px-4">Fecha Fin</th>
             </tr>
           </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.id} className="border-b hover:bg-gray-100">
-                <td className="py-3 px-4">{order.codigo}</td>
-                <td className="py-3 px-4">{order.cliente}</td>
-                <td className="py-3 px-4">{order.area}</td>
-                <td className="py-3 px-4">
-                  <span className={`text-white px-2 py-1 rounded ${getStatusColor(order.estado)}`}>{order.estado}</span>
-                </td>
-                <td className="py-3 px-4">{order.fechaInicio}</td>
-                <td className="py-3 px-4">{order.fechaFin}</td>
-              </tr>
-            ))}
-          </tbody>
+<tbody>
+{ordenes.map((orden) => (
+  <tr key={orden.id} className="border-b hover:bg-gray-50">
+    <td className="py-2 px-4">{orden.numero_orden}</td>
+    <td className="py-2 px-4">{orden.nombre_cliente}</td>
+    <td className="py-2 px-4">{orden.concepto}</td>
+    <td className="py-2 px-4 text-gray-400 italic">--</td>
+    <td className="py-2 px-4 text-gray-400 italic">--</td>
+    <td className="py-2 px-4 text-gray-400 italic">--</td>
+    <td className="py-2 px-4 text-gray-400 italic">--</td>
+  </tr>
+))}
+
+</tbody>
+
         </table>
       </div>
     </div>
