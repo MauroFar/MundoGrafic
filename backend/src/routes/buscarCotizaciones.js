@@ -71,6 +71,24 @@ router.put("/:id/aprobar", async (req, res) => {
   }
 });
 
+
+// Eliminar cotización por ID
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await client.query("DELETE FROM cotizaciones WHERE id = $1", [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Cotización no encontrada" });
+    }
+
+    res.json({ message: "Cotización eliminada correctamente" });
+  } catch (error) {
+    console.error("Error al eliminar cotización:", error);
+    res.status(500).json({ error: "Error al eliminar la cotización" });
+  }
+});
   
       return router;
     };

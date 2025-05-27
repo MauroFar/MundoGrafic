@@ -6,13 +6,16 @@
   import Sidebar from "./components/Sidebar";
   import Welcome from "./components/Welcome";
 
+
   // Cotizaciones
   import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
   import CotizacionesBuscar from "./pages/cotizaciones/CotizacionesBuscar";
 
   // Producción
   import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
+  //////Orden de Trabajo
   import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
+  import OrdendeTrabajoBuscar from "./pages/ordendeTrabajo/OrdendeTrabajoBuscar";
 
   //pagenotfound
   import PageNotFound from "./pages/PageNotFound";
@@ -109,6 +112,20 @@
     <OrdendeTrabajo />
   </Layout>
 } />
+          <Route path="/ordendeTrabajoBuscar" element={
+  <Layout>
+    <OrdendeTrabajoBuscar />
+  </Layout>
+} />
+<Route
+  path="/ordendeTrabajo/editar/:ordenId"
+  element={
+    <Layout>
+      <OrdendeTrabajo />
+    </Layout>
+  }
+/>
+
 
           {/* Ruta por defecto */}
           <Route path="*" element={<PageNotFound />} />

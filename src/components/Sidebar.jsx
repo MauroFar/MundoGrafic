@@ -26,7 +26,7 @@ const Sidebar = () => {
     ],
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
-      { path: "/ordendeTrabajo/buscar", label: "Buscar Orden de Trabajo" },
+      { path: "/ordendeTrabajoBuscar", label: "Buscar Orden de Trabajo" },
     ],
   };
 

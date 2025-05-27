@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/cotizaciones/CotizacionesBuscar.css";
 
 function CotizacionesBuscar() {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -32,70 +31,84 @@ function CotizacionesBuscar() {
     }
 
     try {
-      const params = new URLSearchParams({
-        ruc_id: rucSeleccionado,
-      });
-
+      const params = new URLSearchParams({ ruc_id: rucSeleccionado });
       const response = await fetch(`${apiUrl}/api/buscarCotizaciones/buscar?${params}`);
       const data = await response.json();
-      console.log("Cotizaciones recibidas:", data); // 👈 Aquí ves qué campo tiene: `id` o `_id`
       setResultados(data);
-      console.log("Cotizaciones recibidas:", data);
     } catch (error) {
       console.error("Error al buscar cotizaciones:", error);
     }
   };
-const aprobarCotizacion = async (id, ruc_id) => {
+
+  const aprobarCotizacion = async (id, ruc_id) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}/aprobar`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruc_id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error al aprobar la cotización");
+
+      alert(data.message);
+      buscarCotizaciones();
+    } catch (error) {
+      console.error("Error al aprobar cotización:", error);
+      alert("Error al aprobar la cotización.");
+    }
+  };
+
+const eliminarCotizacion = async (id) => {
+  const confirmacion = window.confirm("¿Estás seguro de que deseas eliminar esta cotización?");
+  if (!confirmacion) return;
+
   try {
-    const response = await fetch(`http://localhost:5000/api/buscarCotizaciones/${id}/aprobar`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ruc_id }),
+    const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}`, {
+      method: "DELETE",
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Error al aprobar la cotización");
+
+    if (!response.ok) throw new Error(data.error || "Error al eliminar la cotización");
 
     alert(data.message);
-    buscarCotizaciones(); // Para refrescar la lista después de aprobar
+    buscarCotizaciones(); // Recarga la lista
   } catch (error) {
-    console.error("Error al aprobar cotización:", error);
-    alert("Error al aprobar la cotización.");
+    console.error("Error al eliminar cotización:", error);
+    alert("Hubo un error al eliminar la cotización.");
   }
 };
 
-
-
-  const eliminarCotizacion = (id) => {
-    console.log("Eliminando cotización con ID:", id);
-  };
-
   const editarCotizacion = (id) => {
-    navigate(`/cotizaciones/Editar/${id}`); // Redirige a la ruta de edición
+    navigate(`/cotizaciones/Editar/${id}`);
   };
-const ordendeTrabajo = (id) => {
-  navigate(`/ordendeTrabajo/crear/${id}`);
-};
 
+  const ordendeTrabajo = (id) => {
+    navigate(`/ordendeTrabajo/crear/${id}`);
+  };
 
-  
   return (
-    <div className="container">
-      <button className="back-button" onClick={() => navigate("/cotizaciones")}>
+    <div className="p-6 max-w-7xl mx-auto">
+      <button
+        className="mb-4 text-blue-600 hover:underline"
+        onClick={() => navigate("/cotizaciones")}
+      >
         ← Volver
       </button>
 
-      <h1 className="title">Cotizaciones</h1>
-      <h2 className="subtitle">Buscar</h2>
+      <h1 className="text-3xl font-bold mb-2">Cotizaciones</h1>
+      <h2 className="text-xl font-semibold mb-6">Buscar</h2>
 
-      <div className="ruc-selector">
-        <label htmlFor="ruc">Filtrar por RUC:</label>
+      <div className="mb-6">
+        <label htmlFor="ruc" className="block mb-2 font-medium text-gray-700">
+          Filtrar por RUC:
+        </label>
         <select
           id="ruc"
           value={rucSeleccionado}
           onChange={(e) => setRucSeleccionado(e.target.value)}
+          className="w-full border border-gray-300 rounded px-4 py-2"
         >
           <option value="">-- Seleccionar RUC --</option>
           {rucs.map((ruc) => (
@@ -106,58 +119,79 @@ const ordendeTrabajo = (id) => {
         </select>
       </div>
 
-      <table className="result-table">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Detalle</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Número de Cotización</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-  {resultados.length > 0 ? (
-    resultados.map((cot, index) => (
-      <tr key={`${cot.numero_cotizacion}-${index}`}>
-        <td>{cot.nombre_cliente}</td>
-        <td className="detalle">{cot.detalle}</td>
-        <td>{new Date(cot.fecha).toLocaleDateString()}</td>
-        <td>{cot.estado}</td>
-        <td>{cot.numero_cotizacion}</td>
-        <td className="acciones">
-        <button onClick={() => editarCotizacion(cot.cotizacion_id)}>Editar</button>
-          
-          <button
-  className="boton aprobar"
-  onClick={() => aprobarCotizacion(cot.cotizacion_id,rucSeleccionado)}
-  disabled={cot.estado === "aprobada"}
->
-  {cot.estado === "aprobada" ? "Aprobada" : "Aprobar"}
-</button>
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border border-gray-200">
+          <thead>
+            <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700">
+              <th className="p-3 border">Cliente</th>
+              <th className="p-3 border">Detalle</th>
+              <th className="p-3 border">Fecha</th>
+              <th className="p-3 border">Estado</th>
+              <th className="p-3 border">N° Cotización</th>
+              <th className="p-3 border">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {resultados.length > 0 ? (
+              resultados.map((cot, index) => (
+                <tr key={`${cot.numero_cotizacion}-${index}`} className="text-sm">
+                  <td className="p-3 border">{cot.nombre_cliente}</td>
+                  <td className="p-3 border">{cot.detalle}</td>
+                  <td className="p-3 border">
+                    {new Date(cot.fecha).toLocaleDateString()}
+                  </td>
+                  <td className="p-3 border">{cot.estado}</td>
+                  <td className="p-3 border">{cot.numero_cotizacion}</td>
+                  <td className="p-3 border space-y-1 flex flex-col">
+                    <button
+                      className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                      onClick={() => editarCotizacion(cot.cotizacion_id)}
+                    >
+                      Editar
+                    </button>
 
-          <button className="boton aprobar" onClick={() => ordendeTrabajo(cot.cotizacion_id)}>
-          Generar orden de trabajo
-          </button>
-          
-          <button className="boton eliminar" onClick={() => eliminarCotizacion(cot.cotizacion_id)}>
-            Eliminar
-          </button>
-        </td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td colSpan="6" style={{ textAlign: "center", padding: "1rem" }}>
-        {rucSeleccionado
-          ? "No se encontraron cotizaciones para este RUC."
-          : "Selecciona un RUC para ver las cotizaciones."}
-      </td>
-    </tr>
-  )}
-</tbody>
-      </table>
+                    <button
+                      className={`px-2 py-1 rounded text-white ${
+                        cot.estado === "aprobada"
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-green-500 hover:bg-green-600"
+                      }`}
+                      onClick={() =>
+                        aprobarCotizacion(cot.cotizacion_id, rucSeleccionado)
+                      }
+                      disabled={cot.estado === "aprobada"}
+                    >
+                      {cot.estado === "aprobada" ? "Aprobada" : "Aprobar"}
+                    </button>
+
+                    <button
+                      className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                      onClick={() => ordendeTrabajo(cot.cotizacion_id)}
+                    >
+                      Orden de Trabajo
+                    </button>
+
+                    <button
+                      className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                      onClick={() => eliminarCotizacion(cot.cotizacion_id)}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center py-6 text-gray-500">
+                  {rucSeleccionado
+                    ? "No se encontraron cotizaciones para este RUC."
+                    : "Selecciona un RUC para ver las cotizaciones."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
