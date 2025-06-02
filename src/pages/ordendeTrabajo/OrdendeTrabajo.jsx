@@ -54,8 +54,7 @@ useEffect(() => {
 }, [ordenData]);
 
 
-  // Aquí evitamos mostrar "Cargando..." si no hay cotización, ya que puede ser creación nueva
-  // Puedes controlar la UI con algo más sofisticado si quieres
+ 
   if (cotizacionId && !ordenData) {
     return <p>Cargando orden de trabajo...</p>;
   }
@@ -214,6 +213,7 @@ const editarOrdenTrabajo = async () => {
 
   <div className="flex flex-col basis-4/12">
     <p className="font-semibold text-gray-600">Concepto:</p>
+    
      <textarea
           className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-90 resize-none"
           rows={1}
