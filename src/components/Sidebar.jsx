@@ -18,7 +18,8 @@ const Sidebar = () => {
     default: [
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/dashboardGeneral", label: "Producción" },
+      { path: "/produccion", label: "Producción" },
+      { path: "/inventario", label: "Inventario" },
     ],
     cotizaciones: [
       { path: "/cotizaciones/crear", label: "Crear Cotización" },
@@ -27,6 +28,11 @@ const Sidebar = () => {
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
       { path: "/ordendeTrabajoBuscar", label: "Buscar Orden de Trabajo" },
+    ],
+    produccion: [
+      { path: "/dashboardGeneral", label: "En Produccion" },
+      { path: "/produccionDiaria", label: "Producción Diaria" },
+      { path: "/productosTerminados", label: "Productos Terminados" },
     ],
   };
 
@@ -38,6 +44,10 @@ const Sidebar = () => {
       return menus.cotizaciones;
     } else if (location.pathname.startsWith("/ordendeTrabajo")) {
       return menus.ordenTrabajo;
+    } else if (location.pathname.startsWith("/produccion") || 
+               location.pathname === "/dashboardGeneral" || 
+               location.pathname === "/productosTerminados") {
+      return menus.produccion;
     }
     return menus.default;
   };
