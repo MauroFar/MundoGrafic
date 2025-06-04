@@ -6,9 +6,8 @@ module.exports = function(client) {
   router.get("/", async (req, res) => {
     try {
       const result = await client.query(`
-        SELECT rucs.id, rucs.ruc, rucs.descripcion, ejecutivos.nombre AS ejecutivo
+        SELECT rucs.id, rucs.ruc, rucs.descripcion
         FROM rucs
-        LEFT JOIN ejecutivos ON rucs.ejecutivo_id = ejecutivos.id
       `);
       console.log(result.rows); 
       res.json(result.rows);

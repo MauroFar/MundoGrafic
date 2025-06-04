@@ -10,6 +10,7 @@ import Welcome from "./components/Welcome";
 // Cotizaciones
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
 import CotizacionesBuscar from "./pages/cotizaciones/CotizacionesBuscar";
+import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
 
 // Producción
 import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
@@ -29,12 +30,15 @@ import PageNotFound from "./pages/PageNotFound";
 const Layout = ({ children }) => {
   const location = useLocation();
   const isLoginPage = location.pathname === "/";
-  const hideSidebarPaths = 
-  ["/cotizaciones/crear",
+  const hideSidebarPaths = [
+    "/cotizaciones/crear",
     "/cotizaciones/buscar"
   ];
 
-  const shouldHideSidebar = hideSidebarPaths.includes(location.pathname);
+  // Esta es la nueva lógica que ocultará el sidebar para cualquier ID
+  const shouldHideSidebar = hideSidebarPaths.some(path => 
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
 
   return (
     <div className="flex">
@@ -80,10 +84,28 @@ function App() {
         />
 
         <Route
+          path="/cotizaciones/crear/:id"
+          element={
+            <Layout>
+              <CotizacionesCrear />
+            </Layout>
+          }
+        />
+
+        <Route
           path="/cotizaciones/buscar"
           element={
             <Layout>
               <CotizacionesBuscar />
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/cotizaciones/ver"
+          element={
+            <Layout>
+              <CotizacionesVer />
             </Layout>
           }
         />

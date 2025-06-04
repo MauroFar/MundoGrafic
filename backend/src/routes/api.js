@@ -8,6 +8,7 @@ const buscarCotizaciones = require("./buscarCotizaciones");
 const cotizacionesEditar = require("./cotizacionesEditar");
 const ordenTrabajoRoutes = require("./ordenTrabajo");
 const puppeteer = require("puppeteer");
+const ejecutivosRoutes = require("./ejecutivos");
 
 module.exports = (client) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
@@ -19,8 +20,8 @@ module.exports = (client) => {
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/buscarCotizaciones", buscarCotizaciones(client));
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
-    router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
-
+  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
+  router.use("/ejecutivos", ejecutivosRoutes(client));
 
   return router; // Devolvemos el router que agrupa todas las rutas
 };

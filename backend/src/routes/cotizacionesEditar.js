@@ -18,11 +18,12 @@ module.exports = function(client) {
   c.total,
   cl.nombre_cliente,
   e.nombre AS nombre_ejecutivo,
-  r.ruc 
+  r.ruc,
+  r.descripcion AS ruc_descripcion
 FROM cotizaciones c
 JOIN clientes cl ON c.cliente_id = cl.id
 JOIN rucs r ON c.ruc_id = r.id
-JOIN ejecutivos e ON r.ejecutivo_id = e.id
+JOIN ejecutivos e ON c.ejecutivo_id = e.id
 WHERE c.id = $1;
       `, [id]);
 

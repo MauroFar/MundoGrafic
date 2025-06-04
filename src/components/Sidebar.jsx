@@ -23,6 +23,7 @@ const Sidebar = () => {
     ],
     cotizaciones: [
       { path: "/cotizaciones/crear", label: "Crear Cotización" },
+      { path: "/cotizaciones/ver", label: "Ver Cotizaciones" },
       { path: "/cotizaciones/buscar", label: "Buscar Cotización" },
     ],
     ordenTrabajo: [
