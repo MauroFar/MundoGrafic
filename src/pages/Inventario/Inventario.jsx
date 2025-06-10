@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 const Inventario = () => {
   const [productos, setProductos] = useState([
     {

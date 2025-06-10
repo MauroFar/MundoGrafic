@@ -398,7 +398,7 @@ function CotizacionesCrear() {
             className="w-28 h-12 bg-green-500 hover:bg-green-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
             onClick={() => window.print()}
           >
-            <i className="fas fa-download"></i> Descargar/Imprimir
+            <i className="fas fa-download"></i> Imprimir
           </button>
 
           <button 

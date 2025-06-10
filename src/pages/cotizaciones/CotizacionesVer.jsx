@@ -37,10 +37,12 @@ function CotizacionesVer() {
 
       const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
       console.log('Realizando petición a:', url);
+      console.log('Filtros actuales:', filtros);
       
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       
@@ -55,6 +57,7 @@ function CotizacionesVer() {
       setCotizaciones(data);
     } catch (error) {
       console.error("Error al cargar cotizaciones:", error);
+      alert("Error al cargar las cotizaciones: " + error.message);
       setCotizaciones([]);
     } finally {
       setLoading(false);
@@ -85,22 +88,142 @@ function CotizacionesVer() {
   };
 
   const eliminarCotizacion = async (id) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar esta cotización?")) return;
+    // Validación inicial
+    if (!id) {
+      alert("ID de cotización no válido");
+      return;
+    }
+
+    // Confirmación con mensaje detallado
+    const confirmacion = window.confirm(
+      "¿Estás seguro de que deseas eliminar esta cotización?\nEsta acción no se puede deshacer."
+    );
+
+    if (!confirmacion) return;
 
     try {
-      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}`, {
+      // Mostrar indicador de carga
+      setLoading(true);
+
+      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        }
       });
 
-      if (response.ok) {
-        alert("Cotización eliminada con éxito");
-        cargarCotizaciones();
-      } else {
-        throw new Error("Error al eliminar la cotización");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Error al eliminar la cotización");
       }
+
+      // Mostrar mensaje de éxito
+      alert("Cotización eliminada exitosamente");
+      
+      // Recargar la lista de cotizaciones
+      await cargarCotizaciones();
     } catch (error) {
-      console.error("Error:", error);
-      alert("Error al eliminar la cotización");
+      console.error("Error al eliminar la cotización:", error);
+      alert(error.message || "Ocurrió un error al eliminar la cotización");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const descargarPDF = async (id) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al descargar el PDF');
+      }
+
+      // Crear un blob con la respuesta
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Crear un enlace temporal y hacer clic en él
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cotizacion-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpiar
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al descargar el PDF');
+    }
+  };
+
+  const enviarCorreo = async (id) => {
+    try {
+      setLoading(true);
+      
+      // 1. Primero generamos el PDF en el servidor
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al generar el PDF');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error('Error al generar el PDF en el servidor');
+      }
+
+      // 2. Obtener información de la cotización para personalizar el asunto
+      const cotizacion = cotizaciones.find(c => c.id === id);
+      const numeroFormateado = cotizacion ? cotizacion.numero_cotizacion : id;
+      
+      // 3. Abrir el cliente de correo con un mensaje personalizado
+      const subject = encodeURIComponent(`Cotización MUNDOGRAFIC #${numeroFormateado}`);
+      const body = encodeURIComponent(
+        "Estimado cliente,\n\n" +
+        "Adjunto encontrará la cotización solicitada.\n\n" +
+        "Saludos cordiales,\n" +
+        "Equipo MUNDOGRAFIC"
+      );
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+
+      // 4. Descargar el PDF automáticamente
+      const pdfResponse = await fetch(`${apiUrl}${data.filePath}`);
+      if (!pdfResponse.ok) {
+        throw new Error('Error al descargar el PDF');
+      }
+      const blob = await pdfResponse.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // 5. Mostrar instrucciones al usuario
+      setTimeout(() => {
+        alert(
+          "Se ha abierto su cliente de correo y se ha descargado el PDF.\n\n" +
+          "Por favor:\n" +
+          "1. Localice el PDF descargado\n" +
+          "2. Adjúntelo al correo que se acaba de abrir\n" +
+          "3. Complete la dirección de correo del destinatario"
+        );
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al preparar el correo: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -248,13 +371,13 @@ function CotizacionesVer() {
                         Eliminar
                       </button>
                       <button
-                     
+                        onClick={() => descargarPDF(cotizacion.id)}
                         className="text-green-600 hover:text-green-900"
                       >
                         Descargar PDF
                       </button>
                       <button
-              
+                        onClick={() => enviarCorreo(cotizacion.id)}
                         className="text-purple-600 hover:text-purple-900"
                       >
                         Enviar al correo
