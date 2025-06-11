@@ -6,6 +6,26 @@ const puppeteer = require('puppeteer');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Configurar el transporter de Nodemailer
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
+
+// Verificar la conexión del transporter
+transporter.verify(function(error, success) {
+  if (error) {
+    console.log("Error al configurar el correo:", error);
+  } else {
+    console.log("Servidor de correo listo para enviar mensajes");
+  }
+});
+
 const CotizacionDatos = (client) => {
   // Ruta para crear una cotización y guardar todos los datos del cliente
   router.post("/", async (req, res) => {
@@ -1012,80 +1032,86 @@ const CotizacionDatos = (client) => {
     }
   });
 
-  // Ruta para enviar cotización por correo
-  router.post("/:id/enviar-correo", async (req, res) => {
-    const { id } = req.params;
-    const { email, pdfPath } = req.body;
-
-    if (!email || !pdfPath) {
-      return res.status(400).json({ error: "El correo electrónico y la ruta del PDF son requeridos" });
-    }
-
+  // Ruta para enviar correo con PDF adjunto
+  router.post('/:id/enviar-correo', async (req, res) => {
     try {
+      const { id } = req.params;
+      const { email } = req.body;
+
+      // Verificar que el correo fue proporcionado
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'El correo electrónico es requerido'
+        });
+      }
+
       // Obtener información de la cotización
       const cotizacionQuery = `
         SELECT 
           c.numero_cotizacion,
-          cl.nombre_cliente
+          cl.nombre_cliente,
+          c.fecha
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         WHERE c.id = $1
       `;
       
       const cotizacionResult = await client.query(cotizacionQuery, [id]);
-      if (cotizacionResult.rows.length === 0) {
-        return res.status(404).json({ error: "Cotización no encontrada" });
-      }
       
-      const { numero_cotizacion, nombre_cliente } = cotizacionResult.rows[0];
-
-      // Construir la ruta completa del archivo PDF
-      const fullPdfPath = path.join(__dirname, '../../', pdfPath);
-
-      // Verificar si el archivo existe
-      try {
-        await fs.access(fullPdfPath);
-      } catch (error) {
-        return res.status(404).json({ error: "El archivo PDF no se encuentra" });
+      if (cotizacionResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cotización no encontrada'
+        });
       }
 
-      // Configurar el transporte de correo
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        secure: true,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      });
+      const cotizacion = cotizacionResult.rows[0];
 
-      // Enviar el correo con el PDF adjunto
-      await transporter.sendMail({
-        from: `"MUNDOGRAFIC" <${process.env.SMTP_USER}>`,
+      // Construir la ruta al archivo PDF
+      const pdfDir = path.join(__dirname, '../../storage/pdfs');
+      const files = await fs.readdir(pdfDir);
+      const pdfFile = files.find(f => f.includes(`cotizacion-${cotizacion.numero_cotizacion}`));
+
+      if (!pdfFile) {
+        return res.status(404).json({
+          success: false,
+          message: 'PDF no encontrado. Por favor, genere el PDF primero.'
+        });
+      }
+
+      const pdfPath = path.join(pdfDir, pdfFile);
+
+      // Configurar el correo
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
         to: email,
-        subject: `Cotización #${numero_cotizacion} - MUNDOGRAFIC`,
-        html: `
-          <h1>Cotización MUNDOGRAFIC</h1>
-          <p>Estimado/a ${nombre_cliente},</p>
-          <p>Adjunto encontrará la cotización solicitada.</p>
-          <p>Gracias por confiar en MUNDOGRAFIC.</p>
-          <br>
-          <p>Saludos cordiales,</p>
-          <p>Equipo MUNDOGRAFIC</p>
-        `,
-        attachments: [
-          {
-            filename: `cotizacion-${numero_cotizacion}.pdf`,
-            path: fullPdfPath
-          }
-        ]
+        subject: `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
+        text: `Estimado/a ${cotizacion.nombre_cliente},\n\n` +
+              `Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.\n\n` +
+              `Saludos cordiales,\n` +
+              `Equipo MUNDOGRAFIC`,
+        attachments: [{
+          filename: pdfFile,
+          path: pdfPath
+        }]
+      };
+
+      // Enviar el correo
+      await transporter.sendMail(mailOptions);
+
+      // Responder al cliente
+      res.json({
+        success: true,
+        message: 'Correo enviado exitosamente'
       });
 
-      res.json({ message: "Correo enviado exitosamente" });
     } catch (error) {
-      console.error("Error al enviar el correo:", error);
-      res.status(500).json({ error: "Error al enviar el correo: " + error.message });
+      console.error('Error al enviar correo:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al enviar el correo: ' + error.message
+      });
     }
   });
 

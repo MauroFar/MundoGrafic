@@ -132,96 +132,76 @@ function CotizacionesVer() {
 
   const descargarPDF = async (id) => {
     try {
+      setLoading(true);
+      
+      // 1. Obtener la información del PDF que ya está guardado
       const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
-        method: 'GET',
+        method: 'GET'
       });
 
       if (!response.ok) {
-        throw new Error('Error al descargar el PDF');
+        throw new Error('Error al obtener la información del PDF');
       }
 
-      // Crear un blob con la respuesta
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const data = await response.json();
       
-      // Crear un enlace temporal y hacer clic en él
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cotizacion-${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Limpiar
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      if (!data.success || !data.filePath) {
+        throw new Error('No se encontró el archivo PDF');
+      }
+
+      // 2. Abrir el PDF en una nueva pestaña (esto permitirá descargarlo)
+      window.open(`${apiUrl}${data.filePath}`, '_blank');
+
+      return true;
     } catch (error) {
       console.error('Error:', error);
-      alert('Error al descargar el PDF');
+      alert('Error al descargar el PDF: ' + error.message);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
   const enviarCorreo = async (id) => {
     try {
       setLoading(true);
-      
-      // 1. Primero generamos el PDF en el servidor
-      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
-        method: 'GET',
-      });
 
-      if (!response.ok) {
-        throw new Error('Error al generar el PDF');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error('Error al generar el PDF en el servidor');
-      }
-
-      // 2. Obtener información de la cotización para personalizar el asunto
+      // Obtener información de la cotización
       const cotizacion = cotizaciones.find(c => c.id === id);
       const numeroFormateado = cotizacion ? cotizacion.numero_cotizacion : id;
       
-      // 3. Abrir el cliente de correo con un mensaje personalizado
-      const subject = encodeURIComponent(`Cotización MUNDOGRAFIC #${numeroFormateado}`);
-      const body = encodeURIComponent(
-        "Estimado cliente,\n\n" +
-        "Adjunto encontrará la cotización solicitada.\n\n" +
-        "Saludos cordiales,\n" +
-        "Equipo MUNDOGRAFIC"
-      );
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-
-      // 4. Descargar el PDF automáticamente
-      const pdfResponse = await fetch(`${apiUrl}${data.filePath}`);
-      if (!pdfResponse.ok) {
-        throw new Error('Error al descargar el PDF');
+      // Solicitar el correo del destinatario
+      const emailDestinatario = prompt("Por favor, ingresa el correo electrónico del destinatario:");
+      
+      if (!emailDestinatario) {
+        throw new Error('Se requiere un correo electrónico válido');
       }
-      const blob = await pdfResponse.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = data.fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
 
-      // 5. Mostrar instrucciones al usuario
-      setTimeout(() => {
-        alert(
-          "Se ha abierto su cliente de correo y se ha descargado el PDF.\n\n" +
-          "Por favor:\n" +
-          "1. Localice el PDF descargado\n" +
-          "2. Adjúntelo al correo que se acaba de abrir\n" +
-          "3. Complete la dirección de correo del destinatario"
-        );
-      }, 1000);
+      // Enviar la solicitud al backend para enviar el correo
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/enviar-correo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: emailDestinatario,
+          asunto: `Cotización MUNDOGRAFIC #${numeroFormateado}`,
+          mensaje: `Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al enviar el correo');
+      }
+
+      const result = await response.json();
+      
+      alert("✅ Correo enviado exitosamente a " + emailDestinatario);
 
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error al preparar el correo: ' + error.message);
+      console.error('Error detallado:', error);
+      alert('Error al enviar el correo: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -242,7 +222,7 @@ function CotizacionesVer() {
 
       {/* Filtros Simplificados */}
       <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N° o Cliente</label>
             <input
@@ -254,24 +234,24 @@ function CotizacionesVer() {
               placeholder="Número de cotización o nombre del cliente"
             />
           </div>
-          <div>
+          <div className="flex flex-col items-start">
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>
             <input
               type="date"
               name="fechaDesde"
               value={filtros.fechaDesde}
               onChange={handleFiltroChange}
-              className="w-[150px] border border-gray-300 rounded-md p-2"
+              style={{ width: '140px' }}
+              className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Hasta</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Hasta</label>
             <input
               type="date"
               name="fechaHasta"
               value={filtros.fechaHasta}
               onChange={handleFiltroChange}
-              className="w-[150px] border border-gray-300 rounded-md p-2"
+              style={{ width: '140px' }}
+              className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
