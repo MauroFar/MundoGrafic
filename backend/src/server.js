@@ -1,3 +1,5 @@
+const { Client } = require("pg");
+
 const isProduction = process.env.NODE_ENV === "production";
 
 const client = new Client(
