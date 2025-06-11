@@ -389,7 +389,7 @@ function CotizacionesCrear() {
 
           <button
             className="w-28 h-12 bg-blue-500 hover:bg-blue-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={() => navigate("/Dashboard")}
+            onClick={() => navigate("/Cotizaciones/Ver")}
           >
             <i className="fas fa-search"></i> Buscar
           </button>

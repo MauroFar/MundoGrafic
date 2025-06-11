@@ -1,383 +1,391 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+  import React, { useState, useEffect } from "react";
+  import { useNavigate } from "react-router-dom";
 
-function CotizacionesVer() {
-  const apiUrl = import.meta.env.VITE_API_URL;
-  const navigate = useNavigate();
-  
-  const [cotizaciones, setCotizaciones] = useState([]);
-  const [filtros, setFiltros] = useState({
-    busqueda: "",
-    fechaDesde: "",
-    fechaHasta: "",
-  });
-  const [loading, setLoading] = useState(true);
-
-  // Función auxiliar para formatear el total de manera segura
-  const formatearTotal = (total) => {
-    if (total === null || total === undefined) return "0.00";
-    const numero = typeof total === 'string' ? parseFloat(total) : total;
-    return isNaN(numero) ? "0.00" : numero.toFixed(2);
-  };
-
-  // Cargar las últimas 5 cotizaciones al montar el componente
-  useEffect(() => {
-    console.log('Componente montado, cargando cotizaciones...');
-    console.log('API URL:', apiUrl);
-    cargarCotizaciones();
-  }, []);
-
-  const cargarCotizaciones = async () => {
-    setLoading(true);
-    try {
-      const queryParams = new URLSearchParams();
-      if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
-      if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
-      if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
-
-      const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
-      console.log('Realizando petición a:', url);
-      console.log('Filtros actuales:', filtros);
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      
-      console.log('Datos recibidos:', data);
-      
-      if (!Array.isArray(data)) {
-        console.error('Los datos recibidos no son un array:', data);
-        setCotizaciones([]);
-        return;
-      }
-      
-      setCotizaciones(data);
-    } catch (error) {
-      console.error("Error al cargar cotizaciones:", error);
-      alert("Error al cargar las cotizaciones: " + error.message);
-      setCotizaciones([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFiltroChange = (e) => {
-    const { name, value } = e.target;
-    setFiltros(prev => ({ ...prev, [name]: value }));
-  };
-
-  const aplicarFiltros = (e) => {
-    e.preventDefault();
-    cargarCotizaciones();
-  };
-
-  const limpiarFiltros = () => {
-    setFiltros({
+  function CotizacionesVer() {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const navigate = useNavigate();
+    
+    const [cotizaciones, setCotizaciones] = useState([]);
+    const [filtros, setFiltros] = useState({
       busqueda: "",
       fechaDesde: "",
       fechaHasta: "",
     });
-    cargarCotizaciones();
-  };
+    const [loading, setLoading] = useState(true);
 
-  const editarCotizacion = (id) => {
-    navigate(`/cotizaciones/crear/${id}`);
-  };
+    // Función auxiliar para formatear el total de manera segura
+    const formatearTotal = (total) => {
+      if (total === null || total === undefined) return "0.00";
+      const numero = typeof total === 'string' ? parseFloat(total) : total;
+      return isNaN(numero) ? "0.00" : numero.toFixed(2);
+    };
 
-  const eliminarCotizacion = async (id) => {
-    // Validación inicial
-    if (!id) {
-      alert("ID de cotización no válido");
-      return;
-    }
+    // Cargar las últimas 5 cotizaciones al montar el componente
+    useEffect(() => {
+      console.log('Componente montado, cargando cotizaciones...');
+      console.log('API URL:', apiUrl);
+      cargarCotizaciones();
+    }, []);
 
-    // Confirmación con mensaje detallado
-    const confirmacion = window.confirm(
-      "¿Estás seguro de que deseas eliminar esta cotización?\nEsta acción no se puede deshacer."
-    );
-
-    if (!confirmacion) return;
-
-    try {
-      // Mostrar indicador de carga
+    const cargarCotizaciones = async () => {
       setLoading(true);
+      try {
+        const queryParams = new URLSearchParams();
+        if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
+        if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
+        if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
 
-      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
+        const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
+        console.log('Realizando petición a:', url);
+        console.log('Filtros actuales:', filtros);
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
+        const data = await response.json();
+        
+        console.log('Datos recibidos:', data);
+        
+        if (!Array.isArray(data)) {
+          console.error('Los datos recibidos no son un array:', data);
+          setCotizaciones([]);
+          return;
+        }
+        
+        setCotizaciones(data);
+      } catch (error) {
+        console.error("Error al cargar cotizaciones:", error);
+        alert("Error al cargar las cotizaciones: " + error.message);
+        setCotizaciones([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleFiltroChange = (e) => {
+      const { name, value } = e.target;
+      setFiltros(prev => ({ ...prev, [name]: value }));
+    };
+
+    const aplicarFiltros = (e) => {
+      e.preventDefault();
+      cargarCotizaciones();
+    };
+
+    const limpiarFiltros = () => {
+      setFiltros({
+        busqueda: "",
+        fechaDesde: "",
+        fechaHasta: "",
       });
+      cargarCotizaciones();
+    };
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Error al eliminar la cotización");
+    const editarCotizacion = (id) => {
+      navigate(`/cotizaciones/crear/${id}`);
+    };
+
+    const eliminarCotizacion = async (id) => {
+      // Validación inicial
+      if (!id) {
+        alert("ID de cotización no válido");
+        return;
       }
 
-      // Mostrar mensaje de éxito
-      alert("Cotización eliminada exitosamente");
-      
-      // Recargar la lista de cotizaciones
-      await cargarCotizaciones();
-    } catch (error) {
-      console.error("Error al eliminar la cotización:", error);
-      alert(error.message || "Ocurrió un error al eliminar la cotización");
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Confirmación con mensaje detallado
+      const confirmacion = window.confirm(
+        "¿Estás seguro de que deseas eliminar esta cotización?\nEsta acción no se puede deshacer."
+      );
 
-  const descargarPDF = async (id) => {
-    try {
-      setLoading(true);
-      
-      // 1. Obtener la información del PDF que ya está guardado
-      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
-        method: 'GET'
-      });
+      if (!confirmacion) return;
 
-      if (!response.ok) {
-        throw new Error('Error al obtener la información del PDF');
+      try {
+        // Mostrar indicador de carga
+        setLoading(true);
+
+        const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.message || "Error al eliminar la cotización");
+        }
+
+        // Mostrar mensaje de éxito
+        alert("Cotización eliminada exitosamente");
+        
+        // Recargar la lista de cotizaciones
+        await cargarCotizaciones();
+      } catch (error) {
+        console.error("Error al eliminar la cotización:", error);
+        alert(error.message || "Ocurrió un error al eliminar la cotización");
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const data = await response.json();
-      
-      if (!data.success || !data.filePath) {
-        throw new Error('No se encontró el archivo PDF');
+    const descargarPDF = async (id) => {
+      try {
+        setLoading(true);
+        
+        // 1. Obtener la información del PDF que ya está guardado
+        const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
+          method: 'GET'
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al obtener la información del PDF');
+        }
+
+        const data = await response.json();
+        
+        if (!data.success || !data.filePath) {
+          throw new Error('No se encontró el archivo PDF');
+        }
+
+        // 2. Abrir el PDF en una nueva pestaña (esto permitirá descargarlo)
+        window.open(`${apiUrl}${data.filePath}`, '_blank');
+
+        return true;
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al descargar el PDF: ' + error.message);
+        return false;
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // 2. Abrir el PDF en una nueva pestaña (esto permitirá descargarlo)
-      window.open(`${apiUrl}${data.filePath}`, '_blank');
+    const enviarCorreo = async (id) => {
+      try {
+        setLoading(true);
 
-      return true;
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al descargar el PDF: ' + error.message);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Obtener información de la cotización
+        const cotizacion = cotizaciones.find(c => c.id === id);
+        const numeroFormateado = cotizacion ? cotizacion.numero_cotizacion : id;
+        
+        // Solicitar el correo del destinatario
+        const emailDestinatario = prompt("Por favor, ingresa el correo electrónico del destinatario:");
+        
+        if (!emailDestinatario) {
+          throw new Error('Se requiere un correo electrónico válido');
+        }
 
-  const enviarCorreo = async (id) => {
-    try {
-      setLoading(true);
+        // Enviar la solicitud al backend para enviar el correo
+        const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/enviar-correo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: emailDestinatario,
+            asunto: `Cotización MUNDOGRAFIC #${numeroFormateado}`,
+            mensaje: `Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`
+          })
+        });
 
-      // Obtener información de la cotización
-      const cotizacion = cotizaciones.find(c => c.id === id);
-      const numeroFormateado = cotizacion ? cotizacion.numero_cotizacion : id;
-      
-      // Solicitar el correo del destinatario
-      const emailDestinatario = prompt("Por favor, ingresa el correo electrónico del destinatario:");
-      
-      if (!emailDestinatario) {
-        throw new Error('Se requiere un correo electrónico válido');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Error al enviar el correo');
+        }
+
+        const result = await response.json();
+        
+        alert("✅ Correo enviado exitosamente a " + emailDestinatario);
+
+      } catch (error) {
+        console.error('Error detallado:', error);
+        alert('Error al enviar el correo: ' + error.message);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Enviar la solicitud al backend para enviar el correo
-      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/enviar-correo`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: emailDestinatario,
-          asunto: `Cotización MUNDOGRAFIC #${numeroFormateado}`,
-          mensaje: `Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al enviar el correo');
-      }
-
-      const result = await response.json();
-      
-      alert("✅ Correo enviado exitosamente a " + emailDestinatario);
-
-    } catch (error) {
-      console.error('Error detallado:', error);
-      alert('Error al enviar el correo: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="p-6 max-w-7xl mx-auto bg-white rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate("/cotizaciones")}
-          className="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          <span className="mr-2">←</span> Volver
-        </button>
-        <h1 className="text-3xl font-bold text-gray-800">Ver Cotizaciones</h1>
-        <div></div>
-      </div>
-
-      {/* Filtros Simplificados */}
-      <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N° o Cliente</label>
-            <input
-              type="text"
-              name="busqueda"
-              value={filtros.busqueda}
-              onChange={handleFiltroChange}
-              className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="Número de cotización o nombre del cliente"
-            />
-          </div>
-          <div className="flex flex-col items-start">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>
-            <input
-              type="date"
-              name="fechaDesde"
-              value={filtros.fechaDesde}
-              onChange={handleFiltroChange}
-              style={{ width: '140px' }}
-              className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Hasta</label>
-            <input
-              type="date"
-              name="fechaHasta"
-              value={filtros.fechaHasta}
-              onChange={handleFiltroChange}
-              style={{ width: '140px' }}
-              className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
+    return (
+      <div className="p-6 w-full max-w-screen-2xl mx-auto bg-white rounded-lg shadow-lg">
+        <div className="flex justify-between items-center mb-6">
           <button
-            type="button"
-            onClick={limpiarFiltros}
-            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            onClick={() => navigate("/cotizaciones")}
+            className="text-blue-600 hover:text-blue-800 flex items-center"
           >
-            Limpiar Filtros
+            <span className="mr-2">←</span> Volver
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Buscar
-          </button>
+          <h1 className="text-3xl font-bold text-gray-800">Ver Cotizaciones</h1>
+          <div></div>
         </div>
-      </form>
 
-      {/* Tabla de Cotizaciones */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="text-center py-4">Cargando...</div>
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  N° Cotización
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  RUC
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ejecutivo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {cotizaciones.length > 0 ? (
-                cotizaciones.map((cotizacion) => (
-                  <tr key={cotizacion.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {cotizacion.numero_cotizacion}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {cotizacion.ruc}
-                    </td>
-                    <td className="px-6 py-4">{cotizacion.nombre_cliente}</td>
-                    <td className="px-6 py-4">{cotizacion.nombre_ejecutivo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(cotizacion.fecha).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          cotizacion.estado === "aprobada"
-                            ? "bg-green-100 text-green-800"
-                            : cotizacion.estado === "rechazada"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {cotizacion.estado}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      ${formatearTotal(cotizacion.total)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+        {/* Filtros Simplificados */}
+        <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N° o Cliente</label>
+              <input
+                type="text"
+                name="busqueda"
+                value={filtros.busqueda}
+                onChange={handleFiltroChange}
+                className="w-full border border-gray-300 rounded-md p-2"
+                placeholder="Número de cotización o nombre del cliente"
+              />
+            </div>
+            <div className="flex flex-col items-start">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>
+              <input
+                type="date"
+                name="fechaDesde"
+                value={filtros.fechaDesde}
+                onChange={handleFiltroChange}
+                style={{ width: '140px' }}
+                className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Hasta</label>
+              <input
+                type="date"
+                name="fechaHasta"
+                value={filtros.fechaHasta}
+                onChange={handleFiltroChange}
+                style={{ width: '140px' }}
+                className="border border-gray-300 rounded-md p-2 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Limpiar Filtros
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Buscar
+            </button>
+          </div>
+        </form>
+
+        {/* Tabla de Cotizaciones */}
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="text-center py-4">Cargando...</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    N° Cotización
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    RUC
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ejecutivo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {cotizaciones.length > 0 ? (
+                  cotizaciones.map((cotizacion) => (
+                    <tr key={cotizacion.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {cotizacion.numero_cotizacion}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {cotizacion.ruc}
+                      </td>
+                      <td className="px-6 py-4">{cotizacion.nombre_cliente}</td>
+                      <td className="px-6 py-4">{cotizacion.nombre_ejecutivo}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {new Date(cotizacion.fecha).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            cotizacion.estado === "aprobada"
+                              ? "bg-green-100 text-green-800"
+                              : cotizacion.estado === "rechazada"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {cotizacion.estado}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        ${formatearTotal(cotizacion.total)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
-                        onClick={() => editarCotizacion(cotizacion.id)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => eliminarCotizacion(cotizacion.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Eliminar
-                      </button>
-                      <button
-                        onClick={() => descargarPDF(cotizacion.id)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Descargar PDF
-                      </button>
-                      <button
-                        onClick={() => enviarCorreo(cotizacion.id)}
-                        className="text-purple-600 hover:text-purple-900"
-                      >
-                        Enviar al correo
-                      </button>
+                          onClick={() => eliminarCotizacion(cotizacion.id)}
+                          className="border border-red-600 text-red-600 px-4 py-2 rounded hover:bg-red-600  hover:text-white transition "
+                        >
+                          Eliminar
+                        </button>
+                        <button
+                          onClick={() => editarCotizacion(cotizacion.id)}
+                          className="border border-blue-500 text-blue-600 px-4 py-2 rounded hover:bg-blue-600 hover:text-white transition"
+                        >
+                          Editar
+                        </button>
+                          <button
+                        
+                            className="border border-gray-600 text-gray-600 px-4 py-2 rounded hover:bg-gray-600  hover:text-white transition "
+                          >
+                            Aprobar
+                          </button>
+                    
+                        <button
+                          onClick={() => descargarPDF(cotizacion.id)}
+                          className="border border-green-600 text-green-600 px-4 py-2 rounded hover:bg-green-600  hover:text-white transition"
+                        >
+                          Descargar PDF
+                        </button>
+                        <button
+                          onClick={() => enviarCorreo(cotizacion.id)}
+                          className="border border-purple-600 text-purple-600 px-4 py-2 rounded
+                          hover:bg-purple-600 hover:text-white transition"
+  >
+                          Enviar al correo
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                      No se encontraron cotizaciones
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                    No se encontraron cotizaciones
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-export default CotizacionesVer; 
+  export default CotizacionesVer; 
