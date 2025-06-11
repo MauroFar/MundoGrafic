@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Ignora todos los archivos dentro de la carpeta de PDFs generados
+backend/storage/pdfs/*
+
+# Pero no ignores el archivo de control para que Git mantenga la carpeta
+!backend/sstorage/pdfs/.gitkeep

@@ -1,18 +1,14 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { cn } from "../lib/utils"; // Ajusta la ruta si es necesario
+import { cn } from "../lib/utils";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    navigate("/");
-  };  
+  const handleLogout = () => navigate("/");
 
-  const handleRedirect = (path) => {
-    navigate(path);
-  };
+  const handleRedirect = (path) => navigate(path);
 
   const menus = {
     default: [
@@ -28,10 +24,10 @@ const Sidebar = () => {
     ],
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
-      { path: "/ordendeTrabajoBuscar", label: "Buscar Orden de Trabajo" },
+      { path: "/ordendeTrabajo/buscar", label: "Buscar Orden de Trabajo" },
     ],
     produccion: [
-      { path: "/dashboardGeneral", label: "En Produccion" },
+      { path: "/dashboardGeneral", label: "En Producción" },
       { path: "/produccionDiaria", label: "Producción Diaria" },
       { path: "/productosTerminados", label: "Productos Terminados" },
     ],
@@ -40,34 +36,47 @@ const Sidebar = () => {
   const noBackButtonPaths = ["/welcome", "/"];
   const showBackButton = !noBackButtonPaths.includes(location.pathname);
 
+  const isSubmenu = () => {
+    return (
+      location.pathname.startsWith("/cotizaciones") ||
+      location.pathname.startsWith("/ordendeTrabajo") ||
+      location.pathname.startsWith("/produccion") ||
+      location.pathname === "/dashboardGeneral" ||
+      location.pathname === "/productosTerminados"
+    );
+  };
+
   const getMenuItems = () => {
-    if (location.pathname.startsWith("/cotizaciones")) {
-      return menus.cotizaciones;
-    } else if (location.pathname.startsWith("/ordendeTrabajo")) {
-      return menus.ordenTrabajo;
-    } else if (location.pathname.startsWith("/produccion") || 
-               location.pathname === "/dashboardGeneral" || 
-               location.pathname === "/productosTerminados") {
-      return menus.produccion;
-    }
+    if (location.pathname.startsWith("/cotizaciones")) return menus.cotizaciones;
+    if (location.pathname.startsWith("/ordendeTrabajo")) return menus.ordenTrabajo;
+    if (
+      location.pathname.startsWith("/produccion") ||
+      location.pathname === "/dashboardGeneral" ||
+      location.pathname === "/productosTerminados"
+    ) return menus.produccion;
     return menus.default;
   };
 
   const menuItems = getMenuItems();
+  const inSubmenu = isSubmenu();
 
   return (
     <aside className="bg-gray-900 text-white w-full sm:w-64 min-h-screen p-4 flex flex-col justify-between shadow-lg">
       <div>
-        <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">Menú</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">
+          {inSubmenu ? "Opciones" : "Menú"}
+        </h2>
+
+        {/* Render solo el menú activo */}
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.path}>
               <button
                 onClick={() => handleRedirect(item.path)}
                 className={cn(
-                  "w-full text-left px-4 py-2 rounded-md transition-colors duration-200",
+                  "w-full text-left px-4 py-2 rounded-md transition-all duration-200",
                   location.pathname === item.path
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-600 text-white border-l-4 border-blue-400"
                     : "hover:bg-gray-700 text-gray-300"
                 )}
               >
@@ -77,12 +86,13 @@ const Sidebar = () => {
           ))}
         </ul>
 
-        {showBackButton && (
+        {/* Botón para volver al menú principal si estás en un submenú */}
+        {inSubmenu && (
           <button
             className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md"
             onClick={() => navigate("/welcome")}
           >
-            ⬅️ Regresar
+            ⬅️ Volver al Menú Principal
           </button>
         )}
       </div>
