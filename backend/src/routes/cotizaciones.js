@@ -979,55 +979,42 @@ const CotizacionDatos = (client) => {
       await page.setContent(htmlContent);
       console.log('Contenido HTML establecido');
       
-      // Configuramos el PDF para asegurar que todo el contenido sea visible
-      console.log('Generando PDF...');
+      // Generar el PDF
       await page.pdf({
         path: pdfPath,
         format: 'A4',
-        margin: {
-          top: '5mm',
-          right: '5mm',
-          bottom: '5mm',
-          left: '5mm'
-        },
         printBackground: true,
-        scale: 0.98 // Ajustamos ligeramente la escala para asegurar que todo quepa
+        margin: {
+          top: '15mm',
+          right: '15mm',
+          bottom: '15mm',
+          left: '15mm'
+        }
       });
       console.log('PDF generado exitosamente');
 
-      await browser.close();
-      browser = null;
-      console.log('Navegador cerrado');
+      // 6. Enviar el archivo PDF al cliente
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+      res.sendFile(pdfPath);
 
-      // Verificar que el archivo se creó correctamente
-      try {
-        await fs.access(pdfPath);
-        console.log('Archivo PDF verificado');
-      } catch (error) {
-        console.error('Error al verificar el archivo PDF:', error);
-        throw new Error('El archivo PDF no se generó correctamente');
-      }
-
-      // 6. Enviar la ruta del archivo como respuesta
-      const response = { 
-        success: true,
-        filePath: `/storage/pdfs/${fileName}`,
-        fileName: fileName
-      };
-      console.log('Enviando respuesta:', response);
-      res.json(response);
+      // 7. Limpiar el archivo después de enviarlo
+      setTimeout(async () => {
+        try {
+          await fs.unlink(pdfPath);
+          console.log('Archivo PDF temporal eliminado');
+        } catch (error) {
+          console.error('Error al eliminar archivo temporal:', error);
+        }
+      }, 1000);
 
     } catch (error) {
-      console.error("Error detallado al generar PDF:", error);
-      res.status(500).json({ error: "Error al generar el PDF: " + error.message });
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar el PDF: ' + error.message });
     } finally {
       if (browser) {
-        try {
-          await browser.close();
-          console.log('Navegador cerrado en finally');
-        } catch (err) {
-          console.error("Error al cerrar el navegador:", err);
-        }
+        await browser.close();
+        console.log('Navegador cerrado');
       }
     }
   });
