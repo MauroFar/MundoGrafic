@@ -1,51 +1,75 @@
-/*Boton Regresar*/
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Ensure consistent box model */
+}
+
+.hoja-general {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh; /* Ensure it takes full viewport height */
+  padding: 20px; /* General padding around the entire sheet */
+  background-color: #f0f0f0; /* Light background for the overall page */
+}
+
 /* 🔹 Botón de Regresar */
 .btnadministracion {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem; /* Reduced gap */
   flex-direction: column;
-  position: fixed; /* 🔹 Se mantiene fijo en la pantalla */
-  top: 20px; /* 🔹 Distancia desde la parte superior */
-  left: 20px; /* 🔹 Distancia desde la parte izquierda */
-  z-index: 1000; /* 🔹 Asegura que esté sobre otros elementos */
+  position: fixed;
+  top: 10px; /* Closer to the top */
+  left: 10px; /* Closer to the left */
+  z-index: 1000;
   background-color: white;
-  padding: 1rem;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-width: 250px;
+  padding: 0.5rem; /* Reduced padding */
+  border-radius: 8px; /* Slightly smaller border-radius */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Lighter shadow */
+  max-width: 180px; /* Reduced max-width */
 }
 .btnadministracion button {
-  background-color: aqua;
+  background-color: #e0e0e0; /* Neutral button background */
+  color: #333;
+  font-size: 14px; /* Slightly smaller font */
+  padding: 8px 12px; /* Reduced padding */
+  border-radius: 6px; /* Smaller border-radius */
+  transition: all 0.2s ease-in-out; /* Smooth transition */
 }
 
-.btn-regresar:hover {
-  background-color: #0056b3; /* 🔹 Azul más oscuro al pasar el mouse */
+.btnadministracion button:hover {
+  background-color: #d0d0d0;
 }
 
 /* ✅ Contenedor Principal */
 .cotizaciones-container {
-  width: 297mm;
+  width: 210mm; /* Ancho exacto de A4 */
+  min-height: 297mm; /* Alto exacto de A4 */
   display: flex;
   flex-direction: column;
-  border: 2px solid black;
-  padding: 50px;
-  align-items: center; /* Centrar horizontalmente */
+  padding: 10mm; /* Adjusted padding, a bit more than 5mm for A4 layout */
   background-color: white;
-  margin-left: 150px;
-  justify-content: space-between; /* 🔹 Mantiene el pie de página abajo */
-  min-height: 1610px;
-
-  
+  margin: 20px auto; /* Centrar y añadir margen superior/inferior para separación de hoja-general */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for the A4 sheet */
+  box-sizing: border-box;
 }
 
 /*************************** ✅ Encabezado General ****************************************/
-.encabezado-content {
+.encabezado-container {
+  width: 100%;
   display: flex;
-  justify-content: space-between; /* Separa izquierda y derecha */
-  align-items: center; /* Asegura alineación vertical */
-  width:98%;
-  max-width: 1200px;
-  margin-left:5px;
+  flex-direction: column; /* Stack logo and Encabezado component */
+  align-items: center;
+  margin-bottom: 10px; /* Reduced space below header container */
+}
+
+.encabezado-content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 0; /* Remove auto margins */
+  padding: 0; /* Remove padding */
 }
 
 /* ✅ Izquierda: MUNDOGRAFIC */
@@ -53,26 +77,28 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-left: 20px; /* 🔹 Mueve MUNDO GRAFIC un poco a la derecha */
+  margin-left: 0;
+  margin-bottom: 0; /* No bottom margin here */
 }
 
 /* 🔹 "MUNDOGRAFIC" */
 .mundografic {
-  font-size: 36px;
+  font-size: 30px; /* Slightly smaller */
   font-weight: bold;
   color: black;
   position: relative;
+  margin-bottom: 0;
 }
 
 /* 🔹 "CORPORACION" (Encima de "GRAFIC") */
 .corporacion {
-  font-size: 10px;
-  color: #959191;
+  font-size: 9px; /* Smaller font */
+  color: #666;
   font-weight: bold;
   position: relative;
-  top: 10px;
-  left: 145px; /* 🔹 Ajustado para mover más a la derecha */
-  letter-spacing: 6px;
+  top: 5px; /* Adjust positioning */
+  left: 100px; /* Adjust positioning */
+  letter-spacing: 4px; /* Reduced letter spacing */
 }
 
 /* 🔹 "GRAFIC" (Color rojo) */
@@ -83,19 +109,19 @@
 
 /* 🔹 Símbolo de marca registrada (®) */
 .marca-registrada {
-  font-size: 12px;
+  font-size: 10px;
   vertical-align: baseline;
   position: relative;
-  bottom: -2px;
-  margin-left: 2px;
+  bottom: -1px;
+  margin-left: 1px;
 }
 
 /* 🔹 Subtítulo debajo de "MUNDOGRAFIC" */
 .subtitulo {
-  font-size: 11px;
+  font-size: 10px; /* Smaller font */
   font-weight: normal;
   color: #333;
-  margin-top: 2px;
+  margin-top: 0; /* No top margin */
   text-transform: uppercase;
 }
 
@@ -103,65 +129,78 @@
 .cotizacion-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  align-self: flex-start; /* 🔹 Asegura que se alinee con MUNDOGRAFIC */
-  margin-top: 20px;
+  align-items: flex-end; /* Align content to the right */
+  margin-top: 0; /* No top margin */
+  gap: 5px; /* Reduced gap between boxes */
 }
 
 /* 🔹 "COTIZACIÓN" */
-/* 🔹 "COTIZACIÓN" */
 .cotizacion-box {
   display: flex;
-  align-items: center;
-  margin-top: -10px; 
+  flex-direction: column;
+  align-items: center; /* Center content within the box */
+  background-color: #f5f5f5; /* Light background */
+  padding: 5px 10px; /* Reduced padding */
+  border: 1px solid #ddd; /* Light border */
+  border-radius: 4px;
+  text-align: center;
 }
 
 /* 🔹 Número de cotización */
 .numero-cotizacion {
   color: #d94444;
-  font-size: 18px;
-  margin-top: 0; /* Ajustar a 0 o eliminar si no es necesario */
-  margin-left: 10px;
+  font-size: 16px; /* Smaller font */
+  font-weight: bold;
+  margin-top: 2px;
 }
 
-.cotizacion-label{
-  color: #000;
+.cotizacion-label {
+  color: #555;
+  font-size: 10px; /* Smaller font */
+  margin-bottom: 0;
 }
 
 /* 🔹 R.U.C */
 .ruc-box {
-  margin-top: 10px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end; /* Align to the right */
+  background-color: #f5f5f5; /* Light background */
+  padding: 5px 10px; /* Reduced padding */
+  border: 1px solid #ddd; /* Light border */
+  border-radius: 4px;
 }
 
 .ruc-label {
   font-weight: bold;
-  margin-right: 10px;
-  color: #000;
+  margin-right: 0;
+  color: #555;
+  font-size: 10px; /* Smaller font */
+  margin-bottom: 2px;
 }
 
 .ruc-select {
-  width: 100%;
-  height: 40px;
-  font-size: 16px;
-  padding: 5px;
-  border-radius: 4px;
+  width: 150px; /* Consistent width for RUC select */
+  height: auto; /* Auto height */
+  font-size: 12px; /* Smaller font */
+  padding: 3px 5px; /* Reduced padding */
+  border-radius: 3px;
   border: 1px solid #ccc;
   box-sizing: border-box;
 }
 
 /* Estilo para las opciones en el desplegable */
 .ruc-select option {
-  padding: 8px;
+  padding: 4px;
+  font-size: 12px;
 }
 
-/* Cuando está seleccionado, mostrar solo el valor de data-display */
+/* When selected, show only the data-display value */
 .ruc-select option:checked {
   content: attr(data-display);
 }
 
-/* Esto asegura que el select use el atributo data-display para el valor seleccionado */
+/* Ensure select uses data-display attribute for selected value */
 .ruc-select:not(:focus) option:checked {
   display: none;
 }
@@ -171,25 +210,26 @@
 }
 
 /* ✅ Sección de las 7 Columnas */
+/* This section seems related to Encabezado component, will keep generic for now */
 .seccion-columnas {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  width: 100vw;
-  max-width: 1120px;
-  margin-top: 5px;
-  padding: 5px; /* 🔹 Reducir el espacio interno */
+  width: 100%; /* Changed from 100vw */
+  max-width: 190mm; /* Constrain to A4 width */
+  margin: 10px auto; /* Adjusted margin */
+  padding: 0 5mm; /* Consistent padding */
 }
 
 /* ✅ Estilos de cada columna */
 .columna {
   text-align: center;
-  font-size: 8px; /* 🔹 Reducir tamaño del texto */
+  font-size: 8px; /* Reduced size */
   color: #333;
-  padding: 5px; /* 🔹 Reducir padding */
-  line-height: 1; /* 🔹 Compactar espacio entre líneas */
+  padding: 3px; /* Reduced padding */
+  line-height: 1.2; /* Slightly more space */
   word-wrap: break-word;
   overflow-wrap: break-word;
-  border-right: 1px solid #000;
+  border-right: 1px solid #ccc; /* Lighter border */
 }
 
 /* ✅ Eliminar la línea en la última columna */
@@ -202,306 +242,83 @@
 }
 /* Estilo para la numeración de cotización */
 #cotizacion-numero {
-  font-size: 16px;
+  font-size: 14px;
   text-align: right;
-  margin-bottom: 20px;
+  margin-bottom: 5px;
 }
 
-
-    
-    .ruc-box {
-      width: 100%;
-      display: flex; /* Asegúrate de que el campo de RUC no se sobrepase */
-    }
-/* Estilo para la etiqueta R.U.C. */
-.ruc-label {
-  font-size: 16px; /* Tamaño de fuente de la etiqueta */
-  margin-bottom: 5px; /* Espacio entre la etiqueta y el select */
-}
-
-/* Estilo para el select (cuadro del R.U.C.) */
-.ruc-select {
-  width: 100%; /* El select ocupará todo el ancho disponible */
-  height: 40px; /* Ajusta la altura del cuadro */
-  font-size: 16px; /* Tamaño de la fuente dentro del select */
-  padding: 5px; /* Espacio interior del select */
-  border-radius: 4px; /* Bordes redondeados (opcional) */
-  border: 1px solid #ccc; /* Borde del select */
-  box-sizing: border-box; /* Asegura que el padding no afecte el tamaño */
-}
-/*//////////cuerpo datos/////////////////////////////////////////////////////////////////////*/
+/*//////////cuerpo datos/////////////////////////////////////////////////////////////////////*/ 
 .cuerpo-datos {
-  position: relative !important;
-  border-radius: 0% !important;
+  border-radius: 0%;
   background-color: white;
-  width: 155% !important;
-  max-width: 100% !important;
-  margin-top: 15px ;
+  width: 100%;
+  max-width: 190mm; /* Match cotizaciones-container max-width */
+  margin: 15px auto 10px auto; /* Top margin for separation, reduced bottom margin */
+  padding: 0 5mm; /* Consistent horizontal padding */
 }
+
 .fila {
   display: flex;
-  justify-content: space-between; /* 🔹 Separa los elementos */
-  align-items: center; /* 🔹 Asegura que todo esté alineado verticalmente */
+  justify-content: space-between;
+  align-items: flex-start;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px; /* Reduced spacing between rows */
 }
 
 .campo {
   display: flex;
-  align-items: center; /* 🔹 Asegura que el label y el input estén alineados verticalmente */
-  gap: 10px; /* 🔹 Espacio entre el label y el input */
-  width: 48%; /* 🔹 Ajusta el tamaño de cada campo */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px; /* Further reduced gap */
+  width: 49%; /* Slightly increased width to fill space */
 }
 
 .campo label {
-  font-size: 16px; /* 🔹 Ajusta el tamaño del texto */
-  white-space: nowrap; /* 🔹 Evita que el texto se divida en varias líneas */
+  font-weight: bold;
+  font-size: 11px; /* Smaller font for labels */
+  color: #333;
 }
 
 .campo input {
-  height: 40px; /* 🔹 Ajusta la altura del input */
-  font-size: 16px; /* 🔹 Tamaño del texto dentro del input */
-  padding: 8px 10px; /* 🔹 Espaciado dentro del input */
-  width: 100%; /* 🔹 El input ocupa todo el espacio disponible */
-  box-sizing: border-box; /* 🔹 Evita que el padding afecte el tamaño */
-  border-radius: 4px; /* 🔹 Bordes redondeados */
-  border: 1px solid #ccc; /* 🔹 Borde gris claro */
-}
-/* 🔹 Ajuste especial para el campo de fecha */
-input[type="date"] {
-  width: 140%; /* 🔹 Ensancha un poco el input de fecha */
-}
-/* Cambiar el tamaño del texto para los números de RUC en la interfaz */
-
-.botones-flotantes {
-  position: absolute;
-  right: -40px; /* Mueve los botones fuera del div */
-  top: 5px;
-  display: flex;
-  gap: 5px;
-}
-/*/////////////////////////////////////Cuerpo Cotizaciones///////////////////////////////////////////////////////////*/
-.cuerpo-cotizacion {
-  font-size: 14px;
-  border-radius: 0%;
-  margin-top: 5px;
   width: 100%;
-  max-width: 110%;
-  margin-top: 1%;
-}
-.tabla-cotizacion {
- 
-  
-  width: 95%;
-  table-layout: fixed;
-}
-
-table input {
-  height: 30px;
-}
-
-.col-cant,
-.col-unitario,
-.col-total,
-.col-accion {
-  width: 15%; /* Estas columnas ocupan un 15% del ancho cada una */
-  display: table-cell; /* Asegura que todas las celdas se comporten igual */
-
-}
-.col-accion{
-  display: flex;
-}
-
-.col-detalle {
- 
-  width: 90%; /* Esta columna ocupa un 40% del ancho */
-  display: table-cell;
-  padding: 0; /* Ajusta el padding de la columna */
-}
-
-.detalle-container {
-  display: flex;
-
-  gap: 2px; /* Añadir espacio entre el textarea y los botones */
-}
-.detalle-container textarea {
-  white-space: pre-wrap !important;
-  word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  line-height: 1.5 !important;
-  width: 100%; /* Ocupa todo el ancho disponible */
-  min-height: 30px; /* Altura mínima */
-  height: auto; /* Permite que crezca */
-  resize: none; /* Evita que el usuario lo redimensione manualmente */
-  overflow: hidden; /* Oculta la barra de desplazamiento */
-  border: none;
-}
-
-textarea {
-  flex-grow: 1; /* Hace que el textarea ocupe todo el espacio disponible */
-}
-
-input[type="number"] {
-  width: 95%;
-  box-sizing: border-box;
-  text-align: center;
-}
-
-button {
-  margin-left: 5px; /* Opcional, agrega un pequeño margen a los botones */
-}
-
-.detalle-container button {
-  width: 15px; /* Ajusta el ancho del botón */
-  height: 15px; /* Ajusta la altura del botón */
-  font-size: 18px; /* Ajusta el tamaño del texto dentro del botón */
-  display: flex; /* Asegura que los botones sean elementos de bloque */
-  align-items: center; /* Centra el contenido dentro del botón */
-  justify-content: center; /* Centra el contenido dentro del botón */
-  border: none; /* Elimina el borde por defecto */
-  background-color: #f0f0f0; /* Color de fondo opcional */
-  border-radius: 5px; /* Bordes redondeados para los botones */
-  cursor: pointer; /* Cambia el cursor al pasar sobre el botón */
-}
-
-.detalle-container button:hover {
-  background-color: #e0e0e0; /* Cambia el color al pasar el mouse */
-}
-
-button {
-  margin-left: 5px; /* Opcional, agrega un pequeño margen a los botones */
-}
-
-/* Evitar que las celdas se desajusten al cambiar el tamaño del textarea */
-.tabla-cotizacion td {
-  vertical-align: top; /* Mantiene el texto en la parte superior */
-}
-.tabla-cotizacion th {
-  border: 2px solid #333; /* Borde de 2px de grosor y color gris oscuro */
-  padding: 10px; /* Espaciado interno para que el texto no toque los bordes */
-  text-align: center; /* Alineación del texto en las celdas */  
-  background-color: white; /* Fondo gris claro para los títulos */
-}
-.tabla-cotizacion tr {
-  border-bottom: 2px solid #ccc; /* Línea entre filas */
-}
-
-/**************imagen**********************/
-.detalle-imagen-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-  border: none;
-}
-
-.detalle-imagen-row {
-  padding: 10px;
-}
-
-.detalle-imagen-container img {
-  cursor: nwse-resize;
-}
-
-
-
-
-
-/***************************************Pie de Cotización (Sticky) ******************************************/
-.cotizaciones-footer {
-  margin-top: auto;  /* Empuja el footer al final */
-  padding: 10px;
-  background-color: white;
-  width: 100%;
-  box-sizing: border-box;
-  
-}
-
-/* ✅ Ajuste del Pie */
-.pie-cotizacion {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  gap: 10px;
-  border-top: 2px solid #9a9797;
-  border-bottom: 2px solid #9a9797;
-} 
-.input-descuento {
-  width: 80px; /* Reduce el tamaño del input */
-  text-align: right; /* Alinea el texto dentro del input a la derecha */
-  padding: 4px; /* Ajusta el padding para que se vea bien */
-  border: none;
-}
-
-.campoPie {
-  display: flex;
-  justify-content: space-between; /* Asegura que el label y el input/span estén alineados en la misma línea */
-  align-items: center;
-  width: 100%;
-}
-.pie-izquierda input {
-  border: none; /* Elimina el borde */
-  height: 20px;
-
-}
-.pie-derecha input {
-  border: none; /* Elimina el borde */
-  height: 20px;
-
-}
-
-.pie-derecha {
-  transform: translateX(-30px); /* Mueve el elemento ligeramente a la izquierda */
-  border: none;
-}
-
-.btn-opciones {
-  gap: 10px;
-  display: flex;
-  margin-top: 10px;
-  padding: 8px 12px;
-  font-size: 1rem;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-imprimir:hover {
-  background: #0056b3;
-}
-.pie-pagina {
-  font-family: Arial, sans-serif;
-  font-size: 10px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.pie-pagina p, .pie-pagina a {
-  font-family: inherit;
-  font-size: inherit;
-  color: black;
-  text-decoration: none;
-  margin: 0 5px;
-}
-
-.pie-pagina i {
-  font-size: 12px; /* Ajusta el tamaño de los iconos */
-  margin-right: 3px;
-}
-/* Estilos para la lista de sugerencias */
-.sugerencias-container {
-
-  top: 100%; /* Esto asegura que la lista esté justo debajo del input */
-  left: 0;
-  background-color: white;
+  padding: 4px 6px; /* Reduced padding */
   border: 1px solid #ccc;
-  width: 100%; /* Hacer que el recuadro tenga el mismo ancho que el input */
+  border-radius: 3px;
+  box-sizing: border-box;
+  font-size: 11px; /* Smaller font for inputs */
+}
+
+.campo.campo-izquierda {
+  margin-right: 10px; /* Consistent space between columns */
+}
+
+.fecha-container {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px; /* Reduced top margin */
+}
+
+.fecha-container .campo {
+  width: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px; /* Reduced gap for date field */
+}
+
+/* Sugerencias de clientes */
+.sugerencias-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: white;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); /* Lighter shadow */
   z-index: 10;
-  max-height: 150px;
+  max-height: 120px; /* Reduced max height */
   overflow-y: auto;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
 }
 
 .sugerencias-list {
@@ -511,78 +328,315 @@ button {
 }
 
 .sugerencias-list li {
-  padding: 8px 10px;
+  padding: 6px 8px; /* Reduced padding */
   cursor: pointer;
+  font-size: 11px; /* Smaller font */
 }
 
 .sugerencias-list li:hover {
-  background-color: #f0f0f0;
+  background-color: #f5f5f5;
 }
-@media print {
-  /* ✅ Ocultar botones y elementos interactivos en la impresión */
-  .btn-agregar, .btn-cancelar, .btn-imprimir, .btn-insertar-imagen, .btn-regresar, .btn-eliminar-imagen {
-    display: none !important;
+
+/* Table Styling */
+.cuerpo-cotizacion {
+  width: 100%;
+  max-width: 190mm;
+  margin: 10px auto; /* Reduced vertical margin */
+}
+
+.tabla-cotizacion {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0;
+  border: 1px solid #000; /* Ensure outer border */
+}
+
+.tabla-cotizacion th,
+.tabla-cotizacion td {
+  border: 1px solid #000;
+  padding: 5px 8px; /* Further reduced padding */
+  text-align: left;
+  vertical-align: top;
+  font-size: 11px; /* Consistent smaller font */
+  line-height: 1.4; /* For better readability of textareas */
+}
+
+.tabla-cotizacion th {
+  background-color: #e0e0e0; /* Slightly darker header */
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 8px; /* Smallest font for headers */
+  white-space: nowrap; /* Prevent wrapping in headers */
+}
+
+.col-cant {
+  width: 50px; /* Reduced width */
+  text-align: center;
+}
+
+.col-detalle {
+  width: auto; /* Take remaining space */
+}
+
+.col-unitario,
+.col-total {
+  width: 80px; /* Reduced width */
+  text-align: right;
+}
+
+.col-accion {
+  width: 80px; /* Reduced width for actions */
+  text-align: center;
+}
+
+.tabla-cotizacion input[type="number"],
+.tabla-cotizacion textarea {
+  width: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  background-color: transparent;
+  font-size: 11px; /* Consistent font size */
+  line-height: inherit; /* Inherit line-height from cell */
+  resize: none; /* Prevent manual resizing */
+  overflow: hidden; /* Hide scrollbars */
+}
+
+.detalle-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px; /* Reduced gap */
+}
+
+.detalle-container textarea {
+  min-height: 20px; /* Even smaller min-height */
+  height: auto; /* Allow auto height based on content */
+}
+
+.detalle-container button {
+  font-size: 10px; /* Smaller font for buttons */
+  padding: 3px 6px; /* Reduced padding */
+  margin: 1px; /* Reduced margin */
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.btn-cancelar {
+  background-color: #f44336; /* Red color for cancel */
+  color: white;
+}
+
+.btn-insertar-imagen {
+  background-color: #4CAF50; /* Green for image insert */
+  color: white;
+}
+
+.btn-eliminar-imagen {
+  background-color: #ff9800; /* Orange for image delete */
+  color: white;
+}
+
+/* Image Row in Table */
+.detalle-imagen-row {
+  background-color: #f9f9f9;
+}
+
+.detalle-imagen-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px; /* Reduced padding */
+}
+
+.detalle-imagen-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #eee; /* Light border */
+}
+
+/* Footer Styling */
+.cotizaciones-footer {
+  width: 100%;
+  max-width: 190mm;
+  margin: 15px auto 0 auto;
+  padding: 0 5mm;
+  box-sizing: border-box;
+}
+
+.pie-cotizacion {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px; /* Reduced bottom margin */
+  border-top: 1px solid #000;
+  padding-top: 10px;
+}
+
+.pie-izquierda,
+.pie-derecha {
+  display: flex;
+  flex-direction: column;
+  gap: 3px; /* Reduced gap */
+  width: 49%;
+}
+
+.campoPie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px; /* Smaller font for footer fields */
+}
+
+.campoPie label {
+  font-weight: bold;
+  color: #333;
+}
+
+.campoPie input {
+  width: 90px; /* Consistent width for footer inputs */
+  padding: 3px 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+  font-size: 11px; /* Smaller font size for inputs */
+}
+
+.campoPie span {
+  font-weight: bold;
+  color: #000;
+  font-size: 11px; /* Smaller font for totals */
+}
+
+.input-descuento {
+  text-align: right;
+}
+
+.pie-pagina {
+  text-align: center;
+  font-size: 8px; /* Smallest font for page footer */
+  color: #666;
+  border-top: 1px solid #eee;
+  padding-top: 5px;
+  margin-top: 10px;
+}
+
+.pie-pagina a {
+  color: #007bff;
+  text-decoration: none;
+  margin: 0 2px; /* Further reduced horizontal margin */
+}
+
+.pie-pagina a:hover {
+  text-decoration: underline;
+}
+
+.pie-pagina i {
+  margin-right: 1px; /* Further reduced margin */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hoja-general {
+    padding: 10px;
   }
-  .cuerpo-datos input {
-    border: none !important; /* Elimina el borde */
-    outline: none !important; /* Opcional: Elimina el contorno */
+
+  .btnadministracion {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 10px;
+    padding: 10px;
   }
-/* Ocultar el borde del selector de RUC en la impresión */
-  .ruc-select {
-    -webkit-appearance: none;  /* Para navegadores basados en WebKit (Chrome, Safari) */
-    -moz-appearance: none;     /* Para Firefox */
-    appearance: none;          /* Estándar */
-    background-image: none;
-    border: none;    /* Eliminar la flecha como imagen */
+
+  .btnadministracion button {
+    flex-grow: 1;
+    min-width: 120px;
+    margin: 5px;
   }
-  .encabezado-container {
-    margin-left: -40px !important; /* Ajuste específico para la impresión */
+
+  .cotizaciones-container {
+    width: 95%;
+    min-height: auto;
+    padding: 15px;
+    margin: 10px auto;
   }
-  .tabla-cotizacion {
-    border-collapse: collapse !important; /* Colapsa los bordes para evitar líneas dobles */
-    width: 100% !important; /* Asegura que la tabla ocupe el 100% del ancho */
+
+  .encabezado-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .encabezado-left,
+  .cotizacion-section,
+  .ruc-box {
+    align-items: center;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .cotizacion-section,
+  .ruc-box {
+    margin-top: 10px;
+  }
+
+  .fila {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .campo,
+  .campo.campo-izquierda {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .fecha-container {
+    justify-content: center;
   }
 
   .tabla-cotizacion th,
   .tabla-cotizacion td {
-    border-left: 1px solid #000 !important; /* Solo líneas verticales */
-    padding: 5px !important; /* Asegura que haya espacio dentro de las celdas */
+    padding: 6px;
+    font-size: 10px;
   }
 
-  .tabla-cotizacion th:first-child,
-  .tabla-cotizacion td:first-child {
-    border-left: none !important; /* Elimina la línea en el borde izquierdo de la tabla */
+  .col-cant,
+  .col-unitario,
+  .col-total,
+  .col-accion {
+    width: auto; /* Allow auto width on smaller screens */
   }
 
-  .tabla-cotizacion tr {
-    border-bottom: 1px solid #000 !important; /* Línea horizontal debajo de cada fila */
-  }
-
-
-  /* Asegura que no haya líneas de borde en los títulos de las columnas, solo en las celdas de productos */
-  .tabla-cotizacion th {
-    border-bottom: 2px solid #000 !important; /* Línea horizontal solo al final de los títulos */
-    border-top: none !important;
-  }
-
-  .tabla-cotizacion td {
-    border-top: none !important; /* Elimina cualquier borde superior en las celdas de los productos */
-  }
-  /* ✅ Ajuste del contenedor principal */
-  .cotizaciones-container {
-        margin: 0 auto !important;  /* Centrar el contenido */
-    margin-left: -10px !important;
-    padding: 10px !important;
-    height: auto !important;
-    page-break-after: avoid;
-    min-height: 1530px;
-    transform-origin: top left;
-    border: none;
-  
-  }
   .cotizaciones-footer {
-    page-break-before: auto;  /* Solo salta a la siguiente hoja si no cabe */
-    page-break-inside: avoid; /* Evita que el footer se divida */
+    flex-direction: column;
+    gap: 15px;
   }
- 
+
+  .pie-cotizacion {
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: none;
+  }
+
+  .pie-izquierda,
+  .pie-derecha {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .campoPie input {
+    width: 120px;
+  }
+
+  .pie-pagina {
+    margin-top: 15px;
+    padding-top: 10px;
+  }
 }

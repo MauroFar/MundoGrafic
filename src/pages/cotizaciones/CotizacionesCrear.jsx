@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import "../../styles/cotizaciones/Cotizaciones.css";
 import Logo from "../../components/Logo";
 import axios from 'axios';
 import "react-resizable/css/styles.css";
@@ -32,6 +31,7 @@ function CotizacionesCrear() {
   const [filas, setFilas] = useState([]);
   const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
   const [numeroCotizacion, setNumeroCotizacion] = useState("Generando...");
+  const textareaRefs = useRef([]);
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
@@ -71,7 +71,10 @@ function CotizacionesCrear() {
           cantidad: detalle.cantidad || 0,
           detalle: detalle.detalle || "",
           unitario: detalle.valor_unitario || 0,
-          total: detalle.valor_total || 0
+          total: detalle.valor_total || 0,
+          imagen: detalle.imagen_base64 || null,
+          width: detalle.imagen_width || 200,
+          height: detalle.imagen_height || 150,
         })));
       } else {
         setFilas([]);
@@ -250,6 +253,9 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.unitario,
           valor_total: fila.total,
+          imagen_base64: fila.imagen,
+          imagen_width: fila.width,
+          imagen_height: fila.height,
         })),
       };
 
@@ -305,13 +311,41 @@ function CotizacionesCrear() {
   const agregarFila = () => {
     setFilas([
       ...filas,
-      { cantidad: "", detalle: "", unitario: "", total: "" },
+      {
+        cantidad: 1,
+        detalle: "",
+        unitario: 0,
+        total: 0,
+        imagen: null,
+        width: 200,
+        height: 150
+      }
     ]);
   };
 
-  // Función para eliminar una fila específica
+  // Función para eliminar una fila
   const eliminarFila = (index) => {
     const nuevasFilas = filas.filter((_, i) => i !== index);
+    setFilas(nuevasFilas);
+  };
+
+  // Función para manejar el cambio de imagen
+  const handleImagenChange = (index, file) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const nuevasFilas = [...filas];
+        nuevasFilas[index].imagen = reader.result;
+        setFilas(nuevasFilas);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Función para eliminar una imagen
+  const handleEliminarImagen = (index) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index].imagen = null;
     setFilas(nuevasFilas);
   };
 
@@ -338,429 +372,356 @@ function CotizacionesCrear() {
     setSubtotal(nuevoSubtotal);
   }, [filas]); // Se ejecuta cada vez que `filas` cambia
 
-  const CustomRucSelect = ({ rucs, selectedRuc, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    
-    return (
-      <div className="ruc-box">
-        <span className="ruc-label">R.U.C</span>
-        <div className="custom-select">
-          {/* Mostrar solo el RUC cuando está cerrado */}
-          <div 
-            className="selected-value"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {selectedRuc.ruc || "Seleccione un RUC"}
-          </div>
-
-          {/* Desplegable con RUC + descripción */}
-          {isOpen && (
-            <div className="options-container">
-              {rucs.map((ruc) => (
-                <div
-                  key={ruc.id}
-                  className="option"
-                  onClick={() => {
-                    onChange({
-                      target: { value: ruc.ruc }
-                    });
-                  }}
-                >
-                  {ruc.ruc} - {ruc.descripcion}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  // Efecto para ajustar la altura de los textareas al cargar o actualizar las filas
+  useEffect(() => {
+    textareaRefs.current.forEach((textarea) => {
+      if (textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = textarea.scrollHeight + "px";
+      }
+    });
+  }, [filas]);
 
   return (
-    <>
-      <div className="hoja-general">
-        <div className="btnadministracion">
-          <button
-            className="w-28 h-12 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={() => navigate("/Cotizaciones")}
-          >
-            <span>←</span> Regresar
-          </button>
+    <div className="min-h-screen bg-gray-100 p-8">
+      {/* Barra lateral de botones */}
+      <div className="fixed top-0 left-0 h-full w-48 bg-white shadow-lg p-4 flex flex-col gap-3">
+        <button
+          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
+          onClick={() => navigate("/cotizaciones")}
+        >
+          <i className="fas fa-arrow-left"></i>
+          Regresar
+        </button>
 
-          <button
-            className="w-28 h-12 bg-blue-500 hover:bg-blue-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={() => navigate("/Cotizaciones/Ver")}
-          >
-            <i className="fas fa-search"></i> Buscar
-          </button>
+        <button
+          className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
+          onClick={() => navigate("/cotizaciones/ver")}
+        >
+          <i className="fas fa-search"></i>
+          Buscar
+        </button>
 
-          <button 
-            className="w-28 h-12 bg-green-500 hover:bg-green-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={() => window.print()}
-          >
-            <i className="fas fa-download"></i> Imprimir
-          </button>
 
-          <button 
-            className="w-28 h-12 bg-purple-500 hover:bg-purple-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={handleGuardarTodo}
-          >
-            <i className="fas fa-save"></i> Guardar BBDD
-          </button>
+        <button 
+          className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
+          onClick={handleGuardarTodo}
+        >
+          <i className="fas fa-save"></i>
+          Guardar
+        </button>
 
-          <button 
-            className="w-28 h-12 bg-yellow-500 hover:bg-yellow-600  text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-base"
-            onClick={agregarFila}
-          >
-            <i className="fas fa-plus"></i> Agregar Producto
-          </button>  
-        </div>
+        <button 
+          className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
+          onClick={agregarFila}
+        >
+          <i className="fas fa-plus"></i>
+          Agregar Producto
+        </button>
+      </div>
 
-        <div className="cotizaciones-container" id="cotizaciones-container">
-          <div className="encabezado-container">
-            {/* Contenedor general del encabezado (Izquierda y Derecha) */}
-            <div className="encabezado-content">
-              {/* Izquierda: MUNDOGRAFIC */}
-              <div className="encabezado-left">
-                <div className="flex-shrink-0 w-80 mt-0">
-                  <Logo/>
-                </div>
-                <p className="subtitulo">
-                  CORPORACION MUNDO GRAFIC MUNDOGRAFIC CIA. LTDA.
-                </p>
-              </div>
-
-              {/* Derecha: COTIZACIÓN y R.U.C */}
-              <div className="cotizacion-section">
-                <div className="cotizacion-box">
-                  <span className="cotizacion-label">COTIZACIÓN</span>
-                  <div className="numero-cotizacion">{numeroCotizacion}</div>
-                </div>
-
-                <div className="ruc-box">
-                  <span className="ruc-label">R.U.C</span>
-                  <select
-                    className="ruc-select"
-                    id="ruc"
-                    value={selectedRuc.ruc}
-                    onChange={handleRucChange}
-                  >
-                    <option value="">Seleccione un RUC</option>
-                    {rucs.map((ruc) => (
-                      <option key={ruc.id} value={ruc.ruc}>
-                        {ruc.ruc} - {ruc.descripcion}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <Encabezado/>        
-          </div>
-
-          {/*cuerpo de datos */}
-          <div className="cuerpo-datos">
-            {/* Cliente (Izquierda) - Ejecutivo de Cuenta (Derecha) */}
-            <div className="fila">
-              <div className="campo campo-izquierda"  style={{ position: 'relative' }}>
-                <label htmlFor="cliente">Cliente:</label>
-                <input
-                  id="cliente"
-                  type="text"
-                  value={nombreCliente}
-                  onChange={handleInputChange}
-                  placeholder="Selecciona un Ruc para buscar cliente..."
-                  autoComplete="off"  
-                />
-
-                {/* Mostrar las sugerencias personalizadas si hay resultados */}
-                {sugerencias.length > 0 && (
-                  <div className="sugerencias-container">
-                    <ul className="sugerencias-list">
-                      {sugerencias.map((cliente) => (
-                        <li
-                          key={cliente.id}
-                          onClick={() => handleSeleccionarCliente(cliente)}
-                        >
-                          {cliente.nombre_cliente}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className="campo campo-derecha">
-                <label>Ejecutivo de Cuenta:</label>
-                <input 
-                  type="text"
-                  value={ejecutivo}
-                  onChange={(e) => setEjecutivo(e.target.value)}
-                  placeholder="Ingrese nombre del ejecutivo"
-                  className="w-full border border-gray-300 rounded-md p-2"
-                />
-              </div>
-            </div>
-            <div className="fila">
-              <div className="fecha-container">
-                <div className="campo">
-                  <label>Fecha:</label>
-                  <input
-                    type="date"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabla de Cotización */}
-          <div className="cuerpo-cotizacion">
-            <table className="tabla-cotizacion">
-              <thead>
-                <tr>
-                  <th className="col-cant">CANT</th>
-                  <th className="col-detalle">DETALLE</th>
-                  <th className="col-unitario">V. UNITARIO</th>
-                  <th className="col-total">V. TOTAL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((fila, index) => (
-                  <React.Fragment key={index}>
-                    <tr>
-                      <td className="col-cant">
-                        <input
-                          type="number"
-                          value={fila.cantidad}
-                          onChange={(e) => {
-                            const nuevasFilas = [...filas];
-                            nuevasFilas[index].cantidad = e.target.value;
-                            setFilas(nuevasFilas);
-                          }}
-                        />
-                      </td>
-
-                      <td className="col-detalle">
-                        <div className="detalle-container">
-                          <textarea
-                            value={fila.detalle}
-                            onChange={(e) => {
-                              const nuevasFilas = [...filas];
-                              nuevasFilas[index].detalle = e.target.value;
-                              setFilas(nuevasFilas);
-
-                              e.target.style.height = "auto";
-                              e.target.style.height =
-                                e.target.scrollHeight + "px";
-                            }}
-                            rows="1"
-                          />
-
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  const nuevasFilas = [...filas];
-                                  nuevasFilas[index].imagen = reader.result;
-                                  setFilas(nuevasFilas);
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            style={{ display: "none" }}
-                            id={`file-upload-${index}`}
-                          />
-                        </div>
-                      </td>
-
-                      <td className="col-unitario">
-                        <input
-                          type="number"
-                          value={fila.unitario}
-                          onChange={(e) => {
-                            const nuevasFilas = [...filas];
-                            nuevasFilas[index].unitario = e.target.value;
-                            nuevasFilas[index].total = (
-                              parseFloat(e.target.value) *
-                              parseFloat(nuevasFilas[index].cantidad || 0)
-                            ).toFixed(2);
-                            setFilas(nuevasFilas);
-                          }}
-                        />
-                      </td>
-
-                      <td className="col-total">
-                        <input type="number" value={fila.total} readOnly />
-                      </td>
-
-                      <td className="col-accion">
-                        <button
-                          className="btn-cancelar"
-                          onClick={() => eliminarFila(index)}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                            className="btn-insertar-imagen"
-                            onClick={() =>
-                              document
-                                .getElementById(`file-upload-${index}`)
-                                .click()
-                            }
-                          >
-                            📷
-                          </button>
-                          <button
-                            className="btn-eliminar-imagen"
-                            onClick={() => {
-                              const nuevasFilas = [...filas];
-                              nuevasFilas[index].imagen = null;
-                              setFilas(nuevasFilas);
-                            }}
-                          >
-                            ❌
-                          </button>
-                      </td>
-                    </tr>
-
-                    {/* Fila extra solo para la imagen */}
-                    {fila.imagen && (
-                      <tr>
-                        <td colSpan="5" className="detalle-imagen-row">
-                          <div className="detalle-imagen-container">
-                            <Resizable
-                              width={fila.width || 200}
-                              height={fila.height || 150}
-                              onResize={(e, { size }) => {
-                                const nuevasFilas = [...filas];
-                                nuevasFilas[index] = {
-                                  ...nuevasFilas[index],
-                                  width: size.width,
-                                  height: size.height,
-                                };
-                                setFilas(nuevasFilas);
-                              }}
-                              handleStyles={{
-                                bottomRight: {
-                                  width: "15px",
-                                  height: "15px",
-                                  backgroundColor: "#3498db",
-                                  borderRadius: "50%",
-                                  position: "absolute",
-                                  right: "5px",
-                                  bottom: "5px",
-                                  cursor: "nwse-resize",
-                                },
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: fila.width || 200,
-                                  height: fila.height || 150,
-                                  overflow: "hidden",
-                                  position: "relative",
-                                }}
-                              >
-                                <img
-                                  src={fila.imagen}
-                                  alt="Imagen subida"
-                                  style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "contain",
-                                    cursor: "nwse-resize",
-                                    border: "none",
-                                    boxShadow: "none",
-                                  }}
-                                />
-                              </div>
-                            </Resizable>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 🔹 Pie de Cotización (Movido a un `footer`) */}
-          <footer className="cotizaciones-footer">
-            <div className="pie-cotizacion">
-              <div className="pie-izquierda">
-                <div className="campoPie">
-                  <label>Tiempo de Entrega:</label>{" "}
-                  <input
-                    type="text"
-                    value={TxttiempoEntrega}
-                    onChange={(e) => setTxtTiempoEntrega(e.target.value)}
-                  />
-                </div>
-                <div className="campoPie">
-                  <label>Forma de Pago:</label> <input type="text" />
-                </div>
-                <div className="campoPie">
-                  <label>Validez de Proforma:</label> <input type="text" />
-                </div>
-                <div className="campoPie">
-                  <label>Observaciones:</label> <input type="text" />
-                </div>
-              </div>
-              <div className="pie-derecha">
-                <div className="campoPie">
-                  <label>Subtotal:</label> <span>${formatearNumero(subtotal)}</span>
-                </div>
-                <div className="campoPie">
-                  <label>IVA 15%:</label> <span>${formatearNumero(iva)}</span>
-                </div>
-                <div className="campoPie">
-                  <label>Descuento:</label>{" "}
-                  <input 
-                    type="number" 
-                    className="input-descuento"
-                    value={descuento}
-                    onChange={(e) => setDescuento(e.target.value)}
-                  />
-                </div>
-                <div className="campoPie">
-                  <label>Total:</label> <span>${formatearNumero(total)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pie-pagina">
-              <p>
-                Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif Apolo 1
-                Telefax:2589134 - Tumbaco:Norberto Salazar E7-224X y pasaje San
-                Martin Telf:2379320 E-mail:ventas@mundografic.com Cel:099661572<br></br>
-                <a href="https://www.mundografic.com" target="_blank">
-                  www.mundografic.com
-                </a>{" "}
-                <a href="https://instagram.com" target="_blank">
-                  <i className="fab fa-instagram"></i>/mundografic
-                </a>
-                <a href="https://youtube.com" target="_blank">
-                  <i className="fab fa-youtube"></i>/mundografic
-                </a>
-                <a href="https://facebook.com" target="_blank">
-                  <i className="fab fa-facebook"></i>/mundografic
-                </a>
-                <a href="https://twitter.com" target="_blank">
-                  <i className="fab fa-twitter"></i>@mundografic
-                </a>
+      {/* Contenedor principal con formato A4 */}
+      <div className="ml-48 mx-auto bg-white shadow-lg rounded-lg p-6 w-full max-w-6xl min-h-screen" id="cotizaciones-container">
+        {/* Encabezado */}
+        <div className="mb-6">
+          <div className="flex justify-between items-start">
+            {/* Izquierda: MUNDOGRAFIC */}
+            <div className="flex-shrink-0">
+              <Logo/>
+              <p className="text-sm text-gray-600 mt-2">
+                CORPORACION MUNDO GRAFIC MUNDOGRAFIC CIA. LTDA.
               </p>
             </div>
-          </footer>
+
+            {/* Derecha: COTIZACIÓN y R.U.C */}
+            <div className="flex flex-col items-end space-y-4">
+              <div className="bg-gray-100 p-4 rounded-lg text-center">
+                <span className="text-sm font-semibold text-gray-600">COTIZACIÓN</span>
+                <div className="text-xl font-bold text-gray-800">{numeroCotizacion}</div>
+              </div>
+
+              <div className="bg-gray-100 p-4 rounded-lg">
+                <span className="text-sm font-semibold text-gray-600 block mb-2">R.U.C</span>
+                <select
+                  className="w-full border border-gray-300 rounded-md p-2 bg-white"
+                  id="ruc"
+                  value={selectedRuc.ruc}
+                  onChange={handleRucChange}
+                >
+                  <option value="">Seleccione un RUC</option>
+                  {rucs.map((ruc) => (
+                    <option key={ruc.id} value={ruc.ruc}>
+                      {ruc.ruc} - {ruc.descripcion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>  
+        
+        </div>
+
+        {/* Datos del cliente y ejecutivo */}
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cliente:</label>
+              <input
+                id="cliente"
+                type="text"
+                value={nombreCliente}
+                onChange={handleInputChange}
+                placeholder="Selecciona un Ruc para buscar cliente..."
+                className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoComplete="off"
+              />
+              {sugerencias.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                  <ul className="max-h-48 overflow-auto">
+                    {sugerencias.map((cliente) => (
+                      <li
+                        key={cliente.id}
+                        onClick={() => handleSeleccionarCliente(cliente)}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {cliente.nombre_cliente}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+                   <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha:</label>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+
+            <div className="flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ejecutivo de Cuenta:</label>
+              <input 
+                type="text"
+                value={ejecutivo}
+                onChange={(e) => setEjecutivo(e.target.value)}
+                placeholder="Ingrese nombre del ejecutivo"
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+         
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla de productos */}
+        <div className="mb-6">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16">Cantidad</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Valor Unitario</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Total</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((fila, index) => (
+                <React.Fragment key={index}>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-2 align-top">
+                      <input
+                        type="number"
+                        value={fila.cantidad}
+                        onChange={(e) => {
+                          const nuevasFilas = [...filas];
+                          nuevasFilas[index].cantidad = e.target.value;
+                          setFilas(nuevasFilas);
+                        }}
+                        className="w-full border border-gray-300 rounded-md p-2 text-center"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 align-top">
+                      <textarea
+                        ref={(el) => (textareaRefs.current[index] = el)}
+                        value={fila.detalle}
+                        onChange={(e) => {
+                          const nuevasFilas = [...filas];
+                          nuevasFilas[index].detalle = e.target.value;
+                          setFilas(nuevasFilas);
+                        }}
+                        className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImagenChange(index, e.target.files[0])}
+                          className="hidden"
+                          id={`file-upload-${index}`}
+                        />
+                        <button
+                          onClick={() => document.getElementById(`file-upload-${index}`).click()}
+                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1 text-sm"
+                        >
+                          <i className="fas fa-image"></i> Agregar Imagen
+                        </button>
+                        {fila.imagen && (
+                          <button
+                            onClick={() => handleEliminarImagen(index)}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
+                          >
+                            <i className="fas fa-trash"></i> Eliminar Imagen
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 align-top">
+                      <input
+                        type="number"
+                        value={fila.unitario}
+                        onChange={(e) => {
+                          const nuevasFilas = [...filas];
+                          nuevasFilas[index].unitario = e.target.value;
+                          nuevasFilas[index].total = (
+                            parseFloat(e.target.value) *
+                            parseFloat(nuevasFilas[index].cantidad || 0)
+                          ).toFixed(2);
+                          setFilas(nuevasFilas);
+                        }}
+                        className="w-32 border border-gray-300 rounded-md p-2 text-right"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right align-top">
+                      ${formatearNumero(fila.total)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-center align-top">
+                      <button
+                        onClick={() => eliminarFila(index)}
+                        className="text-red-600 hover:text-red-900 text-lg"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {fila.imagen && (
+                    <tr>
+                      <td colSpan="5" className="border border-gray-300 px-4 py-2 bg-gray-50">
+                        <div className="relative inline-block">
+                          <Resizable
+                            width={fila.width || 200}
+                            height={fila.height || 150}
+                            onResize={(e, { size }) => {
+                              const nuevasFilas = [...filas];
+                              nuevasFilas[index] = {
+                                ...nuevasFilas[index],
+                                width: size.width,
+                                height: size.height,
+                              };
+                              setFilas(nuevasFilas);
+                            }}
+                            handleStyles={{
+                              bottomRight: {
+                                width: "15px",
+                                height: "15px",
+                                backgroundColor: "#3498db",
+                                borderRadius: "50%",
+                                position: "absolute",
+                                right: "5px",
+                                bottom: "5px",
+                                cursor: "nwse-resize",
+                              },
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: fila.width || 200,
+                                height: fila.height || 150,
+                                overflow: "hidden",
+                                position: "relative",
+                              }}
+                            >
+                              <img
+                                src={fila.imagen}
+                                alt="Imagen del producto"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          </Resizable>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pie de página */}
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="w-32 text-sm font-medium text-gray-700">Tiempo de Entrega:</label>
+              <input
+                type="text"
+                value={TxttiempoEntrega}
+                onChange={(e) => setTxtTiempoEntrega(e.target.value)}
+                className="flex-1 border border-gray-300 rounded-md p-2"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="w-32 text-sm font-medium text-gray-700">Forma de Pago:</label>
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded-md p-2"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="w-32 text-sm font-medium text-gray-700">Validez de Proforma:</label>
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded-md p-2"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="w-32 text-sm font-medium text-gray-700">Observaciones:</label>
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded-md p-2"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Subtotal:</span>
+              <span className="text-lg font-semibold">${formatearNumero(subtotal)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">IVA 15%:</span>
+              <span className="text-lg font-semibold">${formatearNumero(iva)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Descuento:</span>
+              <input
+                type="number"
+                value={descuento}
+                onChange={(e) => setDescuento(e.target.value)}
+                className="w-32 border border-gray-300 rounded-md p-2 text-right"
+              />
+            </div>
+            <div className="flex justify-between items-center border-t pt-4">
+              <span className="text-lg font-bold text-gray-900">Total:</span>
+              <span className="text-2xl font-bold text-gray-900">${formatearNumero(total)}</span>
+            </div>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

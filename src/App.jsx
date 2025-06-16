@@ -11,7 +11,6 @@ import Welcome from "./components/Welcome";
 
 // Cotizaciones
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
-import CotizacionesBuscar from "./pages/cotizaciones/CotizacionesBuscar";
 import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
 
 // Producción
@@ -91,15 +90,6 @@ function App() {
           element={
             <Layout>
               <CotizacionesCrear />
-            </Layout>
-          }
-        />
-
-        <Route
-          path="/cotizaciones/buscar"
-          element={
-            <Layout>
-              <CotizacionesBuscar />
             </Layout>
           }
         />

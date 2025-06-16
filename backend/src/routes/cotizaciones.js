@@ -111,8 +111,8 @@ const CotizacionDatos = (client) => {
   // Obtener todas las cotizaciones con filtros simplificados
   router.get("/todas", async (req, res) => {
     console.log("Recibiendo petición en /todas");
-    const { busqueda, fechaDesde, fechaHasta } = req.query;
-    console.log("Parámetros recibidos:", { busqueda, fechaDesde, fechaHasta });
+    const { busqueda, fechaDesde, fechaHasta, limite, ordenar } = req.query;
+    console.log("Parámetros recibidos:", { busqueda, fechaDesde, fechaHasta, limite, ordenar });
     
     try {
       let query = `
@@ -157,10 +157,12 @@ const CotizacionDatos = (client) => {
         paramCount++;
       }
 
-      // Ordenar por fecha descendente y limitar a 5 si no hay filtros
-      query += ` ORDER BY c.fecha DESC`;
+      // Ordenar por número de cotización descendente (más recientes primero)
+      query += ` ORDER BY c.numero_cotizacion DESC`;
+
+      // Aplicar límite si no hay filtros de búsqueda
       if (!busqueda && !fechaDesde && !fechaHasta) {
-        query += ` LIMIT 5`;
+        query += ` LIMIT ${limite || 15}`;
       }
 
       console.log("Query a ejecutar:", query);
@@ -323,26 +325,36 @@ const CotizacionDatos = (client) => {
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
           <style>
     /* Estilos generales */
+    html {
+      height: 100%;
+    }
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      width: 210mm; /* Ancho exacto de A4 */
-      height: 297mm; /* Alto exacto de A4 */
+      width: 210mm;
+      height: 100%; /* Cambiado de 297mm a 100% */
       position: relative;
     }
     
     /* Contenedor principal */
     .cotizaciones-container {
       width: 100%;
-      max-width: 210mm; /* Ancho máximo A4 */
-      min-height: 297mm; /* Alto mínimo A4 */
+      max-width: 210mm;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      padding: 15mm; /* Reducimos el padding para dar más espacio al contenido */
+      padding: 0mm;
       background-color: white;
-      box-sizing: border-box; /* Incluye padding en el ancho total */
+      box-sizing: border-box;
       position: relative;
+    }
+
+    /* Contenido principal para que crezca y empuje el footer */
+    .contenido-principal {
+      flex: 1; 
+      display: flex; /* Asegura que sus hijos puedan estirarse */
+      flex-direction: column; /* Organiza los hijos en columna */
     }
 
     /* Encabezado */
@@ -479,8 +491,8 @@ const CotizacionDatos = (client) => {
 
     .servicio {
       flex: 1;
-      font-size: 5px;
-      line-height: 1;
+      font-size: 6px;
+      line-height: 1.2;
       padding: 0 2px;
       border-right: 1px solid #999;
     }
@@ -492,17 +504,18 @@ const CotizacionDatos = (client) => {
     .servicio-titulo {
       color: #ff0000;
       font-weight: bold;
-      margin-bottom: 0px;
+      margin-bottom: 2px;
       text-transform: uppercase;
       white-space: nowrap;
-      font-size: 5px;
+      font-size: 6px;
     }
 
     .servicio-texto {
       margin: 0;
       padding: 0;
       color: #333;
-      line-height: 1;
+      line-height: 1.2;
+      font-size: 6px;
     }
 
     .intersection-overlay {
@@ -522,8 +535,8 @@ const CotizacionDatos = (client) => {
     .tabla-container {
       position: relative;
       margin-top: 5px;
-      margin-bottom: 80px;
-      min-height: 500px;
+      margin-bottom: 0;
+      flex: 1; /* Permite que el contenedor de la tabla se estire */
     }
 
     .tabla-cotizacion {
@@ -539,7 +552,7 @@ const CotizacionDatos = (client) => {
       top: 0;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: 0; /* Las líneas ahora se extenderán hasta el final del tabla-container */
       pointer-events: none;
     }
 
@@ -615,8 +628,9 @@ const CotizacionDatos = (client) => {
 
     /* Footer */
     .cotizaciones-footer {
-      position: absolute;
-      bottom: 5mm;
+      /* Eliminadas las propiedades de posicionamiento absoluto, se manejará con flexbox */
+      /* position: absolute; */
+      /* bottom: -5mm; */
       left: 15mm;
       right: 15mm;
     }
@@ -624,7 +638,7 @@ const CotizacionDatos = (client) => {
     .pie-cotizacion {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 5px;
       padding: 10px 0;
       border-top: 1px solid #ccc;
       background-color: white;
@@ -810,7 +824,7 @@ const CotizacionDatos = (client) => {
             </div>
           </div>
           <div class="servicio">
-            <div class="servicio-titulo">IMPRESIÓN COMERCIAL</div>u
+            <div class="servicio-titulo">IMPRESIÓN COMERCIAL</div>
             <div class="servicio-texto">
               EN GRAN VOLUMEN: FOLLETOS, CATALOGOS, REVISTAS, FLYERS, DIPTICOS, TRIPTICOS, LIBROS, STICKERS, PAPELERIA CORPORATIVA, CAJAS PARA ALIMENTOS, MEDICAMENTOS, ETC.
             </div>
@@ -853,7 +867,7 @@ const CotizacionDatos = (client) => {
           <div class="datos-izquierda">
             <div class="campo-datos">
               <label>Cliente:</label>
-              <span>${cotizacion.nombre_cliente} (${cotizacion.ruc_descripcion})</span>
+              <span>${cotizacion.nombre_cliente}</span>
             </div>
             <div class="campo-datos fecha">
               <label>Fecha:</label>
@@ -976,22 +990,22 @@ const CotizacionDatos = (client) => {
         </html>
       `;
 
-      await page.setContent(htmlContent);
-      console.log('Contenido HTML establecido');
-      
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
       // Generar el PDF
+      console.log('Generando PDF...');
       await page.pdf({
         path: pdfPath,
         format: 'A4',
         printBackground: true,
         margin: {
-          top: '15mm',
-          right: '15mm',
-          bottom: '15mm',
-          left: '15mm'
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
         }
       });
-      console.log('PDF generado exitosamente');
+      console.log('PDF generado y guardado en:', pdfPath);
 
       // 6. Enviar el archivo PDF al cliente
       res.setHeader('Content-Type', 'application/pdf');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 function CotizacionesVer() {
@@ -49,6 +49,8 @@ function CotizacionesVer() {
       if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
       if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
+      queryParams.append("limite", "15");
+      queryParams.append("ordenar", "fecha_desc");
 
       const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
       console.log('Realizando petición a:', url);
@@ -373,6 +375,32 @@ function CotizacionesVer() {
     }
   };
 
+  const aprobarCotizacion = async (id) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}/aprobar`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al aprobar la cotización');
+      }
+
+      toast.success('✅ Cotización aprobada exitosamente');
+      await cargarCotizaciones();
+    } catch (error) {
+      console.error('Error al aprobar la cotización:', error);
+      toast.error(error.message || 'Error al aprobar la cotización');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -511,6 +539,15 @@ function CotizacionesVer() {
                       >
                         <FaEnvelopeOpen />
                       </button>
+                      {cotizacion.estado === 'pendiente' && (
+                        <button
+                          className="p-2 text-green-600 hover:bg-green-100 rounded"
+                          onClick={() => aprobarCotizacion(cotizacion.id)}
+                          title="Aprobar cotización"
+                        >
+                          <FaCheck />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
