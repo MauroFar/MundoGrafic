@@ -448,6 +448,17 @@ function CotizacionesCrear() {
         clienteId = clienteCreado.clienteId;
       }
 
+      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
+      const filasData = filas.map(fila => ({
+        cantidad: fila.cantidad,
+        detalle: fila.detalle,
+        valor_unitario: fila.valor_unitario,
+        valor_total: fila.valor_total,
+        imagen_ruta: fila.imagen_ruta,
+        imagen_width: fila.width || 300,
+        imagen_height: fila.height || 200
+      }));
+
       // 3. Crear la nueva cotización con todas las relaciones
       const cotizacionData = {
         fecha,
