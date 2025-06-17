@@ -516,6 +516,15 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         .detalle-con-imagen {
           margin-bottom: 20px;
         }
+
+        .detalle-texto {
+          margin-bottom: 10px;
+        }
+
+        .imagen-container {
+          margin-top: 10px;
+          text-align: center;
+        }
       </style>
     </head>
     <body>
@@ -641,13 +650,15 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
                     <td class="col-cant">${d.cantidad}</td>
                     <td class="col-detalle">
                       <div class="detalle-con-imagen">
-                        ${d.detalle}
+                        <div class="detalle-texto">${d.detalle}</div>
                         ${d.base64Image ? `
-                          <img 
-                            src="${d.base64Image}" 
-                            alt="Imagen del producto" 
-                            class="imagen-producto"
-                          />
+                          <div class="imagen-container">
+                            <img 
+                              src="${d.base64Image}" 
+                              alt="Imagen del producto" 
+                              class="imagen-producto"
+                            />
+                          </div>
                         ` : ''}
                       </div>
                     </td>
@@ -665,19 +676,19 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
             <div class="pie-izquierda">
               <div class="campoPie">
                 <label>Tiempo De Entrega:</label>
-                <span>8 días laborables</span>
+                <span>${cotizacion.tiempo_entrega || 'No especificado'}</span>
               </div>
               <div class="campoPie">
                 <label>Forma De Pago:</label>
-                <span>el Cordado</span>
+                <span>${cotizacion.forma_pago || 'No especificado'}</span>
               </div>
               <div class="campoPie">
                 <label>Validez Proforma:</label>
-                <span>15 días</span>
+                <span>${cotizacion.validez_proforma || 'No especificado'}</span>
               </div>
               <div class="campoPie">
                 <label>Observaciones:</label>
-                <span></span>
+                <span>${cotizacion.observaciones || 'Sin observaciones'}</span>
               </div>
             </div>
             <div class="pie-derecha">
@@ -1033,7 +1044,11 @@ const CotizacionDatos = (client) => {
           cl.nombre_cliente,
           e.nombre AS nombre_ejecutivo,
           r.ruc,
-          r.descripcion AS ruc_descripcion
+          r.descripcion AS ruc_descripcion,
+          c.tiempo_entrega,
+          c.forma_pago,
+          c.validez_proforma,
+          c.observaciones
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
@@ -1111,7 +1126,11 @@ const CotizacionDatos = (client) => {
           cl.nombre_cliente,
           e.nombre AS nombre_ejecutivo,
           r.ruc,
-          r.descripcion AS ruc_descripcion
+          r.descripcion AS ruc_descripcion,
+          c.tiempo_entrega,
+          c.forma_pago,
+          c.validez_proforma,
+          c.observaciones
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
