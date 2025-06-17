@@ -37,3 +37,5 @@ backend/storage/pdfs/*
 # Ignora archivos dentro de uploads generados
 backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
+
+start-app.bat
