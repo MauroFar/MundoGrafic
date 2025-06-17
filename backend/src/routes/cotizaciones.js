@@ -725,7 +725,11 @@ const CotizacionDatos = (client) => {
       total, 
       ruc_id, 
       cliente_id, 
-      ejecutivo_id  // Ahora recibimos ejecutivo_id en lugar de nombre_ejecutivo
+      ejecutivo_id,
+      tiempo_entrega,
+      forma_pago,
+      validez_proforma,
+      observaciones
     } = req.body;
     const estado = "pendiente";
 
@@ -751,9 +755,13 @@ const CotizacionDatos = (client) => {
           total, 
           estado, 
           ruc_id,
-          ejecutivo_id
+          ejecutivo_id,
+          tiempo_entrega,
+          forma_pago,
+          validez_proforma,
+          observaciones
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `;
       
@@ -767,7 +775,11 @@ const CotizacionDatos = (client) => {
         total,
         estado,
         ruc_id,
-        ejecutivo_id
+        ejecutivo_id,
+        tiempo_entrega,
+        forma_pago,
+        validez_proforma,
+        observaciones
       ]);
 
       res.json(result.rows[0]); // Respuesta con la nueva cotización creada
@@ -888,7 +900,19 @@ const CotizacionDatos = (client) => {
   // Actualizar una cotización existente
   router.put("/:id", async (req, res) => {
     const { id } = req.params;
-    const { fecha, subtotal, iva, descuento, total, ruc_id, cliente_id } = req.body;
+    const { 
+      fecha, 
+      subtotal, 
+      iva, 
+      descuento, 
+      total, 
+      ruc_id, 
+      cliente_id,
+      tiempo_entrega,
+      forma_pago,
+      validez_proforma,
+      observaciones
+    } = req.body;
 
     try {
       const query = `
@@ -899,8 +923,12 @@ const CotizacionDatos = (client) => {
             descuento = $4, 
             total = $5, 
             ruc_id = $6, 
-            cliente_id = $7
-        WHERE id = $8
+            cliente_id = $7,
+            tiempo_entrega = $8,
+            forma_pago = $9,
+            validez_proforma = $10,
+            observaciones = $11
+        WHERE id = $12
         RETURNING *
       `;
 
@@ -912,6 +940,10 @@ const CotizacionDatos = (client) => {
         total,
         ruc_id,
         cliente_id,
+        tiempo_entrega,
+        forma_pago,
+        validez_proforma,
+        observaciones,
         id
       ]);
 

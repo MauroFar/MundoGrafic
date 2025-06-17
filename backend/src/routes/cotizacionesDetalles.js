@@ -7,12 +7,19 @@ const createCotizacionDetalles = (client) => {
     const { id } = req.params;
     try {
       const query = `
-        SELECT id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
+        SELECT 
+          id, 
+          cotizacion_id, 
+          cantidad, 
+          detalle, 
+          CAST(valor_unitario AS DECIMAL(10,2)) as valor_unitario, 
+          CAST(valor_total AS DECIMAL(10,2)) as valor_total
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC
       `;
       const result = await client.query(query, [id]);
+      console.log("Detalles encontrados:", result.rows); // Para debugging
       res.json(result.rows);
     } catch (error) {
       console.error("Error al obtener detalles de la cotización:", error);
@@ -20,47 +27,34 @@ const createCotizacionDetalles = (client) => {
     }
   });
 
-  // Ruta para crear detalles de cotización con datos ficticios
-  router.post("/prueba", async (req, res) => {
-    console.log(req.body);  // Verifica lo que estás recibiendo en el backend
-    const { cotizacion_id, detalles } = req.body;  // Recibimos cotizacion_id y detalles
+  // Ruta para crear detalles de cotización
+  router.post("/", async (req, res) => {
+    console.log("Recibiendo datos para crear detalle:", req.body);
+    const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total } = req.body;
 
-    // Verificar que los detalles se han recibido correctamente
-    if (!detalles || detalles.length === 0) {
-      return res.status(400).json({ error: "Faltan detalles en la solicitud" });
+    if (!cotizacion_id || !cantidad || !detalle || !valor_unitario || !valor_total) {
+      return res.status(400).json({ error: "Faltan datos requeridos" });
     }
 
-    // Consulta SQL para insertar detalles de cotización
-    const query = `
-      INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
-    `;
-    
     try {
-      // Crear un array de promesas para insertar los detalles ficticios
-      const promises = detalles.map(async (detalle) => {
-        const { cantidad, detalle: descripcion, valor_unitario, valor_total } = detalle;
-        
-        // Ejecutar la consulta por cada detalle
-        const result = await client.query(query, [
-          cotizacion_id, 
-          cantidad,
-          descripcion,
-          valor_unitario,
-          valor_total,
-        ]);
-        return result.rows[0]; // Retorna el detalle insertado
-      });
+      const query = `
+        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
+      `;
+      
+      const result = await client.query(query, [
+        cotizacion_id,
+        cantidad,
+        detalle,
+        valor_unitario,
+        valor_total
+      ]);
 
-      // Esperamos que todas las inserciones se completen
-      const resultadosDetalles = await Promise.all(promises);
-
-      // Responder con los detalles insertados
-      res.json(resultadosDetalles);
+      res.json(result.rows[0]);
     } catch (error) {
-      console.error("Error al insertar los detalles de cotización:", error);
-      res.status(500).json({ error: "Error al insertar los detalles de cotización" });
+      console.error("Error al insertar detalle de cotización:", error);
+      res.status(500).json({ error: "Error al insertar detalle de cotización" });
     }
   });
 
@@ -69,8 +63,10 @@ const createCotizacionDetalles = (client) => {
     const { id } = req.params;
     const { detalles } = req.body;
 
-    if (!detalles || detalles.length === 0) {
-      return res.status(400).json({ error: "Faltan detalles en la solicitud" });
+    console.log("Detalles recibidos:", detalles); // Para debugging
+
+    if (!detalles || !Array.isArray(detalles)) {
+      return res.status(400).json({ error: "Se requiere un array de detalles válido" });
     }
 
     try {
@@ -84,23 +80,31 @@ const createCotizacionDetalles = (client) => {
         RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
       `;
 
-      const promises = detalles.map(async (detalle) => {
+      const resultadosDetalles = [];
+      for (const detalle of detalles) {
         const { cantidad, detalle: descripcion, valor_unitario, valor_total } = detalle;
+        
+        // Validar que todos los campos requeridos estén presentes y sean válidos
+        if (cantidad === undefined || descripcion === undefined || 
+            valor_unitario === undefined || valor_total === undefined) {
+          throw new Error("Faltan campos requeridos en los detalles");
+        }
+
         const result = await client.query(query, [
           id,
-          cantidad,
+          parseFloat(cantidad),
           descripcion,
-          valor_unitario,
-          valor_total,
+          parseFloat(valor_unitario),
+          parseFloat(valor_total)
         ]);
-        return result.rows[0];
-      });
+        
+        resultadosDetalles.push(result.rows[0]);
+      }
 
-      const resultadosDetalles = await Promise.all(promises);
       res.json(resultadosDetalles);
     } catch (error) {
       console.error("Error al actualizar los detalles de la cotización:", error);
-      res.status(500).json({ error: "Error al actualizar los detalles de la cotización" });
+      res.status(500).json({ error: error.message || "Error al actualizar los detalles de la cotización" });
     }
   });
 

@@ -6,6 +6,7 @@ import axios from 'axios';
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
 import Encabezado from "../../components/Encabezado";
+import { FaSave } from "react-icons/fa";
 
 function CotizacionesCrear() {
   const { id } = useParams();
@@ -30,6 +31,9 @@ function CotizacionesCrear() {
   const [total, setTotal] = useState(0);
   const [filas, setFilas] = useState([]);
   const [TxttiempoEntrega, setTxtTiempoEntrega] = useState("5 días hábiles");
+  const [formaPago, setFormaPago] = useState("50% anticipo, 50% contra entrega");
+  const [validezProforma, setValidezProforma] = useState("15 días");
+  const [observaciones, setObservaciones] = useState("");
   const [numeroCotizacion, setNumeroCotizacion] = useState("Generando...");
   const textareaRefs = useRef([]);
 
@@ -39,6 +43,16 @@ function CotizacionesCrear() {
       cargarCotizacion();
     }
   }, [id]);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/rucs`)
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Datos recibidos del backend:", data);
+        setRucs(data);
+      })
+      .catch((error) => console.error("Error al obtener los RUCs:", error));
+  }, []);
 
   const cargarCotizacion = async () => {
     try {
@@ -54,44 +68,70 @@ function CotizacionesCrear() {
 
       // Actualizar el estado con los datos completos
       setFecha(cotizacionData.fecha ? cotizacionData.fecha.split('T')[0] : today);
-      setSubtotal(cotizacionData.subtotal || 0);
-      setDescuento(cotizacionData.descuento || 0);
-      setSelectedRuc({
-        id: cotizacionData.ruc_id || "",
-        ruc: cotizacionData.ruc || "",
-        descripcion: cotizacionData.ruc_descripcion || ""
-      });
-      setNombreCliente(cotizacionData.nombre_cliente || "");
-      setEjecutivo(cotizacionData.nombre_ejecutivo || "");
       setNumeroCotizacion(cotizacionData.numero_cotizacion || "");
+      setTxtTiempoEntrega(cotizacionData.tiempo_entrega || "5 días hábiles");
+      setFormaPago(cotizacionData.forma_pago || "50% anticipo, 50% contra entrega");
+      setValidezProforma(cotizacionData.validez_proforma || "15 días");
+      setObservaciones(cotizacionData.observaciones || "");
       
-      // Actualizar las filas con los detalles
-      if (Array.isArray(detallesData)) {
-        setFilas(detallesData.map(detalle => ({
-          cantidad: detalle.cantidad || 0,
-          detalle: detalle.detalle || "",
-          unitario: detalle.valor_unitario || 0,
-          total: detalle.valor_total || 0,
-          imagen: detalle.imagen_base64 || null,
-          width: detalle.imagen_width || 200,
-          height: detalle.imagen_height || 150,
-        })));
-      } else {
-        setFilas([]);
+      // Asegurarse de que el RUC se establezca correctamente
+      if (cotizacionData.ruc_id && cotizacionData.ruc) {
+        const rucData = {
+          id: cotizacionData.ruc_id,
+          ruc: cotizacionData.ruc,
+          descripcion: cotizacionData.ruc_descripcion || ""
+        };
+        console.log("Estableciendo RUC:", rucData);
+        setSelectedRuc(rucData);
       }
 
+      // Establecer el nombre del cliente
+      if (cotizacionData.nombre_cliente) {
+        setNombreCliente(cotizacionData.nombre_cliente);
+      }
+
+      // Establecer el nombre del ejecutivo
+      if (cotizacionData.nombre_ejecutivo) {
+        setEjecutivo(cotizacionData.nombre_ejecutivo);
+      }
+
+      // Establecer los detalles de la cotización y calcular totales
+      if (detallesData && detallesData.length > 0) {
+        const filasActualizadas = detallesData.map(detalle => {
+          // Asegurarnos de que los valores sean números válidos
+          const cantidad = parseFloat(detalle.cantidad) || 0;
+          const valorUnitario = parseFloat(detalle.valor_unitario) || 0;
+          const valorTotal = parseFloat(detalle.valor_total) || (cantidad * valorUnitario);
+
+          return {
+            cantidad,
+            detalle: detalle.detalle || "",
+            valor_unitario: valorUnitario,
+            valor_total: valorTotal
+          };
+        });
+
+        console.log("Filas actualizadas:", filasActualizadas); // Para debugging
+        setFilas(filasActualizadas);
+
+        // Calcular totales basados en los detalles
+        const subtotalCalculado = filasActualizadas.reduce((sum, fila) => sum + fila.valor_total, 0);
+        const ivaCalculado = subtotalCalculado * 0.12;
+        const totalCalculado = subtotalCalculado + ivaCalculado;
+
+        setSubtotal(subtotalCalculado);
+        setIva(ivaCalculado);
+        setTotal(totalCalculado);
+      } else {
+        // Si no hay detalles, usar los valores de la cotización
+        setSubtotal(parseFloat(cotizacionData.subtotal) || 0);
+        setIva(parseFloat(cotizacionData.iva) || 0);
+        setTotal(parseFloat(cotizacionData.total) || 0);
+        setFilas([]);
+      }
     } catch (error) {
       console.error("Error al cargar la cotización:", error);
-      alert("Error al cargar los datos de la cotización");
-      // Establecer valores por defecto en caso de error
-      setFecha(today);
-      setSubtotal(0);
-      setDescuento(0);
-      setSelectedRuc({ id: "", ruc: "", descripcion: "" });
-      setNombreCliente("");
-      setEjecutivo("");
-      setNumeroCotizacion("");
-      setFilas([]);
+      alert("Error al cargar la cotización: " + error.message);
     }
   };
 
@@ -125,29 +165,24 @@ function CotizacionesCrear() {
   };
 
   useEffect(() => {
-    fetch(`${apiUrl}/api/rucs`)
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Datos recibidos del backend:", data);
-        setRucs(data);
-      })
-      .catch((error) => console.error("Error al obtener los RUCs:", error));
-  }, []);
-
-  useEffect(() => {
     console.log("RUCs cargados:", rucs);
   }, [rucs]);
 
   const handleRucChange = (event) => {
     const rucSeleccionado = event.target.value;
+    console.log("RUC seleccionado:", rucSeleccionado);
+    
     const rucObj = rucs.find((r) => r.ruc === rucSeleccionado);
     if (rucObj) {
-      setSelectedRuc({ 
+      const newRuc = { 
         id: rucObj.id, 
         ruc: rucObj.ruc,
         descripcion: rucObj.descripcion 
-      });
-      console.log("RUC seleccionado:", rucObj.id, rucObj.ruc);
+      };
+      console.log("Estableciendo nuevo RUC:", newRuc);
+      setSelectedRuc(newRuc);
+    } else {
+      console.warn("No se encontró el RUC seleccionado en la lista de RUCs");
     }
   };
 
@@ -160,6 +195,168 @@ function CotizacionesCrear() {
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
   const handleGuardarTodo = async () => {
+    try {
+      // Validaciones iniciales
+      if (!selectedRuc) {
+        alert("Por favor seleccione un RUC");
+        return;
+      }
+
+      if (!nombreCliente) {
+        alert("Por favor ingrese el nombre del cliente");
+        return;
+      }
+
+      if (!ejecutivo) {
+        alert("Por favor ingrese el nombre del ejecutivo");
+        return;
+      }
+
+      // 1. Primero, obtener o crear el ejecutivo
+      const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: ejecutivo })
+      });
+
+      if (!ejecutivoResponse.ok) {
+        throw new Error("Error al procesar el ejecutivo");
+      }
+
+      const { id: ejecutivo_id } = await ejecutivoResponse.json();
+
+      // 2. Obtener o crear el cliente
+      const buscarClienteResponse = await fetch(
+        `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
+      );
+
+      if (!buscarClienteResponse.ok) {
+        throw new Error("Error al buscar cliente");
+      }
+
+      const clientesEncontrados = await buscarClienteResponse.json();
+      let clienteId;
+
+      if (clientesEncontrados.length > 0) {
+        // Cliente existente
+        clienteId = clientesEncontrados[0].id;
+      } else {
+        // Crear nuevo cliente
+        const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre: nombreCliente })
+        });
+
+        if (!crearClienteResponse.ok) {
+          throw new Error("Error al crear cliente");
+        }
+
+        const clienteCreado = await crearClienteResponse.json();
+        clienteId = clienteCreado.clienteId;
+      }
+
+      // 3. Preparar los datos de la cotización
+      const cotizacionData = {
+        fecha,
+        subtotal,
+        iva,
+        descuento,
+        total,
+        ruc_id: selectedRuc.id,
+        cliente_id: clienteId,
+        ejecutivo_id: ejecutivo_id,
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones
+      };
+
+      let cotizacionId;
+
+      if (id) {
+        // Actualizar cotización existente
+        const updateResponse = await fetch(`${apiUrl}/api/cotizaciones/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cotizacionData)
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error("Error al actualizar la cotización");
+        }
+
+        const updatedCotizacion = await updateResponse.json();
+        cotizacionId = updatedCotizacion.id;
+
+        // Actualizar detalles existentes
+        const detallesActualizados = filas.map(fila => ({
+          cantidad: parseFloat(fila.cantidad),
+          detalle: fila.detalle,
+          valor_unitario: parseFloat(fila.valor_unitario),
+          valor_total: parseFloat(fila.valor_total)
+        }));
+
+        const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ detalles: detallesActualizados })
+        });
+
+        if (!detallesResponse.ok) {
+          const errorData = await detallesResponse.json();
+          throw new Error(errorData.error || "Error al actualizar los detalles de la cotización");
+        }
+
+        alert("Cotización actualizada exitosamente");
+      } else {
+        // Crear nueva cotización
+        const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cotizacionData)
+        });
+
+        if (!createResponse.ok) {
+          throw new Error("Error al crear la cotización");
+        }
+
+        const nuevaCotizacion = await createResponse.json();
+        cotizacionId = nuevaCotizacion.id;
+
+        // Guardar detalles de la nueva cotización
+        if (filas.length > 0) {
+          const detallesActualizados = filas.map(fila => ({
+            cantidad: parseFloat(fila.cantidad),
+            detalle: fila.detalle,
+            valor_unitario: parseFloat(fila.valor_unitario),
+            valor_total: parseFloat(fila.valor_total)
+          }));
+
+          const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ detalles: detallesActualizados })
+          });
+
+          if (!detallesResponse.ok) {
+            const errorData = await detallesResponse.json();
+            throw new Error(errorData.error || "Error al guardar los detalles de la cotización");
+          }
+        }
+
+        alert("Cotización guardada exitosamente");
+      }
+
+      navigate("/cotizaciones/ver");
+    } catch (error) {
+      console.error("Error al procesar la cotización:", error);
+      alert("Error al procesar la cotización: " + error.message);
+    }
+  };
+
+  // Nueva función para guardar como nueva cotización
+  const handleGuardarComoNueva = async () => {
     try {
       // Validaciones iniciales
       if (!selectedRuc.id) {
@@ -225,7 +422,7 @@ function CotizacionesCrear() {
         clienteId = clienteCreado.clienteId;
       }
 
-      // 3. Crear la cotización con todas las relaciones
+      // 3. Crear la nueva cotización con todas las relaciones
       const cotizacionData = {
         fecha,
         subtotal,
@@ -235,7 +432,11 @@ function CotizacionesCrear() {
         ruc_id: selectedRuc.id,
         cliente_id: clienteId,
         ejecutivo_id: ejecutivo_id,
-        numero_cotizacion: siguienteNumero // Usar el siguiente número
+        numero_cotizacion: siguienteNumero,
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones
       };
 
       const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -245,41 +446,37 @@ function CotizacionesCrear() {
       });
 
       if (!responseCotizacion.ok) {
-        throw new Error("Error al guardar la cotización");
+        throw new Error("Error al guardar la nueva cotización");
       }
 
-      const cotizacionResponse = await responseCotizacion.json();
+      const { id: nuevaCotizacionId } = await responseCotizacion.json();
 
-      // 4. Guardar los detalles de la cotización
-      const detallesData = {
-        cotizacion_id: cotizacionResponse.id,
-        detalles: filas.map((fila) => ({
+      // 4. Guardar los detalles de la nueva cotización
+      for (const fila of filas) {
+        const detalleData = {
+          cotizacion_id: nuevaCotizacionId,
           cantidad: fila.cantidad,
           detalle: fila.detalle,
-          valor_unitario: fila.unitario,
-          valor_total: fila.total,
-          imagen_base64: fila.imagen,
-          imagen_width: fila.width,
-          imagen_height: fila.height,
-        })),
-      };
+          valor_unitario: fila.valor_unitario,
+          valor_total: fila.valor_total
+        };
 
-      const responseDetalles = await fetch(`${apiUrl}/api/cotizacionesDetalles/prueba`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(detallesData),
-      });
+        const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(detalleData),
+        });
 
-      if (!responseDetalles.ok) {
-        throw new Error("Error al guardar los detalles de la cotización");
+        if (!responseDetalle.ok) {
+          throw new Error("Error al guardar los detalles de la nueva cotización");
+        }
       }
 
-      alert("Cotización guardada exitosamente!");
+      alert("Nueva cotización guardada exitosamente");
       navigate("/cotizaciones/ver");
-
     } catch (error) {
-      console.error("Error:", error);
-      alert(error.message || "Hubo un problema al guardar los datos.");
+      console.error("Error al guardar la nueva cotización:", error);
+      alert("Error al guardar la nueva cotización: " + error.message);
     }
   };
 
@@ -322,8 +519,8 @@ function CotizacionesCrear() {
       {
         cantidad: 1,
         detalle: "",
-        unitario: 0,
-        total: 0,
+        valor_unitario: 0,
+        valor_total: 0,
         imagen: null,
         width: 200,
         height: 150
@@ -359,23 +556,48 @@ function CotizacionesCrear() {
 
   // Función auxiliar para formatear números de manera segura
   const formatearNumero = (numero) => {
-    if (numero === null || numero === undefined) return "0.00";
-    const num = typeof numero === 'string' ? parseFloat(numero) : numero;
-    return isNaN(num) ? "0.00" : num.toFixed(2);
+    if (numero === null || numero === undefined || isNaN(numero)) return "0.00";
+    return parseFloat(numero).toFixed(2);
   };
 
-  // Actualizar cálculos cuando cambien los valores
-  useEffect(() => {
-    const nuevoIva = parseFloat(subtotal) * 0.15;
-    const nuevoTotal = parseFloat(subtotal) + nuevoIva - parseFloat(descuento);
-    setIva(nuevoIva);
-    setTotal(nuevoTotal);
-  }, [subtotal, descuento]);
+  const calcularTotalFila = (cantidad, valorUnitario) => {
+    const total = parseFloat(cantidad) * parseFloat(valorUnitario);
+    return isNaN(total) ? 0 : total;
+  };
+
+  const handleCantidadChange = (index, value) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index].cantidad = value;
+    nuevasFilas[index].valor_total = calcularTotalFila(value, nuevasFilas[index].valor_unitario);
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+  };
+
+  const handleValorUnitarioChange = (index, value) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index].valor_unitario = value;
+    nuevasFilas[index].valor_total = calcularTotalFila(nuevasFilas[index].cantidad, value);
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+  };
+
+  const calcularTotales = (filasActuales) => {
+    const subtotal = filasActuales.reduce((sum, fila) => {
+      const totalFila = parseFloat(fila.valor_total) || 0;
+      return sum + totalFila;
+    }, 0);
+    const iva = subtotal * 0.12;
+    const total = subtotal + iva;
+
+    setSubtotal(subtotal);
+    setIva(iva);
+    setTotal(total);
+  };
 
   // Actualiza el subtotal cuando cambian los productos
   useEffect(() => {
     const nuevoSubtotal = filas.reduce((acc, fila) => {
-      return acc + (parseFloat(fila.total) || 0);
+      return acc + (parseFloat(fila.valor_total) || 0);
     }, 0);
     setSubtotal(nuevoSubtotal);
   }, [filas]); // Se ejecuta cada vez que `filas` cambia
@@ -391,7 +613,45 @@ function CotizacionesCrear() {
   }, [filas]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="container mx-auto px-4 py-8">
+      {/* Encabezado */}
+      <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => navigate("/cotizaciones/ver")}
+          className="text-blue-600 hover:text-blue-800 flex items-center"
+        >
+          <span className="mr-2">←</span> Volver
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">
+          {id ? "Editar Cotización" : "Nueva Cotización"}
+        </h1>
+        <div className="flex gap-2">
+          {id ? (
+            <>
+              <button
+                onClick={handleGuardarComoNueva}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+              >
+                <FaSave className="mr-2" /> Guardar como Nueva
+              </button>
+              <button
+                onClick={handleGuardarTodo}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              >
+                <FaSave className="mr-2" /> Actualizar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleGuardarTodo}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+            >
+              <FaSave className="mr-2" /> Guardar
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Barra lateral de botones */}
       <div className="fixed top-0 left-0 h-full w-48 bg-white shadow-lg p-4 flex flex-col gap-3">
         <button
@@ -410,17 +670,8 @@ function CotizacionesCrear() {
           Buscar
         </button>
 
-
         <button 
           className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
-          onClick={handleGuardarTodo}
-        >
-          <i className="fas fa-save"></i>
-          Guardar
-        </button>
-
-        <button 
-          className="w-full px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
           onClick={agregarFila}
         >
           <i className="fas fa-plus"></i>
@@ -451,10 +702,9 @@ function CotizacionesCrear() {
               <div className="bg-gray-100 p-4 rounded-lg">
                 <span className="text-sm font-semibold text-gray-600 block mb-2">R.U.C</span>
                 <select
-                  className="w-full border border-gray-300 rounded-md p-2 bg-white"
-                  id="ruc"
                   value={selectedRuc.ruc}
                   onChange={handleRucChange}
+                  className="w-full border border-gray-300 rounded-md p-2"
                 >
                   <option value="">Seleccione un RUC</option>
                   {rucs.map((ruc) => (
@@ -544,12 +794,9 @@ function CotizacionesCrear() {
                       <input
                         type="number"
                         value={fila.cantidad}
-                        onChange={(e) => {
-                          const nuevasFilas = [...filas];
-                          nuevasFilas[index].cantidad = e.target.value;
-                          setFilas(nuevasFilas);
-                        }}
+                        onChange={(e) => handleCantidadChange(index, e.target.value)}
                         className="w-full border border-gray-300 rounded-md p-2 text-center"
+                        min="1"
                       />
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
@@ -590,21 +837,15 @@ function CotizacionesCrear() {
                     <td className="border border-gray-300 px-4 py-2 align-top">
                       <input
                         type="number"
-                        value={fila.unitario}
-                        onChange={(e) => {
-                          const nuevasFilas = [...filas];
-                          nuevasFilas[index].unitario = e.target.value;
-                          nuevasFilas[index].total = (
-                            parseFloat(e.target.value) *
-                            parseFloat(nuevasFilas[index].cantidad || 0)
-                          ).toFixed(2);
-                          setFilas(nuevasFilas);
-                        }}
+                        value={fila.valor_unitario}
+                        onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
                         className="w-32 border border-gray-300 rounded-md p-2 text-right"
+                        min="0"
+                        step="0.01"
                       />
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-right align-top">
-                      ${formatearNumero(fila.total)}
+                      ${formatearNumero(fila.valor_total)}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center align-top">
                       <button
@@ -670,7 +911,7 @@ function CotizacionesCrear() {
         </div>
 
         {/* Pie de página */}
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <label className="w-32 text-sm font-medium text-gray-700">Tiempo de Entrega:</label>
@@ -679,27 +920,36 @@ function CotizacionesCrear() {
                 value={TxttiempoEntrega}
                 onChange={(e) => setTxtTiempoEntrega(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-md p-2"
+                placeholder="Ej: 5 días hábiles"
               />
             </div>
             <div className="flex items-center gap-4">
               <label className="w-32 text-sm font-medium text-gray-700">Forma de Pago:</label>
               <input
                 type="text"
+                value={formaPago}
+                onChange={(e) => setFormaPago(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-md p-2"
+                placeholder="Ej: 50% anticipo, 50% contra entrega"
               />
             </div>
             <div className="flex items-center gap-4">
               <label className="w-32 text-sm font-medium text-gray-700">Validez de Proforma:</label>
               <input
                 type="text"
+                value={validezProforma}
+                onChange={(e) => setValidezProforma(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-md p-2"
+                placeholder="Ej: 15 días"
               />
             </div>
             <div className="flex items-center gap-4">
               <label className="w-32 text-sm font-medium text-gray-700">Observaciones:</label>
-              <input
-                type="text"
-                className="flex-1 border border-gray-300 rounded-md p-2"
+              <textarea
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                className="flex-1 border border-gray-300 rounded-md p-2 h-32"
+                placeholder="Observaciones adicionales..."
               />
             </div>
           </div>

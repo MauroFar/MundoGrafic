@@ -7,28 +7,36 @@ module.exports = function(client) {
     const { id } = req.params;
     try {
       const result = await client.query(`
-  	SELECT 
-  c.id, 
-  c.numero_cotizacion, 
-  c.fecha, 
-  c.estado,
-  c.subtotal,
-  c.iva,
-  c.descuento,
-  c.total,
-  cl.nombre_cliente,
-  e.nombre AS nombre_ejecutivo,
-  r.ruc,
-  r.descripcion AS ruc_descripcion
-FROM cotizaciones c
-JOIN clientes cl ON c.cliente_id = cl.id
-JOIN rucs r ON c.ruc_id = r.id
-JOIN ejecutivos e ON c.ejecutivo_id = e.id
-WHERE c.id = $1;
+        SELECT 
+          c.id, 
+          c.numero_cotizacion, 
+          c.fecha, 
+          c.estado,
+          c.subtotal,
+          c.iva,
+          c.descuento,
+          c.total,
+          cl.nombre_cliente,
+          e.nombre AS nombre_ejecutivo,
+          r.id AS ruc_id,
+          r.ruc,
+          r.descripcion AS ruc_descripcion,
+          c.tiempo_entrega,
+          c.forma_pago,
+          c.validez_proforma,
+          c.observaciones,
+          c.cliente_id,
+          c.ejecutivo_id
+        FROM cotizaciones c
+        JOIN clientes cl ON c.cliente_id = cl.id
+        JOIN rucs r ON c.ruc_id = r.id
+        LEFT JOIN ejecutivos e ON c.ejecutivo_id = e.id
+        WHERE c.id = $1;
       `, [id]);
 
       if (result.rows.length > 0) {
-        res.json(result.rows[0]); // Retorna la cotización encontrada
+        console.log("Datos de cotización encontrados:", result.rows[0]); // Para debugging
+        res.json(result.rows[0]);
       } else {
         res.status(404).json({ error: "Cotización no encontrada" });
       }
