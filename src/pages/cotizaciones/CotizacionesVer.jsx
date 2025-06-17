@@ -307,7 +307,15 @@ function CotizacionesVer() {
       setLoading(true);
 
       if (!emailDataAlternativo.to) {
-        throw new Error('Se requiere un correo electrónico válido');
+        toast.error('Se requiere un correo electrónico válido');
+        return;
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailDataAlternativo.to)) {
+        toast.error('El formato del correo electrónico no es válido');
+        return;
       }
 
       const response = await fetch(`${apiUrl}/api/cotizaciones/${selectedCotizacion.id}/enviar-correo`, {
@@ -322,19 +330,19 @@ function CotizacionesVer() {
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al enviar el correo');
+        throw new Error(data.message || 'Error al enviar el correo');
       }
 
-      const result = await response.json();
       toast.success("✅ Correo enviado exitosamente");
       setShowModalAlternativo(false);
       setEmailDataAlternativo({ to: '', subject: '', message: '' });
 
     } catch (error) {
       console.error('Error detallado:', error);
-      toast.error('Error al enviar el correo: ' + error.message);
+      toast.error(error.message || 'Error al enviar el correo');
     } finally {
       setLoading(false);
     }
