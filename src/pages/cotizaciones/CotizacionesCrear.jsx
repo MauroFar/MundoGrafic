@@ -605,6 +605,12 @@ function CotizacionesCrear() {
           metadata: data.metadata
         };
         setFilas(nuevasFilas);
+
+        // Resetear el input de archivo
+        const fileInput = document.getElementById(`file-upload-${index}`);
+        if (fileInput) {
+          fileInput.value = '';
+        }
       } catch (error) {
         console.error('Error al subir la imagen:', error);
         alert('Error al subir la imagen: ' + error.message);
@@ -612,12 +618,22 @@ function CotizacionesCrear() {
     }
   };
 
+  // Función para manejar el clic en el botón de agregar imagen
+  const handleAgregarImagenClick = (index) => {
+    const fileInput = document.getElementById(`file-upload-${index}`);
+    if (fileInput) {
+      fileInput.value = ''; // Resetear el input antes de abrir el selector
+      fileInput.click();
+    }
+  };
+
   // Función para eliminar una imagen
   const handleEliminarImagen = async (index) => {
     try {
       const imagenRuta = filas[index].imagen_ruta;
-      if (imagenRuta) {
-        // Eliminar la imagen del servidor
+      
+      // Solo intentar eliminar la imagen del servidor si estamos en modo edición y existe una ruta
+      if (id && imagenRuta) {
         const response = await fetch(`${apiUrl}/api/upload/imagen`, {
           method: 'DELETE',
           headers: {
@@ -627,11 +643,11 @@ function CotizacionesCrear() {
         });
 
         if (!response.ok) {
-          throw new Error('Error al eliminar la imagen');
+          throw new Error('Error al eliminar la imagen del servidor');
         }
       }
 
-      // Actualizar el estado
+      // Actualizar el estado local independientemente de si estamos en modo edición o creación
       const nuevasFilas = [...filas];
       nuevasFilas[index] = {
         ...nuevasFilas[index],
@@ -639,7 +655,9 @@ function CotizacionesCrear() {
         imagen_ruta: null,
         imagen_ruta_jpeg: null,
         thumbnail: null,
-        metadata: null
+        metadata: null,
+        width: 200,  // Restaurar dimensiones por defecto
+        height: 150  // Restaurar dimensiones por defecto
       };
       setFilas(nuevasFilas);
     } catch (error) {
@@ -1015,7 +1033,7 @@ function CotizacionesCrear() {
                           id={`file-upload-${index}`}
                         />
                         <button
-                          onClick={() => document.getElementById(`file-upload-${index}`).click()}
+                          onClick={() => handleAgregarImagenClick(index)}
                           className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1 text-sm"
                         >
                           <i className="fas fa-image"></i> Agregar Imagen
@@ -1096,21 +1114,9 @@ function CotizacionesCrear() {
                               };
                               setFilas(nuevasFilas);
                             }}
-                            handleStyles={{
-                              bottomRight: {
-                                width: "15px",
-                                height: "15px",
-                                backgroundColor: "#3498db",
-                                borderRadius: "50%",
-                                position: "absolute",
-                                right: "-7px",
-                                bottom: "-7px",
-                                cursor: "nwse-resize",
-                                zIndex: 1000,
-                                border: "2px solid white",
-                                boxShadow: "0 0 3px rgba(0,0,0,0.3)"
-                              },
-                            }}
+                            draggableOpts={{ grid: [1, 1] }}
+                            resizeHandles={['se']}
+                            className="relative"
                           >
                             <div
                               style={{
@@ -1136,6 +1142,21 @@ function CotizacionesCrear() {
                                   } else {
                                     e.target.style.display = 'none';
                                   }
+                                }}
+                              />
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  right: '-7px',
+                                  bottom: '-7px',
+                                  width: '15px',
+                                  height: '15px',
+                                  backgroundColor: '#3498db',
+                                  borderRadius: '50%',
+                                  cursor: 'nwse-resize',
+                                  zIndex: 1000,
+                                  border: '2px solid white',
+                                  boxShadow: '0 0 3px rgba(0,0,0,0.3)'
                                 }}
                               />
                             </div>
