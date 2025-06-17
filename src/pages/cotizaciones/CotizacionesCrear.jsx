@@ -177,6 +177,10 @@ function CotizacionesCrear() {
         return;
       }
 
+      // Obtener el número de cotización actual y preparar el siguiente
+      const numeroActual = await obtenerNumeroCotizacion();
+      const siguienteNumero = (parseInt(numeroActual) + 1).toString().padStart(3, '0');
+
       // 1. Primero, obtener o crear el ejecutivo
       const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
         method: "POST",
@@ -230,7 +234,8 @@ function CotizacionesCrear() {
         total,
         ruc_id: selectedRuc.id,
         cliente_id: clienteId,
-        ejecutivo_id: ejecutivo_id
+        ejecutivo_id: ejecutivo_id,
+        numero_cotizacion: siguienteNumero // Usar el siguiente número
       };
 
       const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -285,18 +290,21 @@ function CotizacionesCrear() {
       if (response.data && response.data.numero_cotizacion) {
         // Si estamos en modo edición, mantenemos el número actual
         if (!id) {
-          // Si es una nueva cotización, incrementamos el último número
+          // Si es una nueva cotización, usamos el último número sin incrementar
           const ultimoNumero = parseInt(response.data.numero_cotizacion);
-          const nuevoNumero = ultimoNumero + 1;
-          setNumeroCotizacion(nuevoNumero.toString().padStart(3, '0'));
+          const numeroFormateado = ultimoNumero.toString().padStart(3, '0');
+          setNumeroCotizacion(numeroFormateado);
+          return numeroFormateado;
         }
       } else {
         // Si no hay cotizaciones previas, comenzamos desde 001
         setNumeroCotizacion("001");
+        return "001";
       }
     } catch (error) {
       console.error("Error al obtener el número de cotización:", error);
       setNumeroCotizacion("Error");
+      return "Error";
     }
   };
 
