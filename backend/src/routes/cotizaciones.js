@@ -27,7 +27,33 @@ transporter.verify(function(error, success) {
 });
 
 // Función para generar el HTML de la cotización
-const generarHTMLCotizacion = (cotizacion, detalles) => {
+const generarHTMLCotizacion = async (cotizacion, detalles) => {
+  // Establecer la URL base para las imágenes
+  const baseUrl = process.env.API_URL || 'http://localhost:3000';
+  
+  // Función para convertir imagen a base64
+  const getBase64Image = async (imagePath) => {
+    try {
+      const fullPath = path.join(__dirname, '../../storage', imagePath);
+      const imageBuffer = await fs.readFile(fullPath);
+      const base64Image = imageBuffer.toString('base64');
+      const mimeType = imagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+      return `data:${mimeType};base64,${base64Image}`;
+    } catch (error) {
+      console.error('Error al convertir imagen a base64:', error);
+      return null;
+    }
+  };
+
+  // Procesar las imágenes de los detalles
+  const detallesConImagenes = await Promise.all(detalles.map(async (d) => {
+    if (d.imagen_ruta) {
+      const base64Image = await getBase64Image(d.imagen_ruta);
+      return { ...d, base64Image };
+    }
+    return d;
+  }));
+
   return `
     <!DOCTYPE html>
     <html>
@@ -477,6 +503,19 @@ const generarHTMLCotizacion = (cotizacion, detalles) => {
         .campo-datos.fecha .ciudad {
           margin-right: 10px;
         }
+
+        /* Estilos para las imágenes */
+        .imagen-producto {
+          max-width: 300px;
+          max-height: 200px;
+          margin: 10px 0;
+          display: block;
+          object-fit: contain;
+        }
+
+        .detalle-con-imagen {
+          margin-bottom: 20px;
+        }
       </style>
     </head>
     <body>
@@ -597,10 +636,21 @@ const generarHTMLCotizacion = (cotizacion, detalles) => {
                 </tr>
               </thead>
               <tbody>
-                ${detalles.map(d => `
+                ${detallesConImagenes.map(d => `
                   <tr>
                     <td class="col-cant">${d.cantidad}</td>
-                    <td class="col-detalle">${d.detalle}</td>
+                    <td class="col-detalle">
+                      <div class="detalle-con-imagen">
+                        ${d.detalle}
+                        ${d.base64Image ? `
+                          <img 
+                            src="${d.base64Image}" 
+                            alt="Imagen del producto" 
+                            class="imagen-producto"
+                          />
+                        ` : ''}
+                      </div>
+                    </td>
                     <td class="col-unitario">$${Number(d.valor_unitario).toFixed(2)}</td>
                     <td class="col-total">$${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
@@ -691,9 +741,14 @@ const generarPDF = async (cotizacion, detalles) => {
     });
     
     const page = await browser.newPage();
-    const htmlContent = generarHTMLCotizacion(cotizacion, detalles);
     
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    // Generar el HTML con las imágenes en base64
+    const htmlContent = await generarHTMLCotizacion(cotizacion, detalles);
+    
+    await page.setContent(htmlContent, { 
+      waitUntil: 'networkidle0',
+      timeout: 30000
+    });
     
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -986,7 +1041,6 @@ const CotizacionDatos = (client) => {
         WHERE c.id = $1
       `;
       
-      console.log('Ejecutando consulta SQL...');
       const cotizacionResult = await client.query(cotizacionQuery, [id]);
       if (cotizacionResult.rows.length === 0) {
         console.log('No se encontró la cotización');
@@ -997,7 +1051,7 @@ const CotizacionDatos = (client) => {
 
       // 2. Obtener los detalles de la cotización
       const detallesQuery = `
-        SELECT cantidad, detalle, valor_unitario, valor_total
+        SELECT cantidad, detalle, valor_unitario, valor_total, imagen_ruta
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC
@@ -1007,44 +1061,13 @@ const CotizacionDatos = (client) => {
       const detalles = detallesResult.rows;
       console.log('Detalles obtenidos:', detalles);
 
-      // 3. Crear directorio para PDFs si no existe
-      const pdfDir = path.join(__dirname, '../../storage/pdfs');
-      console.log('Verificando directorio de PDFs:', pdfDir);
-      try {
-        await fs.mkdir(pdfDir, { recursive: true });
-        console.log('Directorio de PDFs creado/verificado');
-      } catch (mkdirError) {
-        console.error('Error al crear directorio de PDFs:', mkdirError);
-        throw new Error('No se pudo crear el directorio para PDFs');
-      }
-
-      // 4. Generar nombre único para el PDF
-      const timestamp = new Date().getTime();
-      const fileName = `cotizacion-${cotizacion.numero_cotizacion}-${timestamp}.pdf`;
-      const pdfPath = path.join(pdfDir, fileName);
-      console.log('Ruta del archivo PDF:', pdfPath);
-
-      // 5. Generar el PDF
+      // 3. Generar el PDF
       const pdfBuffer = await generarPDF(cotizacion, detalles);
       
-      // 6. Guardar el PDF
-      await fs.writeFile(pdfPath, pdfBuffer);
-      console.log('PDF generado y guardado en:', pdfPath);
-
-      // 7. Enviar el archivo PDF al cliente
+      // 4. Enviar el PDF al cliente
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
-      res.sendFile(pdfPath);
-
-      // 8. Limpiar el archivo después de enviarlo
-      setTimeout(async () => {
-        try {
-          await fs.unlink(pdfPath);
-          console.log('Archivo PDF temporal eliminado');
-        } catch (error) {
-          console.error('Error al eliminar archivo temporal:', error);
-        }
-      }, 1000);
+      res.setHeader('Content-Disposition', `attachment; filename=cotizacion-${cotizacion.numero_cotizacion}.pdf`);
+      res.send(pdfBuffer);
 
     } catch (error) {
       console.error('Error al generar PDF:', error);
@@ -1109,7 +1132,7 @@ const CotizacionDatos = (client) => {
 
       // Obtener los detalles de la cotización
       const detallesQuery = `
-        SELECT cantidad, detalle, valor_unitario, valor_total
+        SELECT cantidad, detalle, valor_unitario, valor_total, imagen_ruta
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC

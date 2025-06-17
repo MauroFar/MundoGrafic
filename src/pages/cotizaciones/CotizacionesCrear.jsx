@@ -103,15 +103,31 @@ function CotizacionesCrear() {
           const valorUnitario = parseFloat(detalle.valor_unitario) || 0;
           const valorTotal = parseFloat(detalle.valor_total) || (cantidad * valorUnitario);
 
+          // Construir las URLs de las imágenes
+          const imagenRuta = detalle.imagen_ruta || null;
+          const imagenUrl = imagenRuta ? `${apiUrl}${imagenRuta}` : null;
+          const imagenRutaJpeg = imagenRuta ? imagenRuta.replace('.webp', '.jpeg') : null;
+
+          console.log('Rutas de imagen:', {
+            original: imagenRuta,
+            url: imagenUrl,
+            jpeg: imagenRutaJpeg
+          });
+
           return {
             cantidad,
             detalle: detalle.detalle || "",
             valor_unitario: valorUnitario,
-            valor_total: valorTotal
+            valor_total: valorTotal,
+            imagen: imagenUrl,
+            imagen_ruta: imagenRuta,
+            imagen_ruta_jpeg: imagenRutaJpeg,
+            width: 200,
+            height: 150
           };
         });
 
-        console.log("Filas actualizadas:", filasActualizadas); // Para debugging
+        console.log("Filas actualizadas:", filasActualizadas);
         setFilas(filasActualizadas);
 
         // Calcular totales basados en los detalles
@@ -294,7 +310,8 @@ function CotizacionesCrear() {
           cantidad: parseFloat(fila.cantidad),
           detalle: fila.detalle,
           valor_unitario: parseFloat(fila.valor_unitario),
-          valor_total: parseFloat(fila.valor_total)
+          valor_total: parseFloat(fila.valor_total),
+          imagen_ruta: fila.imagen_ruta
         }));
 
         const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
@@ -330,7 +347,8 @@ function CotizacionesCrear() {
             cantidad: parseFloat(fila.cantidad),
             detalle: fila.detalle,
             valor_unitario: parseFloat(fila.valor_unitario),
-            valor_total: parseFloat(fila.valor_total)
+            valor_total: parseFloat(fila.valor_total),
+            imagen_ruta: fila.imagen_ruta
           }));
 
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
@@ -458,7 +476,8 @@ function CotizacionesCrear() {
           cantidad: fila.cantidad,
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
-          valor_total: fila.valor_total
+          valor_total: fila.valor_total,
+          imagen_ruta: fila.imagen_ruta
         };
 
         const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
@@ -535,23 +554,77 @@ function CotizacionesCrear() {
   };
 
   // Función para manejar el cambio de imagen
-  const handleImagenChange = (index, file) => {
+  const handleImagenChange = async (index, file) => {
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        // Crear un FormData para enviar el archivo
+        const formData = new FormData();
+        formData.append('imagen', file);
+
+        // Subir la imagen al servidor
+        const response = await fetch(`${apiUrl}/api/upload/imagen`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al subir la imagen');
+        }
+
+        const data = await response.json();
+        
+        // Actualizar el estado con la ruta de la imagen
         const nuevasFilas = [...filas];
-        nuevasFilas[index].imagen = reader.result;
+        nuevasFilas[index] = {
+          ...nuevasFilas[index],
+          imagen: `${apiUrl}${data.imagenRuta}`,
+          imagen_ruta: data.imagenRuta,
+          imagen_ruta_jpeg: data.imagenRutaJpeg,
+          thumbnail: data.thumbnail,
+          metadata: data.metadata
+        };
         setFilas(nuevasFilas);
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error al subir la imagen:', error);
+        alert('Error al subir la imagen: ' + error.message);
+      }
     }
   };
 
   // Función para eliminar una imagen
-  const handleEliminarImagen = (index) => {
-    const nuevasFilas = [...filas];
-    nuevasFilas[index].imagen = null;
-    setFilas(nuevasFilas);
+  const handleEliminarImagen = async (index) => {
+    try {
+      const imagenRuta = filas[index].imagen_ruta;
+      if (imagenRuta) {
+        // Eliminar la imagen del servidor
+        const response = await fetch(`${apiUrl}/api/upload/imagen`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ imagenRuta })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al eliminar la imagen');
+        }
+      }
+
+      // Actualizar el estado
+      const nuevasFilas = [...filas];
+      nuevasFilas[index] = {
+        ...nuevasFilas[index],
+        imagen: null,
+        imagen_ruta: null,
+        imagen_ruta_jpeg: null,
+        thumbnail: null,
+        metadata: null
+      };
+      setFilas(nuevasFilas);
+    } catch (error) {
+      console.error('Error al eliminar la imagen:', error);
+      alert('Error al eliminar la imagen: ' + error.message);
+    }
   };
 
   // Función auxiliar para formatear números de manera segura
@@ -897,6 +970,15 @@ function CotizacionesCrear() {
                                 src={fila.imagen}
                                 alt="Imagen del producto"
                                 className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  console.error('Error al cargar la imagen:', e);
+                                  // Intentar cargar la versión JPEG si la WebP falla
+                                  if (fila.imagen_ruta_jpeg) {
+                                    e.target.src = `${apiUrl}${fila.imagen_ruta_jpeg}`;
+                                  } else {
+                                    e.target.style.display = 'none';
+                                  }
+                                }}
                               />
                             </div>
                           </Resizable>

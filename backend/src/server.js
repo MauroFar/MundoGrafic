@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { Client } = require("pg");
+const path = require("path");
 
 const app = express();
 
@@ -13,6 +14,10 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
+
+// Servir archivos estáticos desde la carpeta storage
+app.use('/storage', express.static(path.join(__dirname, '../storage')));
+app.use('/uploads', express.static(path.join(__dirname, '../storage/uploads')));
 
 // Conectar con PostgreSQL
 const client = new Client({

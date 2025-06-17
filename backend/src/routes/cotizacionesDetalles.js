@@ -13,7 +13,8 @@ const createCotizacionDetalles = (client) => {
           cantidad, 
           detalle, 
           CAST(valor_unitario AS DECIMAL(10,2)) as valor_unitario, 
-          CAST(valor_total AS DECIMAL(10,2)) as valor_total
+          CAST(valor_total AS DECIMAL(10,2)) as valor_total,
+          imagen_ruta
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC
@@ -30,7 +31,7 @@ const createCotizacionDetalles = (client) => {
   // Ruta para crear detalles de cotización
   router.post("/", async (req, res) => {
     console.log("Recibiendo datos para crear detalle:", req.body);
-    const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total } = req.body;
+    const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagen_ruta } = req.body;
 
     if (!cotizacion_id || !cantidad || !detalle || !valor_unitario || !valor_total) {
       return res.status(400).json({ error: "Faltan datos requeridos" });
@@ -38,9 +39,9 @@ const createCotizacionDetalles = (client) => {
 
     try {
       const query = `
-        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
+        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagen_ruta)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagen_ruta
       `;
       
       const result = await client.query(query, [
@@ -48,7 +49,8 @@ const createCotizacionDetalles = (client) => {
         cantidad,
         detalle,
         valor_unitario,
-        valor_total
+        valor_total,
+        imagen_ruta
       ]);
 
       res.json(result.rows[0]);
@@ -75,14 +77,14 @@ const createCotizacionDetalles = (client) => {
 
       // Luego insertamos los nuevos detalles
       const query = `
-        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total
+        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagen_ruta)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagen_ruta
       `;
 
       const resultadosDetalles = [];
       for (const detalle of detalles) {
-        const { cantidad, detalle: descripcion, valor_unitario, valor_total } = detalle;
+        const { cantidad, detalle: descripcion, valor_unitario, valor_total, imagen_ruta } = detalle;
         
         // Validar que todos los campos requeridos estén presentes y sean válidos
         if (cantidad === undefined || descripcion === undefined || 
@@ -95,7 +97,8 @@ const createCotizacionDetalles = (client) => {
           parseFloat(cantidad),
           descripcion,
           parseFloat(valor_unitario),
-          parseFloat(valor_total)
+          parseFloat(valor_total),
+          imagen_ruta
         ]);
         
         resultadosDetalles.push(result.rows[0]);
