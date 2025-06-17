@@ -34,7 +34,27 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
   // Función para convertir imagen a base64
   const getBase64Image = async (imagePath) => {
     try {
-      const fullPath = path.join(__dirname, '../../storage', imagePath);
+      if (!imagePath) {
+        console.log('No hay ruta de imagen proporcionada');
+        return null;
+      }
+
+      // Limpiar la ruta de la imagen (eliminar /storage/uploads/ si está presente)
+      const cleanPath = imagePath.replace(/^\/storage\/uploads\//, '');
+      
+      // Construir la ruta completa
+      const fullPath = path.join(__dirname, '../../storage/uploads', cleanPath);
+      
+      console.log('Intentando leer imagen desde:', fullPath);
+      
+      // Verificar si el archivo existe
+      try {
+        await fs.access(fullPath);
+      } catch (error) {
+        console.error('El archivo no existe:', fullPath);
+        return null;
+      }
+
       const imageBuffer = await fs.readFile(fullPath);
       const base64Image = imageBuffer.toString('base64');
       const mimeType = imagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
