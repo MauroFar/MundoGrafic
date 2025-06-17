@@ -634,16 +634,25 @@ function CotizacionesCrear() {
       
       // Solo intentar eliminar la imagen del servidor si estamos en modo edición y existe una ruta
       if (id && imagenRuta) {
-        const response = await fetch(`${apiUrl}/api/upload/imagen`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ imagenRuta })
-        });
+        try {
+          const response = await fetch(`${apiUrl}/api/upload/imagen`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              imagenRuta,
+              cotizacionId: id // Agregar el ID de la cotización para referencia
+            })
+          });
 
-        if (!response.ok) {
-          throw new Error('Error al eliminar la imagen del servidor');
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al eliminar la imagen del servidor');
+          }
+        } catch (serverError) {
+          console.error('Error del servidor al eliminar la imagen:', serverError);
+          // Continuar con la eliminación local incluso si falla la eliminación en el servidor
         }
       }
 
@@ -660,6 +669,9 @@ function CotizacionesCrear() {
         height: 150  // Restaurar dimensiones por defecto
       };
       setFilas(nuevasFilas);
+
+      // Mostrar mensaje de éxito
+      alert('Imagen eliminada correctamente');
     } catch (error) {
       console.error('Error al eliminar la imagen:', error);
       alert('Error al eliminar la imagen: ' + error.message);
