@@ -534,7 +534,8 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         }
 
         .detalle-con-imagen {
-          margin-bottom: 20px;
+          display: flex;
+          flex-direction: column;
         }
 
         .detalle-texto {
@@ -543,7 +544,18 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 
         .imagen-container {
           margin-top: 10px;
-          text-align: center;
+        }
+
+        .tabla-cotizacion td {
+          vertical-align: top;
+          padding-top: 8px;
+        }
+
+        .tabla-cotizacion td.col-cant,
+        .tabla-cotizacion td.col-unitario,
+        .tabla-cotizacion td.col-total {
+          vertical-align: top;
+          padding-top: 8px;
         }
       </style>
     </head>
