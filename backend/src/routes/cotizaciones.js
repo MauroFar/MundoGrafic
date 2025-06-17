@@ -69,10 +69,17 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
   const detallesConImagenes = await Promise.all(detalles.map(async (d) => {
     if (d.imagen_ruta) {
       const base64Image = await getBase64Image(d.imagen_ruta);
-      return { ...d, base64Image };
+      return { 
+        ...d, 
+        base64Image,
+        imagen_width: d.imagen_width || 300,
+        imagen_height: d.imagen_height || 200
+      };
     }
     return d;
   }));
+
+  console.log('Detalles con imágenes procesados:', detallesConImagenes);
 
   return `
     <!DOCTYPE html>
@@ -526,8 +533,8 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 
         /* Estilos para las imágenes */
         .imagen-producto {
-          max-width: 300px;
-          max-height: 200px;
+          max-width: 100%;
+          height: auto;
           margin: 10px 0;
           display: block;
           object-fit: contain;
@@ -579,7 +586,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
               
               <div class="cotizacion-section">
                 <div class="cotizacion-box">
-                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${String(cotizacion.numero_cotizacion).padStart(9, "0")}</span>
+                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${cotizacion.numero_cotizacion.toString().padStart(5, '0')}</span>
                 </div>
                 <div class="ruc-box">
                   R.U.C.:<span class="ruc-numero">${cotizacion.ruc}</span>
@@ -689,6 +696,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
                               src="${d.base64Image}" 
                               alt="Imagen del producto" 
                               class="imagen-producto"
+                              style="width: ${d.imagen_width}px; height: ${d.imagen_height}px;"
                             />
                           </div>
                         ` : ''}
@@ -729,7 +737,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
                 <span>$${Number(cotizacion.subtotal).toFixed(2)}</span>
               </div>
               <div class="campoPie">
-                <label>IVA 15%</label>
+                <label>IVA 12%</label>
                 <span>$${Number(cotizacion.iva).toFixed(2)}</span>
               </div>
               <div class="campoPie">
@@ -775,7 +783,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 };
 
 // Función para generar el PDF
-const generarPDF = async (cotizacion, detalles) => {
+const generarPDF = async (htmlContent) => {
   let browser = null;
   try {
     browser = await puppeteer.launch({ 
@@ -784,9 +792,6 @@ const generarPDF = async (cotizacion, detalles) => {
     });
     
     const page = await browser.newPage();
-    
-    // Generar el HTML con las imágenes en base64
-    const htmlContent = await generarHTMLCotizacion(cotizacion, detalles);
     
     await page.setContent(htmlContent, { 
       waitUntil: 'networkidle0',
@@ -838,8 +843,8 @@ const CotizacionDatos = (client) => {
       
       // 🔹 2️⃣ Determinar el nuevo número de cotización
       const nuevoNumeroCotizacion = ultimoNumeroResult.rows.length > 0 
-        ? ultimoNumeroResult.rows[0].numero_cotizacion + 1 
-        : 1; // Si no hay registros, comenzamos en 1
+        ? (ultimoNumeroResult.rows[0].numero_cotizacion + 1).toString().padStart(5, '0')
+        : '00001'; // Si no hay registros, comenzamos en 00001
       
       // 🔹 3️⃣ Insertar la nueva cotización con el número generado
       const insertQuery = `
@@ -894,8 +899,8 @@ const CotizacionDatos = (client) => {
       
       const ultimoNumeroCotizacion = ultimoNumeroResult.rows[0]?.numero_cotizacion || 0;
     
-      // 🔹 Generar el nuevo número con 9 dígitos
-      const nuevoNumeroCotizacion = (ultimoNumeroCotizacion + 1).toString().padStart(9, "0");
+      // 🔹 Generar el nuevo número con 5 dígitos
+      const nuevoNumeroCotizacion = (ultimoNumeroCotizacion + 1).toString().padStart(5, "0");
   
       // ✅ Enviar el número formateado con ceros al frontend
       res.json({ numero_cotizacion: nuevoNumeroCotizacion });
@@ -1098,7 +1103,14 @@ const CotizacionDatos = (client) => {
 
       // 2. Obtener los detalles de la cotización
       const detallesQuery = `
-        SELECT cantidad, detalle, valor_unitario, valor_total, imagen_ruta
+        SELECT 
+          cantidad, 
+          detalle, 
+          valor_unitario, 
+          valor_total, 
+          imagen_ruta,
+          imagen_width,
+          imagen_height
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC
@@ -1109,11 +1121,12 @@ const CotizacionDatos = (client) => {
       console.log('Detalles obtenidos:', detalles);
 
       // 3. Generar el PDF
-      const pdfBuffer = await generarPDF(cotizacion, detalles);
+      const html = await generarHTMLCotizacion(cotizacion, detalles);
+      const pdfBuffer = await generarPDF(html);
       
       // 4. Enviar el PDF al cliente
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=cotizacion-${cotizacion.numero_cotizacion}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename=cotizacion-${cotizacion.numero_cotizacion.toString().padStart(5, '0')}.pdf`);
       res.send(pdfBuffer);
 
     } catch (error) {
@@ -1183,7 +1196,14 @@ const CotizacionDatos = (client) => {
 
       // Obtener los detalles de la cotización
       const detallesQuery = `
-        SELECT cantidad, detalle, valor_unitario, valor_total, imagen_ruta
+        SELECT 
+          cantidad, 
+          detalle, 
+          valor_unitario, 
+          valor_total, 
+          imagen_ruta,
+          imagen_width,
+          imagen_height
         FROM detalle_cotizacion
         WHERE cotizacion_id = $1
         ORDER BY id ASC
@@ -1200,8 +1220,11 @@ const CotizacionDatos = (client) => {
       const fileName = `cotizacion-${cotizacion.numero_cotizacion}-${timestamp}.pdf`;
       const pdfPath = path.join(pdfDir, fileName);
 
+      // Generar el HTML
+      const html = await generarHTMLCotizacion(cotizacion, detalles);
+
       // Generar el PDF
-      const pdfBuffer = await generarPDF(cotizacion, detalles);
+      const pdfBuffer = await generarPDF(html);
       
       // Guardar el PDF
       await fs.writeFile(pdfPath, pdfBuffer);
@@ -1280,6 +1303,34 @@ const CotizacionDatos = (client) => {
       res.status(500).json({
         success: false,
         message: 'Error al enviar el correo: ' + error.message
+      });
+    }
+  });
+
+  // Ruta para generar vista previa del PDF
+  router.post('/preview', async (req, res) => {
+    try {
+      const { cotizacion, detalles } = req.body;
+
+      // Generar el HTML
+      const html = await generarHTMLCotizacion(cotizacion, detalles);
+
+      // Generar el PDF
+      const pdfBuffer = await generarPDF(html);
+
+      // Convertir el buffer a base64
+      const base64PDF = pdfBuffer.toString('base64');
+
+      // Enviar el PDF en base64
+      res.json({ 
+        success: true, 
+        pdf: `data:application/pdf;base64,${base64PDF}`
+      });
+    } catch (error) {
+      console.error('Error al generar vista previa:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error al generar la vista previa del PDF' 
       });
     }
   });

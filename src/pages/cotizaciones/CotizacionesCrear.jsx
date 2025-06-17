@@ -6,7 +6,7 @@ import axios from 'axios';
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
 import Encabezado from "../../components/Encabezado";
-import { FaSave } from "react-icons/fa";
+import { FaSave, FaEye, FaTimes } from "react-icons/fa";
 
 function CotizacionesCrear() {
   const { id } = useParams();
@@ -36,6 +36,11 @@ function CotizacionesCrear() {
   const [observaciones, setObservaciones] = useState("");
   const [numeroCotizacion, setNumeroCotizacion] = useState("Generando...");
   const textareaRefs = useRef([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
@@ -272,6 +277,17 @@ function CotizacionesCrear() {
         clienteId = clienteCreado.clienteId;
       }
 
+      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
+      const filasData = filas.map(fila => ({
+        cantidad: fila.cantidad,
+        detalle: fila.detalle,
+        valor_unitario: fila.valor_unitario,
+        valor_total: fila.valor_total,
+        imagen_ruta: fila.imagen_ruta,
+        imagen_width: fila.width || 300,
+        imagen_height: fila.height || 200
+      }));
+
       // 3. Preparar los datos de la cotización
       const cotizacionData = {
         fecha,
@@ -306,11 +322,11 @@ function CotizacionesCrear() {
         cotizacionId = updatedCotizacion.id;
 
         // Actualizar detalles existentes
-        const detallesActualizados = filas.map(fila => ({
-          cantidad: parseFloat(fila.cantidad),
+        const detallesActualizados = filasData.map(fila => ({
+          cantidad: fila.cantidad,
           detalle: fila.detalle,
-          valor_unitario: parseFloat(fila.valor_unitario),
-          valor_total: parseFloat(fila.valor_total),
+          valor_unitario: fila.valor_unitario,
+          valor_total: fila.valor_total,
           imagen_ruta: fila.imagen_ruta
         }));
 
@@ -342,19 +358,11 @@ function CotizacionesCrear() {
         cotizacionId = nuevaCotizacion.id;
 
         // Guardar detalles de la nueva cotización
-        if (filas.length > 0) {
-          const detallesActualizados = filas.map(fila => ({
-            cantidad: parseFloat(fila.cantidad),
-            detalle: fila.detalle,
-            valor_unitario: parseFloat(fila.valor_unitario),
-            valor_total: parseFloat(fila.valor_total),
-            imagen_ruta: fila.imagen_ruta
-          }));
-
+        if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ detalles: detallesActualizados })
+            body: JSON.stringify({ detalles: filasData })
           });
 
           if (!detallesResponse.ok) {
@@ -394,7 +402,7 @@ function CotizacionesCrear() {
 
       // Obtener el número de cotización actual y preparar el siguiente
       const numeroActual = await obtenerNumeroCotizacion();
-      const siguienteNumero = (parseInt(numeroActual) + 1).toString().padStart(3, '0');
+      const siguienteNumero = (parseInt(numeroActual) + 1).toString().padStart(5, '0');
 
       // 1. Primero, obtener o crear el ejecutivo
       const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
@@ -470,14 +478,16 @@ function CotizacionesCrear() {
       const { id: nuevaCotizacionId } = await responseCotizacion.json();
 
       // 4. Guardar los detalles de la nueva cotización
-      for (const fila of filas) {
+      for (const fila of filasData) {
         const detalleData = {
           cotizacion_id: nuevaCotizacionId,
           cantidad: fila.cantidad,
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
-          imagen_ruta: fila.imagen_ruta
+          imagen_ruta: fila.imagen_ruta,
+          imagen_width: fila.imagen_width,
+          imagen_height: fila.imagen_height
         };
 
         const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
@@ -508,14 +518,14 @@ function CotizacionesCrear() {
         if (!id) {
           // Si es una nueva cotización, usamos el último número sin incrementar
           const ultimoNumero = parseInt(response.data.numero_cotizacion);
-          const numeroFormateado = ultimoNumero.toString().padStart(3, '0');
+          const numeroFormateado = ultimoNumero.toString().padStart(5, '0');
           setNumeroCotizacion(numeroFormateado);
           return numeroFormateado;
         }
       } else {
-        // Si no hay cotizaciones previas, comenzamos desde 001
-        setNumeroCotizacion("001");
-        return "001";
+        // Si no hay cotizaciones previas, comenzamos desde 00001
+        setNumeroCotizacion("00001");
+        return "00001";
       }
     } catch (error) {
       console.error("Error al obtener el número de cotización:", error);
@@ -685,6 +695,104 @@ function CotizacionesCrear() {
     });
   }, [filas]);
 
+  // Función para generar la vista previa
+  const generarVistaPrevia = async () => {
+    try {
+      setPreviewLoading(true);
+      
+      // Crear un objeto temporal con los datos actuales
+      const cotizacionTemp = {
+        numero_cotizacion: numeroCotizacion,
+        fecha: fecha,
+        nombre_cliente: nombreCliente,
+        nombre_ejecutivo: ejecutivo,
+        ruc: selectedRuc.ruc,
+        subtotal: subtotal,
+        iva: iva,
+        descuento: descuento,
+        total: total,
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones
+      };
+
+      // Convertir las filas al formato esperado
+      const detallesTemp = filas.map(fila => ({
+        cantidad: fila.cantidad,
+        detalle: fila.detalle,
+        valor_unitario: fila.valor_unitario,
+        valor_total: fila.valor_total,
+        imagen_ruta: fila.imagen_ruta,
+        imagen_width: fila.imagen_width || 300,
+        imagen_height: fila.imagen_height || 200
+      }));
+
+      console.log('Enviando datos al backend:', { cotizacion: cotizacionTemp, detalles: detallesTemp });
+
+      // Enviar los datos al backend para generar el PDF
+      const response = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cotizacion: cotizacionTemp,
+          detalles: detallesTemp
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar la vista previa');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Error al generar la vista previa');
+      }
+
+      setPreviewUrl(data.pdf);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al generar la vista previa: ' + error.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Función para cerrar la vista previa
+  const cerrarVistaPrevia = () => {
+    setShowPreview(false);
+    setPreviewUrl(null);
+  };
+
+  // Función para mostrar el modal de ajuste de imagen
+  const showImageAdjustModal = (index) => {
+    setSelectedImageIndex(index);
+    setImageDimensions({
+      width: filas[index].imagen_width || 300,
+      height: filas[index].imagen_height || 200
+    });
+  };
+
+  // Función para aplicar los cambios de dimensiones
+  const applyImageDimensions = () => {
+    if (selectedImageIndex !== null) {
+      const newFilas = [...filas];
+      newFilas[selectedImageIndex] = {
+        ...newFilas[selectedImageIndex],
+        width: imageDimensions.width,
+        height: imageDimensions.height,
+        imagen_width: imageDimensions.width,
+        imagen_height: imageDimensions.height
+      };
+      setFilas(newFilas);
+      setSelectedImageIndex(null);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
@@ -711,7 +819,7 @@ function CotizacionesCrear() {
                 onClick={handleGuardarTodo}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
               >
-                <FaSave className="mr-2" /> Actualizar
+                <FaSave className="mr-2" /> Actualizar Cotizacion
               </button>
             </>
           ) : (
@@ -719,7 +827,7 @@ function CotizacionesCrear() {
               onClick={handleGuardarTodo}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
             >
-              <FaSave className="mr-2" /> Guardar
+              <FaSave className="mr-2" /> Guardar Cotización
             </button>
           )}
         </div>
@@ -729,7 +837,7 @@ function CotizacionesCrear() {
       <div className="fixed top-0 left-0 h-full w-48 bg-white shadow-lg p-4 flex flex-col gap-3">
         <button
           className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
-          onClick={() => navigate("/cotizaciones")}
+          onClick={() => navigate("/cotizaciones/ver")}
         >
           <i className="fas fa-arrow-left"></i>
           Regresar
@@ -766,28 +874,32 @@ function CotizacionesCrear() {
             </div>
 
             {/* Derecha: COTIZACIÓN y R.U.C */}
-            <div className="flex flex-col items-end space-y-4">
-              <div className="bg-gray-100 p-4 rounded-lg text-center">
-                <span className="text-sm font-semibold text-gray-600">COTIZACIÓN</span>
-                <div className="text-xl font-bold text-gray-800">{numeroCotizacion}</div>
-              </div>
+            {/* Derecha: COTIZACIÓN y R.U.C en una sola línea */}
+<div className="flex flex-row items-start justify-end space-x-6">
+  {/* COTIZACIÓN */}
+  <div className="bg-gray-100 p-4 rounded-lg text-center">
+    <span className="text-sm font-semibold text-gray-600">COTIZACIÓN</span>
+    <div className="text-xl font-bold text-gray-800">{numeroCotizacion}</div>
+  </div>
 
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <span className="text-sm font-semibold text-gray-600 block mb-2">R.U.C</span>
-                <select
-                  value={selectedRuc.ruc}
-                  onChange={handleRucChange}
-                  className="w-full border border-gray-300 rounded-md p-2"
-                >
-                  <option value="">Seleccione un RUC</option>
-                  {rucs.map((ruc) => (
-                    <option key={ruc.id} value={ruc.ruc}>
-                      {ruc.ruc} - {ruc.descripcion}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+  {/* R.U.C */}
+  <div className="flex flex-col">
+    <span className="text-sm font-semibold text-gray-600 mb-2">R.U.C</span>
+    <select
+      value={selectedRuc.ruc}
+      onChange={handleRucChange}
+      className="w-48 border border-gray-300 rounded-md p-2"
+    >
+      <option value="">Seleccione un RUC</option>
+      {rucs.map((ruc) => (
+        <option key={ruc.id} value={ruc.ruc}>
+          {ruc.ruc} - {ruc.descripcion}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
           </div>  
         
         </div>
@@ -898,12 +1010,20 @@ function CotizacionesCrear() {
                           <i className="fas fa-image"></i> Agregar Imagen
                         </button>
                         {fila.imagen && (
-                          <button
-                            onClick={() => handleEliminarImagen(index)}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
-                          >
-                            <i className="fas fa-trash"></i> Eliminar Imagen
-                          </button>
+                          <>
+                            <button
+                              onClick={() => showImageAdjustModal(index)}
+                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1 text-sm"
+                            >
+                              <i className="fas fa-crop"></i> Ajustar Tamaño
+                            </button>
+                            <button
+                              onClick={() => handleEliminarImagen(index)}
+                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
+                            >
+                              <i className="fas fa-trash"></i> Eliminar Imagen
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -942,6 +1062,26 @@ function CotizacionesCrear() {
                                 ...nuevasFilas[index],
                                 width: size.width,
                                 height: size.height,
+                                imagen_width: size.width,
+                                imagen_height: size.height
+                              };
+                              setFilas(nuevasFilas);
+                              // Actualizar también las dimensiones en el modal si está abierto
+                              if (selectedImageIndex === index) {
+                                setImageDimensions({
+                                  width: size.width,
+                                  height: size.height
+                                });
+                              }
+                            }}
+                            onResizeStop={(e, { size }) => {
+                              const nuevasFilas = [...filas];
+                              nuevasFilas[index] = {
+                                ...nuevasFilas[index],
+                                width: size.width,
+                                height: size.height,
+                                imagen_width: size.width,
+                                imagen_height: size.height
                               };
                               setFilas(nuevasFilas);
                             }}
@@ -952,16 +1092,19 @@ function CotizacionesCrear() {
                                 backgroundColor: "#3498db",
                                 borderRadius: "50%",
                                 position: "absolute",
-                                right: "5px",
-                                bottom: "5px",
+                                right: "-7px",
+                                bottom: "-7px",
                                 cursor: "nwse-resize",
+                                zIndex: 1000,
+                                border: "2px solid white",
+                                boxShadow: "0 0 3px rgba(0,0,0,0.3)"
                               },
                             }}
                           >
                             <div
                               style={{
-                                width: fila.width || 200,
-                                height: fila.height || 150,
+                                width: `${fila.width || 200}px`,
+                                height: `${fila.height || 150}px`,
                                 overflow: "hidden",
                                 position: "relative",
                               }}
@@ -969,7 +1112,11 @@ function CotizacionesCrear() {
                               <img
                                 src={fila.imagen}
                                 alt="Imagen del producto"
-                                className="w-full h-full object-contain"
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain'
+                                }}
                                 onError={(e) => {
                                   console.error('Error al cargar la imagen:', e);
                                   // Intentar cargar la versión JPEG si la WebP falla
@@ -1060,6 +1207,88 @@ function CotizacionesCrear() {
             </div>
           </div>
         </div>
+
+        {/* Agregar botón de vista previa junto al botón de guardar */}
+        <div className="flex justify-end gap-4 mb-6">
+          <button
+            onClick={generarVistaPrevia}
+            disabled={previewLoading}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-2"
+          >
+            <FaEye />
+            {previewLoading ? 'Generando...' : 'Vista Previa PDF'}
+          </button>
+         
+        </div>
+
+        {/* Modal de vista previa */}
+        {showPreview && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
+                <button
+                  onClick={cerrarVistaPrevia}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para ajustar dimensiones de imagen */}
+        {selectedImageIndex !== null && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl">
+              <h3 className="text-lg font-bold mb-4">Ajustar tamaño de imagen</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Ancho (px)</label>
+                  <input
+                    type="number"
+                    value={imageDimensions.width}
+                    onChange={(e) => setImageDimensions(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Alto (px)</label>
+                  <input
+                    type="number"
+                    value={imageDimensions.height}
+                    onChange={(e) => setImageDimensions(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => setSelectedImageIndex(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={applyImageDimensions}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Aplicar cambio de stilo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
