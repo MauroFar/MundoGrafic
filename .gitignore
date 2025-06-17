@@ -7,23 +7,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
 *.local
+
+# Environment files
+**/.env*
+
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-# Ignora todos los archivos dentro de la carpeta de PDFs generados
-backend/storage/pdfs/*
 
-# Pero no ignores el archivo de control para que Git mantenga la carpeta
-!backend/sstorage/pdfs/.gitkeep
+# Ignora archivos dentro de PDFs generados
+backend/storage/pdfs/*
+!backend/storage/pdfs/.gitkeep
+
+# Ignora archivos dentro de uploads generados
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep

@@ -642,17 +642,17 @@ function CotizacionesCrear() {
             },
             body: JSON.stringify({ 
               imagenRuta,
-              cotizacionId: id // Agregar el ID de la cotización para referencia
+              cotizacionId: id
             })
           });
 
+          // No lanzamos error si la respuesta no es ok, solo lo registramos
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al eliminar la imagen del servidor');
+            console.warn('No se pudo eliminar la imagen del servidor, pero se procederá con la eliminación local');
           }
         } catch (serverError) {
-          console.error('Error del servidor al eliminar la imagen:', serverError);
-          // Continuar con la eliminación local incluso si falla la eliminación en el servidor
+          // Solo registramos el error pero continuamos con la eliminación local
+          console.warn('Error al intentar eliminar la imagen del servidor:', serverError);
         }
       }
 
@@ -665,8 +665,8 @@ function CotizacionesCrear() {
         imagen_ruta_jpeg: null,
         thumbnail: null,
         metadata: null,
-        width: 200,  // Restaurar dimensiones por defecto
-        height: 150  // Restaurar dimensiones por defecto
+        width: 200,
+        height: 150
       };
       setFilas(nuevasFilas);
 
