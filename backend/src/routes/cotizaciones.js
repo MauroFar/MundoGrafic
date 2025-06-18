@@ -89,11 +89,29 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
       <style>
         /* Estilos generales */
+        @font-face {
+  font-family: 'Century Gothic';
+  src: url('/images/icons/fonts/centurygothic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Century Gothic';
+  src: url('/images/icons/fonts/centurygothic_bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+
+  
+
+
         html {
           height: 100%;
         }
         body {
-          font-family: Arial, sans-serif;
+           font-family: 'Century Gothic', Arial, sans-serif;
           margin: 0;
           padding: 0;
           width: 210mm;
@@ -347,15 +365,15 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
           text-align: center;
         }
         .tabla-cotizacion .col-detalle { 
-          width: 60%; 
+          width: 70%; 
           text-align: left;
         }
         .tabla-cotizacion .col-unitario { 
-          width: 15%; 
+          width: 10%; 
           text-align: center;
         }
         .tabla-cotizacion .col-total { 
-          width: 15%; 
+          width: 10%; 
           text-align: center;
         }
 

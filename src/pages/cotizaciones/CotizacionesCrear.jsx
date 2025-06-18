@@ -710,7 +710,7 @@ function CotizacionesCrear() {
       const totalFila = parseFloat(fila.valor_total) || 0;
       return sum + totalFila;
     }, 0);
-    const iva = subtotal * 0.12;
+    const iva = subtotal * 0.15;
     const total = subtotal + iva;
 
     setSubtotal(subtotal);
@@ -1021,6 +1021,7 @@ function CotizacionesCrear() {
                         type="number"
                         value={fila.cantidad}
                         onChange={(e) => handleCantidadChange(index, e.target.value)}
+                        onWheel={(e) => e.target.blur()}
                         className="w-full border border-gray-300 rounded-md p-2 text-center"
                         min="1"
                       />
@@ -1073,6 +1074,7 @@ function CotizacionesCrear() {
                         type="number"
                         value={fila.valor_unitario}
                         onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
+                        onWheel={(e) => e.target.blur()}
                         className="w-32 border border-gray-300 rounded-md p-2 text-right"
                         min="0"
                         step="0.01"
