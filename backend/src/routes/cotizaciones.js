@@ -316,11 +316,11 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         }
 
         .linea-vertical-2 {
-          left: 65%;
+          left: 73%;
         }
 
         .linea-vertical-3 {
-          left: 82.5%;
+          left: 87%;
         }
 
         .tabla-cotizacion th {
@@ -347,16 +347,16 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
           text-align: center;
         }
         .tabla-cotizacion .col-detalle { 
-          width: 55%; 
+          width: 62%; 
           text-align: left;
         }
         .tabla-cotizacion .col-unitario { 
-          width: 17.5%; 
-          text-align: right;
+          width: 14%; 
+          text-align: center;
         }
         .tabla-cotizacion .col-total { 
-          width: 17.5%; 
-          text-align: right;
+          width: 14%; 
+          text-align: center;
         }
 
         /* Ajustes para las celdas de datos */
@@ -369,7 +369,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         }
         .tabla-cotizacion td.col-unitario,
         .tabla-cotizacion td.col-total {
-          text-align: right;
+          text-align: center;
           padding-right: 15px;
         }
 
@@ -439,7 +439,8 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         }
 
         .pie-pagina p {
-          margin: 5px 0;
+        
+            margin-left: -15px;
         }
 
         .redes-sociales {
@@ -485,6 +486,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 
         .datos-izquierda {
           flex: 1;
+          
         }
 
         .datos-derecha {
@@ -524,7 +526,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         .campo-datos.fecha .contenido-fecha {
           display: flex;
           align-items: center;
-          margin-left: 10px;
+          margin-left: 0;
         }
 
         .campo-datos.fecha .ciudad {
@@ -737,7 +739,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
                 <span>$${Number(cotizacion.subtotal).toFixed(2)}</span>
               </div>
               <div class="campoPie">
-                <label>IVA 12%</label>
+                <label>IVA 15%</label>
                 <span>$${Number(cotizacion.iva).toFixed(2)}</span>
               </div>
               <div class="campoPie">
@@ -752,7 +754,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
           </div>
 
           <div class="pie-pagina">
-            <p>
+            <p style="margin-left: -20px; font-size: 8.5px; white-space: nowrap;">
               Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif. Apolo 1 Telefax.: 2589134 - Tumbaco: Norberto Salazar E7-224 y Pasaje San Martin Telf.: 2379320 E-mail: ventas@mundografic.com Cel.:099661572
             </p>
             <div class="redes-sociales">
