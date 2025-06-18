@@ -105,485 +105,485 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 
 
   
+html {
+  height: 100%;
+}
+body {
+  font-family: 'Century Gothic', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 210mm;
+  height: 100%;
+  position: relative;
+}
+
+/* Contenedor principal */
+.cotizaciones-container {
+  width: 100%;
+  max-width: 210mm;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0mm;
+  background-color: white;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Contenido principal para que crezca y empuje el footer */
+.contenido-principal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Encabezado */
+.encabezado-container {
+  margin-bottom: 10px;
+    margin-top: 4px;
+}
+
+.encabezado-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+/* Logo y título */
+.encabezado-left {
+  flex: 1;
+  position: relative;
+  line-height: 0.9;
+}
+
+.logo-wrapper {
+  display: inline-block;
+  position: relative;
+}
+
+.corporacion {
+  position: absolute;
+  bottom: 85%;
+  right: 0;
+  text-align: right;
+  font-size: 8.5px;
+  color: #999;
+  letter-spacing: 3px;
+  margin-bottom: 0;
+  font-weight: 300;
+  width: 180px;
+  white-space: nowrap;
+}
+
+.logo-container {
+  position: relative;
+  display: inline-block;
+}
+
+.mundo {
+  font-size: 32px;
+  font-weight: 1000;
+  color: #000;
+  margin: 0;
+  letter-spacing: -1px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.grafic {
+  font-size: 32px;
+  color: #ff0000;
+  font-weight: 100;
+  margin-left: -6px;
+  display: inline-block;
+  position: relative;
+  font-family: Arial, sans-serif;
+  letter-spacing: 0.5px;
+  -webkit-text-stroke: 0.2px #ff0000;
+  text-stroke: 0.2px #ff0000;
+  font-stretch: ultra-condensed;
+}
+
+.marca-registrada {
+  font-size: 7px;
+  position: relative;
+  display: inline-block;
+  top: 2px;
+  margin-left: 1px;
+  color: #ff0000;
+  font-weight: normal;
+}
+
+.subtitulo {
+  font-size: 10.5px;
+  color: #333;
+  margin: 0;
+  margin-top: -1px;
+  line-height: 1;
+}
+
+/* Sección de cotización */
+.cotizacion-section {
+  text-align: right;
+  min-width: 200px;
+}
+
+.cotizacion-box {
+  font-size: 20px;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+}
+
+.numero-cotizacion {
+  color: #ff0000;
+  margin-left: 5px;
+}
+
+.ruc-box {
+  font-size: 15px;
+  color: #666;
+}
+
+/* Sección de servicios */
+.seccion-servicios {
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.servicio {
+  flex: 1;
+  font-size: 8px;
+  line-height: 1.2;
+  padding: 0 2px;
+  border-right: 1px solid #999;
+}
+
+.servicio:last-child {
+  border-right: none;
+}
+
+.servicio-titulo {
+  color: #ff0000;
+  font-weight: bold;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-size: 6px;
+}
+
+.servicio-texto {
+  margin: 0;
+  padding: 0;
+  color: #333;
+  line-height: 1.2;
+  font-size: 6px;
+}
+
+.intersection-overlay {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff;
+  right: 84px;
+  top: 45%;
+  transform: translateY(-50%);
+  mix-blend-mode: lighten;
+  opacity: 0.6;
+  border-radius: 50%;
+}
+
+/* Tabla de cotización */
+.tabla-container {
+  position: relative;
+  margin-top: 5px;
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.tabla-cotizacion {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  position: relative;
+}
+
+/* Líneas verticales internas de la tabla */
+.lineas-verticales {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.linea-vertical {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #999;
+}
+
+.linea-vertical-1 {
+  left: 8%;
+}
+
+.linea-vertical-2 {
+  left: 80%;
+}
+
+.linea-vertical-3 {
+  left: 90%;
+}
+
+.tabla-cotizacion th {
+  background-color: #f2f2f2;
+  border-bottom: 1px solid #999;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: left;
+  color: #666;
+  position: relative;
+}
+
+.tabla-cotizacion td {
+  padding: 8px;
+  font-size: 13px;
+  border: none;
+  position: relative;
+  background-color: transparent;
+}
+
+.tabla-cotizacion .col-cant { 
+  width: 10%; 
+  text-align: center;
+}
+.tabla-cotizacion .col-detalle { 
+  width: 70%; 
+  text-align: center;
+}
+.tabla-cotizacion .col-unitario { 
+  width: 10%; 
+  text-align: center;
+}
+.tabla-cotizacion .col-total { 
+  width: 10%; 
+  text-align: center;
+}
+
+/* Ajustes para las celdas de datos */
+.tabla-cotizacion td.col-cant {
+  text-align: center;
+}
+.tabla-cotizacion td.col-detalle {
+  text-align: left;
+  padding-left: 15px;
+}
+.tabla-cotizacion td.col-unitario,
+.tabla-cotizacion td.col-total {
+  text-align: center;
+  padding-right: 15px;
+}
+
+/* Footer */
+.cotizaciones-footer {
+  left: 15mm;
+  right: 15mm;
+}
+
+.pie-cotizacion {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  padding: 10px 0;
+  border-top: 1px solid #ccc;
+  background-color: white;
+}
+
+.pie-izquierda {
+  width: 50%;
+}
+
+.pie-derecha {
+  width: 30%;
+  text-align: right;
+}
+
+.campoPie {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.campoPie label {
+  font-weight: bold;
+  color: #666;
+  min-width: 140px;
+  margin-right: 10px;
+}
+
+.campoPie span, .campoPie input {
+  color: #666;
+}
+
+.pie-derecha .campoPie {
+  justify-content: flex-end;
+}
+
+.pie-derecha .campoPie label {
+  text-align: right;
+  margin-right: 15px;
+}
+
+.pie-derecha .campoPie span {
+  min-width: 80px;
+  text-align: right;
+}
+
+.pie-pagina {
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  border-top: none;
+  margin-top: 10px;
+}
+
+.pie-pagina p {
+  margin-left: -15px;
+  
+}
+
+.redes-sociales {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.redes-sociales a {
+  display: flex;
+  align-items: center;
+  color: #666;
+  text-decoration: none;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.redes-sociales i {
+  font-size: 15px;
+  color: #666;
+}
+
+.website-link {
+  color: #666;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+/* Datos del cliente */
+.cuerpo-datos {
+  margin: 10px 0 5px 0;
+  padding: 5px 0;
+}
+
+.datos-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.datos-izquierda {
+  flex: 1;
+}
+
+.datos-derecha {
+  text-align: right;
+  min-width: 300px;
+}
+
+.campo-datos {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #333;
+}
+
+.campo-datos label {
+  min-width: 80px;
+  font-weight: normal;
+  color: #333;
+}
+
+.campo-datos span {
+  margin-left: 10px;
+  font-weight: normal;
+}
+
+.campo-datos.fecha {
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+}
+
+.campo-datos.fecha label {
+  min-width: 80px;
+}
+
+.campo-datos.fecha .contenido-fecha {
+  display: flex;
+  align-items: center;
+  margin-left: 0;
+}
+
+.campo-datos.fecha .ciudad {
+  margin-right: 10px;
+}
+
+/* Estilos para las imágenes */
+.imagen-producto {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  display: block;
+  object-fit: contain;
+}
+
+.detalle-con-imagen {
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-texto {
+  margin-bottom: 10px;
+}
+
+.imagen-container {
+  margin-top: 10px;
+}
+
+.tabla-cotizacion td {
+  vertical-align: top;
+  padding-top: 8px;
+}
+
+.tabla-cotizacion td.col-cant,
+.tabla-cotizacion td.col-unitario,
+.tabla-cotizacion td.col-total {
+  vertical-align: top;
+  padding-top: 8px;
+}
 
-
-        html {
-          height: 100%;
-        }
-        body {
-           font-family: 'Century Gothic', Arial, sans-serif;
-          margin: 0;
-          padding: 0;
-          width: 210mm;
-          height: 100%;
-          position: relative;
-        }
-        
-        /* Contenedor principal */
-        .cotizaciones-container {
-          width: 100%;
-          max-width: 210mm;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          padding: 0mm;
-          background-color: white;
-          box-sizing: border-box;
-          position: relative;
-        }
-
-        /* Contenido principal para que crezca y empuje el footer */
-        .contenido-principal {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-        }
-
-        /* Encabezado */
-        .encabezado-container {
-          margin-bottom: 10px;
-        }
-
-        .encabezado-content {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 10px;
-        }
-
-        /* Logo y título */
-        .encabezado-left {
-          flex: 1;
-          position: relative;
-          line-height: 0.9;
-        }
-
-        .logo-wrapper {
-          display: inline-block;
-          position: relative;
-        }
-
-        .corporacion {
-          position: absolute;
-          bottom: 85%;
-          right: 0;
-          text-align: right;
-          font-size: 6.5px;
-          color: #999;
-          letter-spacing: 3px;
-          margin-bottom: 0;
-          font-weight: 300;
-          width: 180px;
-          white-space: nowrap;
-        }
-
-        .logo-container {
-          position: relative;
-          display: inline-block;
-        }
-
-        .mundo {
-          font-size: 32px;
-          font-weight: 1000;
-          color: #000;
-          margin: 0;
-          letter-spacing: -1px;
-          line-height: 1;
-          display: inline-block;
-        }
-
-        .grafic {
-          font-size: 32px;
-          color: #ff0000;
-          font-weight: 100;
-          margin-left: -6px;
-          display: inline-block;
-          position: relative;
-          font-family: Arial, sans-serif;
-          letter-spacing: 0.5px;
-          -webkit-text-stroke: 0.2px #ff0000;
-          text-stroke: 0.2px #ff0000;
-          font-stretch: ultra-condensed;
-        }
-
-        .marca-registrada {
-          font-size: 5px;
-          position: relative;
-          display: inline-block;
-          top: 2px;
-          margin-left: 1px;
-          color: #ff0000;
-          font-weight: normal;
-        }
-
-        .subtitulo {
-          font-size: 8px;
-          color: #333;
-          margin: 0;
-          margin-top: -1px;
-          line-height: 1;
-        }
-
-        /* Sección de cotización */
-        .cotizacion-section {
-          text-align: right;
-          min-width: 200px;
-        }
-
-        .cotizacion-box {
-          font-size: 18px;
-          margin-bottom: 2px;
-          letter-spacing: 0.5px;
-        }
-
-        .numero-cotizacion {
-          color: #ff0000;
-          margin-left: 5px;
-        }
-
-        .ruc-box {
-          font-size: 11px;
-          color: #666;
-        }
-
-        /* Sección de servicios */
-        .seccion-servicios {
-          display: flex;
-          justify-content: space-between;
-          padding: 0;
-          margin-bottom: 10px;
-        }
-
-        .servicio {
-          flex: 1;
-          font-size: 6px;
-          line-height: 1.2;
-          padding: 0 2px;
-          border-right: 1px solid #999;
-        }
-
-        .servicio:last-child {
-          border-right: none;
-        }
-
-        .servicio-titulo {
-          color: #ff0000;
-          font-weight: bold;
-          margin-bottom: 2px;
-          text-transform: uppercase;
-          white-space: nowrap;
-          font-size: 6px;
-        }
-
-        .servicio-texto {
-          margin: 0;
-          padding: 0;
-          color: #333;
-          line-height: 1.2;
-          font-size: 6px;
-        }
-
-        .intersection-overlay {
-          position: absolute;
-          width: 10px;
-          height: 10px;
-          background-color: #ffffff;
-          right: 84px;
-          top: 45%;
-          transform: translateY(-50%);
-          mix-blend-mode: lighten;
-          opacity: 0.6;
-          border-radius: 50%;
-        }
-
-        /* Tabla de cotización */
-        .tabla-container {
-          position: relative;
-          margin-top: 5px;
-          margin-bottom: 0;
-          flex: 1;
-        }
-
-        .tabla-cotizacion {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          position: relative;
-        }
-
-        /* Líneas verticales internas de la tabla */
-        .lineas-verticales {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-        }
-
-        .linea-vertical {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 1px;
-          background-color: #999;
-        }
-
-        .linea-vertical-1 {
-          left: 8%;
-        }
-
-        .linea-vertical-2 {
-          left: 80%;
-        }
-
-        .linea-vertical-3 {
-          left: 90%;
-        }
-
-        .tabla-cotizacion th {
-          background-color: #f2f2f2;
-          border-bottom: 1px solid #999;
-          padding: 8px;
-          font-size: 11px;
-          font-weight: bold;
-          text-align: left;
-          color: #666;
-          position: relative;
-        }
-
-        .tabla-cotizacion td {
-          padding: 8px;
-          font-size: 11px;
-          border: none;
-          position: relative;
-          background-color: transparent;
-        }
-
-        .tabla-cotizacion .col-cant { 
-          width: 10%; 
-          text-align: center;
-        }
-        .tabla-cotizacion .col-detalle { 
-          width: 70%; 
-          text-align: left;
-        }
-        .tabla-cotizacion .col-unitario { 
-          width: 10%; 
-          text-align: center;
-        }
-        .tabla-cotizacion .col-total { 
-          width: 10%; 
-          text-align: center;
-        }
-
-        /* Ajustes para las celdas de datos */
-        .tabla-cotizacion td.col-cant {
-          text-align: center;
-        }
-        .tabla-cotizacion td.col-detalle {
-          text-align: left;
-          padding-left: 15px;
-        }
-        .tabla-cotizacion td.col-unitario,
-        .tabla-cotizacion td.col-total {
-          text-align: center;
-          padding-right: 15px;
-        }
-
-        /* Footer */
-        .cotizaciones-footer {
-          left: 15mm;
-          right: 15mm;
-        }
-
-        .pie-cotizacion {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 5px;
-          padding: 10px 0;
-          border-top: 1px solid #ccc;
-          background-color: white;
-        }
-
-        .pie-izquierda {
-          width: 50%;
-        }
-
-        .pie-derecha {
-          width: 30%;
-          text-align: right;
-        }
-
-        .campoPie {
-          display: flex;
-          align-items: center;
-          margin-bottom: 8px;
-          font-size: 11px;
-          color: #666;
-        }
-
-        .campoPie label {
-          font-weight: bold;
-          color: #666;
-          min-width: 140px;
-          margin-right: 10px;
-        }
-
-        .campoPie span, .campoPie input {
-          color: #666;
-        }
-
-        .pie-derecha .campoPie {
-          justify-content: flex-end;
-        }
-
-        .pie-derecha .campoPie label {
-          text-align: right;
-          margin-right: 15px;
-        }
-
-        .pie-derecha .campoPie span {
-          min-width: 80px;
-          text-align: right;
-        }
-
-        .pie-pagina {
-          text-align: center;
-          font-size: 9px;
-          color: #666;
-          border-top: none;
-          margin-top: 10px;
-        }
-
-        .pie-pagina p {
-        
-            margin-left: -15px;
-        }
-
-        .redes-sociales {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 15px;
-          margin-top: 10px;
-        }
-
-        .redes-sociales a {
-          display: flex;
-          align-items: center;
-          color: #666;
-          text-decoration: none;
-          font-size: 11px;
-          gap: 5px;
-        }
-
-        .redes-sociales i {
-          font-size: 14px;
-          color: #666;
-        }
-
-        .website-link {
-          color: #666;
-          text-decoration: none;
-          font-weight: bold;
-        }
-
-        /* Datos del cliente */
-        .cuerpo-datos {
-          margin: 10px 0 5px 0;
-          padding: 5px 0;
-        }
-
-        .datos-container {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 15px;
-        }
-
-        .datos-izquierda {
-          flex: 1;
-          
-        }
-
-        .datos-derecha {
-          text-align: right;
-          min-width: 300px;
-        }
-
-        .campo-datos {
-          display: flex;
-          align-items: center;
-          margin-bottom: 8px;
-          font-size: 12px;
-          color: #333;
-        }
-
-        .campo-datos label {
-          min-width: 80px;
-          font-weight: normal;
-          color: #333;
-        }
-
-        .campo-datos span {
-          margin-left: 10px;
-          font-weight: normal;
-        }
-
-        .campo-datos.fecha {
-          margin-left: 0;
-          display: flex;
-          align-items: center;
-        }
-
-        .campo-datos.fecha label {
-          min-width: 80px;
-        }
-
-        .campo-datos.fecha .contenido-fecha {
-          display: flex;
-          align-items: center;
-          margin-left: 0;
-        }
-
-        .campo-datos.fecha .ciudad {
-          margin-right: 10px;
-        }
-
-        /* Estilos para las imágenes */
-        .imagen-producto {
-          max-width: 100%;
-          height: auto;
-          margin: 10px 0;
-          display: block;
-          object-fit: contain;
-        }
-
-        .detalle-con-imagen {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .detalle-texto {
-          margin-bottom: 10px;
-        }
-
-        .imagen-container {
-          margin-top: 10px;
-        }
-
-        .tabla-cotizacion td {
-          vertical-align: top;
-          padding-top: 8px;
-        }
-
-        .tabla-cotizacion td.col-cant,
-        .tabla-cotizacion td.col-unitario,
-        .tabla-cotizacion td.col-total {
-          vertical-align: top;
-          padding-top: 8px;
-        }
       </style>
     </head>
     <body>
@@ -772,7 +772,7 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
           </div>
 
           <div class="pie-pagina">
-            <p style="margin-left: -20px; font-size: 8.5px; white-space: nowrap;">
+            <p style="margin-left: -20px; font-size: 8px; white-space: nowrap;">
               Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif. Apolo 1 Telefax.: 2589134 - Tumbaco: Norberto Salazar E7-224 y Pasaje San Martin Telf.: 2379320 E-mail: ventas@mundografic.com Cel.:099661572
             </p>
             <div class="redes-sociales">
