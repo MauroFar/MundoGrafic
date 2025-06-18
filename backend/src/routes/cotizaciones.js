@@ -312,15 +312,15 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         }
 
         .linea-vertical-1 {
-          left: 10%;
+          left: 8%;
         }
 
         .linea-vertical-2 {
-          left: 73%;
+          left: 80%;
         }
 
         .linea-vertical-3 {
-          left: 87%;
+          left: 90%;
         }
 
         .tabla-cotizacion th {
@@ -347,15 +347,15 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
           text-align: center;
         }
         .tabla-cotizacion .col-detalle { 
-          width: 62%; 
+          width: 60%; 
           text-align: left;
         }
         .tabla-cotizacion .col-unitario { 
-          width: 14%; 
+          width: 15%; 
           text-align: center;
         }
         .tabla-cotizacion .col-total { 
-          width: 14%; 
+          width: 15%; 
           text-align: center;
         }
 
