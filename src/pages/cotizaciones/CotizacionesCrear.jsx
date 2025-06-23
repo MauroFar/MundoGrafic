@@ -45,6 +45,21 @@ function CotizacionesCrear() {
   // Estados para navegación con teclado en sugerencias
   const [clienteIndex, setClienteIndex] = useState(-1);
   const [ejecutivoIndex, setEjecutivoIndex] = useState(-1);
+  // Estados para modal de nuevo cliente
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
+  const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
+    nombre: '',
+    direccion: '',
+    telefono: '',
+    email: ''
+  });
+  const [onNuevoClienteConfirm, setOnNuevoClienteConfirm] = useState(null); // callback para continuar flujo
+  // Estado para el id del cliente seleccionado
+  const [selectedClienteId, setSelectedClienteId] = useState(null);
+  // Estado para prevenir doble guardado
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
@@ -163,6 +178,7 @@ function CotizacionesCrear() {
   const handleInputChange = async (event) => {
     const valor = event.target.value;
     setNombreCliente(valor);
+    setSelectedClienteId(null); // Limpiar el id si el usuario edita el input
     setClienteIndex(-1);
     if (valor.trim().length >= 2 && /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(valor)) {
       await buscarClientes(valor);
@@ -205,6 +221,7 @@ function CotizacionesCrear() {
 
   const handleSeleccionarCliente = (cliente) => {
     setNombreCliente(cliente.nombre_cliente);
+    setSelectedClienteId(cliente.id); // Guardar el id del cliente seleccionado
     setSugerencias([]);
     setClienteIndex(-1);
   };
@@ -286,67 +303,83 @@ function CotizacionesCrear() {
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
   const handleGuardarTodo = async () => {
+    if (isSaving) return; // Prevenir doble guardado
+    setIsSaving(true);
     try {
       // Validaciones iniciales
-      if (!selectedRuc) {
-        alert("Por favor seleccione un RUC");
+      if (!selectedRuc || !selectedRuc.id) {
+        alert("Por favor seleccione un RUC para proceder");
         return;
       }
-
       if (!nombreCliente) {
         alert("Por favor ingrese el nombre del cliente");
         return;
       }
-
       if (!ejecutivo) {
         alert("Por favor ingrese el nombre del ejecutivo");
         return;
       }
-
+      // Validar que haya al menos un producto con detalle y valores
+      const productosValidos = filas.filter(fila =>
+        fila.detalle && fila.detalle.trim() !== '' &&
+        parseFloat(fila.cantidad) > 0 &&
+        parseFloat(fila.valor_unitario) > 0
+      );
+      if (productosValidos.length === 0) {
+        alert('Debe agregar al menos un producto con detalle, cantidad y valor unitario para guardar la cotización.');
+        return;
+      }
       // 1. Primero, obtener o crear el ejecutivo
       const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: ejecutivo })
       });
-
       if (!ejecutivoResponse.ok) {
         throw new Error("Error al procesar el ejecutivo");
       }
-
       const { id: ejecutivo_id } = await ejecutivoResponse.json();
-
-      // 2. Obtener o crear el cliente
+      // 2. Si hay un cliente seleccionado, usar su id directamente
+      if (selectedClienteId) {
+        await continuarGuardadoCotizacion(selectedClienteId, ejecutivo_id);
+        return;
+      }
+      // Si no hay cliente seleccionado, buscar por nombre
       const buscarClienteResponse = await fetch(
         `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
       );
-
       if (!buscarClienteResponse.ok) {
         throw new Error("Error al buscar cliente");
       }
-
       const clientesEncontrados = await buscarClienteResponse.json();
       let clienteId;
-
       if (clientesEncontrados.length > 0) {
         // Cliente existente
         clienteId = clientesEncontrados[0].id;
+        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
+        await continuarGuardadoCotizacion(clienteId, ejecutivo_id);
+        return;
       } else {
-        // Crear nuevo cliente
-        const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre: nombreCliente })
+        // Mostrar modal para ingresar datos del nuevo cliente
+        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
+        setShowNuevoClienteModal(true);
+        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+          setSelectedClienteId(nuevoClienteId);
+          await continuarGuardadoCotizacion(nuevoClienteId, ejecutivo_id);
         });
-
-        if (!crearClienteResponse.ok) {
-          throw new Error("Error al crear cliente");
-        }
-
-        const clienteCreado = await crearClienteResponse.json();
-        clienteId = clienteCreado.clienteId;
+        return; // Detener flujo hasta que se confirme el modal
       }
+    } catch (error) {
+      console.error("Error al procesar la cotización:", error);
+      alert("Error al procesar la cotización: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
+  // Nueva función auxiliar para continuar el guardado de la cotización
+  const continuarGuardadoCotizacion = async (clienteId, ejecutivo_id) => {
+    try {
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
       const filasData = filas.map(fila => ({
         cantidad: fila.cantidad,
@@ -375,7 +408,7 @@ function CotizacionesCrear() {
       };
 
       let cotizacionId;
-
+      let numeroCotizacionGuardada = numeroCotizacion;
       if (id) {
         // Actualizar cotización existente
         const updateResponse = await fetch(`${apiUrl}/api/cotizaciones/${id}`, {
@@ -383,14 +416,12 @@ function CotizacionesCrear() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(cotizacionData)
         });
-
         if (!updateResponse.ok) {
           throw new Error("Error al actualizar la cotización");
         }
-
         const updatedCotizacion = await updateResponse.json();
         cotizacionId = updatedCotizacion.id;
-
+        numeroCotizacionGuardada = updatedCotizacion.numero_cotizacion || numeroCotizacion;
         // Actualizar detalles existentes
         const detallesActualizados = filasData.map(fila => ({
           cantidad: fila.cantidad,
@@ -411,7 +442,13 @@ function CotizacionesCrear() {
           throw new Error(errorData.error || "Error al actualizar los detalles de la cotización");
         }
 
-        alert("Cotización actualizada exitosamente");
+        setShowSuccessModal(true);
+        setSuccessMessage('¡Cotización actualizada exitosamente!');
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessMessage('');
+          navigate("/cotizaciones/ver");
+        }, 2000);
       } else {
         // Crear nueva cotización
         const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -419,14 +456,12 @@ function CotizacionesCrear() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(cotizacionData)
         });
-
         if (!createResponse.ok) {
           throw new Error("Error al crear la cotización");
         }
-
         const nuevaCotizacion = await createResponse.json();
         cotizacionId = nuevaCotizacion.id;
-
+        numeroCotizacionGuardada = nuevaCotizacion.numero_cotizacion || numeroCotizacion;
         // Guardar detalles de la nueva cotización
         if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
@@ -441,13 +476,19 @@ function CotizacionesCrear() {
           }
         }
 
-        alert("Cotización guardada exitosamente");
+        setShowSuccessModal(true);
+        setSuccessMessage('¡Cotización creada exitosamente!');
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessMessage('');
+          navigate("/cotizaciones/ver");
+        }, 2000);
       }
-
-      navigate("/cotizaciones/ver");
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
       alert("Error al procesar la cotización: " + error.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -582,8 +623,13 @@ function CotizacionesCrear() {
         }
       }
 
-      alert("Nueva cotización guardada exitosamente");
-      navigate("/cotizaciones/ver");
+      setShowSuccessModal(true);
+      setSuccessMessage('¡Nueva cotización guardada exitosamente!');
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        setSuccessMessage('');
+        navigate("/cotizaciones/ver");
+      }, 2000);
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -929,6 +975,7 @@ function CotizacionesCrear() {
               <button
                 onClick={handleGuardarTodo}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                disabled={isSaving}
               >
                 <FaSave className="mr-2" /> Actualizar Cotizacion
               </button>
@@ -937,6 +984,7 @@ function CotizacionesCrear() {
             <button
               onClick={handleGuardarTodo}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+              disabled={isSaving}
             >
               <FaSave className="mr-2" /> Guardar Cotización
             </button>
@@ -1027,7 +1075,7 @@ function CotizacionesCrear() {
                 value={nombreCliente}
                 onChange={handleInputChange}
                 onKeyDown={handleClienteKeyDown}
-                placeholder="Selecciona un Ruc para buscar cliente..."
+                placeholder="Ingrese el nombre del cliente..."
                 className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoComplete="off"
               />
@@ -1427,6 +1475,99 @@ function CotizacionesCrear() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para nuevo cliente */}
+        {showNuevoClienteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <h3 className="text-lg font-bold mb-4">Nuevo cliente</h3>
+              <p className="mb-2">El cliente <span className="font-semibold">{nuevoClienteDatos.nombre}</span> no existe. Se creará un nuevo cliente. Por favor, complete los datos:</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.direccion}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, direccion: e.target.value }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.telefono}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, telefono: e.target.value }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    value={nuevoClienteDatos.email}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, email: e.target.value }))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => setShowNuevoClienteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validar campos mínimos
+                    if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
+                      alert('Por favor complete todos los campos.');
+                      return;
+                    }
+                    // Guardar cliente en la BBDD
+                    try {
+                      const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          nombre: nuevoClienteDatos.nombre,
+                          direccion: nuevoClienteDatos.direccion,
+                          telefono: nuevoClienteDatos.telefono,
+                          email: nuevoClienteDatos.email
+                        })
+                      });
+                      if (!crearClienteResponse.ok) {
+                        throw new Error("Error al crear cliente");
+                      }
+                      const clienteCreado = await crearClienteResponse.json();
+                      setShowNuevoClienteModal(false);
+                      if (onNuevoClienteConfirm) {
+                        await onNuevoClienteConfirm(clienteCreado.clienteId);
+                      }
+                    } catch (error) {
+                      alert('Error al guardar el cliente: ' + error.message);
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Guardar cliente
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+              <svg className="h-12 w-12 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-green-700 font-semibold text-lg">{successMessage}</span>
             </div>
           </div>
         )}

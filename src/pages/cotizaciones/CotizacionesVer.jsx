@@ -33,6 +33,8 @@ function CotizacionesVer() {
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [showSugerencias, setShowSugerencias] = useState(false);
   const [sugerenciaIndex, setSugerenciaIndex] = useState(-1);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -309,6 +311,7 @@ function CotizacionesVer() {
 
   const handleEnviarCorreoAlternativoSubmit = async (e) => {
     e.preventDefault();
+    setShowLoadingModal(true);
     try {
       setLoading(true);
 
@@ -342,15 +345,20 @@ function CotizacionesVer() {
         throw new Error(data.message || 'Error al enviar el correo');
       }
 
-      toast.success("✅ Correo enviado exitosamente");
+      setShowSuccessModal(true);
       setShowModalAlternativo(false);
       setEmailDataAlternativo({ to: '', subject: '', message: '' });
+
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 2000); // El modal se oculta después de 2 segundos
 
     } catch (error) {
       console.error('Error detallado:', error);
       toast.error(error.message || 'Error al enviar el correo');
     } finally {
       setLoading(false);
+      setShowLoadingModal(false);
     }
   };
 
@@ -778,6 +786,29 @@ function CotizacionesVer() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showLoadingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <svg className="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <span className="text-blue-700 font-semibold text-lg">Enviando correo...</span>
+          </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <svg className="h-12 w-12 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-green-700 font-semibold text-lg">¡Correo enviado exitosamente!</span>
           </div>
         </div>
       )}

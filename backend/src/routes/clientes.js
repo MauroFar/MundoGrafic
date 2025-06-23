@@ -32,30 +32,25 @@ const createCliente = (client) => {
 
   // Ruta para crear un cliente
   router.post("/", async (req, res) => {
-    const { nombre } = req.body;
-    
+    const { nombre, direccion, telefono, email } = req.body;
     try {
       // Verificar si el cliente ya existe
       const checkQuery = `
         SELECT id FROM clientes 
         WHERE nombre_cliente = $1
       `;
-      
       const checkResult = await client.query(checkQuery, [nombre]);
-      
       if (checkResult.rows.length > 0) {
         // Si el cliente ya existe, devolver su ID
         return res.json({ clienteId: checkResult.rows[0].id });
       }
-
-      // Si el cliente no existe, crearlo
+      // Si el cliente no existe, crearlo con los datos adicionales
       const insertQuery = `
-        INSERT INTO clientes (nombre_cliente)
-        VALUES ($1)
+        INSERT INTO clientes (nombre_cliente, direccion_cliente, telefono_cliente, email_cliente)
+        VALUES ($1, $2, $3, $4)
         RETURNING id
       `;
-      
-      const result = await client.query(insertQuery, [nombre]);
+      const result = await client.query(insertQuery, [nombre, direccion, telefono, email]);
       res.json({ clienteId: result.rows[0].id });
     } catch (error) {
       console.error('Error al crear cliente:', error);
