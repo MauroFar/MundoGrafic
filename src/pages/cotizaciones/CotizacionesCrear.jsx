@@ -60,6 +60,7 @@ function CotizacionesCrear() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [numeroCotizacionGuardada, setNumeroCotizacionGuardada] = useState('');
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
@@ -344,7 +345,16 @@ function CotizacionesCrear() {
         await continuarGuardadoCotizacion(selectedClienteId, ejecutivo_id);
         return;
       }
-      // Si no hay cliente seleccionado, buscar por nombre
+      // Si no hay cliente seleccionado, buscar coincidencia exacta en sugerencias
+      const clienteCoincidencia = sugerencias.find(
+        c => c.nombre_cliente === nombreCliente
+      );
+      if (clienteCoincidencia) {
+        setSelectedClienteId(clienteCoincidencia.id);
+        await continuarGuardadoCotizacion(clienteCoincidencia.id, ejecutivo_id);
+        return;
+      }
+      // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
       const buscarClienteResponse = await fetch(
         `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
       );
@@ -444,11 +454,7 @@ function CotizacionesCrear() {
 
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización actualizada exitosamente!');
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          setSuccessMessage('');
-          navigate("/cotizaciones/ver");
-        }, 2000);
+        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
       } else {
         // Crear nueva cotización
         const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -478,11 +484,7 @@ function CotizacionesCrear() {
 
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización creada exitosamente!');
-        setTimeout(() => {
-          setShowSuccessModal(false);
-          setSuccessMessage('');
-          navigate("/cotizaciones/ver");
-        }, 2000);
+        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
       }
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
@@ -625,11 +627,7 @@ function CotizacionesCrear() {
 
       setShowSuccessModal(true);
       setSuccessMessage('¡Nueva cotización guardada exitosamente!');
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        setSuccessMessage('');
-        navigate("/cotizaciones/ver");
-      }, 2000);
+      setNumeroCotizacionGuardada(numeroCotizacionGuardada);
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -1568,6 +1566,20 @@ function CotizacionesCrear() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-green-700 font-semibold text-lg">{successMessage}</span>
+              {numeroCotizacionGuardada && (
+                <span className="text-gray-700 mt-2">N° Cotización: <b>{numeroCotizacionGuardada}</b></span>
+              )}
+              <button
+                className="mt-6 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                  setNumeroCotizacionGuardada('');
+                  navigate("/cotizaciones/ver");
+                }}
+              >
+                OK
+              </button>
             </div>
           </div>
         )}
