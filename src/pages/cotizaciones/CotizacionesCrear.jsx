@@ -41,6 +41,10 @@ function CotizacionesCrear() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
+  const [sugerenciasEjecutivo, setSugerenciasEjecutivo] = useState([]);
+  // Estados para navegación con teclado en sugerencias
+  const [clienteIndex, setClienteIndex] = useState(-1);
+  const [ejecutivoIndex, setEjecutivoIndex] = useState(-1);
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
@@ -159,30 +163,50 @@ function CotizacionesCrear() {
   const handleInputChange = async (event) => {
     const valor = event.target.value;
     setNombreCliente(valor);
-    if (valor.trim() !== "") {
+    setClienteIndex(-1);
+    if (valor.trim().length >= 2 && /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(valor)) {
       await buscarClientes(valor);
     } else {
       setSugerencias([]);
     }
   };
 
-  const buscarClientes = async (nombre) => {
-    if (!selectedRuc.id) {
-      console.warn("No se ha seleccionado ningún RUC, no se puede buscar clientes.");
-      return;
+  const handleClienteKeyDown = (e) => {
+    if (sugerencias.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      setClienteIndex((prev) => (prev < sugerencias.length - 1 ? prev + 1 : 0));
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      setClienteIndex((prev) => (prev > 0 ? prev - 1 : sugerencias.length - 1));
+      e.preventDefault();
+    } else if (e.key === 'Enter' && clienteIndex >= 0) {
+      handleSeleccionarCliente(sugerencias[clienteIndex]);
+      e.preventDefault();
     }
+  };
+
+  const buscarClientes = async (nombre) => {
     try {
-      const response = await fetch(`${apiUrl}/api/clientes/buscar?nombre=${nombre}&ruc_id=${selectedRuc.id}`);
+      let url = `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombre)}`;
+      if (selectedRuc.id) {
+        url += `&ruc_id=${selectedRuc.id}`;
+      }
+      const response = await fetch(url);
+      if (!response.ok) {
+        setSugerencias([]);
+        return;
+      }
       const data = await response.json();
-      setSugerencias(data);
+      setSugerencias(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error al obtener sugerencias de clientes:", error);
+      setSugerencias([]);
     }
   };
 
   const handleSeleccionarCliente = (cliente) => {
     setNombreCliente(cliente.nombre_cliente);
     setSugerencias([]);
+    setClienteIndex(-1);
   };
 
   useEffect(() => {
@@ -212,6 +236,52 @@ function CotizacionesCrear() {
       console.log("Ejecutivo seleccionado:", ejecutivo);
     }
   }, [ejecutivo]);
+
+  // --- AUTOCOMPLETADO EJECUTIVO ---
+  const handleEjecutivoChange = async (event) => {
+    const valor = event.target.value;
+    setEjecutivo(valor);
+    setEjecutivoIndex(-1);
+    if (valor.trim() !== "") {
+      await buscarEjecutivos(valor);
+    } else {
+      setSugerenciasEjecutivo([]);
+    }
+  };
+
+  const handleEjecutivoKeyDown = (e) => {
+    if (sugerenciasEjecutivo.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      setEjecutivoIndex((prev) => (prev < sugerenciasEjecutivo.length - 1 ? prev + 1 : 0));
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      setEjecutivoIndex((prev) => (prev > 0 ? prev - 1 : sugerenciasEjecutivo.length - 1));
+      e.preventDefault();
+    } else if (e.key === 'Enter' && ejecutivoIndex >= 0) {
+      handleSeleccionarEjecutivo(sugerenciasEjecutivo[ejecutivoIndex]);
+      e.preventDefault();
+    }
+  };
+
+  const buscarEjecutivos = async (nombre) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/ejecutivos/buscar?nombre=${encodeURIComponent(nombre)}`);
+      if (!response.ok) {
+        setSugerenciasEjecutivo([]);
+        return;
+      }
+      const data = await response.json();
+      setSugerenciasEjecutivo(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setSugerenciasEjecutivo([]);
+    }
+  };
+
+  const handleSeleccionarEjecutivo = (ejecutivoObj) => {
+    setEjecutivo(ejecutivoObj.nombre);
+    setSugerenciasEjecutivo([]);
+    setEjecutivoIndex(-1);
+  };
 
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
@@ -948,6 +1018,7 @@ function CotizacionesCrear() {
         {/* Datos del cliente y ejecutivo */}
         <div className="mb-6">
           <div className="grid grid-cols-2 gap-6">
+            {/* CLIENTE */}
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">Cliente:</label>
               <input
@@ -955,18 +1026,23 @@ function CotizacionesCrear() {
                 type="text"
                 value={nombreCliente}
                 onChange={handleInputChange}
+                onKeyDown={handleClienteKeyDown}
                 placeholder="Selecciona un Ruc para buscar cliente..."
                 className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoComplete="off"
               />
               {sugerencias.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
+                  <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
+                    <i className="fas fa-magic"></i>
+                    Sugerencias
+                  </div>
                   <ul className="max-h-48 overflow-auto">
-                    {sugerencias.map((cliente) => (
+                    {sugerencias.map((cliente, idx) => (
                       <li
                         key={cliente.id}
                         onClick={() => handleSeleccionarCliente(cliente)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${clienteIndex === idx ? 'bg-blue-600 text-white' : ''}`}
                       >
                         {cliente.nombre_cliente}
                       </li>
@@ -974,28 +1050,47 @@ function CotizacionesCrear() {
                   </ul>
                 </div>
               )}
-                   <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha:</label>
-                <input
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
             </div>
-            
-
-            <div className="flex flex-col">
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha:</label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            {/* EJECUTIVO */}
+            <div className="relative flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-1">Ejecutivo de Cuenta:</label>
-              <input 
+              <input
                 type="text"
                 value={ejecutivo}
-                onChange={(e) => setEjecutivo(e.target.value)}
+                onChange={handleEjecutivoChange}
+                onKeyDown={handleEjecutivoKeyDown}
                 placeholder="Ingrese nombre del ejecutivo"
                 className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoComplete="off"
               />
-         
+              {sugerenciasEjecutivo.length > 0 && (
+                <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
+                  <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
+                    <i className="fas fa-magic"></i>
+                    Sugerencias
+                  </div>
+                  <ul className="max-h-48 overflow-auto">
+                    {sugerenciasEjecutivo.map((ej, idx) => (
+                      <li
+                        key={ej.id}
+                        onClick={() => handleSeleccionarEjecutivo(ej)}
+                        className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${ejecutivoIndex === idx ? 'bg-blue-600 text-white' : ''}`}
+                      >
+                        {ej.nombre}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>

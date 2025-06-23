@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 function CotizacionesVer() {
@@ -27,6 +27,12 @@ function CotizacionesVer() {
     subject: '',
     message: ''
   });
+  const [showClientesModal, setShowClientesModal] = useState(false);
+  const [clientesSugeridos, setClientesSugeridos] = useState([]);
+  const [busquedaCliente, setBusquedaCliente] = useState("");
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  const [showSugerencias, setShowSugerencias] = useState(false);
+  const [sugerenciaIndex, setSugerenciaIndex] = useState(-1);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -409,6 +415,28 @@ function CotizacionesVer() {
     }
   };
 
+  // Función para buscar clientes reales
+  const buscarClientes = async (q) => {
+    if (!q || q.length < 2) {
+      setClientesSugeridos([]);
+      setShowSugerencias(false);
+      return;
+    }
+    setLoadingClientes(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setClientesSugeridos(data);
+      setShowSugerencias(true); // Siempre mostrar si la búsqueda es válida (>=2)
+      setSugerenciaIndex(-1);
+    } catch (e) {
+      setClientesSugeridos([]);
+      setShowSugerencias(false);
+    } finally {
+      setLoadingClientes(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -541,6 +569,7 @@ function CotizacionesVer() {
                         title="Enviar por correo (Alternativo)"
                       >
                         <FaEnvelopeOpen />
+                        enviar
                       </button>
                       {cotizacion.estado === 'pendiente' && (
                         <button
@@ -548,7 +577,7 @@ function CotizacionesVer() {
                           onClick={() => aprobarCotizacion(cotizacion.id)}
                           title="Aprobar cotización"
                         >
-                          <FaCheck />
+                          <FaCheck />Aprobar
                         </button>
                       )}
                     </div>
@@ -634,17 +663,76 @@ function CotizacionesVer() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Enviar Correo</h2>
             <form onSubmit={handleEnviarCorreoAlternativoSubmit}>
-              <div className="mb-4">
+              <div className="mb-4 relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Correo Destinatario
                 </label>
                 <input
                   type="email"
                   value={emailDataAlternativo.to}
-                  onChange={(e) => setEmailDataAlternativo(prev => ({ ...prev, to: e.target.value }))}
+                  onChange={e => {
+                    setEmailDataAlternativo(prev => ({ ...prev, to: e.target.value }));
+                    buscarClientes(e.target.value);
+                  }}
+                  onFocus={e => {
+                    if (emailDataAlternativo.to) buscarClientes(emailDataAlternativo.to);
+                  }}
+                  onBlur={() => setTimeout(() => setShowSugerencias(false), 150)}
+                  onKeyDown={e => {
+                    if (!showSugerencias || clientesSugeridos.length === 0) return;
+                    if (e.key === 'ArrowDown') {
+                      setSugerenciaIndex(prev => (prev < clientesSugeridos.length - 1 ? prev + 1 : 0));
+                      e.preventDefault();
+                    } else if (e.key === 'ArrowUp') {
+                      setSugerenciaIndex(prev => (prev > 0 ? prev - 1 : clientesSugeridos.length - 1));
+                      e.preventDefault();
+                    } else if (e.key === 'Enter' && sugerenciaIndex >= 0) {
+                      const cliente = clientesSugeridos[sugerenciaIndex];
+                      setEmailDataAlternativo(prev => ({ ...prev, to: cliente.email_cliente || '' }));
+                      setShowSugerencias(false);
+                      setSugerenciaIndex(-1);
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-md p-2"
                   required
+                  autoComplete="off"
+                  placeholder="Escribe nombre o correo"
                 />
+                {showSugerencias && clientesSugeridos.length > 0 && emailDataAlternativo.to.length >= 2 && (
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
+                    <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
+                      <i className="fas fa-magic"></i>
+                      Sugerencias
+                    </div>
+                    <ul className="max-h-48 overflow-auto">
+                      {clientesSugeridos.map((cliente, idx) => (
+                        <li
+                          key={cliente.id}
+                          onClick={() => {
+                            setEmailDataAlternativo(prev => ({ ...prev, to: cliente.email_cliente || '' }));
+                            setShowSugerencias(false);
+                            setSugerenciaIndex(-1);
+                          }}
+                          className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${sugerenciaIndex === idx ? 'bg-blue-600 text-white' : ''}`}
+                        >
+                          <div className="font-medium">{cliente.nombre_cliente}</div>
+                          <div className="text-xs text-gray-500">{cliente.email_cliente}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {showSugerencias && !loadingClientes && clientesSugeridos.length === 0 && emailDataAlternativo.to.length >= 2 && (
+                  <div className="absolute left-0 right-0 bg-white border rounded shadow z-20 px-3 py-2 text-gray-500 mt-1">
+                    No se encontraron clientes
+                  </div>
+                )}
+                {loadingClientes && emailDataAlternativo.to.length >= 2 && (
+                  <div className="absolute left-0 right-0 bg-white border rounded shadow z-20 px-3 py-2 text-gray-500 mt-1">
+                    Buscando...
+                  </div>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -653,7 +741,7 @@ function CotizacionesVer() {
                 <input
                   type="text"
                   value={emailDataAlternativo.subject}
-                  onChange={(e) => setEmailDataAlternativo(prev => ({ ...prev, subject: e.target.value }))}
+                  onChange={e => setEmailDataAlternativo(prev => ({ ...prev, subject: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md p-2"
                 />
               </div>
@@ -663,7 +751,7 @@ function CotizacionesVer() {
                 </label>
                 <textarea
                   value={emailDataAlternativo.message}
-                  onChange={(e) => setEmailDataAlternativo(prev => ({ ...prev, message: e.target.value }))}
+                  onChange={e => setEmailDataAlternativo(prev => ({ ...prev, message: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md p-2 h-32"
                 />
               </div>
@@ -673,6 +761,9 @@ function CotizacionesVer() {
                   onClick={() => {
                     setShowModalAlternativo(false);
                     setEmailDataAlternativo({ to: '', subject: '', message: '' });
+                    setClientesSugeridos([]);
+                    setShowSugerencias(false);
+                    setSugerenciaIndex(-1);
                   }}
                   className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
                 >

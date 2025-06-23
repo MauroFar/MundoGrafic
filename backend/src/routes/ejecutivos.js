@@ -30,5 +30,20 @@ module.exports = function(client) {
     }
   });
 
+  // Buscar ejecutivos por nombre parcial (para autocompletar)
+  router.get('/buscar', async (req, res) => {
+    const { nombre } = req.query;
+    try {
+      const result = await client.query(
+        'SELECT id, nombre FROM ejecutivos WHERE LOWER(nombre) LIKE LOWER($1) ORDER BY nombre LIMIT 10',
+        [`%${nombre || ''}%`]
+      );
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error al buscar ejecutivos:', error);
+      res.status(500).json({ error: 'Error al buscar ejecutivos' });
+    }
+  });
+
   return router;
 }; 

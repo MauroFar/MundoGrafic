@@ -10,26 +10,23 @@ const createCliente = (client) => {
 
   // Ruta para buscar clientes
   router.get("/buscar", async (req, res) => {
-    const { nombre } = req.query;
-    
+    const { q } = req.query;
+    // Validar: al menos 2 caracteres y al menos una letra
+    if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
+      return res.json([]); // No sugerencias si no cumple
+    }
     try {
-      // Buscar cliente solo por nombre
       const query = `
-        SELECT id, nombre_cliente 
-        FROM clientes 
-        WHERE nombre_cliente ILIKE $1
+        SELECT id, nombre_cliente, email_cliente
+        FROM clientes
+        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1
+        ORDER BY nombre_cliente ASC
+        LIMIT 10
       `;
-      
-      console.log('Buscando cliente:', nombre);
-      const result = await client.query(query, [`%${nombre}%`]);
-      
+      const result = await client.query(query, [`%${q}%`]);
       res.json(result.rows);
     } catch (error) {
-      console.error('Error al buscar clientes:', error);
-      res.status(500).json({ 
-        error: 'Error al buscar clientes',
-        details: error.message 
-      });
+      res.status(500).json({ error: 'Error al buscar clientes', details: error.message });
     }
   });
 
