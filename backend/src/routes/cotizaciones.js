@@ -81,6 +81,18 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
 
   console.log('Detalles con imágenes procesados:', detallesConImagenes);
 
+  // Leer y convertir el logo a base64
+  const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
+  let logoBase64 = '';
+  try {
+    const logoBuffer = await fs.readFile(logoPath);
+    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+  } catch (e) {
+    console.error('No se pudo leer el logo:', e);
+    // Si falla, dejar el src vacío
+    logoBase64 = '';
+  }
+
   return `
     <!DOCTYPE html>
     <html>
@@ -597,15 +609,8 @@ body {
             <div class="encabezado-content">
               <div class="encabezado-left">
                 <div class="logo-wrapper">
-                  <div class="corporacion">C O R P O R A C I O N</div>
-                  <div class="logo-container">
-                    <div class="intersection-overlay"></div>
-                    <h1 class="mundo">
-                      MUNDO<span class="grafic">GRAFIC<span class="marca-registrada">®</span></span>
-                    </h1>
-                  </div>
+                  <img src="${logoBase64}" alt="Logo MUNDOGRAFIC" style="width: 350px; max-width: 100%; height: auto; display: block; margin-bottom: 0;" />
                 </div>
-                <p class="subtitulo">CORPORACION MUNDOGRAFIC CIA.LTA</p>
               </div>
               
               <div class="cotizacion-section">
