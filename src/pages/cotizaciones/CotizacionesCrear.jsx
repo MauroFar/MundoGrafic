@@ -964,6 +964,41 @@ function CotizacionesCrear() {
     }
   };
 
+  // Función para guardar cliente con Enter en el modal
+  const handleNuevoClienteKeyDown = async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      // Validar campos mínimos
+      if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
+        alert('Por favor complete todos los campos.');
+        return;
+      }
+      // Guardar cliente en la BBDD
+      try {
+        const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: nuevoClienteDatos.nombre,
+            direccion: nuevoClienteDatos.direccion,
+            telefono: nuevoClienteDatos.telefono,
+            email: nuevoClienteDatos.email
+          })
+        });
+        if (!crearClienteResponse.ok) {
+          throw new Error("Error al crear cliente");
+        }
+        const clienteCreado = await crearClienteResponse.json();
+        setShowNuevoClienteModal(false);
+        if (onNuevoClienteConfirm) {
+          await onNuevoClienteConfirm(clienteCreado.clienteId);
+        }
+      } catch (error) {
+        alert('Error al guardar el cliente: ' + error.message);
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
@@ -1496,7 +1531,11 @@ function CotizacionesCrear() {
         {/* Modal para nuevo cliente */}
         {showNuevoClienteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div
+              className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+              onKeyDown={handleNuevoClienteKeyDown}
+              tabIndex={0}
+            >
               <h3 className="text-lg font-bold mb-4">Nuevo cliente</h3>
               <p className="mb-2">El cliente <span className="font-semibold">{nuevoClienteDatos.nombre}</span> no existe. Se creará un nuevo cliente. Por favor, complete los datos:</p>
               <div className="space-y-3">
@@ -1577,7 +1616,18 @@ function CotizacionesCrear() {
 
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <div
+              className="bg-white rounded-lg p-8 flex flex-col items-center"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                  setNumeroCotizacionGuardada('');
+                  navigate("/cotizaciones/ver");
+                }
+              }}
+              tabIndex={0}
+            >
               <svg className="h-12 w-12 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
