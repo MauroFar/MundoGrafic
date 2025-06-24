@@ -62,6 +62,15 @@ function CotizacionesCrear() {
   const [successMessage, setSuccessMessage] = useState('');
   const [numeroCotizacionGuardada, setNumeroCotizacionGuardada] = useState('');
 
+  // Ref para el modal de éxito
+  const successModalRef = useRef(null);
+
+  useEffect(() => {
+    if (showSuccessModal && successModalRef.current) {
+      successModalRef.current.focus();
+    }
+  }, [showSuccessModal]);
+
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {
     if (id) {
@@ -1618,6 +1627,7 @@ function CotizacionesCrear() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
               className="bg-white rounded-lg p-8 flex flex-col items-center"
+              ref={successModalRef}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   setShowSuccessModal(false);

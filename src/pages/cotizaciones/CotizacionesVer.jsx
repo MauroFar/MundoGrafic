@@ -175,8 +175,9 @@ function CotizacionesVer() {
       // Mostrar mensaje de éxito
       alert("Cotización eliminada exitosamente");
       
-      // Recargar la lista de cotizaciones
-      await cargarCotizaciones();
+      // Reiniciar la página y recargar la lista de cotizaciones desde cero
+      setPagina(1);
+      await cargarCotizaciones(true);
     } catch (error) {
       console.error("Error al eliminar la cotización:", error);
       alert(error.message || "Ocurrió un error al eliminar la cotización");
