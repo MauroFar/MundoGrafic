@@ -110,9 +110,10 @@ function CotizacionesCrear() {
         setSelectedRuc(rucData);
       }
 
-      // Establecer el nombre del cliente
-      if (cotizacionData.nombre_cliente) {
+      // Establecer el nombre y el id del cliente
+      if (cotizacionData.nombre_cliente && cotizacionData.cliente_id) {
         setNombreCliente(cotizacionData.nombre_cliente);
+        setSelectedClienteId(cotizacionData.cliente_id);
       }
 
       // Establecer el nombre del ejecutivo
@@ -502,12 +503,10 @@ function CotizacionesCrear() {
         alert("Selecciona un RUC para la cotización");
         return;
       }
-
       if (!nombreCliente.trim()) {
         alert("El nombre del cliente es requerido");
         return;
       }
-
       if (!ejecutivo.trim()) {
         alert("El nombre del ejecutivo es requerido");
         return;
@@ -530,104 +529,46 @@ function CotizacionesCrear() {
 
       const { id: ejecutivo_id } = await ejecutivoResponse.json();
 
-      // 2. Obtener o crear el cliente
+      // 2. Si hay un cliente seleccionado, usar su id directamente
+      if (selectedClienteId) {
+        await guardarCotizacionComoNueva(selectedClienteId, ejecutivo_id, siguienteNumero);
+        return;
+      }
+
+      // Si no hay cliente seleccionado, buscar coincidencia exacta en sugerencias
+      const clienteCoincidencia = sugerencias.find(
+        c => c.nombre_cliente === nombreCliente
+      );
+      if (clienteCoincidencia) {
+        setSelectedClienteId(clienteCoincidencia.id);
+        await guardarCotizacionComoNueva(clienteCoincidencia.id, ejecutivo_id, siguienteNumero);
+        return;
+      }
+
+      // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
       const buscarClienteResponse = await fetch(
         `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
       );
-
       if (!buscarClienteResponse.ok) {
         throw new Error("Error al buscar cliente");
       }
-
       const clientesEncontrados = await buscarClienteResponse.json();
       let clienteId;
-
       if (clientesEncontrados.length > 0) {
         // Cliente existente
         clienteId = clientesEncontrados[0].id;
+        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
+        await guardarCotizacionComoNueva(clienteId, ejecutivo_id, siguienteNumero);
       } else {
-        // Crear nuevo cliente
-        const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre: nombreCliente })
+        // Mostrar modal para ingresar datos del nuevo cliente
+        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
+        setShowNuevoClienteModal(true);
+        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+          setSelectedClienteId(nuevoClienteId);
+          await guardarCotizacionComoNueva(nuevoClienteId, ejecutivo_id, siguienteNumero);
         });
-
-        if (!crearClienteResponse.ok) {
-          throw new Error("Error al crear cliente");
-        }
-
-        const clienteCreado = await crearClienteResponse.json();
-        clienteId = clienteCreado.clienteId;
+        return; // Detener flujo hasta que se confirme el modal
       }
-
-      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
-      const filasData = filas.map(fila => ({
-        cantidad: fila.cantidad,
-        detalle: fila.detalle,
-        valor_unitario: fila.valor_unitario,
-        valor_total: fila.valor_total,
-        imagen_ruta: fila.imagen_ruta,
-        imagen_width: fila.width || 300,
-        imagen_height: fila.height || 200
-      }));
-
-      // 3. Crear la nueva cotización con todas las relaciones
-      const cotizacionData = {
-        fecha,
-        subtotal,
-        iva,
-        descuento,
-        total,
-        ruc_id: selectedRuc.id,
-        cliente_id: clienteId,
-        ejecutivo_id: ejecutivo_id,
-        numero_cotizacion: siguienteNumero,
-        tiempo_entrega: TxttiempoEntrega,
-        forma_pago: formaPago,
-        validez_proforma: validezProforma,
-        observaciones: observaciones
-      };
-
-      const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cotizacionData),
-      });
-
-      if (!responseCotizacion.ok) {
-        throw new Error("Error al guardar la nueva cotización");
-      }
-
-      const { id: nuevaCotizacionId } = await responseCotizacion.json();
-
-      // 4. Guardar los detalles de la nueva cotización
-      for (const fila of filasData) {
-        const detalleData = {
-          cotizacion_id: nuevaCotizacionId,
-          cantidad: fila.cantidad,
-          detalle: fila.detalle,
-          valor_unitario: fila.valor_unitario,
-          valor_total: fila.valor_total,
-          imagen_ruta: fila.imagen_ruta,
-          imagen_width: fila.imagen_width,
-          imagen_height: fila.imagen_height
-        };
-
-        const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(detalleData),
-        });
-
-        if (!responseDetalle.ok) {
-          throw new Error("Error al guardar los detalles de la nueva cotización");
-        }
-      }
-
-      setShowSuccessModal(true);
-      setSuccessMessage('¡Nueva cotización guardada exitosamente!');
-      setNumeroCotizacionGuardada(numeroCotizacionGuardada);
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -945,6 +886,81 @@ function CotizacionesCrear() {
       };
       setFilas(newFilas);
       setSelectedImageIndex(null);
+    }
+  };
+
+  const guardarCotizacionComoNueva = async (clienteId, ejecutivo_id, siguienteNumero) => {
+    try {
+      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
+      const filasData = filas.map(fila => ({
+        cantidad: fila.cantidad,
+        detalle: fila.detalle,
+        valor_unitario: fila.valor_unitario,
+        valor_total: fila.valor_total,
+        imagen_ruta: fila.imagen_ruta,
+        imagen_width: fila.width || 300,
+        imagen_height: fila.height || 200
+      }));
+
+      // 3. Crear la nueva cotización con todas las relaciones
+      const cotizacionData = {
+        fecha,
+        subtotal,
+        iva,
+        descuento,
+        total,
+        ruc_id: selectedRuc.id,
+        cliente_id: clienteId,
+        ejecutivo_id: ejecutivo_id,
+        numero_cotizacion: siguienteNumero,
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones
+      };
+
+      const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cotizacionData),
+      });
+
+      if (!responseCotizacion.ok) {
+        throw new Error("Error al guardar la nueva cotización");
+      }
+
+      const nuevaCotizacion = await responseCotizacion.json();
+
+      // 4. Guardar los detalles de la nueva cotización
+      for (const fila of filasData) {
+        const detalleData = {
+          cotizacion_id: nuevaCotizacion.id,
+          cantidad: fila.cantidad,
+          detalle: fila.detalle,
+          valor_unitario: fila.valor_unitario,
+          valor_total: fila.valor_total,
+          imagen_ruta: fila.imagen_ruta,
+          imagen_width: fila.imagen_width,
+          imagen_height: fila.imagen_height
+        };
+
+        const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(detalleData),
+        });
+
+        if (!responseDetalle.ok) {
+          throw new Error("Error al guardar los detalles de la nueva cotización");
+        }
+      }
+
+      setShowSuccessModal(true);
+      setSuccessMessage('¡Nueva cotización guardada exitosamente!');
+      setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion || siguienteNumero);
+    } catch (error) {
+      console.error("Error al guardar la nueva cotización:", error);
+      alert("Error al guardar la nueva cotización: " + error.message);
     }
   };
 

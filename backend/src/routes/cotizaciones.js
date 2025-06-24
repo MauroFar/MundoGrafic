@@ -1251,10 +1251,26 @@ const CotizacionDatos = (client) => {
 
       // Obtener la firma HTML
       const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
-      const signatureHtml = await fs.readFile(signaturePath, 'utf8');
-      const baseUrl = process.env.API_URL || 'http://localhost:3000';
-      // Reemplazar los paths de imágenes locales por URLs públicas
-      const processedSignature = signatureHtml.replace(/src=["']mg_archivos\/(.+?)["']/g, `src="${baseUrl}/email-signature/mg_archivos/$1"`);
+      let signatureHtml = await fs.readFile(signaturePath, 'utf8');
+
+      // Lista de imágenes de la firma
+      const signatureImages = [
+        'image001.jpg',
+        'image002.png',
+        'image003.png',
+        'image004.png',
+        'image005.png'
+      ];
+
+      // Adjuntos inline para Nodemailer
+      const signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
+        const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
+        return {
+          filename: img,
+          path: imgPath,
+          cid: img // Debe coincidir con el src="cid:..." en el HTML
+        };
+      }));
 
       // Configurar el correo
       const mailOptions = {
@@ -1262,11 +1278,14 @@ const CotizacionDatos = (client) => {
         to: email,
         subject: asunto || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
         text: mensaje || `Estimado/a ${cotizacion.nombre_cliente},\n\nAdjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`,
-        html: `<div>${mensaje || `Estimado/a ${cotizacion.nombre_cliente},<br><br>Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.<br><br>Saludos cordiales,<br>Equipo MUNDOGRAFIC`}</div><br><br>${processedSignature}`,
-        attachments: [{
-          filename: fileName,
-          path: pdfPath
-        }]
+        html: `<div>${mensaje || `Estimado/a ${cotizacion.nombre_cliente},<br><br>Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.<br><br>Saludos cordiales,<br>Equipo MUNDOGRAFIC`}</div><br><br>${signatureHtml}`,
+        attachments: [
+          {
+            filename: fileName,
+            path: pdfPath
+          },
+          ...signatureAttachments
+        ]
       };
 
       // Enviar el correo con reintentos
