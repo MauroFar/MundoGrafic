@@ -355,6 +355,7 @@ body {
 .tabla-cotizacion th {
   background-color: #f2f2f2;
   border-bottom: 1px solid #999;
+  border-top: 1px solid #999;
   padding: 8px;
   font-size: 13px;
   font-weight: bold;
