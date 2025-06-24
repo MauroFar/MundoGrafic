@@ -16,6 +16,9 @@ app.use('/storage/pdfs', express.static(path.join(__dirname, '../storage/pdfs'))
 // Servir archivos estáticos
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Servir archivos estáticos de la carpeta 'email-signature'
+app.use('/email-signature', express.static(path.join(__dirname, '../public/email-signature')));
+
 // Manejo de errores global
 app.use((err, req, res, next) => {
   console.error('Error:', err);

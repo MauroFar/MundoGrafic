@@ -1249,15 +1249,20 @@ const CotizacionDatos = (client) => {
       // Guardar el PDF
       await fs.writeFile(pdfPath, pdfBuffer);
 
+      // Obtener la firma HTML
+      const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
+      const signatureHtml = await fs.readFile(signaturePath, 'utf8');
+      const baseUrl = process.env.API_URL || 'http://localhost:3000';
+      // Reemplazar los paths de imágenes locales por URLs públicas
+      const processedSignature = signatureHtml.replace(/src=["']mg_archivos\/(.+?)["']/g, `src="${baseUrl}/email-signature/mg_archivos/$1"`);
+
       // Configurar el correo
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject: asunto || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
-        text: mensaje || `Estimado/a ${cotizacion.nombre_cliente},\n\n` +
-              `Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.\n\n` +
-              `Saludos cordiales,\n` +
-              `Equipo MUNDOGRAFIC`,
+        text: mensaje || `Estimado/a ${cotizacion.nombre_cliente},\n\nAdjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`,
+        html: `<div>${mensaje || `Estimado/a ${cotizacion.nombre_cliente},<br><br>Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.<br><br>Saludos cordiales,<br>Equipo MUNDOGRAFIC`}</div><br><br>${processedSignature}`,
         attachments: [{
           filename: fileName,
           path: pdfPath
