@@ -330,18 +330,20 @@ body {
   right: 0;
   bottom: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .linea-vertical {
   position: absolute;
-  top: 0;
+  top: -1px;
   bottom: 0;
   width: 1px;
   background-color: #999;
+  height: calc(100% + 2px);
 }
 
 .linea-vertical-1 {
-  left: 8%;
+  left: 10%;
 }
 
 .linea-vertical-2 {
@@ -732,7 +734,9 @@ body {
                         ` : ''}
                       </div>
                     </td>
-                    <td class="col-unitario">$${Number(d.valor_unitario).toFixed(2)}</td>
+                    <td class="col-unitario">$
+                      ${d.valor_unitario % 1 === 0 ? Number(d.valor_unitario).toFixed(2) : d.valor_unitario}
+                    </td>
                     <td class="col-total">$${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
                 `).join('')}

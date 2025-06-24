@@ -35,6 +35,11 @@ function CotizacionesVer() {
   const [sugerenciaIndex, setSugerenciaIndex] = useState(-1);
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [sugerenciasBusqueda, setSugerenciasBusqueda] = useState([]);
+  const [showSugerenciasBusqueda, setShowSugerenciasBusqueda] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [hayMas, setHayMas] = useState(true);
+  const LIMITE_POR_PAGINA = 15;
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -47,17 +52,19 @@ function CotizacionesVer() {
   useEffect(() => {
     console.log('Componente montado, cargando cotizaciones...');
     console.log('API URL:', apiUrl);
-    cargarCotizaciones();
+    setPagina(1);
+    cargarCotizaciones(true);
   }, []);
 
-  const cargarCotizaciones = async () => {
+  const cargarCotizaciones = async (reset = false, busquedaDirecta = null) => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams();
-      if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
+      const busquedaValor = busquedaDirecta !== null ? busquedaDirecta : filtros.busqueda;
+      if (busquedaValor) queryParams.append("busqueda", busquedaValor);
       if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
-      queryParams.append("limite", "15");
+      queryParams.append("limite", LIMITE_POR_PAGINA);
       queryParams.append("ordenar", "fecha_desc");
 
       const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
@@ -76,14 +83,21 @@ function CotizacionesVer() {
       if (!Array.isArray(data)) {
         console.error('Los datos recibidos no son un array:', data);
         setCotizaciones([]);
+        setHayMas(false);
         return;
       }
       
-      setCotizaciones(data);
+      if (reset) {
+        setCotizaciones(data);
+      } else {
+        setCotizaciones(prev => [...prev, ...data]);
+      }
+      setHayMas(data.length === LIMITE_POR_PAGINA);
     } catch (error) {
       console.error("Error al cargar cotizaciones:", error);
       alert("Error al cargar las cotizaciones: " + error.message);
       setCotizaciones([]);
+      setHayMas(false);
     } finally {
       setLoading(false);
     }
@@ -94,9 +108,24 @@ function CotizacionesVer() {
     setFiltros(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleBusquedaChange = (e) => {
+    const value = e.target.value;
+    setFiltros(prev => ({ ...prev, busqueda: value }));
+    setPagina(1);
+    cargarCotizaciones(true);
+  };
+
+  const handleSugerenciaClick = (sugerencia) => {
+    setFiltros(prev => ({ ...prev, busqueda: sugerencia.numero_cotizacion }));
+    setShowSugerenciasBusqueda(false);
+    setPagina(1);
+    cargarCotizaciones(true, sugerencia.numero_cotizacion);
+  };
+
   const aplicarFiltros = (e) => {
     e.preventDefault();
-    cargarCotizaciones();
+    setPagina(1);
+    cargarCotizaciones(true);
   };
 
   const limpiarFiltros = () => {
@@ -105,7 +134,8 @@ function CotizacionesVer() {
       fechaDesde: "",
       fechaHasta: "",
     });
-    cargarCotizaciones();
+    setPagina(1);
+    cargarCotizaciones(true);
   };
 
   const editarCotizacion = (id) => {
@@ -445,6 +475,12 @@ function CotizacionesVer() {
     }
   };
 
+  // Función para cargar más cotizaciones
+  const cargarMasCotizaciones = async () => {
+    setPagina(prev => prev + 1);
+    await cargarCotizaciones(false);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -462,7 +498,7 @@ function CotizacionesVer() {
               type="text"
               name="busqueda"
               value={filtros.busqueda}
-              onChange={handleFiltroChange}
+              onChange={handleBusquedaChange}
               className="w-full border border-gray-300 rounded-md p-2"
               placeholder="Número de cotización o nombre del cliente"
             />
@@ -810,6 +846,17 @@ function CotizacionesVer() {
             </svg>
             <span className="text-green-700 font-semibold text-lg">¡Correo enviado exitosamente!</span>
           </div>
+        </div>
+      )}
+
+      {!loading && hayMas && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={cargarMasCotizaciones}
+            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"
+          >
+            Cargar más
+          </button>
         </div>
       )}
     </div>
