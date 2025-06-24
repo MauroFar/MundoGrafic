@@ -428,6 +428,10 @@ body {
   min-width: 140px;
   margin-right: 10px;
 }
+.campoTotal label,
+.campoTotal span {
+  font-weight: bold;
+}
 
 .campoPie span, .campoPie input {
   color: #666;
@@ -764,7 +768,7 @@ body {
                 <label>DESCUENTO</label>
                 <span>$${Number(cotizacion.descuento).toFixed(2)}</span>
               </div>
-              <div class="campoPie">
+              <div class="campoPie campoTotal">
                 <label>TOTAL</label>
                 <span>$${Number(cotizacion.total).toFixed(2)}</span>
               </div>
