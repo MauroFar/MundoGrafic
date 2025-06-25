@@ -734,10 +734,10 @@ body {
                         ` : ''}
                       </div>
                     </td>
-                    <td class="col-unitario">$
+                    <td class="col-unitario">
                       ${d.valor_unitario % 1 === 0 ? Number(d.valor_unitario).toFixed(2) : d.valor_unitario}
                     </td>
-                    <td class="col-total">$${Number(d.valor_total).toFixed(2)}</td>
+                    <td class="col-total">${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -768,19 +768,19 @@ body {
             <div class="pie-derecha">
               <div class="campoPie">
                 <label>SUBTOTAL</label>
-                <span>$${Number(cotizacion.subtotal).toFixed(2)}</span>
+                <span>${Number(cotizacion.subtotal).toFixed(2)}</span>
               </div>
               <div class="campoPie">
                 <label>IVA 15%</label>
-                <span>$${Number(cotizacion.iva).toFixed(2)}</span>
+                <span>${Number(cotizacion.iva).toFixed(2)}</span>
               </div>
               <div class="campoPie">
                 <label>DESCUENTO</label>
-                <span>$${Number(cotizacion.descuento).toFixed(2)}</span>
+                <span>${Number(cotizacion.descuento).toFixed(2)}</span>
               </div>
               <div class="campoPie campoTotal">
                 <label>TOTAL</label>
-                <span>$${Number(cotizacion.total).toFixed(2)}</span>
+                <span>${Number(cotizacion.total).toFixed(2)}</span>
               </div>
             </div>
           </div>
