@@ -17,7 +17,7 @@ module.exports = function(client) {
           c.descuento,
           c.total,
           cl.nombre_cliente,
-          e.nombre AS nombre_ejecutivo,
+          u.nombre AS nombre_ejecutivo,
           r.id AS ruc_id,
           r.ruc,
           r.descripcion AS ruc_descripcion,
@@ -25,12 +25,11 @@ module.exports = function(client) {
           c.forma_pago,
           c.validez_proforma,
           c.observaciones,
-          c.cliente_id,
-          c.ejecutivo_id
+          c.cliente_id
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
-        LEFT JOIN ejecutivos e ON c.ejecutivo_id = e.id
+        JOIN usuarios u ON c.usuario_id = u.id
         WHERE c.id = $1;
       `, [id]);
 

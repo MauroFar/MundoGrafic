@@ -25,8 +25,8 @@ module.exports = (client) => {
   router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
-      // Buscar por email o por nombre
-      const result = await client.query('SELECT * FROM usuarios WHERE email = $1 OR nombre = $1', [email]);
+      // Buscar por email o por nombre_usuario
+      const result = await client.query('SELECT * FROM usuarios WHERE email = $1 OR nombre_usuario = $1', [email]);
       const user = result.rows[0];
       if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
 

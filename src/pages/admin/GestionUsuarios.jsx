@@ -5,7 +5,7 @@ function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
   const [editId, setEditId] = useState(null);
 
   const token = localStorage.getItem("token");
@@ -60,7 +60,7 @@ function GestionUsuarios() {
     });
     if (res.ok) {
       fetchUsuarios();
-      setForm({ email: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
+      setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
       setEditId(null);
     } else {
       alert("Error al guardar usuario");
@@ -70,6 +70,7 @@ function GestionUsuarios() {
   const handleEdit = usuario => {
     setForm({
       email: usuario.email,
+      nombre_usuario: usuario.nombre_usuario,
       nombre: usuario.nombre,
       rol: usuario.rol,
       area_id: usuario.area_id || '',
@@ -101,7 +102,8 @@ function GestionUsuarios() {
       <h2 className="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
         <input name="email" value={form.email} onChange={handleChange} placeholder="Email" required className="border p-2 rounded w-full" />
-        <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Nombre" required className="border p-2 rounded w-full" />
+        <input name="nombre_usuario" value={form.nombre_usuario} onChange={handleChange} placeholder="Usuario" required className="border p-2 rounded w-full" />
+        <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Nombre completo" required className="border p-2 rounded w-full" />
         <select name="rol" value={form.rol} onChange={handleChange} className="border p-2 rounded w-full">
           <option value="admin">Admin</option>
           <option value="ejecutivo">Ejecutivo</option>
@@ -117,7 +119,7 @@ function GestionUsuarios() {
         <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
           {editId ? "Actualizar" : "Crear"} Usuario
         </button>
-        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' }); }} className="ml-2 text-gray-600">Cancelar</button>}
+        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' }); }} className="ml-2 text-gray-600">Cancelar</button>}
       </form>
       <table className="w-full border">
         <thead>

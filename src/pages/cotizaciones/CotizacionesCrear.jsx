@@ -21,7 +21,6 @@ function CotizacionesCrear() {
     ruc: "",
     descripcion: "" 
   });
-  const [ejecutivo, setEjecutivo] = useState("");
   const [nombreCliente, setNombreCliente] = useState("");
   const [sugerencias, setSugerencias] = useState([]);
   const [fecha, setFecha] = useState(today);
@@ -41,11 +40,6 @@ function CotizacionesCrear() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
-  const [sugerenciasEjecutivo, setSugerenciasEjecutivo] = useState([]);
-  // Estados para navegación con teclado en sugerencias
-  const [clienteIndex, setClienteIndex] = useState(-1);
-  const [ejecutivoIndex, setEjecutivoIndex] = useState(-1);
-  // Estados para modal de nuevo cliente
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
     nombre: '',
@@ -54,13 +48,12 @@ function CotizacionesCrear() {
     email: ''
   });
   const [onNuevoClienteConfirm, setOnNuevoClienteConfirm] = useState(null); // callback para continuar flujo
-  // Estado para el id del cliente seleccionado
   const [selectedClienteId, setSelectedClienteId] = useState(null);
-  // Estado para prevenir doble guardado
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [numeroCotizacionGuardada, setNumeroCotizacionGuardada] = useState('');
+  const [nombreEjecutivo, setNombreEjecutivo] = useState(localStorage.getItem('nombre') || '');
 
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
@@ -134,11 +127,6 @@ function CotizacionesCrear() {
         setSelectedClienteId(cotizacionData.cliente_id);
       }
 
-      // Establecer el nombre del ejecutivo
-      if (cotizacionData.nombre_ejecutivo) {
-        setEjecutivo(cotizacionData.nombre_ejecutivo);
-      }
-
       // Establecer los detalles de la cotización y calcular totales
       if (detallesData && detallesData.length > 0) {
         const filasActualizadas = detallesData.map(detalle => {
@@ -199,7 +187,6 @@ function CotizacionesCrear() {
     const valor = event.target.value;
     setNombreCliente(valor);
     setSelectedClienteId(null); // Limpiar el id si el usuario edita el input
-    setClienteIndex(-1);
     if (valor.trim().length >= 2 && /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(valor)) {
       await buscarClientes(valor);
     } else {
@@ -268,58 +255,6 @@ function CotizacionesCrear() {
     }
   };
 
-  useEffect(() => {
-    if (ejecutivo) {
-      console.log("Ejecutivo seleccionado:", ejecutivo);
-    }
-  }, [ejecutivo]);
-
-  // --- AUTOCOMPLETADO EJECUTIVO ---
-  const handleEjecutivoChange = async (event) => {
-    const valor = event.target.value;
-    setEjecutivo(valor);
-    setEjecutivoIndex(-1);
-    if (valor.trim() !== "") {
-      await buscarEjecutivos(valor);
-    } else {
-      setSugerenciasEjecutivo([]);
-    }
-  };
-
-  const handleEjecutivoKeyDown = (e) => {
-    if (sugerenciasEjecutivo.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      setEjecutivoIndex((prev) => (prev < sugerenciasEjecutivo.length - 1 ? prev + 1 : 0));
-      e.preventDefault();
-    } else if (e.key === 'ArrowUp') {
-      setEjecutivoIndex((prev) => (prev > 0 ? prev - 1 : sugerenciasEjecutivo.length - 1));
-      e.preventDefault();
-    } else if (e.key === 'Enter' && ejecutivoIndex >= 0) {
-      handleSeleccionarEjecutivo(sugerenciasEjecutivo[ejecutivoIndex]);
-      e.preventDefault();
-    }
-  };
-
-  const buscarEjecutivos = async (nombre) => {
-    try {
-      const response = await fetch(`${apiUrl}/api/ejecutivos/buscar?nombre=${encodeURIComponent(nombre)}`);
-      if (!response.ok) {
-        setSugerenciasEjecutivo([]);
-        return;
-      }
-      const data = await response.json();
-      setSugerenciasEjecutivo(Array.isArray(data) ? data : []);
-    } catch (error) {
-      setSugerenciasEjecutivo([]);
-    }
-  };
-
-  const handleSeleccionarEjecutivo = (ejecutivoObj) => {
-    setEjecutivo(ejecutivoObj.nombre);
-    setSugerenciasEjecutivo([]);
-    setEjecutivoIndex(-1);
-  };
-
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
   const handleGuardarTodo = async () => {
@@ -335,10 +270,6 @@ function CotizacionesCrear() {
         alert("Por favor ingrese el nombre del cliente");
         return;
       }
-      if (!ejecutivo) {
-        alert("Por favor ingrese el nombre del ejecutivo");
-        return;
-      }
       // Validar que haya al menos un producto con detalle y valores
       const productosValidos = filas.filter(fila =>
         fila.detalle && fila.detalle.trim() !== '' &&
@@ -349,19 +280,9 @@ function CotizacionesCrear() {
         alert('Debe agregar al menos un producto con detalle, cantidad y valor unitario para guardar la cotización.');
         return;
       }
-      // 1. Primero, obtener o crear el ejecutivo
-      const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: ejecutivo })
-      });
-      if (!ejecutivoResponse.ok) {
-        throw new Error("Error al procesar el ejecutivo");
-      }
-      const { id: ejecutivo_id } = await ejecutivoResponse.json();
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
-        await continuarGuardadoCotizacion(selectedClienteId, ejecutivo_id);
+        await continuarGuardadoCotizacion(selectedClienteId);
         return;
       }
       // Si no hay cliente seleccionado, buscar coincidencia exacta en sugerencias
@@ -370,7 +291,7 @@ function CotizacionesCrear() {
       );
       if (clienteCoincidencia) {
         setSelectedClienteId(clienteCoincidencia.id);
-        await continuarGuardadoCotizacion(clienteCoincidencia.id, ejecutivo_id);
+        await continuarGuardadoCotizacion(clienteCoincidencia.id);
         return;
       }
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
@@ -386,7 +307,7 @@ function CotizacionesCrear() {
         // Cliente existente
         clienteId = clientesEncontrados[0].id;
         setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await continuarGuardadoCotizacion(clienteId, ejecutivo_id);
+        await continuarGuardadoCotizacion(clienteId);
         return;
       } else {
         // Mostrar modal para ingresar datos del nuevo cliente
@@ -394,7 +315,7 @@ function CotizacionesCrear() {
         setShowNuevoClienteModal(true);
         setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
           setSelectedClienteId(nuevoClienteId);
-          await continuarGuardadoCotizacion(nuevoClienteId, ejecutivo_id);
+          await continuarGuardadoCotizacion(nuevoClienteId);
         });
         return; // Detener flujo hasta que se confirme el modal
       }
@@ -407,7 +328,7 @@ function CotizacionesCrear() {
   };
 
   // Nueva función auxiliar para continuar el guardado de la cotización
-  const continuarGuardadoCotizacion = async (clienteId, ejecutivo_id) => {
+  const continuarGuardadoCotizacion = async (clienteId) => {
     try {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
@@ -430,11 +351,11 @@ function CotizacionesCrear() {
         total,
         ruc_id: selectedRuc.id,
         cliente_id: clienteId,
-        ejecutivo_id: ejecutivo_id,
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
-        observaciones: observaciones
+        observaciones: observaciones,
+        nombre_ejecutivo: nombreEjecutivo
       };
 
       let cotizacionId;
@@ -538,31 +459,13 @@ function CotizacionesCrear() {
         alert("El nombre del cliente es requerido");
         return;
       }
-      if (!ejecutivo.trim()) {
-        alert("El nombre del ejecutivo es requerido");
-        return;
-      }
-
       // Obtener el número de cotización actual y preparar el siguiente
       const numeroActual = await obtenerNumeroCotizacion();
       const siguienteNumero = (parseInt(numeroActual) + 1).toString().padStart(5, '0');
 
-      // 1. Primero, obtener o crear el ejecutivo
-      const ejecutivoResponse = await fetch(`${apiUrl}/api/ejecutivos/obtenerOCrear`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: ejecutivo })
-      });
-
-      if (!ejecutivoResponse.ok) {
-        throw new Error("Error al procesar el ejecutivo");
-      }
-
-      const { id: ejecutivo_id } = await ejecutivoResponse.json();
-
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
-        await guardarCotizacionComoNueva(selectedClienteId, ejecutivo_id, siguienteNumero);
+        await guardarCotizacionComoNueva(selectedClienteId, siguienteNumero);
         return;
       }
 
@@ -572,7 +475,7 @@ function CotizacionesCrear() {
       );
       if (clienteCoincidencia) {
         setSelectedClienteId(clienteCoincidencia.id);
-        await guardarCotizacionComoNueva(clienteCoincidencia.id, ejecutivo_id, siguienteNumero);
+        await guardarCotizacionComoNueva(clienteCoincidencia.id, siguienteNumero);
         return;
       }
 
@@ -589,14 +492,14 @@ function CotizacionesCrear() {
         // Cliente existente
         clienteId = clientesEncontrados[0].id;
         setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await guardarCotizacionComoNueva(clienteId, ejecutivo_id, siguienteNumero);
+        await guardarCotizacionComoNueva(clienteId, siguienteNumero);
       } else {
         // Mostrar modal para ingresar datos del nuevo cliente
         setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
         setShowNuevoClienteModal(true);
         setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
           setSelectedClienteId(nuevoClienteId);
-          await guardarCotizacionComoNueva(nuevoClienteId, ejecutivo_id, siguienteNumero);
+          await guardarCotizacionComoNueva(nuevoClienteId, siguienteNumero);
         });
         return; // Detener flujo hasta que se confirme el modal
       }
@@ -837,7 +740,6 @@ function CotizacionesCrear() {
         numero_cotizacion: numeroCotizacion,
         fecha: fecha,
         nombre_cliente: nombreCliente,
-        nombre_ejecutivo: ejecutivo,
         ruc: selectedRuc.ruc,
         subtotal: subtotal,
         iva: iva,
@@ -846,7 +748,8 @@ function CotizacionesCrear() {
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
-        observaciones: observaciones
+        observaciones: observaciones,
+        nombre_ejecutivo: nombreEjecutivo
       };
 
       // Convertir las filas al formato esperado
@@ -856,8 +759,8 @@ function CotizacionesCrear() {
         valor_unitario: fila.valor_unitario,
         valor_total: fila.valor_total,
         imagen_ruta: fila.imagen_ruta,
-        imagen_width: fila.imagen_width || 300,
-        imagen_height: fila.imagen_height || 200
+        imagen_width: fila.width || 300,
+        imagen_height: fila.height || 200
       }));
 
       console.log('Enviando datos al backend:', { cotizacion: cotizacionTemp, detalles: detallesTemp });
@@ -906,8 +809,8 @@ function CotizacionesCrear() {
   const showImageAdjustModal = (index) => {
     setSelectedImageIndex(index);
     setImageDimensions({
-      width: filas[index].imagen_width || 300,
-      height: filas[index].imagen_height || 200
+      width: filas[index].width || 300,
+      height: filas[index].height || 200
     });
   };
 
@@ -927,7 +830,7 @@ function CotizacionesCrear() {
     }
   };
 
-  const guardarCotizacionComoNueva = async (clienteId, ejecutivo_id, siguienteNumero) => {
+  const guardarCotizacionComoNueva = async (clienteId, siguienteNumero) => {
     try {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
@@ -950,12 +853,12 @@ function CotizacionesCrear() {
         total,
         ruc_id: selectedRuc.id,
         cliente_id: clienteId,
-        ejecutivo_id: ejecutivo_id,
         numero_cotizacion: siguienteNumero,
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
-        observaciones: observaciones
+        observaciones: observaciones,
+        nombre_ejecutivo: nombreEjecutivo
       };
 
       const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -1161,82 +1064,38 @@ function CotizacionesCrear() {
         
         </div>
 
-        {/* Datos del cliente y ejecutivo */}
+        {/* Datos del cliente */}
         <div className="mb-6">
-          <div className="grid grid-cols-2 gap-6">
-            {/* CLIENTE */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cliente:</label>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="relative flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cliente:</label>
               <input
-                id="cliente"
                 type="text"
                 value={nombreCliente}
                 onChange={handleInputChange}
-                onKeyDown={handleClienteKeyDown}
                 placeholder="Ingrese el nombre del cliente..."
                 className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoComplete="off"
               />
-              {sugerencias.length > 0 && (
-                <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
-                  <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
-                    <i className="fas fa-magic"></i>
-                    Sugerencias
-                  </div>
-                  <ul className="max-h-48 overflow-auto">
-                    {sugerencias.map((cliente, idx) => (
-                      <li
-                        key={cliente.id}
-                        onClick={() => handleSeleccionarCliente(cliente)}
-                        className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${clienteIndex === idx ? 'bg-blue-600 text-white' : ''}`}
-                      >
-                        {cliente.nombre_cliente}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
-            <div className="mt-4">
+            <div className="relative flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha:</label>
               <input
                 type="date"
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={e => setFecha(e.target.value)}
+                className="w-full border border-gray-300 rounded-md p-2 text-sm"
               />
             </div>
-            {/* EJECUTIVO */}
             <div className="relative flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-1">Ejecutivo de Cuenta:</label>
               <input
                 type="text"
-                value={ejecutivo}
-                onChange={handleEjecutivoChange}
-                onKeyDown={handleEjecutivoKeyDown}
-                placeholder="Ingrese nombre del ejecutivo"
-                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                autoComplete="off"
+                value={nombreEjecutivo}
+                readOnly
+                className="w-full border border-gray-300 rounded-md p-2 text-sm bg-gray-100 cursor-not-allowed"
+                placeholder="Ejecutivo de cuenta"
               />
-              {sugerenciasEjecutivo.length > 0 && (
-                <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
-                  <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
-                    <i className="fas fa-magic"></i>
-                    Sugerencias
-                  </div>
-                  <ul className="max-h-48 overflow-auto">
-                    {sugerenciasEjecutivo.map((ej, idx) => (
-                      <li
-                        key={ej.id}
-                        onClick={() => handleSeleccionarEjecutivo(ej)}
-                        className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${ejecutivoIndex === idx ? 'bg-blue-600 text-white' : ''}`}
-                      >
-                        {ej.nombre}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           </div>
         </div>

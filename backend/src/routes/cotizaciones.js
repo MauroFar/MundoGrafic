@@ -862,13 +862,13 @@ const CotizacionDatos = (client) => {
       total, 
       ruc_id, 
       cliente_id, 
-      ejecutivo_id,
       tiempo_entrega,
       forma_pago,
       validez_proforma,
       observaciones
     } = req.body;
     const estado = "pendiente";
+    const user = req.user;
 
     try {
       // 🔹 1️⃣ Obtener el último número de cotización
@@ -892,7 +892,7 @@ const CotizacionDatos = (client) => {
           total, 
           estado, 
           ruc_id,
-          ejecutivo_id,
+          usuario_id,
           tiempo_entrega,
           forma_pago,
           validez_proforma,
@@ -912,7 +912,7 @@ const CotizacionDatos = (client) => {
         total,
         estado,
         ruc_id,
-        ejecutivo_id,
+        user.id,
         tiempo_entrega,
         forma_pago,
         validez_proforma,
@@ -949,6 +949,7 @@ const CotizacionDatos = (client) => {
   router.get("/todas", async (req, res) => {
     console.log("Recibiendo petición en /todas");
     const { busqueda, fechaDesde, fechaHasta, limite, ordenar } = req.query;
+    const user = req.user;
     console.log("Parámetros recibidos:", { busqueda, fechaDesde, fechaHasta, limite, ordenar });
     
     try {
@@ -963,11 +964,11 @@ const CotizacionDatos = (client) => {
           c.total,
           r.ruc,
           r.descripcion as ruc_descripcion,
-          e.nombre as nombre_ejecutivo
+          u.nombre as nombre_ejecutivo
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
-        LEFT JOIN ejecutivos e ON c.ejecutivo_id = e.id
+        JOIN usuarios u ON c.usuario_id = u.id
         WHERE 1=1
       `;
       
@@ -978,7 +979,7 @@ const CotizacionDatos = (client) => {
         query += ` AND (
           CAST(c.numero_cotizacion AS TEXT) ILIKE $${paramCount} 
           OR cl.nombre_cliente ILIKE $${paramCount}
-          OR e.nombre ILIKE $${paramCount}
+          OR u.nombre ILIKE $${paramCount}
         )`;
         params.push(`%${busqueda}%`);
         paramCount++;
@@ -993,6 +994,12 @@ const CotizacionDatos = (client) => {
       if (fechaHasta) {
         query += ` AND DATE(c.fecha) <= DATE($${paramCount})`;
         params.push(fechaHasta);
+        paramCount++;
+      }
+
+      if (user && user.rol === 'ejecutivo') {
+        query += ` AND c.usuario_id = $${paramCount}`;
+        params.push(user.id);
         paramCount++;
       }
 
@@ -1115,7 +1122,7 @@ const CotizacionDatos = (client) => {
           c.descuento,
           c.total,
           cl.nombre_cliente,
-          e.nombre AS nombre_ejecutivo,
+          u.nombre AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,
           c.tiempo_entrega,
@@ -1125,7 +1132,7 @@ const CotizacionDatos = (client) => {
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
-        LEFT JOIN ejecutivos e ON c.ejecutivo_id = e.id
+        JOIN usuarios u ON c.usuario_id = u.id
         WHERE c.id = $1
       `;
       
@@ -1205,7 +1212,7 @@ const CotizacionDatos = (client) => {
           c.descuento,
           c.total,
           cl.nombre_cliente,
-          e.nombre AS nombre_ejecutivo,
+          u.nombre AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,
           c.tiempo_entrega,
@@ -1215,7 +1222,7 @@ const CotizacionDatos = (client) => {
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
-        LEFT JOIN ejecutivos e ON c.ejecutivo_id = e.id
+        JOIN usuarios u ON c.usuario_id = u.id
         WHERE c.id = $1
       `;
       

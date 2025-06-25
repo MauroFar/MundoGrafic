@@ -12,12 +12,12 @@ module.exports = (client) => {
 
   // Crear usuario (solo admin)
   router.post('/', authRequired(['admin']), async (req, res) => {
-    const { email, password, nombre, rol, area_id } = req.body;
+    const { email, nombre_usuario, password, nombre, rol, area_id } = req.body;
     try {
       const hash = await bcrypt.hash(password, 10);
       const result = await client.query(
-        'INSERT INTO usuarios (email, password_hash, nombre, rol, area_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, nombre, rol, area_id, activo, fecha_creacion',
-        [email, hash, nombre, rol, area_id]
+        'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, rol, area_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion',
+        [email, nombre_usuario, hash, nombre, rol, area_id]
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -28,16 +28,16 @@ module.exports = (client) => {
   // Editar usuario (solo admin)
   router.put('/:id', authRequired(['admin']), async (req, res) => {
     const { id } = req.params;
-    const { email, nombre, rol, area_id, activo, password } = req.body;
+    const { email, nombre_usuario, nombre, rol, area_id, activo, password } = req.body;
     try {
-      let query = 'UPDATE usuarios SET email = $1, nombre = $2, rol = $3, area_id = $4, activo = $5';
-      let params = [email, nombre, rol, area_id, activo, id];
+      let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6';
+      let params = [email, nombre_usuario, nombre, rol, area_id, activo, id];
       if (password) {
         const hash = await bcrypt.hash(password, 10);
-        query = 'UPDATE usuarios SET email = $1, nombre = $2, rol = $3, area_id = $4, activo = $5, password_hash = $6 WHERE id = $7 RETURNING id, email, nombre, rol, area_id, activo, fecha_creacion';
-        params = [email, nombre, rol, area_id, activo, hash, id];
+        query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6, password_hash = $7 WHERE id = $8 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion';
+        params = [email, nombre_usuario, nombre, rol, area_id, activo, hash, id];
       } else {
-        query += ' WHERE id = $6 RETURNING id, email, nombre, rol, area_id, activo, fecha_creacion';
+        query += ' WHERE id = $7 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion';
       }
       const result = await client.query(query, params);
       res.json(result.rows[0]);
