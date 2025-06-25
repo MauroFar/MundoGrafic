@@ -768,7 +768,7 @@ body {
             <div class="pie-derecha">
               <div class="campoPie">
                 <label>SUBTOTAL</label>
-                <span>${Number(cotizacion.subtotal).toFixed(2)}</span>
+                <span>  ${Number(cotizacion.subtotal).toFixed(2)}</span>
               </div>
               <div class="campoPie">
                 <label>IVA 15%</label>
