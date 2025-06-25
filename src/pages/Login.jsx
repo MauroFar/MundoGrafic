@@ -5,12 +5,28 @@ function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email === "admin" && password === "admin") {
-      navigate("/welcome");
-    } else {
-      alert("Credenciales incorrectas. Intenta nuevamente.");
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("rol", data.user.rol);
+        if (data.user.rol === "admin") {
+          navigate("/admin/usuarios");
+        } else {
+          navigate("/welcome");
+        }
+      } else {
+        alert(data.error || "Credenciales incorrectas. Intenta nuevamente.");
+      }
+    } catch (err) {
+      alert("Error de conexión con el servidor");
     }
   };
 
@@ -27,7 +43,7 @@ function Login() {
 
         <input
           type="text"
-          placeholder="Usuario"
+          placeholder="Usuario o Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

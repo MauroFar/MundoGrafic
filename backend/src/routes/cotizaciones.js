@@ -957,6 +957,7 @@ const CotizacionDatos = (client) => {
           c.id,
           c.numero_cotizacion,
           cl.nombre_cliente,
+          cl.email_cliente,
           c.fecha,
           c.estado,
           c.total,
@@ -977,6 +978,7 @@ const CotizacionDatos = (client) => {
         query += ` AND (
           CAST(c.numero_cotizacion AS TEXT) ILIKE $${paramCount} 
           OR cl.nombre_cliente ILIKE $${paramCount}
+          OR e.nombre ILIKE $${paramCount}
         )`;
         params.push(`%${busqueda}%`);
         paramCount++;

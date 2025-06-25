@@ -3,6 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const { Client } = require("pg");
 const path = require("path");
+const authRoutes = require("./routes/auth");
+const apiRoutes = require("./routes/api");
+const authRequired = require("./middleware/auth");
+const usuariosRoutes = require('./routes/usuarios');
+const areasRoutes = require('./routes/areas');
 
 const app = express();
 
@@ -62,9 +67,21 @@ client.connect()
     process.exit(1);
   });
 
+// Rutas de autenticación
+app.use("/api/auth", authRoutes(client));
+
+// Rutas protegidas por rol
+app.use("/api/cotizaciones", authRequired(["admin", "ejecutivo"]));
+app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
+
 // Importar las rutas agrupadas en api.js
-const apiRoutes = require("./routes/api");
-app.use("/api", apiRoutes(client)); // Usamos /api como prefijo para todas las rutas
+app.use("/api", apiRoutes(client));
+
+// Rutas de usuarios
+app.use('/api/usuarios', usuariosRoutes(client));
+
+// Rutas de áreas
+app.use('/api/areas', areasRoutes(client));
 
 // Puerto
 const PORT = process.env.PORT || 5000;

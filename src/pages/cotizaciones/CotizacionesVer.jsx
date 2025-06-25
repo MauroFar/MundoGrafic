@@ -71,7 +71,13 @@ function CotizacionesVer() {
       console.log('Realizando petición a:', url);
       console.log('Filtros actuales:', filtros);
       
-      const response = await fetch(url);
+      const token = localStorage.getItem("token");
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -189,10 +195,13 @@ function CotizacionesVer() {
   const descargarPDF = async (id) => {
     try {
       setLoading(true);
-      
+      const token = localStorage.getItem("token");
       // Obtener el PDF directamente
       const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -321,23 +330,16 @@ function CotizacionesVer() {
     }
   };
 
-  const handleEnviarCorreoAlternativo = async (id) => {
-    try {
-      setLoading(true);
-      const cotizacion = cotizaciones.find(c => c.id === id);
-      setSelectedCotizacion(cotizacion);
-      setEmailDataAlternativo({
-        to: '',
-        subject: `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
-        message: 'Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC'
-      });
-      setShowModalAlternativo(true);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al preparar el envío del correo');
-    } finally {
-      setLoading(false);
-    }
+  const handleEnviarCorreoAlternativo = (id) => {
+    const cotizacion = cotizaciones.find(c => c.id === id);
+    setSelectedCotizacion(cotizacion);
+    setEmailDataAlternativo(prev => ({
+      ...prev,
+      to: cotizacion?.email_cliente || "",
+      subject: prev.subject || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
+      message: prev.message || 'Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC'
+    }));
+    setShowModalAlternativo(true);
   };
 
   const handleEnviarCorreoAlternativoSubmit = async (e) => {
@@ -345,7 +347,7 @@ function CotizacionesVer() {
     setShowLoadingModal(true);
     try {
       setLoading(true);
-
+      const token = localStorage.getItem("token");
       if (!emailDataAlternativo.to) {
         toast.error('Se requiere un correo electrónico válido');
         return;
@@ -362,6 +364,7 @@ function CotizacionesVer() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           email: emailDataAlternativo.to,
@@ -396,15 +399,14 @@ function CotizacionesVer() {
   const handleEnviarCorreoSubmit = async () => {
     try {
       setLoading(true);
-      
+      const token = localStorage.getItem("token");
       // Enviar el correo a través del backend
       const response = await fetch(`${apiUrl}/api/cotizaciones/${selectedCotizacion.id}/enviar-correo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Authorization: `Bearer ${token}`,
         },
-        credentials: 'include',
         body: JSON.stringify({
           to: emailData.to,
           subject: emailData.subject,
@@ -552,6 +554,7 @@ function CotizacionesVer() {
               <tr className="bg-gray-100">
                 <th className="px-6 py-3 border-b text-left">Número</th>
                 <th className="px-6 py-3 border-b text-left">Cliente</th>
+                <th className="px-6 py-3 border-b text-left">Ejecutivo</th>
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Total</th>
                 <th className="px-6 py-3 border-b text-left">Estado</th>
@@ -563,6 +566,7 @@ function CotizacionesVer() {
                 <tr key={cotizacion.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 border-b">{cotizacion.numero_cotizacion}</td>
                   <td className="px-6 py-4 border-b">{cotizacion.nombre_cliente}</td>
+                  <td className="px-6 py-4 border-b">{cotizacion.nombre_ejecutivo || 'No asignado'}</td>
                   <td className="px-6 py-4 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
                   <td className="px-6 py-4 border-b">${formatearTotal(cotizacion.total)}</td>
                   <td className="px-6 py-4 border-b">

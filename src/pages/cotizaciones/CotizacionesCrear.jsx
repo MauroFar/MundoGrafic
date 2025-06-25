@@ -91,12 +91,21 @@ function CotizacionesCrear() {
   const cargarCotizacion = async () => {
     try {
       // Cargar datos de la cotización usando la API correcta
-      const cotizacionResponse = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`);
+      const token = localStorage.getItem("token");
+      const cotizacionResponse = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const cotizacionData = await cotizacionResponse.json();
       console.log("Datos recibidos de la cotización:", cotizacionData);
 
       // Cargar detalles de la cotización
-      const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`);
+      const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const detallesData = await detallesResponse.json();
       console.log("Detalles de la cotización:", detallesData);
 
@@ -400,6 +409,7 @@ function CotizacionesCrear() {
   // Nueva función auxiliar para continuar el guardado de la cotización
   const continuarGuardadoCotizacion = async (clienteId, ejecutivo_id) => {
     try {
+      const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
       const filasData = filas.map(fila => ({
         cantidad: fila.cantidad,
@@ -433,7 +443,10 @@ function CotizacionesCrear() {
         // Actualizar cotización existente
         const updateResponse = await fetch(`${apiUrl}/api/cotizaciones/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(cotizacionData)
         });
         if (!updateResponse.ok) {
@@ -453,7 +466,10 @@ function CotizacionesCrear() {
 
         const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ detalles: detallesActualizados })
         });
 
@@ -469,7 +485,10 @@ function CotizacionesCrear() {
         // Crear nueva cotización
         const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(cotizacionData)
         });
         if (!createResponse.ok) {
@@ -482,7 +501,10 @@ function CotizacionesCrear() {
         if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({ detalles: filasData })
           });
 
@@ -587,7 +609,12 @@ function CotizacionesCrear() {
   // Función para obtener el último número de cotización
   const obtenerNumeroCotizacion = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.data && response.data.numero_cotizacion) {
         // Si estamos en modo edición, mantenemos el número actual
         if (!id) {
@@ -835,11 +862,13 @@ function CotizacionesCrear() {
 
       console.log('Enviando datos al backend:', { cotizacion: cotizacionTemp, detalles: detallesTemp });
 
+      const token = localStorage.getItem("token");
       // Enviar los datos al backend para generar el PDF
       const response = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           cotizacion: cotizacionTemp,
@@ -900,6 +929,7 @@ function CotizacionesCrear() {
 
   const guardarCotizacionComoNueva = async (clienteId, ejecutivo_id, siguienteNumero) => {
     try {
+      const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
       const filasData = filas.map(fila => ({
         cantidad: fila.cantidad,
@@ -930,7 +960,10 @@ function CotizacionesCrear() {
 
       const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(cotizacionData),
       });
 
@@ -955,7 +988,10 @@ function CotizacionesCrear() {
 
         const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(detalleData),
         });
 
@@ -984,9 +1020,13 @@ function CotizacionesCrear() {
       }
       // Guardar cliente en la BBDD
       try {
+        const token = localStorage.getItem("token");
         const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             nombre: nuevoClienteDatos.nombre,
             direccion: nuevoClienteDatos.direccion,
@@ -1592,9 +1632,13 @@ function CotizacionesCrear() {
                     }
                     // Guardar cliente en la BBDD
                     try {
+                      const token = localStorage.getItem("token");
                       const crearClienteResponse = await fetch(`${apiUrl}/api/clientes`, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
                         body: JSON.stringify({
                           nombre: nuevoClienteDatos.nombre,
                           direccion: nuevoClienteDatos.direccion,

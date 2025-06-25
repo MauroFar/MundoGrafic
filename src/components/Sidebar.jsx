@@ -5,16 +5,36 @@ import { cn } from "../lib/utils";
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const rol = localStorage.getItem('rol');
 
-  const handleLogout = () => navigate("/");
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("rol");
+    navigate("/", { replace: true });
+    window.location.reload(); // Fuerza recarga y limpieza de la UI
+  };
 
   const handleRedirect = (path) => navigate(path);
 
+  // Menús según el rol
   const menus = {
-    default: [
+    admin: [
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
+      { path: "/inventario", label: "Inventario" },
+    ],
+    ejecutivo: [
+      { path: "/cotizaciones", label: "Cotizaciones" },
+      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
+      { path: "/produccion", label: "Producción" },
+      { path: "/inventario", label: "Inventario" },
+    ],
+    impresion: [
+      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
+      { path: "/produccion", label: "Producción" },
+    ],
+    default: [
       { path: "/inventario", label: "Inventario" },
     ],
     cotizaciones: [
@@ -53,6 +73,10 @@ const Sidebar = () => {
       location.pathname === "/dashboardGeneral" ||
       location.pathname === "/productosTerminados"
     ) return menus.produccion;
+    // Menú principal según el rol
+    if (rol === 'admin') return menus.admin;
+    if (rol === 'ejecutivo') return menus.ejecutivo;
+    if (rol === 'impresion') return menus.impresion;
     return menus.default;
   };
 
