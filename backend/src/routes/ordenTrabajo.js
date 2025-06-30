@@ -12,7 +12,11 @@ module.exports = (client) => {
       const result = await client.query(`
         SELECT 
           cl.nombre_cliente AS nombre_cliente,
+          cl.telefono_cliente AS telefono_cliente,
+          cl.email_cliente AS email_cliente,
+          cl.direccion_cliente AS direccion_cliente,
           dc.detalle AS concepto,
+          dc.cantidad AS cantidad,
           c.numero_cotizacion AS numero_cotizacion,
           ot.numero_orden AS numero_orden
         FROM cotizaciones c
@@ -82,28 +86,44 @@ module.exports = (client) => {
 
 
   router.get("/buscar", async (req, res) => {
-    const { ruc_id } = req.query;
-
-    if (!ruc_id) {
-      return res.status(400).json({ error: "El ruc_id es obligatorio" });
-    }
+    const { ruc_id, busqueda } = req.query;
 
     try {
-      const query = `
-     SELECT 
+      let query = `
+        SELECT 
           ot.id,
           ot.numero_orden,
           ot.fecha_creacion,
           c.nombre_cliente,
           d.detalle
         FROM orden_trabajo ot
-        JOIN cotizaciones co ON ot.id_cotizacion = co.id
-        JOIN clientes c ON co.cliente_id = c.id
-        JOIN detalle_cotizacion d ON d.cotizacion_id = co.id
-        WHERE c.ruc_id = $1
+        LEFT JOIN cotizaciones co ON ot.id_cotizacion = co.id
+        LEFT JOIN clientes c ON co.cliente_id = c.id
+        LEFT JOIN detalle_cotizacion d ON d.cotizacion_id = co.id
       `;
+      let where = [];
+      let params = [];
 
-      const result = await client.query(query, [ruc_id]);
+      if (ruc_id) {
+        where.push('c.ruc_id = $' + (params.length + 1));
+        params.push(ruc_id);
+      }
+      if (busqueda) {
+        const idx = params.length + 1;
+        where.push(`(
+          ot.numero_orden::text ILIKE '%' || $${idx} || '%'
+          OR c.nombre_cliente ILIKE '%' || $${idx} || '%'
+          OR d.detalle ILIKE '%' || $${idx} || '%'
+          OR co.numero_cotizacion::text ILIKE '%' || $${idx} || '%'
+        )`);
+        params.push(busqueda);
+      }
+      if (where.length > 0) {
+        query += ' WHERE ' + where.join(' AND ');
+      }
+      query += ' ORDER BY ot.id DESC';
+
+      const result = await client.query(query, params);
       res.json(result.rows);
     } catch (error) {
       console.error("Error al buscar órdenes de trabajo:", error);
@@ -171,8 +191,32 @@ WHERE id = $1;
     }
   });
 
-  
+  // Endpoint para obtener el próximo número de orden
+  router.get('/proximoNumero', async (req, res) => {
+    try {
+      const result = await client.query('SELECT MAX(numero_orden) AS max_numero FROM orden_trabajo');
+      const maxNumero = result.rows[0].max_numero || 0;
+      const proximoNumero = String(Number(maxNumero) + 1).padStart(6, '0');
+      res.json({ proximoNumero });
+    } catch (error) {
+      res.status(500).json({ error: 'Error al obtener el próximo número de orden' });
+    }
+  });
 
+  // Eliminar una orden de trabajo por id
+  router.delete('/eliminar/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const result = await client.query('DELETE FROM orden_trabajo WHERE id = $1 RETURNING *', [id]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Orden no encontrada' });
+      }
+      res.json({ message: 'Orden eliminada correctamente' });
+    } catch (error) {
+      console.error('Error al eliminar la orden de trabajo:', error);
+      res.status(500).json({ error: 'Error al eliminar la orden de trabajo' });
+    }
+  });
 
   return router;
 };

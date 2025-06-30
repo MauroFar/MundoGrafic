@@ -5,29 +5,29 @@ function OrdenDeTrabajoBuscar() {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
-  const [rucs, setRucs] = useState([]);
-  const [rucSeleccionado, setRucSeleccionado] = useState("");
   const [ordenes, setOrdenes] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
-    fetch(`${apiUrl}/api/rucs`)
-      .then((res) => res.json())
-      .then((data) => setRucs(data))
-      .catch((error) => console.error("Error al cargar RUCs:", error));
-  }, []);
-
-  useEffect(() => {
-    if (rucSeleccionado) {
+    if (busqueda) {
       buscarOrdenes();
     } else {
-      setOrdenes([]);
+      // Si no hay filtro, traer todas las órdenes
+      fetch(`${apiUrl}/api/ordenTrabajo/buscar`)
+        .then(res => res.json())
+        .then(data => setOrdenes(data))
+        .catch(() => setOrdenes([]));
     }
-  }, [rucSeleccionado]);
+  }, [busqueda]);
 
   const buscarOrdenes = async () => {
     try {
-      const params = new URLSearchParams({ ruc_id: rucSeleccionado });
-      const response = await fetch(`${apiUrl}/api/ordenTrabajo/buscar?${params}`);
+      const params = new URLSearchParams();
+      if (busqueda) params.append('busqueda', busqueda);
+      const url = params.toString()
+        ? `${apiUrl}/api/ordenTrabajo/buscar?${params}`
+        : `${apiUrl}/api/ordenTrabajo/buscar`;
+      const response = await fetch(url);
       const data = await response.json();
       setOrdenes(data);
     } catch (error) {
@@ -43,8 +43,7 @@ function OrdenDeTrabajoBuscar() {
   const eliminarOrden = async (id) => {
     if (window.confirm("¿Estás seguro de eliminar/cancelar esta orden?")) {
       try {
-        // Aquí llamarías a la API para eliminar/cancelar
-        await fetch(`${apiUrl}/api/ordenTrabajo/${id}`, {
+        await fetch(`${apiUrl}/api/ordenTrabajo/eliminar/${id}`, {
           method: "DELETE",
         });
         // Recargar lista después de eliminar
@@ -84,22 +83,20 @@ function OrdenDeTrabajoBuscar() {
       <h2 className="text-xl font-medium mb-6 text-gray-700">Buscar</h2>
 
       <div className="mb-6 flex items-center space-x-4">
-        <label htmlFor="ruc" className="font-medium text-gray-700">
-          Filtrar por RUC:
-        </label>
-        <select
-          id="ruc"
-          value={rucSeleccionado}
-          onChange={(e) => setRucSeleccionado(e.target.value)}
+        <input
+          type="text"
+          placeholder="Buscar por N° Orden, N° Cotización o Cliente"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          style={{ minWidth: 250 }}
+        />
+        <button
+          onClick={buscarOrdenes}
+          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
         >
-          <option value="">-- Seleccionar RUC --</option>
-          {rucs.map((ruc) => (
-            <option key={ruc.id} value={ruc.id}>
-              {ruc.ruc} - {ruc.descripcion}
-            </option>
-          ))}
-        </select>
+          Buscar
+        </button>
       </div>
 
       <div className="overflow-x-auto">
@@ -116,7 +113,7 @@ function OrdenDeTrabajoBuscar() {
           <tbody>
             {ordenes.length > 0 ? (
               ordenes.map((orden) => (
-                <tr key={orden.id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-100">
+                <tr key={orden.id + '-' + (orden.numero_orden || '')} className="odd:bg-white even:bg-gray-50 hover:bg-gray-100">
                   <td className="border border-gray-300 px-4 py-2">{orden.nombre_cliente}</td>
                   <td className="border border-gray-300 px-4 py-2">{orden.detalle}</td>
                   <td className="border border-gray-300 px-4 py-2">
@@ -148,9 +145,7 @@ function OrdenDeTrabajoBuscar() {
             ) : (
               <tr>
                 <td colSpan="6" className="text-center px-4 py-6 text-gray-500">
-                  {rucSeleccionado
-                    ? "No se encontraron órdenes de trabajo para este RUC."
-                    : "Selecciona un RUC para ver las órdenes."}
+                  {"No se encontraron órdenes de trabajo."}
                 </td>
               </tr>
             )}

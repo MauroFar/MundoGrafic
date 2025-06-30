@@ -43,7 +43,7 @@ const Sidebar = () => {
     ],
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
-      { path: "/ordendeTrabajo/buscar", label: "Buscar Orden de Trabajo" },
+      { path: "/ordendeTrabajoBuscar", label: "Buscar Orden de Trabajo" },
     ],
     produccion: [
       { path: "/dashboardGeneral", label: "En Producción" },
@@ -93,7 +93,7 @@ const Sidebar = () => {
         {/* Render solo el menú activo */}
         <ul className="space-y-2">
           {menuItems.map((item) => (
-            <li key={item.path}>
+            <li key={item.path + '-' + item.label}>
               <button
                 onClick={() => handleRedirect(item.path)}
                 className={cn(

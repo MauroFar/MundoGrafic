@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 function CotizacionesVer() {
@@ -447,7 +447,8 @@ function CotizacionesVer() {
       }
 
       toast.success('✅ Cotización aprobada exitosamente');
-      await cargarCotizaciones();
+      setPagina(1);
+      await cargarCotizaciones(true);
     } catch (error) {
       console.error('Error al aprobar la cotización:', error);
       toast.error(error.message || 'Error al aprobar la cotización');
@@ -482,6 +483,10 @@ function CotizacionesVer() {
   const cargarMasCotizaciones = async () => {
     setPagina(prev => prev + 1);
     await cargarCotizaciones(false);
+  };
+
+  const generarOrdenTrabajo = (cotizacionId) => {
+    navigate(`/ordendeTrabajo/crear/${cotizacionId}`);
   };
 
   return (
@@ -627,6 +632,15 @@ function CotizacionesVer() {
                           title="Aprobar cotización"
                         >
                           <FaCheck />Aprobar
+                        </button>
+                      )}
+                      {cotizacion.estado === 'aprobada' && (
+                        <button
+                          className="p-2 text-pink-600 hover:bg-pink-100 rounded"
+                          onClick={() => generarOrdenTrabajo(cotizacion.id)}
+                          title="Generar Orden de Trabajo"
+                        >
+                          <FaTools /> Generar Orden de Trabajo
                         </button>
                       )}
                     </div>

@@ -13,6 +13,11 @@ const OrdendeTrabajoEditar = () => {
   const [fechaCreacion, setFechaCreacion] = useState(() => {
     return new Date().toISOString().split("T")[0];
   });
+  const [telefono_cliente, setTelefono_cliente] = useState('');
+  const [email_cliente, setEmail_cliente] = useState('');
+  const [direccion_cliente, setDireccion_cliente] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [numero_orden, setNumero_orden] = useState('');
 
   const { cotizacionId, ordenId } = useParams();
 
@@ -50,8 +55,20 @@ useEffect(() => {
     setConcepto(ordenData.concepto || '');
     setNombre_cliente(ordenData.nombre_cliente || '');
     setNumero_cotizacion(ordenData.numero_cotizacion || '');
+    setTelefono_cliente(ordenData.telefono_cliente || '');
+    setEmail_cliente(ordenData.email_cliente || '');
+    setDireccion_cliente(ordenData.direccion_cliente || '');
+    setCantidad(ordenData.cantidad || '');
+    setNumero_orden(ordenData.numero_orden || '');
   }
-}, [ordenData]);
+  // Si es formulario de nueva orden (sin cotizacionId ni ordenId), obtener el próximo número de orden
+  if (!cotizacionId && !ordenId) {
+    fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
+      .then(res => res.json())
+      .then(data => setNumero_orden(data.proximoNumero))
+      .catch(() => setNumero_orden(''));
+  }
+}, [ordenData, cotizacionId, ordenId]);
 
 
  
@@ -84,6 +101,7 @@ useEffect(() => {
     const data = await response.json(); // <-- esto sí funcionará si la respuesta es válida
     console.log("Orden creada:", data);
 
+    setNumero_orden(data.numero_orden || '');
     // Mostrar alerta con número de orden
     alert(`Orden numero: ${data.numero_orden} guardada exitosamente`);
 
@@ -160,7 +178,8 @@ const editarOrdenTrabajo = async () => {
   <input
     className="border border-gray-300 rounded-md p-1 w-20 text-gray-700 text-sm"
     type="text"
-    
+    value={numero_orden}
+    readOnly
   />
 </div>
 
@@ -192,13 +211,13 @@ const editarOrdenTrabajo = async () => {
             type="text"  value={nombre_cliente}
   onChange={(e) => setNombre_cliente(e.target.value)}/>
             <p className="font-semibold text-gray-600">Teléfono:</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" />
+            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={telefono_cliente} onChange={e => setTelefono_cliente(e.target.value)} />
           </div>
           <div>
             <p className="font-semibold text-gray-600">Contacto</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" />
+            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={direccion_cliente} onChange={e => setDireccion_cliente(e.target.value)} />
             <p className="font-semibold text-gray-600">Email</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" />
+            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={email_cliente} onChange={e => setEmail_cliente(e.target.value)} />
           </div>
        
 </div>
@@ -208,7 +227,7 @@ const editarOrdenTrabajo = async () => {
 <div className="flex flex-wrap gap-4 mb-4">
   <div className="flex flex-col basis-1/12">
     <p className="font-semibold text-gray-600">Cantidad:</p>
-    <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" />
+    <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" value={cantidad} onChange={e => setCantidad(e.target.value)} />
   </div>
 
   <div className="flex flex-col basis-4/12">
