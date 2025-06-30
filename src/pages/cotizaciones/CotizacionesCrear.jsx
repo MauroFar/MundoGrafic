@@ -383,7 +383,9 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
-          imagen_ruta: fila.imagen_ruta
+          imagen_ruta: fila.imagen_ruta,
+          imagen_width: fila.imagen_width,
+          imagen_height: fila.imagen_height
         }));
 
         const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
