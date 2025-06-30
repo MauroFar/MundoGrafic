@@ -155,8 +155,8 @@ function CotizacionesCrear() {
             imagen: imagenUrl,
             imagen_ruta: imagenRuta,
             imagen_ruta_jpeg: imagenRutaJpeg,
-            width: 200,
-            height: 150
+            width: detalle.imagen_width || 200,
+            height: detalle.imagen_height || 150
           };
         });
 
@@ -1209,8 +1209,8 @@ function CotizacionesCrear() {
                   </tr>
                   {fila.imagen && (
                     <tr>
-                      <td colSpan="5" className="border border-gray-300 px-4 py-2 bg-gray-50">
-                        <div className="relative inline-block">
+                      <td colSpan="5" className="border border-gray-300 px-4 py-2 bg-gray-50" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
                           <Resizable
                             width={fila.width || 200}
                             height={fila.height || 150}
@@ -1224,7 +1224,6 @@ function CotizacionesCrear() {
                                 imagen_height: size.height
                               };
                               setFilas(nuevasFilas);
-                              // Actualizar también las dimensiones en el modal si está abierto
                               if (selectedImageIndex === index) {
                                 setImageDimensions({
                                   width: size.width,
@@ -1246,6 +1245,34 @@ function CotizacionesCrear() {
                             draggableOpts={{ grid: [1, 1] }}
                             resizeHandles={['se']}
                             className="relative"
+                            handle={
+                              !showPreview && (
+                                <span
+                                  className="custom-resize-handle"
+                                  style={{
+                                    position: 'absolute',
+                                    right: '-7px',
+                                    bottom: '-7px',
+                                    width: '20px',
+                                    height: '20px',
+                                    background: 'white',
+                                    borderRadius: '50%',
+                                    border: '2px solid #3498db',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'nwse-resize',
+                                    zIndex: 1000,
+                                    boxShadow: '0 0 3px rgba(0,0,0,0.3)'
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <path d="M3 21L21 3M16 3h5v5M3 16v5h5" stroke="#3498db" strokeWidth="2" strokeLinecap="round"/>
+                                  </svg>
+                                </span>
+                              )
+                            }
                           >
                             <div
                               style={{
@@ -1253,39 +1280,28 @@ function CotizacionesCrear() {
                                 height: `${fila.height || 150}px`,
                                 overflow: "hidden",
                                 position: "relative",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center"
                               }}
                             >
                               <img
                                 src={fila.imagen}
                                 alt="Imagen del producto"
                                 style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'contain'
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  objectFit: 'contain',
+                                  display: 'block',
+                                  margin: 'auto'
                                 }}
                                 onError={(e) => {
                                   console.error('Error al cargar la imagen:', e);
-                                  // Intentar cargar la versión JPEG si la WebP falla
                                   if (fila.imagen_ruta_jpeg) {
                                     e.target.src = `${apiUrl}${fila.imagen_ruta_jpeg}`;
                                   } else {
                                     e.target.style.display = 'none';
                                   }
-                                }}
-                              />
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  right: '-7px',
-                                  bottom: '-7px',
-                                  width: '15px',
-                                  height: '15px',
-                                  backgroundColor: '#3498db',
-                                  borderRadius: '50%',
-                                  cursor: 'nwse-resize',
-                                  zIndex: 1000,
-                                  border: '2px solid white',
-                                  boxShadow: '0 0 3px rgba(0,0,0,0.3)'
                                 }}
                               />
                             </div>

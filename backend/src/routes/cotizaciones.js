@@ -723,12 +723,12 @@ body {
                       <div class="detalle-con-imagen">
                         <div class="detalle-texto">${d.detalle}</div>
                         ${d.base64Image ? `
-                          <div class="imagen-container">
+                          <div class="imagen-container" style="display: flex; justify-content: center; align-items: center;">
                             <img 
                               src="${d.base64Image}" 
                               alt="Imagen del producto" 
                               class="imagen-producto"
-                              style="width: ${d.imagen_width}px; height: ${d.imagen_height}px;"
+                              style="width: ${d.imagen_width}px; height: ${d.imagen_height}px; display: block; margin: auto;"
                             />
                           </div>
                         ` : ''}
