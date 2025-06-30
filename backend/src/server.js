@@ -8,6 +8,7 @@ const apiRoutes = require("./routes/api");
 const authRequired = require("./middleware/auth");
 const usuariosRoutes = require('./routes/usuarios');
 const areasRoutes = require('./routes/areas');
+const os = require('os');
 
 const app = express();
 
@@ -83,8 +84,21 @@ app.use('/api/usuarios', usuariosRoutes(client));
 // Rutas de áreas
 app.use('/api/areas', areasRoutes(client));
 
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
 // Puerto
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  const ip = getLocalIP();
+  console.log(`🚀 Servidor corriendo en http://${ip}:${PORT}`);
 });
