@@ -4,8 +4,10 @@
   "description": "Backend para el sistema de MundoGrafic",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon dist/server.js",
+    "watch": "tsc --watch"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +25,9 @@
     "sharp": "^0.34.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.8",
+    "nodemon": "^2.0.22",
+    "typescript": "^5.8.3"
   }
 }

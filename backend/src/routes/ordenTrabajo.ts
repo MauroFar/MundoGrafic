@@ -1,11 +1,11 @@
 // ordenTrabajo.js
-const express = require("express");
+import express, { Request, Response } from "express";
 
-module.exports = (client) => {
+export default (client: any) => {
   const router = express.Router();
 
   // Obtener nombre del cliente y el primer concepto de la cotización
-  router.get("/datosCotizacion/:id", async (req, res) => {
+  router.get("/datosCotizacion/:id", async (req, res): Promise<void> => {
     const { id } = req.params;
 
     try {
@@ -28,18 +28,20 @@ module.exports = (client) => {
       `, [id]);
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ message: "Cotización no encontrada o sin detalles" });
+        res.status(404).json({ message: "Cotización no encontrada o sin detalles" });
+        return;
       }
 
       res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error al obtener datos de cotización:", error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error al obtener datos de cotización:", err.message);
       res.status(500).json({ error: "Error al obtener los datos de la cotización" });
     }
   });
 
   // Crear una orden de trabajo desde una cotización
-  router.post("/crearOrdenTrabajo", async (req, res) => {
+  router.post("/crearOrdenTrabajo", async (req, res): Promise<void> => {
     const { nombre_cliente, concepto, id_cotizacion, fecha_creacion } = req.body;
 
     try {
@@ -58,14 +60,15 @@ module.exports = (client) => {
         message: "Orden de trabajo creada",
         numero_orden: numeroFormateado
       });
-    } catch (error) {
-      console.error("Error al crear orden de trabajo:", error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error al crear orden de trabajo:", err.message);
       res.status(500).json({ error: "No se pudo crear la orden de trabajo" });
     }
   });
 
   // GET: Listar todas las órdenes de trabajo
-  router.get('/listar', async (req, res) => {
+  router.get('/listar', async (req, res): Promise<void> => {
     try {
       const result = await client.query(`
         SELECT 
@@ -78,14 +81,15 @@ module.exports = (client) => {
       `);
 
       res.json(result.rows);
-    } catch (error) {
-      console.error('Error al listar órdenes:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error al listar órdenes:', err.message);
       res.status(500).json({ error: 'Error del servidor al obtener las órdenes de trabajo' });
     }
   });
 
 
-  router.get("/buscar", async (req, res) => {
+  router.get("/buscar", async (req, res): Promise<void> => {
     const { ruc_id, busqueda } = req.query;
 
     try {
@@ -102,7 +106,7 @@ module.exports = (client) => {
         LEFT JOIN detalle_cotizacion d ON d.cotizacion_id = co.id
       `;
       let where = [];
-      let params = [];
+      let params: any[] = [];
 
       if (ruc_id) {
         where.push('c.ruc_id = $' + (params.length + 1));
@@ -125,37 +129,40 @@ module.exports = (client) => {
 
       const result = await client.query(query, params);
       res.json(result.rows);
-    } catch (error) {
-      console.error("Error al buscar órdenes de trabajo:", error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error al buscar órdenes de trabajo:", err.message);
       res.status(500).json({ error: "Error al buscar órdenes de trabajo" });
     }
   });
 
   // Obtener datos de una orden de trabajo por ID
-router.get('/orden/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await client.query(
-      `SELECT id, nombre_cliente, concepto, numero_orden, fecha_creacion
+  router.get('/orden/:id', async (req, res): Promise<void> => {
+    const { id } = req.params;
+    try {
+      const result = await client.query(
+        `SELECT id, nombre_cliente, concepto, numero_orden, fecha_creacion
 FROM orden_trabajo 
 WHERE id = $1;
 `,
-      [id]
-    );
+        [id]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Orden no encontrada' });
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Orden no encontrada' });
+        return;
+      }
+
+      res.json(result.rows[0]);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error al obtener la orden:', err.message);
+      res.status(500).json({ error: 'Error del servidor' });
     }
+  });
 
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al obtener la orden:', error.message);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
-});
-
-/////editar y actualizar datos orden de trabajo   // Editar una orden de trabajo existente
-  router.put('/editarOrden/:id', async (req, res) => {
+  /////editar y actualizar datos orden de trabajo   // Editar una orden de trabajo existente
+  router.put('/editarOrden/:id', async (req, res): Promise<void> => {
     const { id } = req.params;
     const {
       nombre_cliente,
@@ -178,42 +185,48 @@ WHERE id = $1;
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Orden no encontrada" });
+        res.status(404).json({ error: "Orden no encontrada" });
+        return;
       }
 
       res.json({
         message: "Orden actualizada correctamente",
         orden: result.rows[0],
       });
-    } catch (error) {
-      console.error("Error al editar la orden de trabajo:", error.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error al editar la orden de trabajo:", err.message);
       res.status(500).json({ error: "Error al actualizar la orden de trabajo" });
     }
   });
 
   // Endpoint para obtener el próximo número de orden
-  router.get('/proximoNumero', async (req, res) => {
+  router.get('/proximoNumero', async (req, res): Promise<void> => {
     try {
       const result = await client.query('SELECT MAX(numero_orden) AS max_numero FROM orden_trabajo');
       const maxNumero = result.rows[0].max_numero || 0;
       const proximoNumero = String(Number(maxNumero) + 1).padStart(6, '0');
       res.json({ proximoNumero });
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error al obtener el próximo número de orden:', err.message);
       res.status(500).json({ error: 'Error al obtener el próximo número de orden' });
     }
   });
 
   // Eliminar una orden de trabajo por id
-  router.delete('/eliminar/:id', async (req, res) => {
+  router.delete('/eliminar/:id', async (req, res): Promise<void> => {
     const { id } = req.params;
     try {
       const result = await client.query('DELETE FROM orden_trabajo WHERE id = $1 RETURNING *', [id]);
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Orden no encontrada' });
+        res.status(404).json({ error: 'Orden no encontrada' });
+        return;
       }
       res.json({ message: 'Orden eliminada correctamente' });
-    } catch (error) {
-      console.error('Error al eliminar la orden de trabajo:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error al eliminar la orden de trabajo:', err.message);
       res.status(500).json({ error: 'Error al eliminar la orden de trabajo' });
     }
   });

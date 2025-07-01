@@ -20,7 +20,7 @@ module.exports = (client) => {
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/buscarCotizaciones", buscarCotizaciones(client));
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
-  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
+  router.use("/ordenTrabajo", (ordenTrabajoRoutes.default || ordenTrabajoRoutes)(client)); // /api/ordenTrabajo
   router.use("/upload", uploadRoutes); // /api/upload
 
   return router; // Devolvemos el router que agrupa todas las rutas

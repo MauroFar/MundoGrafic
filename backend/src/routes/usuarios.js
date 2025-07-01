@@ -6,7 +6,7 @@ const authRequired = require('../middleware/auth');
 module.exports = (client) => {
   // Listar todos los usuarios (solo admin)
   router.get('/', authRequired(['admin']), async (req, res) => {
-    const result = await client.query('SELECT id, email, nombre, rol, area_id, activo, fecha_creacion FROM usuarios');
+    const result = await client.query('SELECT id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion FROM usuarios');
     res.json(result.rows);
   });
 

@@ -4,20 +4,49 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../../components/Logo";
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 
-const OrdendeTrabajoEditar = () => {
+// Tipos para los datos de la orden
+interface OrdenData {
+  concepto?: string;
+  nombre_cliente?: string;
+  numero_cotizacion?: string;
+  telefono_cliente?: string;
+  email_cliente?: string;
+  direccion_cliente?: string;
+  cantidad?: string;
+  numero_orden?: string;
+  // Puedes agregar más campos según lo que devuelva tu backend
+}
+
+// Tipos para los parámetros de la URL
+// interface Params {
+//   cotizacionId?: string;
+//   ordenId?: string;
+// }
+
+// Declaración global para ImportMetaEnv (Vite)
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_API_URL: string;
+      [key: string]: any;
+    };
+  }
+}
+
+const OrdendeTrabajoEditar: React.FC = () => {
   
-  const [concepto, setConcepto] = useState('');
-  const [nombre_cliente, setNombre_cliente] = useState('');
-  const [numero_cotizacion, setNumero_cotizacion] = useState('');
-  const [ordenData, setOrdenData] = useState(null);
-  const [fechaCreacion, setFechaCreacion] = useState(() => {
+  const [concepto, setConcepto] = useState<string>('');
+  const [nombre_cliente, setNombre_cliente] = useState<string>('');
+  const [numero_cotizacion, setNumero_cotizacion] = useState<string>('');
+  const [ordenData, setOrdenData] = useState<OrdenData | null>(null);
+  const [fechaCreacion, setFechaCreacion] = useState<string>(() => {
     return new Date().toISOString().split("T")[0];
   });
-  const [telefono_cliente, setTelefono_cliente] = useState('');
-  const [email_cliente, setEmail_cliente] = useState('');
-  const [direccion_cliente, setDireccion_cliente] = useState('');
-  const [cantidad, setCantidad] = useState('');
-  const [numero_orden, setNumero_orden] = useState('');
+  const [telefono_cliente, setTelefono_cliente] = useState<string>('');
+  const [email_cliente, setEmail_cliente] = useState<string>('');
+  const [direccion_cliente, setDireccion_cliente] = useState<string>('');
+  const [cantidad, setCantidad] = useState<string>('');
+  const [numero_orden, setNumero_orden] = useState<string>('');
 
   const { cotizacionId, ordenId } = useParams();
 
@@ -105,8 +134,9 @@ useEffect(() => {
     // Mostrar alerta con número de orden
     alert(`Orden numero: ${data.numero_orden} guardada exitosamente`);
 
-  } catch (error) {
-    console.error("Error en la solicitud:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Error en la solicitud:", err.message);
     alert("Ocurrió un error al guardar la orden de trabajo.");
   }
 };
@@ -135,8 +165,9 @@ const editarOrdenTrabajo = async () => {
 
     console.log("Orden actualizada:", data);
     // Redirige o muestra notificación de éxito
-  } catch (error) {
-    console.error("Error al actualizar la orden:", error.message);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Error al actualizar la orden:", err.message);
   }
 };
 

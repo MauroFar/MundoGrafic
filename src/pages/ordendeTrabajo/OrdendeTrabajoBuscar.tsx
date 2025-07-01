@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+// Tipo para una orden de trabajo
+interface OrdenTrabajo {
+  id: number | string;
+  nombre_cliente: string;
+  detalle: string;
+  fecha: string;
+  numero_orden: string;
+  // Puedes agregar más campos según tu backend
+}
+
 function OrdenDeTrabajoBuscar() {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
-  const [ordenes, setOrdenes] = useState([]);
-  const [busqueda, setBusqueda] = useState("");
+  const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
+  const [busqueda, setBusqueda] = useState<string>("");
 
   useEffect(() => {
     if (busqueda) {
@@ -35,12 +45,12 @@ function OrdenDeTrabajoBuscar() {
     }
   };
 
-  const verDetalle = (id) => {
+  const verDetalle = (id: number | string) => {
     navigate(`/ordendeTrabajo/editar/${id}`);
   };
 
   // Función para eliminar o cancelar la orden
-  const eliminarOrden = async (id) => {
+  const eliminarOrden = async (id: number | string) => {
     if (window.confirm("¿Estás seguro de eliminar/cancelar esta orden?")) {
       try {
         await fetch(`${apiUrl}/api/ordenTrabajo/eliminar/${id}`, {
@@ -48,14 +58,15 @@ function OrdenDeTrabajoBuscar() {
         });
         // Recargar lista después de eliminar
         buscarOrdenes();
-      } catch (error) {
-        console.error("Error al eliminar la orden:", error);
+      } catch (error: unknown) {
+        const err = error as Error;
+        console.error("Error al eliminar la orden:", err.message);
       }
     }
   };
 
   // Función para enviar la orden a producción
-  const enviarAProduccion = async (id) => {
+  const enviarAProduccion = async (id: number | string) => {
     if (window.confirm("¿Enviar esta orden a producción?")) {
       try {
         // Aquí llamarías a la API para cambiar el estado de la orden
@@ -64,8 +75,9 @@ function OrdenDeTrabajoBuscar() {
         });
         // Recargar lista después de actualizar
         buscarOrdenes();
-      } catch (error) {
-        console.error("Error al enviar a producción:", error);
+      } catch (error: unknown) {
+        const err = error as Error;
+        console.error("Error al enviar a producción:", err.message);
       }
     }
   };
@@ -144,7 +156,7 @@ function OrdenDeTrabajoBuscar() {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center px-4 py-6 text-gray-500">
+                <td colSpan={6} className="text-center px-4 py-6 text-gray-500">
                   {"No se encontraron órdenes de trabajo."}
                 </td>
               </tr>
