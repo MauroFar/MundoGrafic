@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.js",
     "watch": "tsc --watch"
   },
   "keywords": [],
@@ -28,6 +28,7 @@
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.8",
     "nodemon": "^2.0.22",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   }
 }

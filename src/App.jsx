@@ -51,6 +51,7 @@ const Layout = ({ children }) => {
 };
 
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
+import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
 
 function App() {
   return (
@@ -217,6 +218,16 @@ function App() {
           element={
             <PrivateRoute allowedRoles={['admin']}>
               <GestionUsuarios />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reportesTrabajoDiario"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <Layout>
+                <ReportesTrabajoDiario />
+              </Layout>
             </PrivateRoute>
           }
         />

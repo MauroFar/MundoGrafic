@@ -102,3 +102,4 @@ app.listen(PORT, () => {
   const ip = getLocalIP();
   console.log(`🚀 Servidor corriendo en http://${ip}:${PORT}`);
 });
+ 

@@ -23,16 +23,19 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
+      { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
     ],
     ejecutivo: [
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
+      { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
     ],
     impresion: [
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
+      { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
     ],
     default: [
       { path: "/inventario", label: "Inventario" },
