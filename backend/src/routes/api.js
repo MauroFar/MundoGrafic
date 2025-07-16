@@ -4,7 +4,6 @@ const rucRoutes = require("./rucs");
 const clientesRoutes = require("./clientes");
 const cotizacionRoutes = require("./cotizaciones");
 const cotizacionDetRoutes = require("./cotizacionesDetalles");
-const buscarCotizaciones = require("./buscarCotizaciones");
 const cotizacionesEditar = require("./cotizacionesEditar");
 const ordenTrabajoRoutes = require("./ordenTrabajo");
 const puppeteer = require("puppeteer");
@@ -18,7 +17,6 @@ module.exports = (client) => {
   router.use("/clientes", clientesRoutes(client)); // /api/clientes
   router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
-  router.use("/buscarCotizaciones", buscarCotizaciones(client));
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
   router.use("/ordenTrabajo", (ordenTrabajoRoutes.default || ordenTrabajoRoutes)(client)); // /api/ordenTrabajo
   router.use("/upload", uploadRoutes); // /api/upload

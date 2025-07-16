@@ -48,7 +48,40 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cantidad, setCantidad] = useState<string>('');
   const [numero_orden, setNumero_orden] = useState<string>('');
 
+  // Estados para los campos técnicos (ejemplo, agrega todos los que necesites)
+  const [tipoPapelProveedor, setTipoPapelProveedor] = useState('');
+  const [tipoPapelPrensa, setTipoPapelPrensa] = useState('');
+  const [tipoPapelVelocidad, setTipoPapelVelocidad] = useState('');
+  const [tipoPapelCalibre, setTipoPapelCalibre] = useState('');
+  const [tipoPapelReferencia, setTipoPapelReferencia] = useState('');
+  const [tipoPapelGramos, setTipoPapelGramos] = useState('');
+  const [tipoPapelTamano, setTipoPapelTamano] = useState('');
+  const [tipoPapelCantColores, setTipoPapelCantColores] = useState('');
+  const [tipoPapelCantPliegos, setTipoPapelCantPliegos] = useState('');
+  const [tipoPapelExceso, setTipoPapelExceso] = useState('');
+  const [guillotinaPliegosCortar, setGuillotinaPliegosCortar] = useState('');
+  const [guillotinaTamanoCorte, setGuillotinaTamanoCorte] = useState('');
+  const [guillotinaCabidaCorte, setGuillotinaCabidaCorte] = useState('');
+  const [prensasPliegosImprimir, setPrensasPliegosImprimir] = useState('');
+  const [prensasCabidaImpresion, setPrensasCabidaImpresion] = useState('');
+  const [prensasTotalImpresion, setPrensasTotalImpresion] = useState('');
+  // Estados adicionales generales
+  const [fechaEntrega, setFechaEntrega] = useState('');
+  const [estado, setEstado] = useState('');
+  const [notasObservaciones, setNotasObservaciones] = useState('');
+  const [vendedor, setVendedor] = useState('');
+  const [preprensa, setPreprensa] = useState('');
+  const [prensa, setPrensa] = useState('');
+  const [terminados, setTerminados] = useState('');
+  const [facturado, setFacturado] = useState('');
+
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
+
   const { cotizacionId, ordenId } = useParams();
+  const navigate = useNavigate();
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -80,15 +113,41 @@ const OrdendeTrabajoEditar: React.FC = () => {
   // Sincronizar estados individuales con ordenData cuando cambia
 useEffect(() => {
   if (ordenData) {
-     console.log("Datos recibidos de backend:", ordenData);  // <-- Aquí
     setConcepto(ordenData.concepto || '');
     setNombre_cliente(ordenData.nombre_cliente || '');
     setNumero_cotizacion(ordenData.numero_cotizacion || '');
-    setTelefono_cliente(ordenData.telefono_cliente || '');
-    setEmail_cliente(ordenData.email_cliente || '');
-    setDireccion_cliente(ordenData.direccion_cliente || '');
+    setTelefono_cliente(ordenData.telefono || '');
+    setEmail_cliente(ordenData.email || '');
+    setDireccion_cliente(ordenData.contacto || '');
     setCantidad(ordenData.cantidad || '');
     setNumero_orden(ordenData.numero_orden || '');
+    setFechaCreacion(ordenData.fecha_creacion ? ordenData.fecha_creacion.slice(0, 10) : '');
+    setFechaEntrega(ordenData.fecha_entrega ? ordenData.fecha_entrega.slice(0, 10) : '');
+    setNotasObservaciones(ordenData.notas_observaciones || '');
+    setVendedor(ordenData.vendedor || '');
+    setPreprensa(ordenData.preprensa || '');
+    setPrensa(ordenData.prensa || '');
+    setTerminados(ordenData.terminados || '');
+    setFacturado(ordenData.facturado || '');
+    // Sincronizar campos técnicos si existen
+    if (ordenData.detalle) {
+      setTipoPapelProveedor(ordenData.detalle.tipo_papel_proveedor || '');
+      setTipoPapelPrensa(ordenData.detalle.tipo_papel_prensa || '');
+      setTipoPapelVelocidad(ordenData.detalle.tipo_papel_velocidad || '');
+      setTipoPapelCalibre(ordenData.detalle.tipo_papel_calibre || '');
+      setTipoPapelReferencia(ordenData.detalle.tipo_papel_referencia || '');
+      setTipoPapelGramos(ordenData.detalle.tipo_papel_gramos || '');
+      setTipoPapelTamano(ordenData.detalle.tipo_papel_tamano || '');
+      setTipoPapelCantColores(ordenData.detalle.tipo_papel_cant_colores || '');
+      setTipoPapelCantPliegos(ordenData.detalle.tipo_papel_cant_pliegos || '');
+      setTipoPapelExceso(ordenData.detalle.tipo_papel_exceso || '');
+      setGuillotinaPliegosCortar(ordenData.detalle.guillotina_pliegos_cortar || '');
+      setGuillotinaTamanoCorte(ordenData.detalle.guillotina_tamano_corte || '');
+      setGuillotinaCabidaCorte(ordenData.detalle.guillotina_cabida_corte || '');
+      setPrensasPliegosImprimir(ordenData.detalle.prensas_pliegos_imprimir || '');
+      setPrensasCabidaImpresion(ordenData.detalle.prensas_cabida_impresion || '');
+      setPrensasTotalImpresion(ordenData.detalle.prensas_total_impresion || '');
+    }
   }
   // Si es formulario de nueva orden (sin cotizacionId ni ordenId), obtener el próximo número de orden
   if (!cotizacionId && !ordenId) {
@@ -105,71 +164,144 @@ useEffect(() => {
     return <p>Cargando orden de trabajo...</p>;
   }
 
-  // Función para crear orden de trabajo (funciona con o sin cotización)
- const crearOrdenTrabajo = async () => {
-  try {
-    const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nombre_cliente,
-        concepto,
-        id_cotizacion: cotizacionId || null,
-        fecha_creacion: fechaCreacion,
-      }),
-    });
+  // Función de validación de campos
+  const validarCampos = () => {
+    const errores: string[] = [];
+    // Ejemplo de validaciones, puedes agregar más según tus reglas
+    if (!nombre_cliente.trim()) errores.push('El campo Cliente es obligatorio.');
+    if (!concepto.trim()) errores.push('El campo Concepto es obligatorio.');
+    if (!cantidad.trim() || isNaN(Number(cantidad))) errores.push('La Cantidad debe ser un número.');
+    if (!fechaCreacion) errores.push('La Fecha de Creación es obligatoria.');
+    if (!fechaEntrega) errores.push('La Fecha de Entrega es obligatoria.');
+    if (!telefono_cliente.trim()) errores.push('El campo Teléfono es obligatorio.');
+    if (!email_cliente.trim()) errores.push('El campo Email es obligatorio.');
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_cliente)) errores.push('El Email no es válido.');
+    // Eliminar validaciones numéricas para los campos que ahora son text
+    // ... existing code ...
+    return errores;
+  };
 
-    if (!response.ok) {
-      // Si hay error 500 u otro
-      const errorText = await response.text();  // captura el mensaje si existe
-      throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
+  // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
+  const crearOrdenTrabajo = async () => {
+    const errores = validarCampos();
+    if (errores.length > 0) {
+      setValidationErrors(errores);
+      setShowValidationModal(true);
+      return;
     }
-
-    const data = await response.json(); // <-- esto sí funcionará si la respuesta es válida
-    console.log("Orden creada:", data);
-
-    setNumero_orden(data.numero_orden || '');
-    // Mostrar alerta con número de orden
-    alert(`Orden numero: ${data.numero_orden} guardada exitosamente`);
-
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error("Error en la solicitud:", err.message);
-    alert("Ocurrió un error al guardar la orden de trabajo.");
-  }
-};
-
-
-const editarOrdenTrabajo = async () => {
-  try {
-    const response = await fetch(`${apiUrl}/api/ordenTrabajo/editarOrden/${ordenId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nombre_cliente,
-        concepto,
-        fechaCreacion,
-        
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Error al editar la orden de trabajo");
+    try {
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Datos generales
+          nombre_cliente,
+          contacto: direccion_cliente,
+          email: email_cliente,
+          telefono: telefono_cliente,
+          cantidad,
+          concepto,
+          fecha_creacion: fechaCreacion || null,
+          fecha_entrega: fechaEntrega || null,
+          estado,
+          notas_observaciones: notasObservaciones,
+          vendedor,
+          preprensa,
+          prensa,
+          terminados,
+          facturado,
+          id_cotizacion: cotizacionId || null,
+          // Detalle técnico
+          detalle: {
+            tipo_papel_proveedor: tipoPapelProveedor,
+            tipo_papel_prensa: tipoPapelPrensa,
+            tipo_papel_velocidad: tipoPapelVelocidad,
+            tipo_papel_calibre: tipoPapelCalibre,
+            tipo_papel_referencia: tipoPapelReferencia,
+            tipo_papel_gramos: tipoPapelGramos,
+            tipo_papel_tamano: tipoPapelTamano,
+            tipo_papel_cant_colores: tipoPapelCantColores,
+            tipo_papel_cant_pliegos: tipoPapelCantPliegos,
+            tipo_papel_exceso: tipoPapelExceso,
+            guillotina_pliegos_cortar: guillotinaPliegosCortar,
+            guillotina_tamano_corte: guillotinaTamanoCorte,
+            guillotina_cabida_corte: guillotinaCabidaCorte,
+            prensas_pliegos_imprimir: prensasPliegosImprimir,
+            prensas_cabida_impresion: prensasCabidaImpresion,
+            prensas_total_impresion: prensasTotalImpresion
+          }
+        }),
+      });
+      if (!response.ok) throw new Error("Error al crear la orden");
+      const data = await response.json();
+      setOrdenGuardadaNumero(data.numero_orden);
+      setShowSuccessModal(true);
+    } catch (error) {
+      alert("Ocurrió un error al guardar la orden de trabajo.");
     }
+  };
 
-    console.log("Orden actualizada:", data);
-    // Redirige o muestra notificación de éxito
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error("Error al actualizar la orden:", err.message);
-  }
-};
+  // Modificar editarOrdenTrabajo para validar antes de enviar
+  const editarOrdenTrabajo = async () => {
+    const errores = validarCampos();
+    if (errores.length > 0) {
+      setValidationErrors(errores);
+      setShowValidationModal(true);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/editarOrden/${ordenId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // Datos generales
+          nombre_cliente,
+          contacto: direccion_cliente,
+          email: email_cliente,
+          telefono: telefono_cliente,
+          cantidad,
+          concepto,
+          fecha_creacion: fechaCreacion || null,
+          fecha_entrega: fechaEntrega || null,
+          notas_observaciones: notasObservaciones,
+          vendedor,
+          preprensa,
+          prensa,
+          terminados,
+          facturado,
+          // Detalle técnico
+          detalle: {
+            tipo_papel_proveedor: tipoPapelProveedor,
+            tipo_papel_prensa: tipoPapelPrensa,
+            tipo_papel_velocidad: tipoPapelVelocidad,
+            tipo_papel_calibre: tipoPapelCalibre,
+            tipo_papel_referencia: tipoPapelReferencia,
+            tipo_papel_gramos: tipoPapelGramos,
+            tipo_papel_tamano: tipoPapelTamano,
+            tipo_papel_cant_colores: tipoPapelCantColores,
+            tipo_papel_cant_pliegos: tipoPapelCantPliegos,
+            tipo_papel_exceso: tipoPapelExceso,
+            guillotina_pliegos_cortar: guillotinaPliegosCortar,
+            guillotina_tamano_corte: guillotinaTamanoCorte,
+            guillotina_cabida_corte: guillotinaCabidaCorte,
+            prensas_pliegos_imprimir: prensasPliegosImprimir,
+            prensas_cabida_impresion: prensasCabidaImpresion,
+            prensas_total_impresion: prensasTotalImpresion
+          }
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Error al editar la orden de trabajo");
+      }
+      setShowSuccessModal(true);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Error al actualizar la orden:", err.message);
+    }
+  };
 
   return (
     <>
@@ -187,18 +319,7 @@ const editarOrdenTrabajo = async () => {
           <h2 className="flex-grow text-center text-xl font-bold text-gray-800">
             Orden de Trabajo
           </h2>
-
-          {/* Campo Estado a la derecha */}
-          <div className="flex-shrink-0 w-40 flex items-center justify-end gap-2">
-            <label htmlFor="estado" className="font-semibold text-gray-600">
-              Estado:
-            </label>
-            <input
-              id="estado"
-              type="text"
-              className="border border-gray-300 rounded-md p-1 w-24 text-gray-700 text-sm"
-            />
-          </div>
+          {/* Quitar campo Estado del encabezado */}
         </div>
 
         {/* Información General */}
@@ -225,13 +346,13 @@ const editarOrdenTrabajo = async () => {
    
   <div className="flex items-center gap-2">
     <p className="font-semibold text-gray-600">Fecha Creacion:</p>
-    <input className="border border-gray-300 rounded-md p-1 w-15 text-gray-700 text-sm" type="date"   value={fechaCreacion}
+    <input className="border border-gray-300 rounded-md p-1 w-30 text-gray-700 text-sm" type="date"   value={fechaCreacion}
   onChange={(e) => setFechaCreacion(e.target.value)} />
   </div>
    
   <div className="flex items-center gap-2">
     <p className="font-semibold text-gray-600">Fecha Entrega:</p>
-    <input className="border border-gray-300 rounded-md p-1 w-25 text-gray-700 text-sm" type="date" />
+    <input className="border border-gray-300 rounded-md p-1 w-30 text-gray-700 text-sm" type="date" value={fechaEntrega} onChange={e => setFechaEntrega(e.target.value)} />
   </div>
 </div>
  </div>
@@ -303,54 +424,54 @@ const editarOrdenTrabajo = async () => {
     
     <div>
       <p className="text-sm text-gray-600">Proveedor:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelProveedor} onChange={e => setTipoPapelProveedor(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Prensa:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelPrensa} onChange={e => setTipoPapelPrensa(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Vel x Hora:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelVelocidad} onChange={e => setTipoPapelVelocidad(e.target.value)} />
     </div>
   <div className="flex flex-col basis-4/12 gap-2">
     
 
     <div>
       <p className="text-sm text-gray-600">Calibre:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelCalibre} onChange={e => setTipoPapelCalibre(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Referencia:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelReferencia} onChange={e => setTipoPapelReferencia(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Gramos:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelGramos} onChange={e => setTipoPapelGramos(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Tamaño:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelTamano} onChange={e => setTipoPapelTamano(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Cantidad Colores:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelCantColores} onChange={e => setTipoPapelCantColores(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Cantidad Pliegos:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={tipoPapelCantPliegos} onChange={e => setTipoPapelCantPliegos(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Exceso:</p>
-      <input className="input-field" type="text" />   
+      <input className="input-field" type="text" value={tipoPapelExceso} onChange={e => setTipoPapelExceso(e.target.value)} />   
     </div>
   </div>
   
@@ -361,17 +482,17 @@ const editarOrdenTrabajo = async () => {
     
     <div>
       <p className="text-sm text-gray-600">Pliegos a Cortar:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={guillotinaPliegosCortar} onChange={e => setGuillotinaPliegosCortar(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Tamaño de Corte:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={guillotinaTamanoCorte} onChange={e => setGuillotinaTamanoCorte(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Cabida Corte:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={guillotinaCabidaCorte} onChange={e => setGuillotinaCabidaCorte(e.target.value)} />
     </div>
   </div>
 
@@ -381,17 +502,17 @@ const editarOrdenTrabajo = async () => {
     
     <div>
       <p className="text-sm text-gray-600">Pliegos a Imprimir:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={prensasPliegosImprimir} onChange={e => setPrensasPliegosImprimir(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Cabida Impresión:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={prensasCabidaImpresion} onChange={e => setPrensasCabidaImpresion(e.target.value)} />
     </div>
 
     <div>
       <p className="text-sm text-gray-600">Total Impresión:</p>
-      <input className="input-field" type="text" />
+      <input className="input-field" type="text" value={prensasTotalImpresion} onChange={e => setPrensasTotalImpresion(e.target.value)} />
     </div>
   </div>
 </div>
@@ -399,36 +520,36 @@ const editarOrdenTrabajo = async () => {
 
         {/* Notas y Observaciones */}
         <h3 className="font-bold text-lg text-gray-800 mb-2">Notas y Observaciones</h3>
-        <textarea className="border border-gray-300 p-2 rounded-md w-full h-24 text-sm text-gray-700 mb-4" placeholder="Añadir notas u observaciones aquí..."></textarea>
+        <textarea className="border border-gray-300 p-2 rounded-md w-full h-24 text-sm text-gray-700 mb-4" placeholder="Añadir notas u observaciones aquí..." value={notasObservaciones} onChange={e => setNotasObservaciones(e.target.value)}></textarea>
       <div className="flex justify-between gap-4 mb-2 p-0">
   {/* Vendedor */}
   <div className="flex flex-col items-start text-center w-1/5">
     <p className="font-semibold text-xs text-gray-700 underline mb-1">Vendedor</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Nombre" />
+    <input className="input-field text-xs w-full" type="text" placeholder="Nombre" value={vendedor} onChange={e => setVendedor(e.target.value)} />
   </div>
 
   {/* Preprensa */}           
   <div className="flex flex-col items-start text-center w-1/5">
     <p className="font-semibold text-xs text-gray-700 underline mb-1">Preprensa</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" />
+    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={preprensa} onChange={e => setPreprensa(e.target.value)} />
   </div>
 
   {/* Prensa */}
   <div className="flex flex-col items-start text-center w-1/5">
     <p className="font-semibold text-xs text-gray-700 underline mb-1">Prensa</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" />
+    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={prensa} onChange={e => setPrensa(e.target.value)} />
   </div>
 
   {/* Terminados */}
   <div className="flex flex-col items-start text-center w-1/5">
     <p className="font-semibold text-xs text-gray-700 underline mb-1">Terminados</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" />
+    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={terminados} onChange={e => setTerminados(e.target.value)} />
   </div>
 
   {/* Facturado */}
   <div className="flex flex-col items-start text-center w-1/5">
     <p className="font-semibold text-xs text-gray-700 underline mb-1">Facturado</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Sí / No" />
+    <input className="input-field text-xs w-full" type="text" placeholder="Sí / No" value={facturado} onChange={e => setFacturado(e.target.value)} />
   </div>
 </div>
 
@@ -437,14 +558,64 @@ const editarOrdenTrabajo = async () => {
     </div>
           {/* Botones */}
         <div className="flex justify-end gap-4 mb-4 botones-opcion">
-             <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={() => window.print()}>Imprimir</button>
-          {!ordenId ? ( 
-          <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={crearOrdenTrabajo}>Crear Orden</button>
-          ):(          <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={editarOrdenTrabajo}>Editar Orden</button>
-)}
-          <button className="bg-red-500 text-white px-4 py-2 rounded">Cancelar</button>
-        
+          {/* Mostrar Imprimir solo en edición */}
+          {ordenId && (
+            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={() => window.print()}>Imprimir</button>
+          )}
+          {/* Botón Crear/Editar */}
+          {!ordenId ? (
+            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={crearOrdenTrabajo}>Crear Orden</button>
+          ) : (
+            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={editarOrdenTrabajo}>Editar Orden</button>
+          )}
+          {/* Botón Cancelar */}
+          <button
+            className="bg-red-500 text-white px-4 py-2 rounded"
+            onClick={() => {
+              if (ordenId) {
+                navigate('/ordendeTrabajo/ver');
+              } else {
+                // Si es creación, puedes limpiar el formulario o navegar atrás
+                window.history.back();
+              }
+            }}
+          >
+            Cancelar
+          </button>
         </div>
+      {/* Modal de errores de validación */}
+      {showValidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <h3 className="text-lg font-semibold mb-2 text-red-600">Errores en el formulario</h3>
+            <ul className="text-left text-sm text-gray-800 mb-4">
+              {validationErrors.map((err, idx) => (
+                <li key={idx}>• {err}</li>
+              ))}
+            </ul>
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+              onClick={() => setShowValidationModal(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+      {showSuccessModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+        <h3 className="text-lg font-semibold mb-2 text-green-700">¡Orden guardada exitosamente!</h3>
+        <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+          onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
+        >
+          Ir al listado de órdenes
+        </button>
+      </div>
+    </div>
+  )}
     </>
   );
 };

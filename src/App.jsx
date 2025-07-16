@@ -20,7 +20,7 @@ import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProduccionDiaria from "./pages/Produccion/ProduccionDiaria";
 //////Orden de Trabajo
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
-import OrdendeTrabajoBuscar from "./pages/ordendeTrabajo/OrdendeTrabajoBuscar";
+import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
 
 // Inventario
 import Inventario from "./pages/Inventario/Inventario";
@@ -182,19 +182,22 @@ function App() {
             </Layout>
           </PrivateRoute>
         } />
-        <Route path="/ordendeTrabajoBuscar" element={
-          <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-            <Layout>
-              <OrdendeTrabajoBuscar />
-            </Layout>
-          </PrivateRoute>
-        } />
         <Route
           path="/ordendeTrabajo/editar/:ordenId"
           element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <Layout>
                 <OrdendeTrabajo />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ordendeTrabajo/ver"
+          element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <Layout>
+                <OrdenesVer />
               </Layout>
             </PrivateRoute>
           }

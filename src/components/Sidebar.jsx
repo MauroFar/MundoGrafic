@@ -46,7 +46,7 @@ const Sidebar = () => {
     ],
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
-      { path: "/ordendeTrabajoBuscar", label: "Buscar Orden de Trabajo" },
+      { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
     ],
     produccion: [
       { path: "/dashboardGeneral", label: "En Producción" },
