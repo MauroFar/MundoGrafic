@@ -50,6 +50,7 @@ export default (client: any) => {
       nombre_cliente, contacto, email, telefono, cantidad, concepto,
       fecha_creacion, fecha_entrega, estado, notas_observaciones,
       vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
+      id_detalle_cotizacion, // nuevo campo
       detalle
     } = req.body;
 
@@ -60,13 +61,15 @@ export default (client: any) => {
         INSERT INTO orden_trabajo (
           nombre_cliente, contacto, email, telefono, cantidad, concepto,
           fecha_creacion, fecha_entrega, estado, notas_observaciones,
-          vendedor, preprensa, prensa, terminados, facturado, id_cotizacion
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
+          id_detalle_cotizacion
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING id, numero_orden
       `, [
         nombre_cliente, contacto, email, telefono, cantidad, concepto,
         fecha_creacion, fecha_entrega, estado, notas_observaciones,
-        vendedor, preprensa, prensa, terminados, facturado, id_cotizacion
+        vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
+        id_detalle_cotizacion
       ]);
       const ordenId = ordenResult.rows[0].id;
 
@@ -207,12 +210,16 @@ export default (client: any) => {
   });
 
   // Obtener datos de una orden de trabajo por ID
-  router.get('/orden/:id', async (req, res): Promise<void> => {
+  router.get('/orden/:id', async (req, res) => {
     const { id } = req.params;
     try {
-      // Obtener datos generales
+      // Obtener datos generales de la orden
       const result = await client.query(
-        `SELECT * FROM orden_trabajo WHERE id = $1`,
+        `SELECT ot.*, c.numero_cotizacion, cl.telefono_cliente, cl.email_cliente, cl.direccion_cliente
+         FROM orden_trabajo ot
+         LEFT JOIN cotizaciones c ON ot.id_cotizacion = c.id
+         LEFT JOIN clientes cl ON c.cliente_id = cl.id
+         WHERE ot.id = $1`,
         [id]
       );
       if (result.rows.length === 0) {
@@ -226,8 +233,17 @@ export default (client: any) => {
         [id]
       );
       orden.detalle = detalleResult.rows[0] || {};
+      // Priorizar los datos de la orden de trabajo, pero incluir info de cotización/cliente si no existen en la orden
+      orden.telefono = orden.telefono || orden.telefono_cliente || null;
+      orden.email = orden.email || orden.email_cliente || null;
+      orden.direccion = orden.direccion || orden.direccion_cliente || null;
+      orden.numero_cotizacion = orden.numero_cotizacion || null;
+      // Eliminar los campos duplicados para evitar confusión en el frontend
+      delete orden.telefono_cliente;
+      delete orden.email_cliente;
+      delete orden.direccion_cliente;
       res.json(orden);
-    } catch (error: unknown) {
+    } catch (error) {
       const err = error as Error;
       console.error('Error al obtener la orden:', err.message);
       res.status(500).json({ error: 'Error del servidor' });
@@ -252,6 +268,7 @@ export default (client: any) => {
       prensa,
       terminados,
       facturado,
+      id_detalle_cotizacion, // nuevo campo
       detalle
     } = req.body;
 
@@ -273,8 +290,9 @@ export default (client: any) => {
             preprensa = $11,
             prensa = $12,
             terminados = $13,
-            facturado = $14
-        WHERE id = $15
+            facturado = $14,
+            id_detalle_cotizacion = $15
+        WHERE id = $16
         RETURNING *`,
         [
           nombre_cliente,
@@ -291,6 +309,7 @@ export default (client: any) => {
           prensa,
           terminados,
           facturado,
+          id_detalle_cotizacion,
           id
         ]
       );

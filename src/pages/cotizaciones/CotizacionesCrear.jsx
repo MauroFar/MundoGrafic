@@ -339,8 +339,8 @@ function CotizacionesCrear() {
         valor_unitario: fila.valor_unitario,
         valor_total: fila.valor_total,
         imagen_ruta: fila.imagen_ruta,
-        imagen_width: fila.width || 300,
-        imagen_height: fila.height || 200
+        imagen_width: fila.imagen_width,
+        imagen_height: fila.imagen_height
       }));
 
       // 3. Preparar los datos de la cotización
@@ -405,6 +405,14 @@ function CotizacionesCrear() {
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización actualizada exitosamente!');
         setNumeroCotizacionGuardada(numeroCotizacionGuardada);
+        // Notificación local para el usuario logeado (actualización)
+        window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+          detail: {
+            titulo: "Cotización actualizada",
+            mensaje: `Has actualizado la cotización N° ${numeroCotizacionGuardada}`,
+            fecha: new Date().toLocaleString()
+          }
+        }));
       } else {
         // Crear nueva cotización
         const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
@@ -441,6 +449,14 @@ function CotizacionesCrear() {
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización creada exitosamente!');
         setNumeroCotizacionGuardada(numeroCotizacionGuardada);
+        // Notificación local para el usuario logeado
+        window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+          detail: {
+            titulo: "Cotización creada",
+            mensaje: `Has creado la cotización N° ${numeroCotizacionGuardada}`,
+            fecha: new Date().toLocaleString()
+          }
+        }));
       }
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
@@ -909,6 +925,14 @@ function CotizacionesCrear() {
       setShowSuccessModal(true);
       setSuccessMessage('¡Nueva cotización guardada exitosamente!');
       setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion || siguienteNumero);
+      // Notificación local para el usuario logeado (guardar como nueva)
+      window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+        detail: {
+          titulo: "Cotización guardada como nueva",
+          mensaje: `Has guardado la cotización N° ${(nuevaCotizacion.numero_cotizacion || siguienteNumero)} como nueva.`,
+          fecha: new Date().toLocaleString()
+        }
+      }));
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -958,12 +982,6 @@ function CotizacionesCrear() {
     <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
       <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate("/cotizaciones/ver")}
-          className="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          <span className="mr-2">←</span> Volver
-        </button>
         <h1 className="text-3xl font-bold text-gray-800">
           {id ? "Editar Cotización" : "Nueva Cotización"}
         </h1>
@@ -997,34 +1015,10 @@ function CotizacionesCrear() {
       </div>
 
       {/* Barra lateral de botones */}
-      <div className="fixed top-0 left-0 h-full w-48 bg-white shadow-lg p-4 flex flex-col gap-3">
-        <button
-          className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
-          onClick={() => navigate("/cotizaciones/ver")}
-        >
-          <i className="fas fa-arrow-left"></i>
-          Regresar
-        </button>
-
-        <button
-          className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
-          onClick={() => navigate("/cotizaciones/ver")}
-        >
-          <i className="fas fa-search"></i>
-          Buscar
-        </button>
-
-        <button 
-          className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
-          onClick={agregarFila}
-        >
-          <i className="fas fa-plus"></i>
-          Agregar Producto
-        </button>
-      </div>
+      {/* Eliminado el menú lateral innecesario */}
 
       {/* Contenedor principal con formato A4 */}
-      <div className="ml-48 mx-auto bg-white shadow-lg rounded-lg p-6 w-full max-w-6xl min-h-screen" id="cotizaciones-container">
+      <div className="mx-auto bg-white shadow-lg rounded-lg p-6 w-full max-w-6xl min-h-screen" id="cotizaciones-container">
         {/* Encabezado */}
         <div className="mb-6">
           <div className="flex justify-between items-start">
@@ -1115,6 +1109,17 @@ function CotizacionesCrear() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Botón Agregar Producto encima de la tabla */}
+        <div className="flex justify-end mb-2">
+          <button 
+            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center gap-2"
+            onClick={agregarFila}
+          >
+            <i className="fas fa-plus"></i>
+            Agregar Producto
+          </button>
         </div>
 
         {/* Tabla de productos */}

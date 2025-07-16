@@ -1104,6 +1104,24 @@ const CotizacionDatos = (client) => {
     }
   });
 
+  // Ruta para aprobar una cotización
+  router.put('/:id/aprobar', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const result = await client.query(
+        `UPDATE cotizaciones SET estado = 'aprobada' WHERE id = $1 RETURNING *`,
+        [id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Cotización no encontrada' });
+      }
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Error al aprobar la cotización:', error);
+      res.status(500).json({ error: 'Error al aprobar la cotización' });
+    }
+  });
+
   // Ruta para generar PDF de una cotización
   router.get("/:id/pdf", async (req, res) => {
     const { id } = req.params;

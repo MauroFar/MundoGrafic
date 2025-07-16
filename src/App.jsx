@@ -1,57 +1,24 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import PrivateRoute from "./components/PrivateRoute";
 
 // Páginas
 import Login from "./pages/Login";
-import Sidebar from "./components/Sidebar";
 import Welcome from "./components/Welcome";
-
-
-// Cotizaciones
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
 import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
-
-// Producción
 import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
 import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProduccionDiaria from "./pages/Produccion/ProduccionDiaria";
-//////Orden de Trabajo
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
 import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
-
-// Inventario
 import Inventario from "./pages/Inventario/Inventario";
-
-//pagenotfound
 import PageNotFound from "./pages/PageNotFound";
-
-// Layout que incluye el Sidebar
-const Layout = ({ children }) => {
-  const location = useLocation();
-  const isLoginPage = location.pathname === "/";
-  const hideSidebarPaths = [
-    "/cotizaciones/crear",
-    "/cotizaciones/buscar"
-  ];
-
-  // Esta es la nueva lógica que ocultará el sidebar para cualquier ID
-  const shouldHideSidebar = hideSidebarPaths.some(path => 
-    location.pathname === path || location.pathname.startsWith(`${path}/`)
-  );
-
-  return (
-    <div className="flex">
-      {!isLoginPage && !shouldHideSidebar && <Sidebar />}
-      <div className="flex-grow p-4">{children}</div>
-    </div>
-  );
-};
-
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
+import MainLayout from "./layouts/MainLayout";
 
 function App() {
   return (
@@ -61,179 +28,101 @@ function App() {
         {/* Ruta Login */}
         <Route path="/" element={<Login />} />
 
-        {/* Rutas del sistema */}
-        <Route
-          path="/welcome"
-          element={
-            <Layout>
-              <Welcome title="Bienvenido" message="Has iniciado sesión correctamente." />
-            </Layout>
-          }
-        />
+        {/* Rutas del sistema con MainLayout global */}
+        <Route element={<MainLayout />}>
+          <Route path="/welcome" element={<Welcome title="Bienvenido" message="Has iniciado sesión correctamente." />} />
 
-        {/* Cotizaciones solo admin y ejecutivo */}
-        <Route
-          path="/cotizaciones"
-          element={
+          {/* Cotizaciones solo admin y ejecutivo */}
+          <Route path="/cotizaciones" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Layout>
-                <Welcome title="Cotizaciones" message="Bienvenido a Cotizaciones. Selecciona una opción del menú para continuar." />
-              </Layout>
+              <Welcome title="Cotizaciones" message="Bienvenido a Cotizaciones. Selecciona una opción del menú para continuar." />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/cotizaciones/crear"
-          element={
+          } />
+          <Route path="/cotizaciones/crear" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Layout>
-                <CotizacionesCrear />
-              </Layout>
+              <CotizacionesCrear />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/cotizaciones/crear/:id"
-          element={
+          } />
+          <Route path="/cotizaciones/crear/:id" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Layout>
-                <CotizacionesCrear />
-              </Layout>
+              <CotizacionesCrear />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/cotizaciones/ver"
-          element={
+          } />
+          <Route path="/cotizaciones/ver" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Layout>
-                <CotizacionesVer />
-              </Layout>
+              <CotizacionesVer />
             </PrivateRoute>
-          }
-        />
+          } />
 
-        {/* Producción y órdenes de trabajo: admin, ejecutivo, impresion */}
-        <Route
-          path="/produccion"
-          element={
+          {/* Producción y órdenes de trabajo: admin, ejecutivo, impresion */}
+          <Route path="/produccion" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <Welcome 
-                  title="Producción" 
-                  message="Bienvenido al área de Producción. Seleccione una opción del menú para continuar." 
-                />
-              </Layout>
+              <Welcome 
+                title="Producción" 
+                message="Bienvenido al área de Producción. Seleccione una opción del menú para continuar." 
+              />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/dashboardGeneral"
-          element={
+          } />
+          <Route path="/dashboardGeneral" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <DashboardGeneral />
-              </Layout>
+              <DashboardGeneral />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/produccionDiaria"
-          element={
+          } />
+          <Route path="/produccionDiaria" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <ProduccionDiaria />
-              </Layout>
+              <ProduccionDiaria />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/productosTerminados"
-          element={
+          } />
+          <Route path="/productosTerminados" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <ProductosTerminados />
-              </Layout>
+              <ProductosTerminados />
             </PrivateRoute>
-          }
-        />
-        {/* Ordenes de trabajo */}
-        <Route path="/OrdendeTrabajo" element={
-          <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-            <Layout>
+          } />
+          {/* Ordenes de trabajo */}
+          <Route path="/OrdendeTrabajo" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <Welcome title="Cotizaciones" message="Bienvenido a Ordenes de trabajo. Selecciona una opción del menú para continuar." />
-            </Layout>
-          </PrivateRoute>
-        } />
-        <Route
-          path="/ordendeTrabajo/crear/:cotizacionId"
-          element={
-            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <OrdendeTrabajo/>
-              </Layout>
             </PrivateRoute>
-          }
-        />
-        <Route path="/ordendeTrabajo/crear" element={
-          <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-            <Layout>
+          } />
+          <Route path="/ordendeTrabajo/crear/:cotizacionId" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <OrdendeTrabajo/>
+            </PrivateRoute>
+          } />
+          <Route path="/ordendeTrabajo/crear" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <OrdendeTrabajo />
-            </Layout>
-          </PrivateRoute>
-        } />
-        <Route
-          path="/ordendeTrabajo/editar/:ordenId"
-          element={
-            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <OrdendeTrabajo />
-              </Layout>
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/ordendeTrabajo/ver"
-          element={
+          } />
+          <Route path="/ordendeTrabajo/editar/:ordenId" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <OrdenesVer />
-              </Layout>
+              <OrdendeTrabajo />
             </PrivateRoute>
-          }
-        />
-        {/* Inventario: todos los roles */}
-        <Route
-          path="/inventario"
-          element={
-            <Layout>
-              <Inventario />
-            </Layout>
-          }
-        />
-        {/* Ruta para no autorizado */}
-        <Route path="/no-autorizado" element={<div className="text-center text-2xl mt-20">No tienes permisos para acceder a esta página.</div>} />
-        {/* Ruta por defecto */}
-        <Route path="*" element={<PageNotFound />} />
+          } />
+          <Route path="/ordendeTrabajo/ver" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <OrdenesVer />
+            </PrivateRoute>
+          } />
+          {/* Inventario: todos los roles */}
+          <Route path="/inventario" element={<Inventario />} />
 
-        <Route
-          path="/admin/usuarios"
-          element={
+          {/* Ruta para no autorizado */}
+          <Route path="/no-autorizado" element={<div className="text-center text-2xl mt-20">No tienes permisos para acceder a esta página.</div>} />
+          {/* Ruta por defecto */}
+          <Route path="*" element={<PageNotFound />} />
+
+          <Route path="/admin/usuarios" element={
             <PrivateRoute allowedRoles={['admin']}>
               <GestionUsuarios />
             </PrivateRoute>
-          }
-        />
-        <Route
-          path="/reportesTrabajoDiario"
-          element={
+          } />
+          <Route path="/reportesTrabajoDiario" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Layout>
-                <ReportesTrabajoDiario />
-              </Layout>
+              <ReportesTrabajoDiario />
             </PrivateRoute>
-          }
-        />
+          } />
+        </Route>
       </Routes>
     </Router>
   );

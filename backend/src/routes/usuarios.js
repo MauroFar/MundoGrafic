@@ -4,9 +4,11 @@ const bcrypt = require('bcryptjs');
 const authRequired = require('../middleware/auth');
 
 module.exports = (client) => {
-  // Listar todos los usuarios (solo admin)
-  router.get('/', authRequired(['admin']), async (req, res) => {
+  // Listar todos los usuarios (acceso para cualquier usuario autenticado)
+  router.get('/', authRequired(), async (req, res) => {
+    console.log('Usuario autenticado:', req.user);
     const result = await client.query('SELECT id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion FROM usuarios');
+    console.log('Usuarios encontrados:', result.rows);
     res.json(result.rows);
   });
 

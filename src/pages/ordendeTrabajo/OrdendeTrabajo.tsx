@@ -15,6 +15,11 @@ interface OrdenData {
   cantidad?: string;
   numero_orden?: string;
   // Puedes agregar más campos según lo que devuelva tu backend
+  detalle?: any;
+  telefono?: string;
+  email?: string;
+  contacto?: string;
+  fecha_entrega?: string; // Nuevo campo para la fecha de entrega
 }
 
 // Tipos para los parámetros de la URL
@@ -79,23 +84,88 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
+  const [idDetalleCotizacion, setIdDetalleCotizacion] = useState<number | null>(null);
 
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
 
   // Detectar si hay cotizacionId o no para saber qué hacer
   useEffect(() => {
-    if(ordenId){
-       // Modo edición: cargar datos de una orden existente
-    fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`)
-      .then((res) => res.json())
-      .then((data) => setOrdenData(data))
-      .catch((error) => console.error("Error al cargar orden existente:", error));
+    // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
+    if (!cotizacionId && !ordenId) {
+      setConcepto('');
+      setCantidad('');
+      setNombre_cliente('');
+      setNumero_cotizacion('');
+      setTelefono_cliente('');
+      setEmail_cliente('');
+      setDireccion_cliente('');
+      setNumero_orden('');
+      setTipoPapelProveedor('');
+      setTipoPapelPrensa('');
+      setTipoPapelVelocidad('');
+      setTipoPapelCalibre('');
+      setTipoPapelReferencia('');
+      setTipoPapelGramos('');
+      setTipoPapelTamano('');
+      setTipoPapelCantColores('');
+      setTipoPapelCantPliegos('');
+      setTipoPapelExceso('');
+      setGuillotinaPliegosCortar('');
+      setGuillotinaTamanoCorte('');
+      setGuillotinaCabidaCorte('');
+      setPrensasPliegosImprimir('');
+      setPrensasCabidaImpresion('');
+      setPrensasTotalImpresion('');
+      setFechaEntrega('');
+      setEstado('');
+      setNotasObservaciones('');
+      setVendedor('');
+      setPreprensa('');
+      setPrensa('');
+      setTerminados('');
+      setFacturado('');
+      setOrdenData(null);
+      setIdDetalleCotizacion(null);
+      // Obtener el próximo número de orden
+      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
+        .then(res => res.json())
+        .then(data => setNumero_orden(data.proximoNumero))
+        .catch(() => setNumero_orden(''));
+      return;
     }
-    else if (cotizacionId) {
+    // Si viene producto por state, inicializar con ese producto
+    if (!ordenId && location.state && location.state.producto) {
+      const producto = location.state.producto;
+      setConcepto(producto.detalle || '');
+      setCantidad(producto.cantidad ? String(producto.cantidad) : '');
+      if (location.state.id_detalle_cotizacion) {
+        setIdDetalleCotizacion(location.state.id_detalle_cotizacion);
+      }
+      // Si quieres inicializar más campos, agrégalos aquí
+      // Los datos del cliente y cotización se pueden seguir trayendo por fetch
+      fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          setOrdenData(data);
+          setNombre_cliente(data.nombre_cliente || '');
+          setNumero_cotizacion(data.numero_cotizacion || '');
+          setTelefono_cliente(data.telefono_cliente || '');
+          setEmail_cliente(data.email_cliente || '');
+          setDireccion_cliente(data.direccion_cliente || '');
+        })
+        .catch((error) => console.error("Error fetching data:", error));
+    } else if(ordenId){
+      // Modo edición: cargar datos de una orden existente
+      fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`)
+        .then((res) => res.json())
+        .then((data) => setOrdenData(data))
+        .catch((error) => console.error("Error al cargar orden existente:", error));
+    } else if (cotizacionId) {
       // Si hay cotización, traemos datos del backend
       fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
         .then((response) => response.json())
@@ -108,45 +178,48 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setNombre_cliente('');
       setNumero_cotizacion('');
     }
-  }, [cotizacionId]);
+  }, [cotizacionId, ordenId, location.state]);
 
   // Sincronizar estados individuales con ordenData cuando cambia
 useEffect(() => {
+  // Si hay producto seleccionado por state, no sobrescribir concepto/cantidad
+  const productoSeleccionado = location.state && location.state.producto;
   if (ordenData) {
-    setConcepto(ordenData.concepto || '');
+    if (!productoSeleccionado) {
+      setConcepto(ordenData.concepto || '');
+      setCantidad(ordenData.cantidad || '');
+      // Solo si no hay producto seleccionado, sincroniza los campos técnicos
+      if (ordenData.detalle) {
+        setTipoPapelProveedor(ordenData.detalle?.tipo_papel_proveedor || '');
+        setTipoPapelPrensa(ordenData.detalle?.tipo_papel_prensa || '');
+        setTipoPapelVelocidad(ordenData.detalle?.tipo_papel_velocidad || '');
+        setTipoPapelCalibre(ordenData.detalle?.tipo_papel_calibre || '');
+        setTipoPapelReferencia(ordenData.detalle?.tipo_papel_referencia || '');
+        setTipoPapelGramos(ordenData.detalle?.tipo_papel_gramos || '');
+        setTipoPapelTamano(ordenData.detalle?.tipo_papel_tamano || '');
+        setTipoPapelCantColores(ordenData.detalle?.tipo_papel_cant_colores || '');
+        setTipoPapelCantPliegos(ordenData.detalle?.tipo_papel_cant_pliegos || '');
+        setTipoPapelExceso(ordenData.detalle?.tipo_papel_exceso || '');
+        setGuillotinaPliegosCortar(ordenData.detalle?.guillotina_pliegos_cortar || '');
+        setGuillotinaTamanoCorte(ordenData.detalle?.guillotina_tamano_corte || '');
+        setGuillotinaCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || '');
+        setPrensasPliegosImprimir(ordenData.detalle?.prensas_pliegos_imprimir || '');
+        setPrensasCabidaImpresion(ordenData.detalle?.prensas_cabida_impresion || '');
+        setPrensasTotalImpresion(ordenData.detalle?.prensas_total_impresion || '');
+      }
+    }
     setNombre_cliente(ordenData.nombre_cliente || '');
     setNumero_cotizacion(ordenData.numero_cotizacion || '');
-    setTelefono_cliente(ordenData.telefono || '');
-    setEmail_cliente(ordenData.email || '');
-    setDireccion_cliente(ordenData.contacto || '');
-    setCantidad(ordenData.cantidad || '');
+    setTelefono_cliente(ordenData.telefono_cliente || ordenData.telefono || '');
+    setEmail_cliente(ordenData.email_cliente || ordenData.email || '');
+    setDireccion_cliente(ordenData.direccion_cliente || ordenData.contacto || '');
     setNumero_orden(ordenData.numero_orden || '');
-    setFechaCreacion(ordenData.fecha_creacion ? ordenData.fecha_creacion.slice(0, 10) : '');
-    setFechaEntrega(ordenData.fecha_entrega ? ordenData.fecha_entrega.slice(0, 10) : '');
-    setNotasObservaciones(ordenData.notas_observaciones || '');
-    setVendedor(ordenData.vendedor || '');
-    setPreprensa(ordenData.preprensa || '');
-    setPrensa(ordenData.prensa || '');
-    setTerminados(ordenData.terminados || '');
-    setFacturado(ordenData.facturado || '');
-    // Sincronizar campos técnicos si existen
-    if (ordenData.detalle) {
-      setTipoPapelProveedor(ordenData.detalle.tipo_papel_proveedor || '');
-      setTipoPapelPrensa(ordenData.detalle.tipo_papel_prensa || '');
-      setTipoPapelVelocidad(ordenData.detalle.tipo_papel_velocidad || '');
-      setTipoPapelCalibre(ordenData.detalle.tipo_papel_calibre || '');
-      setTipoPapelReferencia(ordenData.detalle.tipo_papel_referencia || '');
-      setTipoPapelGramos(ordenData.detalle.tipo_papel_gramos || '');
-      setTipoPapelTamano(ordenData.detalle.tipo_papel_tamano || '');
-      setTipoPapelCantColores(ordenData.detalle.tipo_papel_cant_colores || '');
-      setTipoPapelCantPliegos(ordenData.detalle.tipo_papel_cant_pliegos || '');
-      setTipoPapelExceso(ordenData.detalle.tipo_papel_exceso || '');
-      setGuillotinaPliegosCortar(ordenData.detalle.guillotina_pliegos_cortar || '');
-      setGuillotinaTamanoCorte(ordenData.detalle.guillotina_tamano_corte || '');
-      setGuillotinaCabidaCorte(ordenData.detalle.guillotina_cabida_corte || '');
-      setPrensasPliegosImprimir(ordenData.detalle.prensas_pliegos_imprimir || '');
-      setPrensasCabidaImpresion(ordenData.detalle.prensas_cabida_impresion || '');
-      setPrensasTotalImpresion(ordenData.detalle.prensas_total_impresion || '');
+    // Mapear fecha de entrega correctamente para el input tipo date
+    if (ordenData.fecha_entrega) {
+      // Si viene en formato ISO, recortar a YYYY-MM-DD
+      setFechaEntrega(ordenData.fecha_entrega.substring(0, 10));
+    } else {
+      setFechaEntrega('');
     }
   }
   // Si es formulario de nueva orden (sin cotizacionId ni ordenId), obtener el próximo número de orden
@@ -156,7 +229,8 @@ useEffect(() => {
       .then(data => setNumero_orden(data.proximoNumero))
       .catch(() => setNumero_orden(''));
   }
-}, [ordenData, cotizacionId, ordenId]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [ordenData, cotizacionId, ordenId, location.state]);
 
 
  
@@ -167,7 +241,7 @@ useEffect(() => {
   // Función de validación de campos
   const validarCampos = () => {
     const errores: string[] = [];
-    // Ejemplo de validaciones, puedes agregar más según tus reglas
+    // Generales
     if (!nombre_cliente.trim()) errores.push('El campo Cliente es obligatorio.');
     if (!concepto.trim()) errores.push('El campo Concepto es obligatorio.');
     if (!cantidad.trim() || isNaN(Number(cantidad))) errores.push('La Cantidad debe ser un número.');
@@ -176,8 +250,23 @@ useEffect(() => {
     if (!telefono_cliente.trim()) errores.push('El campo Teléfono es obligatorio.');
     if (!email_cliente.trim()) errores.push('El campo Email es obligatorio.');
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_cliente)) errores.push('El Email no es válido.');
-    // Eliminar validaciones numéricas para los campos que ahora son text
-    // ... existing code ...
+    // Técnicos (detalle)
+    if (!tipoPapelProveedor.trim()) errores.push('El campo Tipo de Papel - Proveedor es obligatorio.');
+    if (!tipoPapelPrensa.trim()) errores.push('El campo Tipo de Papel - Prensa es obligatorio.');
+    if (!tipoPapelVelocidad.trim()) errores.push('El campo Tipo de Papel - Velocidad es obligatorio.');
+    if (!tipoPapelCalibre.trim()) errores.push('El campo Tipo de Papel - Calibre es obligatorio.');
+    if (!tipoPapelReferencia.trim()) errores.push('El campo Tipo de Papel - Referencia es obligatorio.');
+    if (!tipoPapelGramos.trim()) errores.push('El campo Tipo de Papel - Gramos es obligatorio.');
+    if (!tipoPapelTamano.trim()) errores.push('El campo Tipo de Papel - Tamaño es obligatorio.');
+    if (!tipoPapelCantColores.trim()) errores.push('El campo Tipo de Papel - Cantidad Colores es obligatorio.');
+    if (!tipoPapelCantPliegos.trim()) errores.push('El campo Tipo de Papel - Cantidad Pliegos es obligatorio.');
+    if (!tipoPapelExceso.trim()) errores.push('El campo Tipo de Papel - Exceso es obligatorio.');
+    if (!guillotinaPliegosCortar.trim()) errores.push('El campo Guillotina - Pliegos a Cortar es obligatorio.');
+    if (!guillotinaTamanoCorte.trim()) errores.push('El campo Guillotina - Tamaño de Corte es obligatorio.');
+    if (!guillotinaCabidaCorte.trim()) errores.push('El campo Guillotina - Cabida Corte es obligatorio.');
+    if (!prensasPliegosImprimir.trim()) errores.push('El campo Prensas - Pliegos a Imprimir es obligatorio.');
+    if (!prensasCabidaImpresion.trim()) errores.push('El campo Prensas - Cabida Impresión es obligatorio.');
+    if (!prensasTotalImpresion.trim()) errores.push('El campo Prensas - Total Impresión es obligatorio.');
     return errores;
   };
 
@@ -211,6 +300,7 @@ useEffect(() => {
           terminados,
           facturado,
           id_cotizacion: cotizacionId || null,
+          id_detalle_cotizacion: idDetalleCotizacion,
           // Detalle técnico
           detalle: {
             tipo_papel_proveedor: tipoPapelProveedor,
@@ -236,6 +326,14 @@ useEffect(() => {
       const data = await response.json();
       setOrdenGuardadaNumero(data.numero_orden);
       setShowSuccessModal(true);
+      // Notificación global para todos los usuarios
+      window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+        detail: {
+          titulo: "Nueva orden de trabajo",
+          mensaje: `Se ha creado la orden de trabajo N° ${data.numero_orden}`,
+          fecha: new Date().toLocaleString()
+        }
+      }));
     } catch (error) {
       alert("Ocurrió un error al guardar la orden de trabajo.");
     }

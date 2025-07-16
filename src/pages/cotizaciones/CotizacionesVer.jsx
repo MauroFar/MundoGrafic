@@ -40,6 +40,9 @@ function CotizacionesVer() {
   const [pagina, setPagina] = useState(1);
   const [hayMas, setHayMas] = useState(true);
   const LIMITE_POR_PAGINA = 15;
+  const [showProductoModal, setShowProductoModal] = useState(false);
+  const [productosCotizacion, setProductosCotizacion] = useState([]);
+  const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -433,11 +436,12 @@ function CotizacionesVer() {
   const aprobarCotizacion = async (id) => {
     try {
       setLoading(true);
-      
-      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}/aprobar`, {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/aprobar`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         }
       });
 
@@ -485,8 +489,42 @@ function CotizacionesVer() {
     await cargarCotizaciones(false);
   };
 
-  const generarOrdenTrabajo = (cotizacionId) => {
-    navigate(`/ordendeTrabajo/crear/${cotizacionId}`);
+  const generarOrdenTrabajo = async (cotizacionId) => {
+    try {
+      setLoading(true);
+      // Obtener los detalles/productos de la cotización
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("No se pudieron obtener los productos de la cotización");
+      const detalles = await response.json();
+      if (Array.isArray(detalles) && detalles.length > 1) {
+        setProductosCotizacion(detalles);
+        setCotizacionSeleccionada(cotizacionId);
+        setShowProductoModal(true);
+      } else if (Array.isArray(detalles) && detalles.length === 1) {
+        // Solo un producto, navegar directo
+        navigate(`/ordendeTrabajo/crear/${cotizacionId}`, { state: { producto: detalles[0] } });
+      } else {
+        toast.error('La cotización no tiene productos para generar orden de trabajo.');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Error al obtener los productos de la cotización.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para manejar la selección de producto en el modal
+  const handleSeleccionarProducto = (producto) => {
+    setShowProductoModal(false);
+    if (cotizacionSeleccionada && producto) {
+      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id } });
+    }
   };
 
   return (
@@ -864,6 +902,39 @@ function CotizacionesVer() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <span className="text-green-700 font-semibold text-lg">¡Correo enviado exitosamente!</span>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de selección de producto */}
+      {showProductoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">Selecciona el producto para la Orden de Trabajo</h2>
+            <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+              {productosCotizacion.map((producto, idx) => (
+                <li key={idx} className="py-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{producto.detalle}</div>
+                    <div className="text-sm text-gray-500">Cantidad: {producto.cantidad} | Valor unitario: ${parseFloat(producto.valor_unitario).toFixed(2)}</div>
+                  </div>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => handleSeleccionarProducto(producto)}
+                  >
+                    Seleccionar
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end mt-4">
+              <button
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                onClick={() => setShowProductoModal(false)}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

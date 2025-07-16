@@ -14,7 +14,14 @@ const Sidebar = () => {
     window.location.reload(); // Fuerza recarga y limpieza de la UI
   };
 
-  const handleRedirect = (path) => navigate(path);
+  const handleRedirect = (path) => {
+    // Si el usuario va a crear una orden, forzar reemplazo y limpiar state
+    if (path === '/ordendeTrabajo/crear') {
+      navigate(path, { replace: true, state: undefined });
+    } else {
+      navigate(path);
+    }
+  };
 
   // Menús según el rol
   const menus = {
@@ -123,12 +130,7 @@ const Sidebar = () => {
         )}
       </div>
 
-      <button
-        className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-md mt-6"
-        onClick={handleLogout}
-      >
-        🔒 Cerrar Sesión
-      </button>
+      {/* Eliminar botón de cerrar sesión aquí */}
     </aside>
   );
 };
