@@ -585,6 +585,8 @@ body {
 
 .detalle-texto {
   margin-bottom: 10px;
+  white-space: pre-line; /* respeta \n como saltos de línea en HTML/PDF */
+  word-break: break-word; /* evita desbordes si hay palabras largas */
 }
 
 .imagen-container {
@@ -618,7 +620,7 @@ body {
               
               <div class="cotizacion-section">
                 <div class="cotizacion-box">
-                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${cotizacion.numero_cotizacion.toString().padStart(5, '0')}</span>
+                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${cotizacion.numero_cotizacion.toString().padStart(10, '0')}</span>
                 </div>
                 <div class="ruc-box">
                   R.U.C.:<span class="ruc-numero">${cotizacion.ruc}</span>

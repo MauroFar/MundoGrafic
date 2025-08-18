@@ -55,6 +55,8 @@ function CotizacionesCrear() {
   const [numeroCotizacionGuardada, setNumeroCotizacionGuardada] = useState('');
   const [nombreEjecutivo, setNombreEjecutivo] = useState(localStorage.getItem('nombre') || '');
   const [clienteIndex, setClienteIndex] = useState(-1);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [focusedDropIndex, setFocusedDropIndex] = useState(null);
 
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
@@ -631,12 +633,75 @@ function CotizacionesCrear() {
     }
   };
 
-  // Función para manejar el clic en el botón de agregar imagen
-  const handleAgregarImagenClick = (index) => {
-    const fileInput = document.getElementById(`file-upload-${index}`);
-    if (fileInput) {
-      fileInput.value = ''; // Resetear el input antes de abrir el selector
-      fileInput.click();
+  // Quitar botón de agregar imagen: ahora usamos un área de soltar/pegar
+
+  // Soporte de arrastrar/soltar y pegar imágenes
+  const uploadFileToRow = async (index, file) => {
+    if (!file) return;
+    // Asegurarnos de que sea una imagen
+    if (!file.type || !file.type.startsWith('image/')) return;
+    await handleImagenChange(index, file);
+  };
+
+  const handleDragOverRow = (index, e) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnterRow = (index, e) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeaveRow = (index, e) => {
+    // Limpiar resaltado cuando salimos del contenedor
+    setDragOverIndex(prev => (prev === index ? null : prev));
+  };
+
+  const handleDropImage = async (index, e) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    const dt = e.dataTransfer;
+    if (!dt) return;
+
+    if (dt.files && dt.files.length > 0) {
+      // Preferimos el primer archivo de imagen
+      const imageFile = Array.from(dt.files).find(f => f.type && f.type.startsWith('image/')) || dt.files[0];
+      await uploadFileToRow(index, imageFile);
+      return;
+    }
+
+    // Intentar con una URL arrastrada (por ejemplo, desde el navegador)
+    try {
+      const uri = dt.getData('text/uri-list') || dt.getData('text/plain');
+      if (uri && /^https?:\/\//i.test(uri)) {
+        const resp = await fetch(uri);
+        const blob = await resp.blob();
+        const extension = (blob.type && blob.type.split('/')[1]) || 'png';
+        const file = new File([blob], `dropped-image.${extension}`, { type: blob.type || 'image/png' });
+        await uploadFileToRow(index, file);
+      }
+    } catch (_) {
+      // Silencioso: si falla, simplemente no hacemos nada
+    }
+  };
+
+  const handlePasteImage = async (index, e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items || items.length === 0) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        if (blob) {
+          const extension = (blob.type && blob.type.split('/')[1]) || 'png';
+          const file = new File([blob], `pasted-image.${extension}`, { type: blob.type || 'image/png' });
+          await uploadFileToRow(index, file);
+          // Prevenir que pegue datos binarios en el textarea
+          e.preventDefault();
+        }
+        break;
+      }
     }
   };
 
@@ -1159,37 +1224,37 @@ function CotizacionesCrear() {
                         }}
                         className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
                       />
-                      <div className="flex gap-2 mt-2">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleImagenChange(index, e.target.files[0])}
-                          className="hidden"
-                          id={`file-upload-${index}`}
-                        />
-                        <button
-                          onClick={() => handleAgregarImagenClick(index)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1 text-sm"
+                      {!fila.imagen ? (
+                        <div
+                          className={`mt-2 border-2 border-dashed rounded-md p-3 text-center text-sm cursor-pointer select-none focus:outline-none ${dragOverIndex === index ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600'} ${focusedDropIndex === index ? 'ring-2 ring-blue-400 border-blue-400' : ''}`}
+                          onDragOver={(e) => handleDragOverRow(index, e)}
+                          onDragEnter={(e) => handleDragEnterRow(index, e)}
+                          onDragLeave={(e) => handleDragLeaveRow(index, e)}
+                          onDrop={(e) => handleDropImage(index, e)}
+                          onPaste={(e) => handlePasteImage(index, e)}
+                          tabIndex={0}
+                          onFocus={() => setFocusedDropIndex(index)}
+                          onBlur={() => setFocusedDropIndex(prev => (prev === index ? null : prev))}
+                          title="Pegue (Ctrl+V) o arrastre su imagen aquí"
                         >
-                          <i className="fas fa-image"></i> Agregar Imagen
-                        </button>
-                        {fila.imagen && (
-                          <>
-                            <button
-                              onClick={() => showImageAdjustModal(index)}
-                              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1 text-sm"
-                            >
-                              <i className="fas fa-crop"></i> Ajustar Tamaño
-                            </button>
-                            <button
-                              onClick={() => handleEliminarImagen(index)}
-                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
-                            >
-                              <i className="fas fa-trash"></i> Eliminar Imagen
-                            </button>
-                          </>
-                        )}
-                      </div>
+                          Pegue o arrastre su imagen aquí (Ctrl+V)
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => showImageAdjustModal(index)}
+                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1 text-sm"
+                          >
+                            <i className="fas fa-crop"></i> Ajustar Tamaño
+                          </button>
+                          <button
+                            onClick={() => handleEliminarImagen(index)}
+                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
+                          >
+                            <i className="fas fa-trash"></i> Eliminar Imagen
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
                       <input
@@ -1221,6 +1286,7 @@ function CotizacionesCrear() {
                           <Resizable
                             width={fila.width || 200}
                             height={fila.height || 150}
+                            style={{ width: (fila.width || 200), height: (fila.height || 150), position: 'relative', display: 'inline-block' }}
                             onResize={(e, { size }) => {
                               const nuevasFilas = [...filas];
                               nuevasFilas[index] = {
@@ -1251,35 +1317,8 @@ function CotizacionesCrear() {
                             }}
                             draggableOpts={{ grid: [1, 1] }}
                             resizeHandles={['se']}
+                            handleSize={[16, 16]}
                             className="relative"
-                            handle={
-                              !showPreview && (
-                                <span
-                                  className="custom-resize-handle"
-                                  style={{
-                                    position: 'absolute',
-                                    right: '-7px',
-                                    bottom: '-7px',
-                                    width: '20px',
-                                    height: '20px',
-                                    background: 'white',
-                                    borderRadius: '50%',
-                                    border: '2px solid #3498db',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'nwse-resize',
-                                    zIndex: 1000,
-                                    boxShadow: '0 0 3px rgba(0,0,0,0.3)'
-                                  }}
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                    <path d="M3 21L21 3M16 3h5v5M3 16v5h5" stroke="#3498db" strokeWidth="2" strokeLinecap="round"/>
-                                  </svg>
-                                </span>
-                              )
-                            }
                           >
                             <div
                               style={{
