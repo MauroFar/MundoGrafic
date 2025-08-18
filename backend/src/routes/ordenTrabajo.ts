@@ -1,5 +1,5 @@
 // ordenTrabajo.js
-import express, { Request, Response } from "express";
+import express, { Request, Response, RequestHandler } from "express";
 import path from "path";
 import fs from "fs/promises";
 import puppeteer from "puppeteer";
