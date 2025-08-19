@@ -32,21 +32,14 @@ router.post('/imagen', upload.single('imagen'), async (req: any, res: any) => {
       return res.status(400).json({ error: 'No se ha subido ningún archivo' });
     }
 
-    // Optimizar la imagen
-    const optimizedImage = await imageOptimizer.optimizeImage(req.file);
+    // TEMPORALMENTE COMENTADO - OPTIMIZACIÓN DESHABILITADA
+    // const optimizedImage = await imageOptimizer.optimizeImage(req.file);
 
+    // Respuesta temporal sin optimización
     res.json({ 
       success: true, 
-      imagenRuta: optimizedImage.webp, // Usar WebP como formato principal
-      imagenRutaJpeg: optimizedImage.jpeg, // JPEG como fallback
-      thumbnail: optimizedImage.thumbnail,
-      metadata: {
-        originalName: optimizedImage.originalName,
-        size: optimizedImage.size,
-        width: optimizedImage.width,
-        height: optimizedImage.height
-      },
-      mensaje: 'Imagen optimizada y subida correctamente' 
+      imagenRuta: `/uploads/${req.file.originalname}`,
+      mensaje: 'Imagen subida sin optimizar (funcionalidad temporalmente deshabilitada)' 
     });
   } catch (error: any) {
     console.error('Error al procesar la imagen:', error);
