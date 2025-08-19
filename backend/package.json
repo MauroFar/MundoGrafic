@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node --transpile-only src/server.ts",
+    "dev": "tsc && node dist/server.js",
+    "dev:watch": "tsc --watch & nodemon dist/server.js",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean"
