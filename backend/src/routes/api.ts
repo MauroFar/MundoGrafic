@@ -2,13 +2,13 @@
 import express from "express";
 import rucRoutes from "./rucs";
 import clientesRoutes from "./clientes";
-// import cotizacionRoutes from "./cotizaciones";      // TEMPORALMENTE COMENTADO
-// import cotizacionDetRoutes from "./cotizacionesDetalles"; // TEMPORALMENTE COMENTADO
-// import cotizacionesEditar from "./cotizacionesEditar";    // TEMPORALMENTE COMENTADO
-// import ordenTrabajoRoutes from "./ordenTrabajo";    // TEMPORALMENTE COMENTADO
+import cotizacionRoutes from "./cotizaciones";
+import cotizacionDetRoutes from "./cotizacionesDetalles";
+import cotizacionesEditar from "./cotizacionesEditar";
+import ordenTrabajoRoutes from "./ordenTrabajo";
 import puppeteer from "puppeteer";
-// import uploadRoutes from "./upload";                // TEMPORALMENTE COMENTADO
-// import chatRoutes from "./chat";                    // TEMPORALMENTE COMENTADO
+import uploadRoutes from "./upload";
+import chatRoutes from "./chat";
 
 export default (client: any) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
@@ -16,12 +16,12 @@ export default (client: any) => {
   // Usamos las rutas importadas (TEMPORALMENTE COMENTADAS)
   router.use("/rucs", rucRoutes(client)); // /api/rucs
   router.use("/clientes", clientesRoutes(client)); // /api/clientes
-  // router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
-  // router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
-  // router.use("/cotizacionesEditar", cotizacionesEditar(client));
-  // router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
-  // router.use("/upload", uploadRoutes); // /api/upload
-  // router.use("/chat", chatRoutes(client)); // /api/chat
+  router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
+  router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
+  router.use("/cotizacionesEditar", cotizacionesEditar(client));
+  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
+  router.use("/upload", uploadRoutes); // /api/upload
+  router.use("/chat", chatRoutes(client)); // /api/chat
 
   // Ruta de prueba simple
   router.get("/test", (req, res) => {
