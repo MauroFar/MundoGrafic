@@ -107,7 +107,7 @@ export default (client: any) => {
         message: "Orden de trabajo creada correctamente",
         numero_orden: ordenResult.rows[0].numero_orden
       });
-    } catch (error: any) {
+    } catch (error) {
       await client.query('ROLLBACK');
       console.error("Error al crear orden de trabajo:", error);
       res.status(500).json({ error: "No se pudo crear la orden de trabajo" });
@@ -155,7 +155,7 @@ export default (client: any) => {
       }
       const result = await client.query(query, params);
       res.json(result.rows);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al listar órdenes de trabajo:', error);
       res.status(500).json({ error: 'Error al listar órdenes de trabajo' });
     }
@@ -210,7 +210,7 @@ export default (client: any) => {
   });
 
   // Obtener datos de una orden de trabajo por ID
-  router.get('/orden/:id', async (req: any, res: any) => {
+  router.get('/orden/:id', async (req, res) => {
     const { id } = req.params;
     try {
       // Obtener datos generales de la orden
@@ -243,7 +243,7 @@ export default (client: any) => {
       delete orden.email_cliente;
       delete orden.direccion_cliente;
       res.json(orden);
-    } catch (error: any) {
+    } catch (error) {
       const err = error as Error;
       console.error('Error al obtener la orden:', err.message);
       res.status(500).json({ error: 'Error del servidor' });
@@ -402,7 +402,7 @@ export default (client: any) => {
   });
 
   // Generar y descargar PDF de una orden de trabajo
-  router.get("/:id/pdf", async (req: any, res: any) => {
+  router.get("/:id/pdf", async (req, res) => {
     const { id } = req.params;
     try {
       // 1. Obtener los datos de la orden de trabajo
@@ -459,14 +459,14 @@ export default (client: any) => {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=orden_trabajo_${orden.numero_orden}.pdf`);
       res.send(pdfBuffer);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al generar PDF de orden de trabajo:', error);
       res.status(500).json({ error: 'Error al generar el PDF de la orden de trabajo' });
     }
   });
 
   // Enviar PDF de orden de trabajo por correo
-  router.post("/:id/enviar-correo", async (req: any, res: any) => {
+  router.post("/:id/enviar-correo", async (req, res) => {
     const { id } = req.params;
     const { email, asunto, mensaje } = req.body;
     if (!email) {
@@ -551,14 +551,14 @@ export default (client: any) => {
       });
 
       res.json({ success: true, message: 'Correo enviado correctamente' });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al enviar correo de orden de trabajo:', error);
       res.status(500).json({ error: 'Error al enviar el correo de la orden de trabajo' });
     }
   });
 
   // Cambiar estado a "en producción"
-  router.put("/:id/enviar-produccion", async (req: any, res: any) => {
+  router.put("/:id/enviar-produccion", async (req, res) => {
     const { id } = req.params;
     try {
       const result = await client.query(
@@ -569,7 +569,7 @@ export default (client: any) => {
         return res.status(404).json({ error: "Orden no encontrada" });
       }
       res.json({ success: true, orden: result.rows[0] });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al enviar a producción:", error);
       res.status(500).json({ error: "Error al enviar a producción" });
     }

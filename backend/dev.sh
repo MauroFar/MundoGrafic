@@ -13,11 +13,6 @@ fi
 echo "🗄️  Inicializando base de datos..."
 node init-db.js
 
-# Verificar si hay archivos TypeScript
-if find src -name "*.ts" -type f | grep -q .; then
-    echo "📝 Detectados archivos TypeScript, usando ts-node-dev..."
-    npm run start:dev
-else
-    echo "📝 Solo archivos JavaScript, usando nodemon..."
-    npm run dev:js
-fi
+# Iniciar en modo desarrollo
+echo "🚀 Iniciando servidor en modo desarrollo..."
+npm run dev

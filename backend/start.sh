@@ -27,18 +27,10 @@ fi
 echo "🗄️  Inicializando base de datos..."
 node init-db.js
 
-# Verificar si hay archivos TypeScript
-if find src -name "*.ts" -type f | grep -q .; then
-    echo "📝 Detectados archivos TypeScript, usando ts-node-dev..."
-    # Iniciar el servidor con TypeScript
-    echo "🚀 Iniciando servidor con TypeScript..."
-    npm run start:dev
-else
-    echo "📝 Solo archivos JavaScript, compilando y ejecutando..."
-    # Compilar TypeScript (si hay archivos .ts)
-    echo "🔨 Compilando TypeScript..."
-    npm run build
-    # Iniciar el servidor
-    echo "🚀 Iniciando servidor..."
-    npm start
-fi 
+# Compilar TypeScript
+echo "🔨 Compilando TypeScript..."
+npm run build
+
+# Iniciar el servidor
+echo "🚀 Iniciando servidor..."
+npm start 

@@ -2,15 +2,14 @@
   "name": "mundografic-backend",
   "version": "1.0.0",
   "description": "Backend para el sistema de MundoGrafic",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "watch": "tsc --watch",
-    "dev:js": "nodemon src/server.js",
-    "dev:ts": "ts-node-dev --respawn --transpile-only src/server.js",
-    "start:dev": "ts-node-dev --respawn --transpile-only src/server.js"
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +29,12 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^24.0.8",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/multer": "^1.4.11",
+    "@types/nodemailer": "^6.4.14",
+    "@types/pg": "^8.10.9",
     "nodemon": "^2.0.22",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
