@@ -57,6 +57,7 @@ function CotizacionesCrear() {
   const [clienteIndex, setClienteIndex] = useState(-1);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [focusedDropIndex, setFocusedDropIndex] = useState(null);
+  const [uploadingImages, setUploadingImages] = useState({}); // Controla el loading de cada imagen
 
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
@@ -593,6 +594,9 @@ function CotizacionesCrear() {
   const handleImagenChange = async (index, file) => {
     if (file) {
       try {
+        // Mostrar loading
+        setUploadingImages(prev => ({ ...prev, [index]: true }));
+        
         // Crear un FormData para enviar el archivo
         const formData = new FormData();
         formData.append('imagen', file);
@@ -629,6 +633,9 @@ function CotizacionesCrear() {
       } catch (error) {
         console.error('Error al subir la imagen:', error);
         alert('Error al subir la imagen: ' + error.message);
+      } finally {
+        // Ocultar loading
+        setUploadingImages(prev => ({ ...prev, [index]: false }));
       }
     }
   };
@@ -637,10 +644,30 @@ function CotizacionesCrear() {
 
   // Soporte de arrastrar/soltar y pegar imágenes
   const uploadFileToRow = async (index, file) => {
-    if (!file) return;
-    // Asegurarnos de que sea una imagen
-    if (!file.type || !file.type.startsWith('image/')) return;
-    await handleImagenChange(index, file);
+    if (!file) {
+      alert('No se seleccionó ningún archivo');
+      return;
+    }
+    
+    // Validar que sea una imagen
+    if (!file.type || !file.type.startsWith('image/')) {
+      alert('Por favor seleccione solo archivos de imagen (JPG, PNG, GIF, etc.)');
+      return;
+    }
+    
+    // Validar tamaño del archivo (máximo 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('El archivo es demasiado grande. El tamaño máximo permitido es 10MB');
+      return;
+    }
+    
+    try {
+      await handleImagenChange(index, file);
+    } catch (error) {
+      console.error('Error al procesar la imagen:', error);
+      alert('Error al procesar la imagen: ' + error.message);
+    }
   };
 
   const handleDragOverRow = (index, e) => {
@@ -1225,19 +1252,79 @@ function CotizacionesCrear() {
                         className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
                       />
                       {!fila.imagen ? (
-                        <div
-                          className={`mt-2 border-2 border-dashed rounded-md p-3 text-center text-sm cursor-pointer select-none focus:outline-none ${dragOverIndex === index ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600'} ${focusedDropIndex === index ? 'ring-2 ring-blue-400 border-blue-400' : ''}`}
-                          onDragOver={(e) => handleDragOverRow(index, e)}
-                          onDragEnter={(e) => handleDragEnterRow(index, e)}
-                          onDragLeave={(e) => handleDragLeaveRow(index, e)}
-                          onDrop={(e) => handleDropImage(index, e)}
-                          onPaste={(e) => handlePasteImage(index, e)}
-                          tabIndex={0}
-                          onFocus={() => setFocusedDropIndex(index)}
-                          onBlur={() => setFocusedDropIndex(prev => (prev === index ? null : prev))}
-                          title="Pegue (Ctrl+V) o arrastre su imagen aquí"
-                        >
-                          Pegue o arrastre su imagen aquí (Ctrl+V)
+                        <div className="space-y-2 mt-2">
+                          {/* Botón para subir desde archivo */}
+                          <div className="flex justify-center">
+                            <label className={`cursor-pointer px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                              uploadingImages[index] 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            }`}>
+                              {uploadingImages[index] ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin"></i>
+                                  Subiendo...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-upload"></i>
+                                  Subir desde archivo
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                id={`file-upload-${index}`}
+                                accept="image/*"
+                                disabled={uploadingImages[index]}
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    uploadFileToRow(index, file);
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          
+                          {/* Área de drag & drop y pegar */}
+                          <div
+                            className={`border-2 border-dashed rounded-md p-3 text-center text-sm cursor-pointer select-none focus:outline-none ${
+                              uploadingImages[index] 
+                                ? 'border-gray-400 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                                : dragOverIndex === index 
+                                  ? 'border-blue-400 bg-blue-50 text-blue-700' 
+                                  : 'border-gray-300 text-gray-600'
+                            } ${focusedDropIndex === index ? 'ring-2 ring-blue-400 border-blue-400' : ''}`}
+                            onDragOver={(e) => !uploadingImages[index] && handleDragOverRow(index, e)}
+                            onDragEnter={(e) => !uploadingImages[index] && handleDragEnterRow(index, e)}
+                            onDragLeave={(e) => !uploadingImages[index] && handleDragLeaveRow(index, e)}
+                            onDrop={(e) => !uploadingImages[index] && handleDropImage(index, e)}
+                            onPaste={(e) => !uploadingImages[index] && handlePasteImage(index, e)}
+                            tabIndex={uploadingImages[index] ? -1 : 0}
+                            onFocus={() => !uploadingImages[index] && setFocusedDropIndex(index)}
+                            onBlur={() => !uploadingImages[index] && setFocusedDropIndex(prev => (prev === index ? null : prev))}
+                            title={uploadingImages[index] ? "Subiendo imagen..." : "Pegue (Ctrl+V) o arrastre su imagen aquí"}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              {uploadingImages[index] ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin text-lg"></i>
+                                  <span>Subiendo imagen...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-image text-lg"></i>
+                                  <span>Pegue (Ctrl+V) o arrastre su imagen aquí</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Mensaje de ayuda */}
+                          <div className="text-xs text-gray-500 text-center mt-1">
+                            Formatos soportados: JPG, PNG, GIF, WEBP • Máximo 10MB
+                          </div>
                         </div>
                       ) : (
                         <div className="flex gap-2 mt-2">

@@ -39,47 +39,80 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
         return null;
       }
 
-      // Limpiar la ruta de la imagen (eliminar /storage/uploads/ si está presente)
-      const cleanPath = imagePath.replace(/^\/storage\/uploads\//, '');
+      console.log('Procesando imagen:', imagePath);
       
-      // Construir la ruta completa
-      const fullPath = path.join(__dirname, '../../storage/uploads', cleanPath);
+      // Limpiar la ruta de la imagen (eliminar /uploads/ si está presente)
+      const cleanPath = imagePath.replace(/^\/uploads\//, '');
+      
+      // Construir la ruta completa usando process.cwd() para obtener la raíz del proyecto
+      const fullPath = path.join(process.cwd(), 'storage', 'uploads', cleanPath);
       
       console.log('Intentando leer imagen desde:', fullPath);
       
       // Verificar si el archivo existe
       try {
         await fs.access(fullPath);
+        console.log('✅ Archivo encontrado:', fullPath);
       } catch (error: any) {
-        console.error('El archivo no existe:', fullPath);
+        console.error('❌ El archivo no existe:', fullPath);
         return null;
       }
 
       const imageBuffer = await fs.readFile(fullPath);
+      console.log('✅ Imagen leída, tamaño:', imageBuffer.length, 'bytes');
+      
       const base64Image = imageBuffer.toString('base64');
-      const mimeType = imagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
-      return `data:${mimeType};base64,${base64Image}`;
+      
+      // Determinar el tipo MIME basado en la extensión del archivo
+      const extension = path.extname(imagePath).toLowerCase();
+      let mimeType = 'image/jpeg'; // por defecto
+      
+      if (extension === '.png') mimeType = 'image/png';
+      else if (extension === '.gif') mimeType = 'image/gif';
+      else if (extension === '.webp') mimeType = 'image/webp';
+      else if (extension === '.jpg' || extension === '.jpeg') mimeType = 'image/jpeg';
+      
+      const dataUrl = `data:${mimeType};base64,${base64Image}`;
+      console.log('✅ Imagen convertida a base64, tipo:', mimeType);
+      
+      return dataUrl;
     } catch (error: any) {
-      console.error('Error al convertir imagen a base64:', error);
+      console.error('❌ Error al convertir imagen a base64:', error);
       return null;
     }
   };
 
   // Procesar las imágenes de los detalles
   const detallesConImagenes = await Promise.all(detalles.map(async (d) => {
+    console.log('🔍 Procesando detalle:', d.detalle);
+    console.log('🖼️  Ruta de imagen:', d.imagen_ruta);
+    
     if (d.imagen_ruta) {
+      console.log('📸 Detalle tiene imagen, procesando...');
       const base64Image = await getBase64Image(d.imagen_ruta);
+      
+      if (base64Image) {
+        console.log('✅ Imagen procesada exitosamente para:', d.detalle);
+      } else {
+        console.log('❌ No se pudo procesar la imagen para:', d.detalle);
+      }
+      
       return { 
         ...d, 
         base64Image,
         imagen_width: d.imagen_width || 300,
         imagen_height: d.imagen_height || 200
       };
+    } else {
+      console.log('📝 Detalle sin imagen:', d.detalle);
+      return d;
     }
-    return d;
   }));
 
-  console.log('Detalles con imágenes procesados:', detallesConImagenes);
+  console.log('📊 Resumen de detalles procesados:');
+  detallesConImagenes.forEach((d, index) => {
+    console.log(`  ${index + 1}. ${d.detalle} - Imagen: ${d.base64Image ? '✅' : '❌'}`);
+  });
 
   // Leer y convertir el logo a base64
   const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');

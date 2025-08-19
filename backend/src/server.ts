@@ -88,20 +88,45 @@ app.use('/api/areas', areasRoutes(client));
 
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
+  const ips = [];
+  
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name] || []) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+        ips.push({
+          name: name,
+          address: iface.address,
+          netmask: iface.netmask
+        });
       }
     }
   }
-  return 'localhost';
+  return ips;
 }
 
 // Puerto
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  const ip = getLocalIP();
-  console.log(`🚀 Servidor corriendo en http://${ip}:${PORT}`);
+  const ips = getLocalIP();
+  const localIP = ips.length > 0 ? ips[0].address : 'localhost';
+  
+  console.log('🚀 SERVIDOR INICIADO');
+  console.log('================================');
+  console.log(`📍 Puerto: ${PORT}`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  
+  if (ips.length > 0) {
+    console.log('🌍 Red local:');
+    ips.forEach((ip, index) => {
+      console.log(`   ${index + 1}. http://${ip.address}:${PORT} (${ip.name})`);
+    });
+    console.log(`📱 Frontend debe usar: http://${localIP}:${PORT}`);
+  } else {
+    console.log('⚠️  No se detectaron IPs de red local');
+    console.log('📱 Frontend debe usar: http://localhost:${PORT}');
+  }
+  
+  console.log('================================');
+  console.log('📌 Conectado a PostgreSQL');
 });
  
