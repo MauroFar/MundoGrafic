@@ -1,7 +1,7 @@
 // Importamos las rutas existentes
 import express from "express";
 import rucRoutes from "./rucs";
-// import clientesRoutes from "./clientes";            // TEMPORALMENTE COMENTADO
+import clientesRoutes from "./clientes";
 // import cotizacionRoutes from "./cotizaciones";      // TEMPORALMENTE COMENTADO
 // import cotizacionDetRoutes from "./cotizacionesDetalles"; // TEMPORALMENTE COMENTADO
 // import cotizacionesEditar from "./cotizacionesEditar";    // TEMPORALMENTE COMENTADO
@@ -15,7 +15,7 @@ export default (client: any) => {
     
   // Usamos las rutas importadas (TEMPORALMENTE COMENTADAS)
   router.use("/rucs", rucRoutes(client)); // /api/rucs
-  // router.use("/clientes", clientesRoutes(client)); // /api/clientes
+  router.use("/clientes", clientesRoutes(client)); // /api/clientes
   // router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
   // router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   // router.use("/cotizacionesEditar", cotizacionesEditar(client));
