@@ -1,4 +1,4 @@
-// import sharp from "sharp";  // TEMPORALMENTE COMENTADO
+import sharp from "sharp";
 import path from "path";
 import fs from "fs/promises";
 
