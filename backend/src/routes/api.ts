@@ -7,8 +7,8 @@ import cotizacionDetRoutes from "./cotizacionesDetalles";
 import cotizacionesEditar from "./cotizacionesEditar";
 import ordenTrabajoRoutes from "./ordenTrabajo";
 import puppeteer from "puppeteer";
-// import uploadRoutes from "./upload";                // TEMPORALMENTE COMENTADO
-// import chatRoutes from "./chat";                    // TEMPORALMENTE COMENTADO
+import uploadRoutes from "./upload-simple";
+import chatRoutes from "./chat";
 
 export default (client: any) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
@@ -20,8 +20,8 @@ export default (client: any) => {
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
   router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
-  // router.use("/upload", uploadRoutes); // /api/upload
-  // router.use("/chat", chatRoutes(client)); // /api/chat
+  router.use("/upload", uploadRoutes); // /api/upload
+  router.use("/chat", chatRoutes(client)); // /api/chat
 
   // Ruta de prueba simple
   router.get("/test", (req, res) => {
