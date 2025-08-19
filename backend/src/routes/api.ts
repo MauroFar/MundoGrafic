@@ -6,7 +6,7 @@ import express from "express";
 // import cotizacionDetRoutes from "./cotizacionesDetalles"; // TEMPORALMENTE COMENTADO
 // import cotizacionesEditar from "./cotizacionesEditar";    // TEMPORALMENTE COMENTADO
 // import ordenTrabajoRoutes from "./ordenTrabajo";    // TEMPORALMENTE COMENTADO
-// import puppeteer from "puppeteer";                 // TEMPORALMENTE COMENTADO
+import puppeteer from "puppeteer";
 // import uploadRoutes from "./upload";                // TEMPORALMENTE COMENTADO
 // import chatRoutes from "./chat";                    // TEMPORALMENTE COMENTADO
 
