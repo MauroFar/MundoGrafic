@@ -4,10 +4,13 @@
   "description": "Backend para el sistema de MundoGrafic",
   "main": "src/server.js",
   "scripts": {
-    "build": "echo 'No build needed for JavaScript'",
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "watch": "nodemon src/server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.js",
+    "watch": "tsc --watch",
+    "dev:js": "nodemon src/server.js",
+    "dev:ts": "ts-node-dev --respawn --transpile-only src/server.js",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/server.js"
   },
   "keywords": [],
   "author": "",
