@@ -120,7 +120,6 @@ app.listen(PORT, () => {
     ips.forEach((ip, index) => {
       console.log(`   ${index + 1}. http://${ip.address}:${PORT} (${ip.name})`);
     });
-    console.log(`📱 Frontend debe usar: http://${localIP}:${PORT}`);
   } else {
     console.log('⚠️  No se detectaron IPs de red local');
     console.log('📱 Frontend debe usar: http://localhost:${PORT}');
