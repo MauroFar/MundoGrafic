@@ -628,57 +628,63 @@ function CotizacionesVer() {
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2">
                       <button
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
                         onClick={() => editarCotizacion(cotizacion.id)}
                         title="Editar"
                       >
                         <FaEdit />
+                        <span className="text-xs mt-1 text-gray-600">Editar</span>
                       </button>
                       <button
-                        className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                         onClick={() => eliminarCotizacion(cotizacion.id)}
                         title="Eliminar"
                       >
                         <FaTrash />
+                        <span className="text-xs mt-1 text-gray-600">Eliminar</span>
                       </button>
                       <button
-                        className="p-2 text-purple-600 hover:bg-purple-100 rounded"
+                        className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
                         onClick={() => descargarPDF(cotizacion.id)}
                         title="Descargar PDF"
                       >
                         <FaDownload />
+                        <span className="text-xs mt-1 text-gray-600">PDF</span>
                       </button>
                       <button
-                        className="p-2 text-yellow-600 hover:bg-yellow-100 rounded"
+                        className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
                         onClick={() => enviarCorreo(cotizacion.id)}
                         title="Enviar por correo"
                       >
                         <FaEnvelope />
+                        <span className="text-xs mt-1 text-gray-600">Enviar</span>
                       </button>
                       <button
-                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded"
+                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
                         onClick={() => handleEnviarCorreoAlternativo(cotizacion.id)}
                         title="Enviar por correo (Alternativo)"
                       >
                         <FaEnvelopeOpen />
-                        enviar
+                        <span className="text-xs mt-1 text-gray-600">Alternativo</span>
                       </button>
                       {cotizacion.estado === 'pendiente' && (
                         <button
-                          className="p-2 text-green-600 hover:bg-green-100 rounded"
+                          className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
                           onClick={() => aprobarCotizacion(cotizacion.id)}
                           title="Aprobar cotización"
                         >
-                          <FaCheck />Aprobar
+                          <FaCheck />
+                          <span className="text-xs mt-1 text-gray-600">Aprobar</span>
                         </button>
                       )}
                       {cotizacion.estado === 'aprobada' && (
                         <button
-                          className="p-2 text-pink-600 hover:bg-pink-100 rounded"
+                          className="p-2 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
                           onClick={() => generarOrdenTrabajo(cotizacion.id)}
                           title="Generar Orden de Trabajo"
                         >
-                          <FaTools /> Generar Orden de Trabajo
+                          <FaTools />
+                          <span className="text-xs mt-1 text-gray-600">Orden</span>
                         </button>
                       )}
                     </div>

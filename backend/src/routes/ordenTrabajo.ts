@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
+import { validateOrdenTrabajo, validateOrdenTrabajoUpdate } from "../middleware/ordenTrabajoValidation";
 
 export default (client: any) => {
   const router = express.Router();
@@ -45,14 +46,33 @@ export default (client: any) => {
   });
 
   // Crear una orden de trabajo desde una cotización o manualmente
-  router.post("/crearOrdenTrabajo", async (req, res): Promise<void> => {
+  router.post("/crearOrdenTrabajo", validateOrdenTrabajo, async (req, res): Promise<void> => {
+    console.log('🚀 CREAR ORDEN - Iniciando proceso de creación');
+    
     const {
       nombre_cliente, contacto, email, telefono, cantidad, concepto,
       fecha_creacion, fecha_entrega, estado, notas_observaciones,
       vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-      id_detalle_cotizacion, // nuevo campo
+      id_detalle_cotizacion,
+      // Nuevos campos de trabajo - extraer del objeto detalle
       detalle
     } = req.body;
+
+    // Extraer campos del detalle
+    const material = detalle?.material;
+    const corteMaterial = detalle?.corte_material;
+    const cantidadPliegosCompra = detalle?.cantidad_pliegos_compra;
+    const exceso = detalle?.exceso;
+    const totalPliegos = detalle?.total_pliegos;
+    const tamano = detalle?.tamano;
+    const tamanoAbierto1 = detalle?.tamano_abierto_1;
+    const tamanoCerrado1 = detalle?.tamano_cerrado_1;
+    const impresion = detalle?.impresion;
+    const instruccionesImpresion = detalle?.instrucciones_impresion;
+    const instruccionesAcabados = detalle?.instrucciones_acabados;
+    const instruccionesEmpacado = detalle?.instrucciones_empacado;
+    const observaciones = detalle?.observaciones;
+    const prensaSeleccionada = detalle?.prensa_seleccionada;
 
     try {
       await client.query('BEGIN');
@@ -73,43 +93,41 @@ export default (client: any) => {
       ]);
       const ordenId = ordenResult.rows[0].id;
 
-      // 2. Insertar en detalle_orden_trabajo
+      // 2. Insertar en detalle_orden_trabajo con los nuevos campos
       await client.query(`
         INSERT INTO detalle_orden_trabajo (
-          orden_trabajo_id, tipo_papel_proveedor, tipo_papel_prensa, tipo_papel_velocidad,
-          tipo_papel_calibre, tipo_papel_referencia, tipo_papel_gramos, tipo_papel_tamano,
-          tipo_papel_cant_colores, tipo_papel_cant_pliegos, tipo_papel_exceso,
-          guillotina_pliegos_cortar, guillotina_tamano_corte, guillotina_cabida_corte,
-          prensas_pliegos_imprimir, prensas_cabida_impresion, prensas_total_impresion
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          orden_trabajo_id, 
+          material, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
+          tamano, tamano_abierto_1, tamano_cerrado_1, impresion, instrucciones_impresion,
+          instrucciones_acabados, instrucciones_empacado, observaciones, prensa_seleccionada
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       `, [
         ordenId,
-        detalle?.tipo_papel_proveedor || null,
-        detalle?.tipo_papel_prensa || null,
-        detalle?.tipo_papel_velocidad || null,
-        detalle?.tipo_papel_calibre || null,
-        detalle?.tipo_papel_referencia || null,
-        detalle?.tipo_papel_gramos || null,
-        detalle?.tipo_papel_tamano || null,
-        detalle?.tipo_papel_cant_colores || null,
-        detalle?.tipo_papel_cant_pliegos || null,
-        detalle?.tipo_papel_exceso || null,
-        detalle?.guillotina_pliegos_cortar || null,
-        detalle?.guillotina_tamano_corte || null,
-        detalle?.guillotina_cabida_corte || null,
-        detalle?.prensas_pliegos_imprimir || null,
-        detalle?.prensas_cabida_impresion || null,
-        detalle?.prensas_total_impresion || null
+        material || null,
+        corteMaterial || null,
+        cantidadPliegosCompra || null,
+        exceso || null,
+        totalPliegos || null,
+        tamano || null,
+        tamanoAbierto1 || null,
+        tamanoCerrado1 || null,
+        impresion || null,
+        instruccionesImpresion || null,
+        instruccionesAcabados || null,
+        instruccionesEmpacado || null,
+        observaciones || null,
+        prensaSeleccionada || null
       ]);
 
       await client.query('COMMIT');
+      console.log('✅ ORDEN CREADA EXITOSAMENTE - Número:', ordenResult.rows[0].numero_orden);
       res.status(201).json({
         message: "Orden de trabajo creada correctamente",
         numero_orden: ordenResult.rows[0].numero_orden
       });
     } catch (error: any) {
       await client.query('ROLLBACK');
-      console.error("Error al crear orden de trabajo:", error);
+      console.error("❌ ERROR AL CREAR ORDEN DE TRABAJO:", error);
       res.status(500).json({ error: "No se pudo crear la orden de trabajo" });
     }
   });
@@ -251,7 +269,7 @@ export default (client: any) => {
   });
 
   /////editar y actualizar datos orden de trabajo   // Editar una orden de trabajo existente
-  router.put('/editarOrden/:id', async (req, res): Promise<void> => {
+  router.put('/editarOrden/:id', validateOrdenTrabajoUpdate, async (req, res): Promise<void> => {
     const { id } = req.params;
     const {
       nombre_cliente,
@@ -268,9 +286,26 @@ export default (client: any) => {
       prensa,
       terminados,
       facturado,
-      id_detalle_cotizacion, // nuevo campo
+      id_detalle_cotizacion,
+      // Nuevos campos de trabajo - extraer del objeto detalle
       detalle
     } = req.body;
+
+    // Extraer campos del detalle
+    const material = detalle?.material;
+    const corteMaterial = detalle?.corte_material;
+    const cantidadPliegosCompra = detalle?.cantidad_pliegos_compra;
+    const exceso = detalle?.exceso;
+    const totalPliegos = detalle?.total_pliegos;
+    const tamano = detalle?.tamano;
+    const tamanoAbierto1 = detalle?.tamano_abierto_1;
+    const tamanoCerrado1 = detalle?.tamano_cerrado_1;
+    const impresion = detalle?.impresion;
+    const instruccionesImpresion = detalle?.instrucciones_impresion;
+    const instruccionesAcabados = detalle?.instrucciones_acabados;
+    const instruccionesEmpacado = detalle?.instrucciones_empacado;
+    const observaciones = detalle?.observaciones;
+    const prensaSeleccionada = detalle?.prensa_seleccionada;
 
     try {
       await client.query('BEGIN');
@@ -318,48 +353,42 @@ export default (client: any) => {
         res.status(404).json({ error: "Orden no encontrada" });
         return;
       }
-      // Actualizar detalle técnico si se envía
-      if (detalle) {
-        await client.query(
-          `UPDATE detalle_orden_trabajo SET
-            tipo_papel_proveedor = $1,
-            tipo_papel_prensa = $2,
-            tipo_papel_velocidad = $3,
-            tipo_papel_calibre = $4,
-            tipo_papel_referencia = $5,
-            tipo_papel_gramos = $6,
-            tipo_papel_tamano = $7,
-            tipo_papel_cant_colores = $8,
-            tipo_papel_cant_pliegos = $9,
-            tipo_papel_exceso = $10,
-            guillotina_pliegos_cortar = $11,
-            guillotina_tamano_corte = $12,
-            guillotina_cabida_corte = $13,
-            prensas_pliegos_imprimir = $14,
-            prensas_cabida_impresion = $15,
-            prensas_total_impresion = $16
-          WHERE orden_trabajo_id = $17`,
-          [
-            detalle.tipo_papel_proveedor,
-            detalle.tipo_papel_prensa,
-            detalle.tipo_papel_velocidad,
-            detalle.tipo_papel_calibre,
-            detalle.tipo_papel_referencia,
-            detalle.tipo_papel_gramos,
-            detalle.tipo_papel_tamano,
-            detalle.tipo_papel_cant_colores,
-            detalle.tipo_papel_cant_pliegos,
-            detalle.tipo_papel_exceso,
-            detalle.guillotina_pliegos_cortar,
-            detalle.guillotina_tamano_corte,
-            detalle.guillotina_cabida_corte,
-            detalle.prensas_pliegos_imprimir,
-            detalle.prensas_cabida_impresion,
-            detalle.prensas_total_impresion,
-            id
-          ]
-        );
-      }
+      // Actualizar detalle técnico con los nuevos campos
+      await client.query(
+        `UPDATE detalle_orden_trabajo SET
+          material = $1,
+          corte_material = $2,
+          cantidad_pliegos_compra = $3,
+          exceso = $4,
+          total_pliegos = $5,
+          tamano = $6,
+          tamano_abierto_1 = $7,
+          tamano_cerrado_1 = $8,
+          impresion = $9,
+          instrucciones_impresion = $10,
+          instrucciones_acabados = $11,
+          instrucciones_empacado = $12,
+          observaciones = $13,
+          prensa_seleccionada = $14
+        WHERE orden_trabajo_id = $15`,
+        [
+          material || null,
+          corteMaterial || null,
+          cantidadPliegosCompra || null,
+          exceso || null,
+          totalPliegos || null,
+          tamano || null,
+          tamanoAbierto1 || null,
+          tamanoCerrado1 || null,
+          impresion || null,
+          instruccionesImpresion || null,
+          instruccionesAcabados || null,
+          instruccionesEmpacado || null,
+          observaciones || null,
+          prensaSeleccionada || null,
+          id
+        ]
+      );
       await client.query('COMMIT');
       res.json({ message: "Orden actualizada correctamente", orden: result.rows[0] });
     } catch (error: unknown) {
@@ -374,8 +403,13 @@ export default (client: any) => {
   router.get('/proximoNumero', async (req, res): Promise<void> => {
     try {
       const result = await client.query('SELECT MAX(numero_orden) AS max_numero FROM orden_trabajo');
-      const maxNumero = result.rows[0].max_numero || 0;
-      const proximoNumero = String(Number(maxNumero) + 1).padStart(6, '0');
+      const maxNumero = result.rows[0].max_numero || 'OT-000000';
+      
+      // Extraer el número del formato "OT-000001"
+      const numeroMatch = maxNumero.match(/OT-(\d+)/);
+      const numeroActual = numeroMatch ? parseInt(numeroMatch[1]) : 0;
+      const proximoNumero = String(numeroActual + 1).padStart(6, '0');
+      
       res.json({ proximoNumero });
     } catch (error: unknown) {
       const err = error as Error;

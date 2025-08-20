@@ -229,43 +229,46 @@ const OrdenesVer: React.FC = () => {
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2">
                       <button
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
                         onClick={() => editarOrden(orden.id)}
                         title="Editar"
                       >
                         <FaEdit />
+                        <span className="text-xs mt-1 text-gray-600">Editar</span>
                       </button>
                       {!(orden.estado && orden.estado.toLowerCase() === "en producción") && (
                         <button
-                          className="p-2 text-red-600 hover:bg-red-100 rounded"
+                          className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                           onClick={() => eliminarOrden(orden.id)}
                           title="Eliminar"
                         >
                           <FaTrash />
+                          <span className="text-xs mt-1 text-gray-600">Eliminar</span>
                         </button>
                       )}
                       <button
-                        className="p-2 text-purple-600 hover:bg-purple-100 rounded"
+                        className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
                         onClick={() => descargarPDF(orden.id)}
                         title="Descargar PDF"
                       >
                         <FaDownload />
+                        <span className="text-xs mt-1 text-gray-600">PDF</span>
                       </button>
                       {orden.estado && orden.estado.toLowerCase() === "en producción" ? (
                         <button
-                          className="p-2 text-gray-400 bg-gray-200 rounded cursor-not-allowed"
+                          className="p-2 text-gray-400 bg-gray-200 rounded cursor-not-allowed flex flex-col items-center"
                           disabled
                           title="En Producción"
                         >
-                          <span className="font-bold">En Producción</span>
+                          <span className="font-bold text-xs">En Producción</span>
                         </button>
                       ) : (
                         <button
-                          className="p-2 text-green-600 hover:bg-green-100 rounded"
+                          className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
                           onClick={() => setModalProduccionId(orden.id)}
                           title="Enviar a Producción"
                         >
-                          <span className="font-bold">Enviar a Producción</span>
+                          <span className="font-bold text-xs">Enviar a Producción</span>
                         </button>
                       )}
                     </div>

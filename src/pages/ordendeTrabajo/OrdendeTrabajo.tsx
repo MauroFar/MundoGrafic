@@ -14,6 +14,15 @@ interface OrdenData {
   direccion_cliente?: string;
   cantidad?: string;
   numero_orden?: string;
+  // Campos de Responsables del Proceso
+  vendedor?: string;
+  preprensa?: string;
+  prensa?: string;
+  terminados?: string;
+  facturado?: string;
+  // Otros campos generales
+  estado?: string;
+  notas_observaciones?: string;
   // Puedes agregar más campos según lo que devuelva tu backend
   detalle?: any;
   telefono?: string;
@@ -53,49 +62,54 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cantidad, setCantidad] = useState<string>('');
   const [numero_orden, setNumero_orden] = useState<string>('');
 
+  // Log cuando cambia numero_orden para debugging
+  useEffect(() => {
+    console.log('🔄 FRONTEND - numero_orden cambió a:', numero_orden);
+  }, [numero_orden]);
+
   // Estados para los campos técnicos (ejemplo, agrega todos los que necesites)
-  const [tipoPapelProveedor, setTipoPapelProveedor] = useState('');
-  const [tipoPapelPrensa, setTipoPapelPrensa] = useState('');
-  const [tipoPapelVelocidad, setTipoPapelVelocidad] = useState('');
-  const [tipoPapelCalibre, setTipoPapelCalibre] = useState('');
-  const [tipoPapelReferencia, setTipoPapelReferencia] = useState('');
-  const [tipoPapelGramos, setTipoPapelGramos] = useState('');
-  const [tipoPapelTamano, setTipoPapelTamano] = useState('');
-  const [tipoPapelCantColores, setTipoPapelCantColores] = useState('');
-  const [tipoPapelCantPliegos, setTipoPapelCantPliegos] = useState('');
-  const [tipoPapelExceso, setTipoPapelExceso] = useState('');
-  const [guillotinaPliegosCortar, setGuillotinaPliegosCortar] = useState('');
-  const [guillotinaTamanoCorte, setGuillotinaTamanoCorte] = useState('');
-  const [guillotinaCabidaCorte, setGuillotinaCabidaCorte] = useState('');
-  const [prensasPliegosImprimir, setPrensasPliegosImprimir] = useState('');
-  const [prensasCabidaImpresion, setPrensasCabidaImpresion] = useState('');
-  const [prensasTotalImpresion, setPrensasTotalImpresion] = useState('');
+  const [tipoPapelProveedor, setTipoPapelProveedor] = useState<string>('');
+  const [tipoPapelPrensa, setTipoPapelPrensa] = useState<string>('');
+  const [tipoPapelVelocidad, setTipoPapelVelocidad] = useState<string>('');
+  const [tipoPapelCalibre, setTipoPapelCalibre] = useState<string>('');
+  const [tipoPapelReferencia, setTipoPapelReferencia] = useState<string>('');
+  const [tipoPapelGramos, setTipoPapelGramos] = useState<string>('');
+  const [tipoPapelTamano, setTipoPapelTamano] = useState<string>('');
+  const [tipoPapelCantColores, setTipoPapelCantColores] = useState<string>('');
+  const [tipoPapelCantPliegos, setTipoPapelCantPliegos] = useState<string>('');
+  const [tipoPapelExceso, setTipoPapelExceso] = useState<string>('');
+  const [guillotinaPliegosCortar, setGuillotinaPliegosCortar] = useState<string>('');
+  const [guillotinaTamanoCorte, setGuillotinaTamanoCorte] = useState<string>('');
+  const [guillotinaCabidaCorte, setGuillotinaCabidaCorte] = useState<string>('');
+  const [prensasPliegosImprimir, setPrensasPliegosImprimir] = useState<string>('');
+  const [prensasCabidaImpresion, setPrensasCabidaImpresion] = useState<string>('');
+  const [prensasTotalImpresion, setPrensasTotalImpresion] = useState<string>('');
   // Estados adicionales generales
-  const [fechaEntrega, setFechaEntrega] = useState('');
-  const [estado, setEstado] = useState('');
-  const [notasObservaciones, setNotasObservaciones] = useState('');
-  const [vendedor, setVendedor] = useState('');
-  const [preprensa, setPreprensa] = useState('');
-  const [prensa, setPrensa] = useState('');
-  const [terminados, setTerminados] = useState('');
-  const [facturado, setFacturado] = useState('');
+  const [fechaEntrega, setFechaEntrega] = useState<string>('');
+  const [estado, setEstado] = useState<string>('pendiente');
+  const [notasObservaciones, setNotasObservaciones] = useState<string>('');
+  const [vendedor, setVendedor] = useState<string>('');
+  const [preprensa, setPreprensa] = useState<string>('');
+  const [prensa, setPrensa] = useState<string>('');
+  const [terminados, setTerminados] = useState<string>('');
+  const [facturado, setFacturado] = useState<string>('');
 
      // Nuevos estados para la información de trabajo
-   const [material, setMaterial] = useState('');
-   const [corteMaterial, setCorteMaterial] = useState('');
-   const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState('');
-   const [exceso, setExceso] = useState('');
-   const [totalPliegos, setTotalPliegos] = useState('');
-   const [tamano, setTamano] = useState('');
-       const [tamanoAbierto1, setTamanoAbierto1] = useState('');
-    const [tamanoCerrado1, setTamanoCerrado1] = useState('');
-   const [impresion, setImpresion] = useState('');
-   const [instruccionesImpresion, setInstruccionesImpresion] = useState('');
-   const [instruccionesAcabados, setInstruccionesAcabados] = useState('');
-   const [instruccionesEmpacado, setInstruccionesEmpacado] = useState('');
-   const [observaciones, setObservaciones] = useState('');
-   const [prensaSeleccionada, setPrensaSeleccionada] = useState('');
-   const [mostrarDropdownPrensa, setMostrarDropdownPrensa] = useState(false);
+   const [material, setMaterial] = useState<string>('');
+   const [corteMaterial, setCorteMaterial] = useState<string>('');
+   const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState<string>('');
+   const [exceso, setExceso] = useState<string>('');
+   const [totalPliegos, setTotalPliegos] = useState<string>('');
+   const [tamano, setTamano] = useState<string>('');
+       const [tamanoAbierto1, setTamanoAbierto1] = useState<string>('');
+    const [tamanoCerrado1, setTamanoCerrado1] = useState<string>('');
+   const [impresion, setImpresion] = useState<string>('');
+   const [instruccionesImpresion, setInstruccionesImpresion] = useState<string>('');
+   const [instruccionesAcabados, setInstruccionesAcabados] = useState<string>('');
+   const [instruccionesEmpacado, setInstruccionesEmpacado] = useState<string>('');
+   const [observaciones, setObservaciones] = useState<string>('');
+   const [prensaSeleccionada, setPrensaSeleccionada] = useState<string>('');
+   const [mostrarDropdownPrensa, setMostrarDropdownPrensa] = useState<boolean>(false);
 
   // Opciones de prensa
   const opcionesPrensa = ['GTO 52', 'PM52', 'CD102'];
@@ -103,6 +117,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfirmUpdateModal, setShowConfirmUpdateModal] = useState(false);
+  const [showConfirmCreateNewModal, setShowConfirmCreateNewModal] = useState(false);
   const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
   const [idDetalleCotizacion, setIdDetalleCotizacion] = useState<number | null>(null);
 
@@ -243,11 +259,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
   }, [cotizacionId, ordenId, location.state]);
 
-  // Sincronizar estados individuales con ordenData cuando cambia
-useEffect(() => {
-  // Si hay producto seleccionado por state, no sobrescribir concepto/cantidad
-  const productoSeleccionado = location.state && location.state.producto;
-  if (ordenData) {
+    // Sincronizar estados individuales con ordenData cuando cambia
+ useEffect(() => {
+   console.log('🔄 useEffect - ordenData recibido:', ordenData);
+   
+   // Si hay producto seleccionado por state, no sobrescribir concepto/cantidad
+   const productoSeleccionado = location.state && location.state.producto;
+   if (ordenData) {
     if (!productoSeleccionado) {
       setConcepto(ordenData.concepto || '');
       setCantidad(ordenData.cantidad || '');
@@ -292,7 +310,31 @@ useEffect(() => {
     setTelefono_cliente(ordenData.telefono_cliente || ordenData.telefono || '');
     setEmail_cliente(ordenData.email_cliente || ordenData.email || '');
     setDireccion_cliente(ordenData.direccion_cliente || ordenData.contacto || '');
-    setNumero_orden(ordenData.numero_orden || '');
+    
+    // Solo sincronizar numero_orden si estamos editando una orden existente
+    if (ordenId) {
+      setNumero_orden(ordenData.numero_orden || '');
+    }
+    
+    // Sincronizar campos de Responsables del Proceso
+    console.log('🔄 Sincronizando Responsables del Proceso:', {
+      vendedor: ordenData.vendedor,
+      preprensa: ordenData.preprensa,
+      prensa: ordenData.prensa,
+      terminados: ordenData.terminados,
+      facturado: ordenData.facturado
+    });
+    
+    setVendedor(ordenData.vendedor || '');
+    setPreprensa(ordenData.preprensa || '');
+    setPrensa(ordenData.prensa || '');
+    setTerminados(ordenData.terminados || '');
+    setFacturado(ordenData.facturado || '');
+    
+    // Sincronizar otros campos generales
+    setEstado(ordenData.estado || 'pendiente');
+    setNotasObservaciones(ordenData.notas_observaciones || '');
+    
     // Mapear fecha de entrega correctamente para el input tipo date
     if (ordenData.fecha_entrega) {
       // Si viene en formato ISO, recortar a YYYY-MM-DD
@@ -300,104 +342,170 @@ useEffect(() => {
     } else {
       setFechaEntrega('');
     }
-  }
-  // Si es formulario de nueva orden (sin cotizacionId ni ordenId), obtener el próximo número de orden
-  if (!cotizacionId && !ordenId) {
-    fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
-      .then(res => res.json())
-      .then(data => setNumero_orden(data.proximoNumero))
-      .catch(() => setNumero_orden(''));
-  }
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [ordenData, cotizacionId, ordenId, location.state]);
+     }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ordenData, cotizacionId, ordenId, location.state]);
 
+  // Efecto para obtener el próximo número de orden cuando sea necesario
+  useEffect(() => {
+    if (!ordenId) {
+      console.log('🔄 FRONTEND - Obteniendo próximo número de orden...');
+      console.log('📋 FRONTEND - cotizacionId:', cotizacionId);
+      console.log('📋 FRONTEND - ordenId:', ordenId);
+      
+      // Obtener el próximo número si estamos creando una nueva orden (con o sin cotización)
+      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('✅ FRONTEND - Próximo número obtenido:', data.proximoNumero);
+          setNumero_orden(data.proximoNumero);
+        })
+        .catch((error) => {
+          console.error('❌ FRONTEND - Error al obtener próximo número:', error);
+          setNumero_orden('');
+        });
+    } else {
+      console.log('🔄 FRONTEND - No obteniendo próximo número (editando orden existente)');
+    }
+  }, [cotizacionId, ordenId, apiUrl]);
 
- 
+  
   if (cotizacionId && !ordenData) {
     return <p>Cargando orden de trabajo...</p>;
   }
 
-  // Función de validación de campos
+  // Función para asegurar que los valores sean strings
+  const asegurarString = (valor: any): string => {
+    if (valor === null || valor === undefined) return '';
+    if (typeof valor === 'string') return valor;
+    return String(valor);
+  };
+
+  // Función de validación de campos (solo campos esenciales son obligatorios)
   const validarCampos = () => {
+    console.log('🔍 FRONTEND - Ejecutando validación de campos');
+    
+    // Asegurar que todos los valores sean strings
+    const nombreClienteStr = asegurarString(nombre_cliente);
+    const conceptoSrt = asegurarString(concepto);
+    const cantidadStr = asegurarString(cantidad);
+    const cantidadPliegosCompraStr = asegurarString(cantidadPliegosCompra);
+    const excesoStr = asegurarString(exceso);
+    
+    console.log('🔍 FRONTEND - Valores convertidos a string:', {
+      nombreClienteStr,
+      conceptoSrt,
+      cantidadStr,
+      cantidadPliegosCompraStr,
+      excesoStr
+    });
+    
     const errores: string[] = [];
-    // Generales
-    if (!nombre_cliente.trim()) errores.push('El campo Cliente es obligatorio.');
-    if (!concepto.trim()) errores.push('El campo Concepto es obligatorio.');
-    if (!cantidad.trim() || isNaN(Number(cantidad))) errores.push('La Cantidad debe ser un número.');
-    if (!fechaCreacion) errores.push('La Fecha de Creación es obligatoria.');
-    if (!fechaEntrega) errores.push('La Fecha de Entrega es obligatoria.');
-    if (!telefono_cliente.trim()) errores.push('El campo Teléfono es obligatorio.');
-    if (!email_cliente.trim()) errores.push('El campo Email es obligatorio.');
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_cliente)) errores.push('El Email no es válido.');
-     
-     // Nuevos campos de trabajo
-     if (!material.trim()) errores.push('El campo Material es obligatorio.');
-     if (!corteMaterial.trim()) errores.push('El campo Corte de Material es obligatorio.');
-     if (!cantidadPliegosCompra.trim() || isNaN(Number(cantidadPliegosCompra))) errores.push('La Cantidad de Pliegos de Compra debe ser un número.');
-     if (!exceso.trim() || isNaN(Number(exceso))) errores.push('El Exceso debe ser un número.');
-           if (!tamanoAbierto1.trim()) errores.push('El campo Tamaño Abierto es obligatorio.');
-      if (!tamanoCerrado1.trim()) errores.push('El campo Tamaño Cerrado es obligatorio.');
-     if (!impresion.trim()) errores.push('El campo Impresión es obligatorio.');
-     if (!instruccionesImpresion.trim()) errores.push('El campo Instrucciones de Impresión es obligatorio.');
-     if (!instruccionesAcabados.trim()) errores.push('El campo Instrucciones de Acabados es obligatorio.');
-     if (!instruccionesEmpacado.trim()) errores.push('El campo Instrucciones de Empacado es obligatorio.');
-     if (!prensaSeleccionada.trim()) errores.push('El campo Prensa es obligatorio.');
-     
+    
+    // Solo campos esenciales son obligatorios
+    if (!nombreClienteStr.trim()) {
+      console.log('❌ FRONTEND - Cliente vacío');
+      errores.push('El campo Cliente es obligatorio.');
+    }
+    if (!conceptoSrt.trim()) {
+      console.log('❌ FRONTEND - Concepto vacío');
+      errores.push('El campo Concepto es obligatorio.');
+    }
+    if (!cantidadStr.trim() || isNaN(Number(cantidadStr))) {
+      console.log('❌ FRONTEND - Cantidad inválida:', cantidadStr);
+      errores.push('La Cantidad debe ser un número.');
+    }
+    
+    // Validar formato de email solo si se proporciona
+    if (email_cliente && typeof email_cliente === 'string' && email_cliente.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_cliente)) {
+      errores.push('El Email no es válido.');
+    }
+    
+    // Validar formato de números solo si se proporcionan
+    if (cantidadPliegosCompraStr.trim() && isNaN(Number(cantidadPliegosCompraStr))) {
+      errores.push('La Cantidad de Pliegos de Compra debe ser un número.');
+    }
+    
+    if (excesoStr.trim() && isNaN(Number(excesoStr))) {
+      errores.push('El Exceso debe ser un número.');
+    }
+    
+    console.log('✅ FRONTEND - Validación completada, errores:', errores);
     return errores;
   };
 
   // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
   const crearOrdenTrabajo = async () => {
+    console.log('🚀 FRONTEND - Iniciando creación de orden');
+    console.log('🔍 FRONTEND - Verificando que la función se ejecute');
+    
     const errores = validarCampos();
     if (errores.length > 0) {
+      console.log('❌ FRONTEND - Errores de validación:', errores);
       setValidationErrors(errores);
       setShowValidationModal(true);
       return;
     }
+    
+    console.log('✅ FRONTEND - Validación pasada, enviando datos...');
+    
+    const dataToSend = {
+      // Datos generales
+      nombre_cliente,
+      contacto: direccion_cliente,
+      email: email_cliente,
+      telefono: telefono_cliente,
+      cantidad,
+      concepto,
+      fecha_creacion: fechaCreacion || null,
+      fecha_entrega: fechaEntrega || null,
+      estado,
+      notas_observaciones: notasObservaciones,
+      vendedor,
+      preprensa,
+      prensa,
+      terminados,
+      facturado,
+      id_cotizacion: cotizacionId || null,
+      id_detalle_cotizacion: idDetalleCotizacion,
+      // Detalle técnico
+      detalle: {
+        material: material,
+        corte_material: corteMaterial,
+        cantidad_pliegos_compra: cantidadPliegosCompra,
+        exceso: exceso,
+        total_pliegos: totalPliegos,
+        tamano: tamano,
+        tamano_abierto_1: tamanoAbierto1,
+        tamano_cerrado_1: tamanoCerrado1,
+        impresion: impresion,
+        instrucciones_impresion: instruccionesImpresion,
+        instrucciones_acabados: instruccionesAcabados,
+        instrucciones_empacado: instruccionesEmpacado,
+        observaciones: observaciones,
+        prensa_seleccionada: prensaSeleccionada
+      }
+    };
+    
+    console.log('📤 FRONTEND - Datos a enviar:', dataToSend);
+    
     try {
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Datos generales
-          nombre_cliente,
-          contacto: direccion_cliente,
-          email: email_cliente,
-          telefono: telefono_cliente,
-          cantidad,
-          concepto,
-          fecha_creacion: fechaCreacion || null,
-          fecha_entrega: fechaEntrega || null,
-          estado,
-          notas_observaciones: notasObservaciones,
-          vendedor,
-          preprensa,
-          prensa,
-          terminados,
-          facturado,
-                     id_cotizacion: cotizacionId || null,
-           id_detalle_cotizacion: idDetalleCotizacion,
-           // Detalle técnico
-           detalle: {
-             material: material,
-             corte_material: corteMaterial,
-             cantidad_pliegos_compra: cantidadPliegosCompra,
-             exceso: exceso,
-             total_pliegos: totalPliegos,
-             tamano: tamano,
-             tamano_abierto_1: tamanoAbierto1,
-             tamano_cerrado_1: tamanoCerrado1,
-             impresion: impresion,
-             instrucciones_impresion: instruccionesImpresion,
-             instrucciones_acabados: instruccionesAcabados,
-             instrucciones_empacado: instruccionesEmpacado,
-             observaciones: observaciones,
-             prensa_seleccionada: prensaSeleccionada
-           }
-        }),
+        body: JSON.stringify(dataToSend)
       });
-      if (!response.ok) throw new Error("Error al crear la orden");
+      
+      console.log('📥 FRONTEND - Respuesta recibida:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ FRONTEND - Error en respuesta:', errorData);
+        throw new Error("Error al crear la orden");
+      }
+      
       const data = await response.json();
+      console.log('✅ FRONTEND - Orden creada exitosamente:', data);
       setOrdenGuardadaNumero(data.numero_orden);
       setShowSuccessModal(true);
       // Notificación global para todos los usuarios
@@ -409,14 +517,25 @@ useEffect(() => {
         }
       }));
     } catch (error) {
+      console.error('❌ FRONTEND - Error en catch:', error);
       alert("Ocurrió un error al guardar la orden de trabajo.");
     }
   };
 
-  // Modificar editarOrdenTrabajo para validar antes de enviar
-  const editarOrdenTrabajo = async () => {
+  // Función para mostrar modal de confirmación de actualización
+  const confirmarActualizacion = () => {
+    setShowConfirmUpdateModal(true);
+  };
+
+  // Función para ejecutar la actualización después de confirmar
+  const ejecutarActualizacion = async () => {
+    setShowConfirmUpdateModal(false);
+    console.log('🚀 FRONTEND - Iniciando actualización de orden');
+    console.log('📋 FRONTEND - ordenId:', ordenId);
+    
     const errores = validarCampos();
     if (errores.length > 0) {
+      console.log('❌ FRONTEND - Errores de validación:', errores);
       setValidationErrors(errores);
       setShowValidationModal(true);
       return;
@@ -437,6 +556,7 @@ useEffect(() => {
           concepto,
           fecha_creacion: fechaCreacion || null,
           fecha_entrega: fechaEntrega || null,
+          estado,
           notas_observaciones: notasObservaciones,
           vendedor,
           preprensa,
@@ -467,9 +587,125 @@ useEffect(() => {
         throw new Error(data.error || "Error al editar la orden de trabajo");
       }
       setShowSuccessModal(true);
+      setOrdenGuardadaNumero(numero_orden);
+      // Notificación global para todos los usuarios
+      window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+        detail: {
+          titulo: "Orden de trabajo actualizada",
+          mensaje: `Se ha actualizado la orden de trabajo N° ${numero_orden}`,
+          fecha: new Date().toLocaleString()
+        }
+      }));
     } catch (error: unknown) {
       const err = error as Error;
       console.error("Error al actualizar la orden:", err.message);
+      alert("Error al actualizar la orden de trabajo: " + err.message);
+    }
+  };
+
+  // Función para mostrar modal de confirmación de crear como nueva
+  const confirmarCrearComoNueva = () => {
+    setShowConfirmCreateNewModal(true);
+  };
+
+  // Función para ejecutar la creación como nueva después de confirmar
+  const ejecutarCrearComoNueva = async () => {
+    setShowConfirmCreateNewModal(false);
+    console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
+    console.log('📋 FRONTEND - ordenId actual:', ordenId);
+    
+    const errores = validarCampos();
+    if (errores.length > 0) {
+      console.log('❌ FRONTEND - Errores de validación:', errores);
+      setValidationErrors(errores);
+      setShowValidationModal(true);
+      return;
+    }
+
+    try {
+      console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
+      
+      // Obtener el próximo número de orden
+      const responseProximo = await fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`);
+      if (!responseProximo.ok) {
+        throw new Error("Error al obtener el próximo número de orden");
+      }
+      const dataProximo = await responseProximo.json();
+      const nuevoNumeroOrden = dataProximo.proximoNumero;
+      
+      console.log('✅ FRONTEND - Próximo número obtenido:', nuevoNumeroOrden);
+      
+      const dataToSend = {
+        // Datos generales
+        nombre_cliente,
+        contacto: direccion_cliente,
+        email: email_cliente,
+        telefono: telefono_cliente,
+        cantidad,
+        concepto,
+        fecha_creacion: fechaCreacion || null,
+        fecha_entrega: fechaEntrega || null,
+        estado: 'pendiente', // Nueva orden siempre pendiente
+        notas_observaciones: notasObservaciones,
+        vendedor,
+        preprensa,
+        prensa,
+        terminados,
+        facturado,
+        id_cotizacion: cotizacionId || null,
+        id_detalle_cotizacion: idDetalleCotizacion,
+        // Detalle técnico
+        detalle: {
+          material: material,
+          corte_material: corteMaterial,
+          cantidad_pliegos_compra: cantidadPliegosCompra,
+          exceso: exceso,
+          total_pliegos: totalPliegos,
+          tamano: tamano,
+          tamano_abierto_1: tamanoAbierto1,
+          tamano_cerrado_1: tamanoCerrado1,
+          impresion: impresion,
+          instrucciones_impresion: instruccionesImpresion,
+          instrucciones_acabados: instruccionesAcabados,
+          instrucciones_empacado: instruccionesEmpacado,
+          observaciones: observaciones,
+          prensa_seleccionada: prensaSeleccionada
+        }
+      };
+      
+      console.log('📤 FRONTEND - Datos a enviar para nueva orden:', dataToSend);
+      
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSend)
+      });
+      
+      console.log('📥 FRONTEND - Respuesta recibida:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ FRONTEND - Error en respuesta:', errorData);
+        throw new Error("Error al crear la nueva orden");
+      }
+      
+      const data = await response.json();
+      console.log('✅ FRONTEND - Nueva orden creada exitosamente:', data);
+      
+      setOrdenGuardadaNumero(data.numero_orden);
+      setShowSuccessModal(true);
+      
+      // Notificación global para todos los usuarios
+      window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+        detail: {
+          titulo: "Nueva orden de trabajo",
+          mensaje: `Se ha creado la orden de trabajo N° ${data.numero_orden} como nueva`,
+          fecha: new Date().toLocaleString()
+        }
+      }));
+    } catch (error) {
+      console.error('❌ FRONTEND - Error en catch:', error);
+      alert("Ocurrió un error al crear la nueva orden de trabajo.");
     }
   };
 
@@ -483,9 +719,29 @@ useEffect(() => {
               <div className="flex-shrink-0">
                 <Logo/>
               </div>
-              <h2 className="text-xl font-bold text-gray-800">
+              <h2 className="text-xl font-bold text-gray-800 flex-1 text-center">
                 Orden de Trabajo
               </h2>
+              <div className="flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Estado:</label>
+                                     <select 
+                     className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
+                     value={estado}
+                     onChange={(e) => setEstado(e.target.value)}
+                   >
+                     <option value="pendiente">Pendiente</option>
+                     <option value="En Proceso">En Proceso</option>
+                     <option value="En Impresión">En Impresión</option>
+                     <option value="En Acabados">En Acabados</option>
+                     <option value="En Empacado">En Empacado</option>
+                     <option value="Listo para Entrega">Listo para Entrega</option>
+                     <option value="Entregado">Entregado</option>
+                     <option value="Facturado">Facturado</option>
+                     <option value="Cancelado">Cancelado</option>
+                   </select>
+                </div>
+              </div>
             </div>
 
             {/* Información General - Diseño compacto */}
@@ -889,39 +1145,54 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Botones */}
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="flex justify-end gap-4">
-              {ordenId && (
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => window.print()}>
-                  Imprimir
-                </button>
-              )}
-              
-              {!ordenId ? (
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={crearOrdenTrabajo}>
-                  Crear Orden
-                </button>
-              ) : (
-                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={editarOrdenTrabajo}>
-                  Editar Orden
-                </button>
-              )}
-              
-              <button
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded transition-colors"
-                onClick={() => {
-                  if (ordenId) {
-                    navigate('/ordendeTrabajo/ver');
-                  } else {
-                    window.history.back();
-                  }
-                }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+                     {/* Botones */}
+           <div className="bg-white rounded-lg shadow-md p-4">
+             <div className="flex justify-end gap-4">
+               
+               
+               {ordenId && (
+                 <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => window.print()}>
+                   Imprimir
+                 </button>
+               )}
+               
+               {!ordenId ? (
+                 <button type="button" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={crearOrdenTrabajo}>
+                   Crear Orden
+                 </button>
+               ) : (
+                 <>
+                                       <button
+                      type="button"
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
+                      onClick={confirmarCrearComoNueva}
+                    >
+                      Crear como Nueva
+                    </button>
+                    <button
+                      type="button"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+                      onClick={confirmarActualizacion}
+                    >
+                      Actualizar Orden
+                    </button>
+                 </>
+               )}
+               
+               <button
+                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded transition-colors"
+                 onClick={() => {
+                   if (ordenId) {
+                     navigate('/ordendeTrabajo/ver');
+                   } else {
+                     window.history.back();
+                   }
+                 }}
+               >
+                 Cancelar
+               </button>
+             </div>
+           </div>
         </div>
       </div>
 
@@ -944,23 +1215,87 @@ useEffect(() => {
           </div>
         </div>
       )}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
-            <h3 className="text-lg font-semibold mb-2 text-green-700">¡Orden guardada exitosamente!</h3>
-            <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded"
-              onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
-            >
-              Ir al listado de órdenes
-            </button>
+             {showSuccessModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+             <h3 className="text-lg font-semibold mb-2 text-green-700">
+               {ordenId ? '¡Orden actualizada exitosamente!' : '¡Orden guardada exitosamente!'}
+             </h3>
+             <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
+                           <button
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+                onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
+              >
+                Ir al listado de órdenes
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </>
-  );
-};
+        )}
+
+        {/* Modal de confirmación para Actualizar Orden */}
+        {showConfirmUpdateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+              <h3 className="text-lg font-semibold mb-4 text-blue-700">
+                ¿Confirmar actualización?
+              </h3>
+              <p className="mb-6 text-gray-700">
+                ¿Estás seguro de que deseas actualizar la orden de trabajo N° <span className="font-bold">{numero_orden}</span>?
+                <br />
+                <span className="text-sm text-gray-600">Esta acción no se puede deshacer.</span>
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded transition-colors"
+                  onClick={() => setShowConfirmUpdateModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+                  onClick={ejecutarActualizacion}
+                >
+                  Sí, Actualizar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para Crear como Nueva */}
+        {showConfirmCreateNewModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+              <h3 className="text-lg font-semibold mb-4 text-green-700">
+                ¿Crear como nueva orden?
+              </h3>
+              <p className="mb-6 text-gray-700">
+                ¿Estás seguro de que deseas crear una nueva orden basada en la orden N° <span className="font-bold">{numero_orden}</span>?
+                <br />
+                <span className="text-sm text-gray-600">
+                  Se creará una nueva orden con un nuevo número, manteniendo todos los datos actuales.
+                </span>
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded transition-colors"
+                  onClick={() => setShowConfirmCreateNewModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
+                  onClick={ejecutarCrearComoNueva}
+                >
+                  Sí, Crear Nueva
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
 
 export default OrdendeTrabajoEditar;
 
