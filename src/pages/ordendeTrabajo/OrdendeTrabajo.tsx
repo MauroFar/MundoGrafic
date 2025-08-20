@@ -80,6 +80,26 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [terminados, setTerminados] = useState('');
   const [facturado, setFacturado] = useState('');
 
+     // Nuevos estados para la información de trabajo
+   const [material, setMaterial] = useState('');
+   const [corteMaterial, setCorteMaterial] = useState('');
+   const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState('');
+   const [exceso, setExceso] = useState('');
+   const [totalPliegos, setTotalPliegos] = useState('');
+   const [tamano, setTamano] = useState('');
+       const [tamanoAbierto1, setTamanoAbierto1] = useState('');
+    const [tamanoCerrado1, setTamanoCerrado1] = useState('');
+   const [impresion, setImpresion] = useState('');
+   const [instruccionesImpresion, setInstruccionesImpresion] = useState('');
+   const [instruccionesAcabados, setInstruccionesAcabados] = useState('');
+   const [instruccionesEmpacado, setInstruccionesEmpacado] = useState('');
+   const [observaciones, setObservaciones] = useState('');
+   const [prensaSeleccionada, setPrensaSeleccionada] = useState('');
+   const [mostrarDropdownPrensa, setMostrarDropdownPrensa] = useState(false);
+
+  // Opciones de prensa
+  const opcionesPrensa = ['GTO 52', 'PM52', 'CD102'];
+
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -89,6 +109,34 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Función para calcular el total de pliegos
+  const calcularTotalPliegos = () => {
+    const pliegos = parseInt(cantidadPliegosCompra) || 0;
+    const excesoNum = parseInt(exceso) || 0;
+    const total = pliegos + excesoNum;
+    setTotalPliegos(total.toString());
+  };
+
+  // Efecto para recalcular el total cuando cambien los valores
+  useEffect(() => {
+    calcularTotalPliegos();
+  }, [cantidadPliegosCompra, exceso]);
+
+  // Efecto para cerrar el dropdown cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.prensa-dropdown')) {
+        setMostrarDropdownPrensa(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -129,6 +177,21 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setPrensa('');
       setTerminados('');
       setFacturado('');
+       // Limpiar nuevos campos
+               setMaterial('');
+        setCorteMaterial('');
+        setCantidadPliegosCompra('');
+        setExceso('');
+        setTotalPliegos('');
+        setTamano('');
+                 setTamanoAbierto1('');
+         setTamanoCerrado1('');
+        setImpresion('');
+        setInstruccionesImpresion('');
+        setInstruccionesAcabados('');
+        setInstruccionesEmpacado('');
+        setObservaciones('');
+        setPrensaSeleccionada('');
       setOrdenData(null);
       setIdDetalleCotizacion(null);
       // Obtener el próximo número de orden
@@ -206,6 +269,22 @@ useEffect(() => {
         setPrensasPliegosImprimir(ordenData.detalle?.prensas_pliegos_imprimir || '');
         setPrensasCabidaImpresion(ordenData.detalle?.prensas_cabida_impresion || '');
         setPrensasTotalImpresion(ordenData.detalle?.prensas_total_impresion || '');
+         
+         // Sincronizar nuevos campos
+                   setMaterial(ordenData.detalle?.material || '');
+          setCorteMaterial(ordenData.detalle?.corte_material || '');
+          setCantidadPliegosCompra(ordenData.detalle?.cantidad_pliegos_compra || '');
+          setExceso(ordenData.detalle?.exceso || '');
+          setTotalPliegos(ordenData.detalle?.total_pliegos || '');
+          setTamano(ordenData.detalle?.tamano || '');
+                     setTamanoAbierto1(ordenData.detalle?.tamano_abierto_1 || '');
+           setTamanoCerrado1(ordenData.detalle?.tamano_cerrado_1 || '');
+          setImpresion(ordenData.detalle?.impresion || '');
+          setInstruccionesImpresion(ordenData.detalle?.instrucciones_impresion || '');
+          setInstruccionesAcabados(ordenData.detalle?.instrucciones_acabados || '');
+          setInstruccionesEmpacado(ordenData.detalle?.instrucciones_empacado || '');
+          setObservaciones(ordenData.detalle?.observaciones || '');
+          setPrensaSeleccionada(ordenData.detalle?.prensa_seleccionada || '');
       }
     }
     setNombre_cliente(ordenData.nombre_cliente || '');
@@ -250,23 +329,20 @@ useEffect(() => {
     if (!telefono_cliente.trim()) errores.push('El campo Teléfono es obligatorio.');
     if (!email_cliente.trim()) errores.push('El campo Email es obligatorio.');
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_cliente)) errores.push('El Email no es válido.');
-    // Técnicos (detalle)
-    if (!tipoPapelProveedor.trim()) errores.push('El campo Tipo de Papel - Proveedor es obligatorio.');
-    if (!tipoPapelPrensa.trim()) errores.push('El campo Tipo de Papel - Prensa es obligatorio.');
-    if (!tipoPapelVelocidad.trim()) errores.push('El campo Tipo de Papel - Velocidad es obligatorio.');
-    if (!tipoPapelCalibre.trim()) errores.push('El campo Tipo de Papel - Calibre es obligatorio.');
-    if (!tipoPapelReferencia.trim()) errores.push('El campo Tipo de Papel - Referencia es obligatorio.');
-    if (!tipoPapelGramos.trim()) errores.push('El campo Tipo de Papel - Gramos es obligatorio.');
-    if (!tipoPapelTamano.trim()) errores.push('El campo Tipo de Papel - Tamaño es obligatorio.');
-    if (!tipoPapelCantColores.trim()) errores.push('El campo Tipo de Papel - Cantidad Colores es obligatorio.');
-    if (!tipoPapelCantPliegos.trim()) errores.push('El campo Tipo de Papel - Cantidad Pliegos es obligatorio.');
-    if (!tipoPapelExceso.trim()) errores.push('El campo Tipo de Papel - Exceso es obligatorio.');
-    if (!guillotinaPliegosCortar.trim()) errores.push('El campo Guillotina - Pliegos a Cortar es obligatorio.');
-    if (!guillotinaTamanoCorte.trim()) errores.push('El campo Guillotina - Tamaño de Corte es obligatorio.');
-    if (!guillotinaCabidaCorte.trim()) errores.push('El campo Guillotina - Cabida Corte es obligatorio.');
-    if (!prensasPliegosImprimir.trim()) errores.push('El campo Prensas - Pliegos a Imprimir es obligatorio.');
-    if (!prensasCabidaImpresion.trim()) errores.push('El campo Prensas - Cabida Impresión es obligatorio.');
-    if (!prensasTotalImpresion.trim()) errores.push('El campo Prensas - Total Impresión es obligatorio.');
+     
+     // Nuevos campos de trabajo
+     if (!material.trim()) errores.push('El campo Material es obligatorio.');
+     if (!corteMaterial.trim()) errores.push('El campo Corte de Material es obligatorio.');
+     if (!cantidadPliegosCompra.trim() || isNaN(Number(cantidadPliegosCompra))) errores.push('La Cantidad de Pliegos de Compra debe ser un número.');
+     if (!exceso.trim() || isNaN(Number(exceso))) errores.push('El Exceso debe ser un número.');
+           if (!tamanoAbierto1.trim()) errores.push('El campo Tamaño Abierto es obligatorio.');
+      if (!tamanoCerrado1.trim()) errores.push('El campo Tamaño Cerrado es obligatorio.');
+     if (!impresion.trim()) errores.push('El campo Impresión es obligatorio.');
+     if (!instruccionesImpresion.trim()) errores.push('El campo Instrucciones de Impresión es obligatorio.');
+     if (!instruccionesAcabados.trim()) errores.push('El campo Instrucciones de Acabados es obligatorio.');
+     if (!instruccionesEmpacado.trim()) errores.push('El campo Instrucciones de Empacado es obligatorio.');
+     if (!prensaSeleccionada.trim()) errores.push('El campo Prensa es obligatorio.');
+     
     return errores;
   };
 
@@ -299,27 +375,25 @@ useEffect(() => {
           prensa,
           terminados,
           facturado,
-          id_cotizacion: cotizacionId || null,
-          id_detalle_cotizacion: idDetalleCotizacion,
-          // Detalle técnico
-          detalle: {
-            tipo_papel_proveedor: tipoPapelProveedor,
-            tipo_papel_prensa: tipoPapelPrensa,
-            tipo_papel_velocidad: tipoPapelVelocidad,
-            tipo_papel_calibre: tipoPapelCalibre,
-            tipo_papel_referencia: tipoPapelReferencia,
-            tipo_papel_gramos: tipoPapelGramos,
-            tipo_papel_tamano: tipoPapelTamano,
-            tipo_papel_cant_colores: tipoPapelCantColores,
-            tipo_papel_cant_pliegos: tipoPapelCantPliegos,
-            tipo_papel_exceso: tipoPapelExceso,
-            guillotina_pliegos_cortar: guillotinaPliegosCortar,
-            guillotina_tamano_corte: guillotinaTamanoCorte,
-            guillotina_cabida_corte: guillotinaCabidaCorte,
-            prensas_pliegos_imprimir: prensasPliegosImprimir,
-            prensas_cabida_impresion: prensasCabidaImpresion,
-            prensas_total_impresion: prensasTotalImpresion
-          }
+                     id_cotizacion: cotizacionId || null,
+           id_detalle_cotizacion: idDetalleCotizacion,
+           // Detalle técnico
+           detalle: {
+             material: material,
+             corte_material: corteMaterial,
+             cantidad_pliegos_compra: cantidadPliegosCompra,
+             exceso: exceso,
+             total_pliegos: totalPliegos,
+             tamano: tamano,
+             tamano_abierto_1: tamanoAbierto1,
+             tamano_cerrado_1: tamanoCerrado1,
+             impresion: impresion,
+             instrucciones_impresion: instruccionesImpresion,
+             instrucciones_acabados: instruccionesAcabados,
+             instrucciones_empacado: instruccionesEmpacado,
+             observaciones: observaciones,
+             prensa_seleccionada: prensaSeleccionada
+           }
         }),
       });
       if (!response.ok) throw new Error("Error al crear la orden");
@@ -371,22 +445,20 @@ useEffect(() => {
           facturado,
           // Detalle técnico
           detalle: {
-            tipo_papel_proveedor: tipoPapelProveedor,
-            tipo_papel_prensa: tipoPapelPrensa,
-            tipo_papel_velocidad: tipoPapelVelocidad,
-            tipo_papel_calibre: tipoPapelCalibre,
-            tipo_papel_referencia: tipoPapelReferencia,
-            tipo_papel_gramos: tipoPapelGramos,
-            tipo_papel_tamano: tipoPapelTamano,
-            tipo_papel_cant_colores: tipoPapelCantColores,
-            tipo_papel_cant_pliegos: tipoPapelCantPliegos,
-            tipo_papel_exceso: tipoPapelExceso,
-            guillotina_pliegos_cortar: guillotinaPliegosCortar,
-            guillotina_tamano_corte: guillotinaTamanoCorte,
-            guillotina_cabida_corte: guillotinaCabidaCorte,
-            prensas_pliegos_imprimir: prensasPliegosImprimir,
-            prensas_cabida_impresion: prensasCabidaImpresion,
-            prensas_total_impresion: prensasTotalImpresion
+            material: material,
+            corte_material: corteMaterial,
+            cantidad_pliegos_compra: cantidadPliegosCompra,
+            exceso: exceso,
+            total_pliegos: totalPliegos,
+            tamano: tamano,
+            tamano_abierto_1: tamanoAbierto1,
+            tamano_cerrado_1: tamanoCerrado1,
+            impresion: impresion,
+            instrucciones_impresion: instruccionesImpresion,
+            instrucciones_acabados: instruccionesAcabados,
+            instrucciones_empacado: instruccionesEmpacado,
+            observaciones: observaciones,
+            prensa_seleccionada: prensaSeleccionada
           }
         }),
       });
@@ -403,284 +475,456 @@ useEffect(() => {
 
   return (
     <>
-    <div className="flex justify-center bg-gray-90 p-0 min-h-screen print-wrapper">
-      <div className="bg-white border border-gray-300 p-6 w-[210mm] h-[297mm] shadow-xl rounded-lg flex flex-col justify-between contenedor">
-        {/* Encabezado */}
-         
-        <div className="mb-2 flex items-center">
-          {/* Logo a la izquierda */}
-          <div className="flex-shrink-0 w-40 mt-0">
-            <Logo/>
+      <div className="min-h-screen bg-gray-100">
+        <div className="container mx-auto px-4 py-4">
+          {/* Encabezado */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-shrink-0">
+                <Logo/>
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">
+                Orden de Trabajo
+              </h2>
+            </div>
+
+            {/* Información General - Diseño compacto */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              {/* Primera columna: Orden y Cotización */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Orden N°:</label>
+                  <input
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-20"
+                    type="text"
+                    value={numero_orden}
+                    readOnly
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Cotización N°:</label>
+                  <input 
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-20" 
+                    type="text" 
+                    value={String(numero_cotizacion).padStart(6, '0')}
+                    onChange={(e) => setNumero_cotizacion(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Segunda columna: Fechas */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Fecha Creación:</label>
+                  <input 
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                    type="date"   
+                    value={fechaCreacion}
+                    onChange={(e) => setFechaCreacion(e.target.value)} 
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Fecha Entrega:</label>
+                  <input 
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                    type="date" 
+                    value={fechaEntrega} 
+                    onChange={e => setFechaEntrega(e.target.value)} 
+                  />
+                </div>
+              </div>
+
+                             {/* Tercera columna: Cliente y Contacto */}
+               <div className="space-y-2">
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700">Cliente:</label>
+                   <input 
+                     className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                     type="text"  
+                     value={nombre_cliente}
+                     onChange={(e) => setNombre_cliente(e.target.value)}
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700">Contacto:</label>
+                   <input 
+                     className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                     type="text" 
+                     value={direccion_cliente} 
+                     onChange={e => setDireccion_cliente(e.target.value)} 
+                   />
+                 </div>
+               </div>
+
+               {/* Cuarta columna: Teléfono y Email */}
+               <div className="space-y-2">
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700">Teléfono:</label>
+                   <input 
+                     className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                     type="text" 
+                     value={telefono_cliente} 
+                     onChange={e => setTelefono_cliente(e.target.value)} 
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-semibold text-gray-700">Email:</label>
+                   <input 
+                     className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                     type="text" 
+                     value={email_cliente} 
+                     onChange={e => setEmail_cliente(e.target.value)} 
+                   />
+                 </div>
+               </div>
+             </div>
           </div>
 
-          {/* Título centrado */}
-          <h2 className="flex-grow text-center text-xl font-bold text-gray-800">
-            Orden de Trabajo
-          </h2>
-          {/* Quitar campo Estado del encabezado */}
-        </div>
+                     {/* Información del Trabajo - Diseño compacto */}
+           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+             <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+               Información del Trabajo
+             </h3>
+             
+                                                                                                                                                                                                                               <div className="flex gap-4 items-start">
+                   <div className="flex flex-col">
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                     <input 
+                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                       type="text" 
+                       value={cantidad} 
+                       onChange={e => setCantidad(e.target.value)} 
+                     />
+                   </div>
 
-        {/* Información General */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="flex gap-4 items-center">
-<div className="flex items-center gap-2">
-  <p className="font-semibold text-gray-600">Orden N°:</p>
-  <input
-    className="border border-gray-300 rounded-md p-1 w-20 text-gray-700 text-sm"
-    type="text"
-    value={numero_orden}
-    readOnly
-  />
-</div>
+                   <div className="flex-1 flex flex-col">
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
+                     <textarea
+                       className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                       rows={2}
+                       value={concepto}
+                       onChange={(e) => setConcepto(e.target.value)}
+                       placeholder="Descripción del trabajo..."
+                     />
+                   </div>
 
-  
-  <div className="flex items-center gap-2">
-    <p className="font-semibold text-gray-600">Cotización N°:</p>
-    <input className="border border-gray-300 rounded-md p-1 w-20 text-gray-700 text-sm" 
-    type="text" value={String(numero_cotizacion).padStart(6, '0')}
-  onChange={(e) => setNumero_cotizacion(e.target.value)}
-/>
-  </div>
-   
-  <div className="flex items-center gap-2">
-    <p className="font-semibold text-gray-600">Fecha Creacion:</p>
-    <input className="border border-gray-300 rounded-md p-1 w-30 text-gray-700 text-sm" type="date"   value={fechaCreacion}
-  onChange={(e) => setFechaCreacion(e.target.value)} />
-  </div>
-   
-  <div className="flex items-center gap-2">
-    <p className="font-semibold text-gray-600">Fecha Entrega:</p>
-    <input className="border border-gray-300 rounded-md p-1 w-30 text-gray-700 text-sm" type="date" value={fechaEntrega} onChange={e => setFechaEntrega(e.target.value)} />
-  </div>
-</div>
- </div>
-         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <p className="font-semibold text-gray-600">Cliente:</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" 
-            type="text"  value={nombre_cliente}
-  onChange={(e) => setNombre_cliente(e.target.value)}/>
-            <p className="font-semibold text-gray-600">Teléfono:</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={telefono_cliente} onChange={e => setTelefono_cliente(e.target.value)} />
+                   <div className="flex flex-col">
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Tamaño Abierto</label>
+                     <input 
+                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                       type="text" 
+                       placeholder="5x9"
+                       value={tamanoAbierto1}
+                       onChange={e => setTamanoAbierto1(e.target.value)}
+                     />
+                   </div>
+
+                   <div className="flex flex-col">
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Tamaño Cerrado</label>
+                     <input 
+                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                       type="text" 
+                       placeholder="5x9"
+                       value={tamanoCerrado1}
+                       onChange={e => setTamanoCerrado1(e.target.value)}
+                     />
+                   </div>
+                 </div>
+           </div>
+
+          {/* Material y Corte - Diseño horizontal */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Material y Corte
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
+                  rows={2}
+                  value={material}
+                  onChange={e => setMaterial(e.target.value)}
+                  placeholder="Especificaciones del material..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Corte de Material</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
+                  rows={2}
+                  value={corteMaterial}
+                  onChange={e => setCorteMaterial(e.target.value)}
+                  placeholder="Instrucciones de corte..."
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-gray-600">Contacto</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={direccion_cliente} onChange={e => setDireccion_cliente(e.target.value)} />
-            <p className="font-semibold text-gray-600">Email</p>
-            <input className="border border-gray-300 rounded-md p-1 w-full text-gray-700 text-sm" type="text" value={email_cliente} onChange={e => setEmail_cliente(e.target.value)} />
+
+          {/* Cantidad de Pliegos - Diseño compacto */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Cantidad de Pliegos
+            </h3>
+            
+            <div className="flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pliegos de Compra</label>
+                <input 
+                  className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500" 
+                  type="number" 
+                  value={cantidadPliegosCompra}
+                  onChange={e => setCantidadPliegosCompra(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exceso</label>
+                <input 
+                  className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500" 
+                  type="number" 
+                  value={exceso}
+                  onChange={e => setExceso(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                <input 
+                  className="w-24 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed" 
+                  type="text" 
+                  value={totalPliegos}
+                  readOnly
+                />
+              </div>
+            </div>
           </div>
-       
-</div>
-        {/* Información Trabajo */}
-          <h3 className="font-bold text-lg text-gray-800 mb-2">Información del Trabajo</h3>
-        
-<div className="flex flex-wrap gap-4 mb-4">
-  <div className="flex flex-col basis-1/12">
-    <p className="font-semibold text-gray-600">Cantidad:</p>
-    <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" value={cantidad} onChange={e => setCantidad(e.target.value)} />
-  </div>
 
-  <div className="flex flex-col basis-4/12">
-    <p className="font-semibold text-gray-600">Concepto:</p>
-    
-     <textarea
-          className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-90 resize-none"
-          rows={1}
-         value={concepto}
-  onChange={(e) => setConcepto(e.target.value)}
-        />
-  </div>
+          {/* Impresión y Acabados - Diseño horizontal */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Impresión y Acabados
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+                  rows={2}
+                  value={impresion}
+                  onChange={e => setImpresion(e.target.value)}
+                  placeholder="Especificaciones de impresión..."
+                />
+              </div>
 
-  {/* Grupo 1: Tamaño Abierto + Páginas Portada */}
-  <div className="flex flex-col basis-2/12 gap-2">
-    <div>
-      <p className="font-semibold text-gray-600">Tamaño Abierto:</p>
-      <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" />
-    </div>
-    <div>
-      <p className="font-semibold text-gray-600 whitespace-nowrap">Páginas Portada:</p>
-      <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" />
-    </div>
-  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Impresión</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+                  rows={2}
+                  value={instruccionesImpresion}
+                  onChange={e => setInstruccionesImpresion(e.target.value)}
+                  placeholder="Instrucciones específicas..."
+                />
+              </div>
 
-  {/* Grupo 2: Tamaño Cerrado + Páginas Interiores */}
-  <div className="flex flex-col basis-2/12 gap-2">
-    <div>
-      <p className="font-semibold text-gray-600">Tamaño Cerrado:</p>
-      <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" />
-    </div>
-    <div>
-      <p className="font-semibold text-gray-600 whitespace-nowrap">Páginas Interiores:</p>
-      <input className="border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full" type="text" />
-    </div>
-  </div>
-</div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Acabados</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                  rows={2}
+                  value={instruccionesAcabados}
+                  onChange={e => setInstruccionesAcabados(e.target.value)}
+                  placeholder="Instrucciones de acabados..."
+                />
+              </div>
 
-<div className="flex flex-wrap gap-4 mb-4">
-  {/* Columna 1: Tipo de Papel */}
-  <p className="font-semibold text-gray-700 underline">Tipo de Papel</p>
-    
-    <div>
-      <p className="text-sm text-gray-600">Proveedor:</p>
-      <input className="input-field" type="text" value={tipoPapelProveedor} onChange={e => setTipoPapelProveedor(e.target.value)} />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Empacado</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                  rows={2}
+                  value={instruccionesEmpacado}
+                  onChange={e => setInstruccionesEmpacado(e.target.value)}
+                  placeholder="Instrucciones de empacado..."
+                />
+              </div>
+            </div>
+          </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Prensa:</p>
-      <input className="input-field" type="text" value={tipoPapelPrensa} onChange={e => setTipoPapelPrensa(e.target.value)} />
-    </div>
+          {/* Prensa y Observaciones - Diseño horizontal */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Prensa y Observaciones
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="relative prensa-dropdown">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar Prensa</label>
+                <div className="relative">
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 pr-8" 
+                    type="text" 
+                    value={prensaSeleccionada}
+                    onChange={e => setPrensaSeleccionada(e.target.value)}
+                    onFocus={() => setMostrarDropdownPrensa(true)}
+                    placeholder="Seleccionar o escribir prensa..."
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => setMostrarDropdownPrensa(!mostrarDropdownPrensa)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {mostrarDropdownPrensa && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-10 mt-1">
+                    {opcionesPrensa.map((opcion, index) => (
+                      <div
+                        key={index}
+                        className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                        onClick={() => {
+                          setPrensaSeleccionada(opcion);
+                          setMostrarDropdownPrensa(false);
+                        }}
+                      >
+                        {opcion}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Vel x Hora:</p>
-      <input className="input-field" type="text" value={tipoPapelVelocidad} onChange={e => setTipoPapelVelocidad(e.target.value)} />
-    </div>
-  <div className="flex flex-col basis-4/12 gap-2">
-    
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones Generales</label>
+                <textarea
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                  rows={2}
+                  value={observaciones}
+                  onChange={e => setObservaciones(e.target.value)}
+                  placeholder="Observaciones generales del trabajo..."
+                />
+              </div>
+            </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Calibre:</p>
-      <input className="input-field" type="text" value={tipoPapelCalibre} onChange={e => setTipoPapelCalibre(e.target.value)} />
-    </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notas Adicionales</label>
+              <textarea 
+                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none" 
+                rows={2}
+                placeholder="Añadir notas adicionales aquí..." 
+                value={notasObservaciones} 
+                onChange={e => setNotasObservaciones(e.target.value)}
+              />
+            </div>
+          </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Referencia:</p>
-      <input className="input-field" type="text" value={tipoPapelReferencia} onChange={e => setTipoPapelReferencia(e.target.value)} />
-    </div>
+          {/* Responsables del Proceso - Diseño compacto */}
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Responsables del Proceso
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
+                <input 
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                  type="text" 
+                  placeholder="Nombre" 
+                  value={vendedor} 
+                  onChange={e => setVendedor(e.target.value)} 
+                />
+              </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Gramos:</p>
-      <input className="input-field" type="text" value={tipoPapelGramos} onChange={e => setTipoPapelGramos(e.target.value)} />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Preprensa</label>
+                <input 
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                  type="text" 
+                  placeholder="Responsable" 
+                  value={preprensa} 
+                  onChange={e => setPreprensa(e.target.value)} 
+                />
+              </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Tamaño:</p>
-      <input className="input-field" type="text" value={tipoPapelTamano} onChange={e => setTipoPapelTamano(e.target.value)} />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Prensa</label>
+                <input 
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                  type="text" 
+                  placeholder="Responsable" 
+                  value={prensa} 
+                  onChange={e => setPrensa(e.target.value)} 
+                />
+              </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Cantidad Colores:</p>
-      <input className="input-field" type="text" value={tipoPapelCantColores} onChange={e => setTipoPapelCantColores(e.target.value)} />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
+                <input 
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                  type="text" 
+                  placeholder="Responsable" 
+                  value={terminados} 
+                  onChange={e => setTerminados(e.target.value)} 
+                />
+              </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Cantidad Pliegos:</p>
-      <input className="input-field" type="text" value={tipoPapelCantPliegos} onChange={e => setTipoPapelCantPliegos(e.target.value)} />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Facturado</label>
+                <input 
+                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                  type="text" 
+                  value={facturado} 
+                  onChange={e => setFacturado(e.target.value)} 
+                />
+              </div>
+            </div>
+          </div>
 
-    <div>
-      <p className="text-sm text-gray-600">Exceso:</p>
-      <input className="input-field" type="text" value={tipoPapelExceso} onChange={e => setTipoPapelExceso(e.target.value)} />   
-    </div>
-  </div>
-  
-
-  {/* Columna 2: Guillotina */}
-  <div className="flex flex-col basis-4/12 gap-2">
-    <p className="font-semibold text-gray-700 underline">Guillotina</p>
-    
-    <div>
-      <p className="text-sm text-gray-600">Pliegos a Cortar:</p>
-      <input className="input-field" type="text" value={guillotinaPliegosCortar} onChange={e => setGuillotinaPliegosCortar(e.target.value)} />
-    </div>
-
-    <div>
-      <p className="text-sm text-gray-600">Tamaño de Corte:</p>
-      <input className="input-field" type="text" value={guillotinaTamanoCorte} onChange={e => setGuillotinaTamanoCorte(e.target.value)} />
-    </div>
-
-    <div>
-      <p className="text-sm text-gray-600">Cabida Corte:</p>
-      <input className="input-field" type="text" value={guillotinaCabidaCorte} onChange={e => setGuillotinaCabidaCorte(e.target.value)} />
-    </div>
-  </div>
-
-  {/* Columna 3: Prensas */}
-  <div className="flex flex-col basis-3/12 gap-2">
-    <p className="font-semibold text-gray-700 underline">Prensas</p>
-    
-    <div>
-      <p className="text-sm text-gray-600">Pliegos a Imprimir:</p>
-      <input className="input-field" type="text" value={prensasPliegosImprimir} onChange={e => setPrensasPliegosImprimir(e.target.value)} />
-    </div>
-
-    <div>
-      <p className="text-sm text-gray-600">Cabida Impresión:</p>
-      <input className="input-field" type="text" value={prensasCabidaImpresion} onChange={e => setPrensasCabidaImpresion(e.target.value)} />
-    </div>
-
-    <div>
-      <p className="text-sm text-gray-600">Total Impresión:</p>
-      <input className="input-field" type="text" value={prensasTotalImpresion} onChange={e => setPrensasTotalImpresion(e.target.value)} />
-    </div>
-  </div>
-</div>
-
-
-        {/* Notas y Observaciones */}
-        <h3 className="font-bold text-lg text-gray-800 mb-2">Notas y Observaciones</h3>
-        <textarea className="border border-gray-300 p-2 rounded-md w-full h-24 text-sm text-gray-700 mb-4" placeholder="Añadir notas u observaciones aquí..." value={notasObservaciones} onChange={e => setNotasObservaciones(e.target.value)}></textarea>
-      <div className="flex justify-between gap-4 mb-2 p-0">
-  {/* Vendedor */}
-  <div className="flex flex-col items-start text-center w-1/5">
-    <p className="font-semibold text-xs text-gray-700 underline mb-1">Vendedor</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Nombre" value={vendedor} onChange={e => setVendedor(e.target.value)} />
-  </div>
-
-  {/* Preprensa */}           
-  <div className="flex flex-col items-start text-center w-1/5">
-    <p className="font-semibold text-xs text-gray-700 underline mb-1">Preprensa</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={preprensa} onChange={e => setPreprensa(e.target.value)} />
-  </div>
-
-  {/* Prensa */}
-  <div className="flex flex-col items-start text-center w-1/5">
-    <p className="font-semibold text-xs text-gray-700 underline mb-1">Prensa</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={prensa} onChange={e => setPrensa(e.target.value)} />
-  </div>
-
-  {/* Terminados */}
-  <div className="flex flex-col items-start text-center w-1/5">
-    <p className="font-semibold text-xs text-gray-700 underline mb-1">Terminados</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Responsable" value={terminados} onChange={e => setTerminados(e.target.value)} />
-  </div>
-
-  {/* Facturado */}
-  <div className="flex flex-col items-start text-center w-1/5">
-    <p className="font-semibold text-xs text-gray-700 underline mb-1">Facturado</p>
-    <input className="input-field text-xs w-full" type="text" placeholder="Sí / No" value={facturado} onChange={e => setFacturado(e.target.value)} />
-  </div>
-</div>
-
-  
-      </div>
-    </div>
           {/* Botones */}
-        <div className="flex justify-end gap-4 mb-4 botones-opcion">
-          {/* Mostrar Imprimir solo en edición */}
-          {ordenId && (
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={() => window.print()}>Imprimir</button>
-          )}
-          {/* Botón Crear/Editar */}
-          {!ordenId ? (
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={crearOrdenTrabajo}>Crear Orden</button>
-          ) : (
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={editarOrdenTrabajo}>Editar Orden</button>
-          )}
-          {/* Botón Cancelar */}
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded"
-            onClick={() => {
-              if (ordenId) {
-                navigate('/ordendeTrabajo/ver');
-              } else {
-                // Si es creación, puedes limpiar el formulario o navegar atrás
-                window.history.back();
-              }
-            }}
-          >
-            Cancelar
-          </button>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex justify-end gap-4">
+              {ordenId && (
+                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => window.print()}>
+                  Imprimir
+                </button>
+              )}
+              
+              {!ordenId ? (
+                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={crearOrdenTrabajo}>
+                  Crear Orden
+                </button>
+              ) : (
+                <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={editarOrdenTrabajo}>
+                  Editar Orden
+                </button>
+              )}
+              
+              <button
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded transition-colors"
+                onClick={() => {
+                  if (ordenId) {
+                    navigate('/ordendeTrabajo/ver');
+                  } else {
+                    window.history.back();
+                  }
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
+
       {/* Modal de errores de validación */}
       {showValidationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -701,21 +945,23 @@ useEffect(() => {
         </div>
       )}
       {showSuccessModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
-        <h3 className="text-lg font-semibold mb-2 text-green-700">¡Orden guardada exitosamente!</h3>
-        <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
-        <button
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-          onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
-        >
-          Ir al listado de órdenes
-        </button>
-      </div>
-    </div>
-  )}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <h3 className="text-lg font-semibold mb-2 text-green-700">¡Orden guardada exitosamente!</h3>
+            <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+              onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
+            >
+              Ir al listado de órdenes
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 export default OrdendeTrabajoEditar;
+
+

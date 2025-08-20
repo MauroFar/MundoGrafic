@@ -1,0 +1,987 @@
+{
+  "timestamp": "2025-08-20T16:50:19.176Z",
+  "database": "sistema_mg",
+  "tables": [
+    {
+      "name": "areas",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('areas_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "nombre",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 100
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "areas_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "areas",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_17031_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17031_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "areas_pkey",
+          "indexdef": "CREATE UNIQUE INDEX areas_pkey ON public.areas USING btree (id)"
+        }
+      ]
+    },
+    {
+      "name": "clientes",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('clientes_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "nombre_cliente",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 255
+        },
+        {
+          "column_name": "direccion_cliente",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "telefono_cliente",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 20
+        },
+        {
+          "column_name": "email_cliente",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "clientes_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "clientes",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_16494_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16494_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "clientes_pkey",
+          "indexdef": "CREATE UNIQUE INDEX clientes_pkey ON public.clientes USING btree (id)"
+        }
+      ]
+    },
+    {
+      "name": "cotizaciones",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('cotizaciones_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "cliente_id",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "fecha",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": "CURRENT_DATE",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "subtotal",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "iva",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "descuento",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "total",
+          "data_type": "numeric",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "estado",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": "'Pendiente'::character varying",
+          "character_maximum_length": 50
+        },
+        {
+          "column_name": "ruc_id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "numero_cotizacion",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tiempo_entrega",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100
+        },
+        {
+          "column_name": "forma_pago",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100
+        },
+        {
+          "column_name": "validez_proforma",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100
+        },
+        {
+          "column_name": "observaciones",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "usuario_id",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "cotizaciones_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "cotizaciones",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "cotizaciones_cliente_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "cliente_id",
+          "foreign_table_name": "clientes",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "cotizaciones_ruc_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "ruc_id",
+          "foreign_table_name": "rucs",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "cotizaciones_numero_cotizacion_key",
+          "constraint_type": "UNIQUE",
+          "column_name": "numero_cotizacion",
+          "foreign_table_name": "cotizaciones",
+          "foreign_column_name": "numero_cotizacion"
+        },
+        {
+          "constraint_name": "fk_usuario",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "usuario_id",
+          "foreign_table_name": "usuarios",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_16522_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16522_10_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "cotizaciones_pkey",
+          "indexdef": "CREATE UNIQUE INDEX cotizaciones_pkey ON public.cotizaciones USING btree (id)"
+        },
+        {
+          "indexname": "cotizaciones_numero_cotizacion_key",
+          "indexdef": "CREATE UNIQUE INDEX cotizaciones_numero_cotizacion_key ON public.cotizaciones USING btree (numero_cotizacion)"
+        }
+      ]
+    },
+    {
+      "name": "detalle_cotizacion",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('detalle_cotizacion_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "cotizacion_id",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "cantidad",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "detalle",
+          "data_type": "text",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "valor_unitario",
+          "data_type": "numeric",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "valor_total",
+          "data_type": "numeric",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "imagen_ruta",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255
+        },
+        {
+          "column_name": "imagen_height",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "imagen_width",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "detalle_cotizacion_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "detalle_cotizacion",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "detalle_cotizacion_cotizacion_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "cotizacion_id",
+          "foreign_table_name": "cotizaciones",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_16541_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16541_3_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16541_4_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16541_5_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16541_6_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "detalle_cotizacion_pkey",
+          "indexdef": "CREATE UNIQUE INDEX detalle_cotizacion_pkey ON public.detalle_cotizacion USING btree (id)"
+        }
+      ]
+    },
+    {
+      "name": "detalle_orden_trabajo",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('detalle_orden_trabajo_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "orden_trabajo_id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_proveedor",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_prensa",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_velocidad",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_calibre",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_referencia",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_gramos",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_tamano",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_cant_colores",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_cant_pliegos",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "tipo_papel_exceso",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "guillotina_pliegos_cortar",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "guillotina_tamano_corte",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "guillotina_cabida_corte",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "prensas_pliegos_imprimir",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "prensas_cabida_impresion",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "prensas_total_impresion",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "detalle_orden_trabajo_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "detalle_orden_trabajo",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "fk_orden_trabajo",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "orden_trabajo_id",
+          "foreign_table_name": "orden_trabajo",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_17206_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17206_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "detalle_orden_trabajo_pkey",
+          "indexdef": "CREATE UNIQUE INDEX detalle_orden_trabajo_pkey ON public.detalle_orden_trabajo USING btree (id)"
+        }
+      ]
+    },
+    {
+      "name": "orden_trabajo",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('orden_trabajo_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "numero_orden",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('numero_orden_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "id_cotizacion",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "fecha_creacion",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "nombre_cliente",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255
+        },
+        {
+          "column_name": "concepto",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "estado",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 50
+        },
+        {
+          "column_name": "fecha_entrega",
+          "data_type": "date",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "contacto",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "email",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "telefono",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "notas_observaciones",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "vendedor",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "preprensa",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "prensa",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "terminados",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "facturado",
+          "data_type": "text",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "cantidad",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 20
+        },
+        {
+          "column_name": "id_detalle_cotizacion",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "orden_trabajo_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "orden_trabajo",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "orden_trabajo_numero_orden_key",
+          "constraint_type": "UNIQUE",
+          "column_name": "numero_orden",
+          "foreign_table_name": "orden_trabajo",
+          "foreign_column_name": "numero_orden"
+        },
+        {
+          "constraint_name": "orden_trabajo_id_cotizacion_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "id_cotizacion",
+          "foreign_table_name": "cotizaciones",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "fk_detalle_cotizacion",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "id_detalle_cotizacion",
+          "foreign_table_name": "detalle_cotizacion",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_16739_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16739_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "orden_trabajo_pkey",
+          "indexdef": "CREATE UNIQUE INDEX orden_trabajo_pkey ON public.orden_trabajo USING btree (id)"
+        },
+        {
+          "indexname": "orden_trabajo_numero_orden_key",
+          "indexdef": "CREATE UNIQUE INDEX orden_trabajo_numero_orden_key ON public.orden_trabajo USING btree (numero_orden)"
+        }
+      ]
+    },
+    {
+      "name": "rucs",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('rucs_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "ruc",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 20
+        },
+        {
+          "column_name": "descripcion",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 255
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "rucs_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "rucs",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_16446_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_16446_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "rucs_pkey",
+          "indexdef": "CREATE UNIQUE INDEX rucs_pkey ON public.rucs USING btree (id)"
+        }
+      ]
+    },
+    {
+      "name": "usuarios",
+      "structure": [
+        {
+          "column_name": "id",
+          "data_type": "integer",
+          "is_nullable": "NO",
+          "column_default": "nextval('usuarios_id_seq'::regclass)",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "email",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 150
+        },
+        {
+          "column_name": "password_hash",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 255
+        },
+        {
+          "column_name": "nombre",
+          "data_type": "character varying",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": 100
+        },
+        {
+          "column_name": "rol",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 50
+        },
+        {
+          "column_name": "area_id",
+          "data_type": "integer",
+          "is_nullable": "YES",
+          "column_default": null,
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "activo",
+          "data_type": "boolean",
+          "is_nullable": "YES",
+          "column_default": "true",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "fecha_creacion",
+          "data_type": "timestamp without time zone",
+          "is_nullable": "YES",
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null
+        },
+        {
+          "column_name": "nombre_usuario",
+          "data_type": "character varying",
+          "is_nullable": "NO",
+          "column_default": null,
+          "character_maximum_length": 50
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "usuarios_nombre_usuario_key",
+          "constraint_type": "UNIQUE",
+          "column_name": "nombre_usuario",
+          "foreign_table_name": "usuarios",
+          "foreign_column_name": "nombre_usuario"
+        },
+        {
+          "constraint_name": "usuarios_rol_check",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": "usuarios",
+          "foreign_column_name": "rol"
+        },
+        {
+          "constraint_name": "usuarios_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "column_name": "id",
+          "foreign_table_name": "usuarios",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "usuarios_email_key",
+          "constraint_type": "UNIQUE",
+          "column_name": "email",
+          "foreign_table_name": "usuarios",
+          "foreign_column_name": "email"
+        },
+        {
+          "constraint_name": "usuarios_area_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "column_name": "area_id",
+          "foreign_table_name": "areas",
+          "foreign_column_name": "id"
+        },
+        {
+          "constraint_name": "2200_17038_1_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17038_2_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17038_3_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17038_5_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        },
+        {
+          "constraint_name": "2200_17038_9_not_null",
+          "constraint_type": "CHECK",
+          "column_name": null,
+          "foreign_table_name": null,
+          "foreign_column_name": null
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "usuarios_pkey",
+          "indexdef": "CREATE UNIQUE INDEX usuarios_pkey ON public.usuarios USING btree (id)"
+        },
+        {
+          "indexname": "usuarios_email_key",
+          "indexdef": "CREATE UNIQUE INDEX usuarios_email_key ON public.usuarios USING btree (email)"
+        },
+        {
+          "indexname": "usuarios_nombre_usuario_key",
+          "indexdef": "CREATE UNIQUE INDEX usuarios_nombre_usuario_key ON public.usuarios USING btree (nombre_usuario)"
+        }
+      ]
+    }
+  ]
+}
