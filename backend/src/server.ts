@@ -105,7 +105,7 @@ function getLocalIP() {
 }
 
 // Puerto
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   const ips = getLocalIP();
   const localIP = ips.length > 0 ? ips[0].address : 'localhost';
