@@ -120,6 +120,17 @@ async function restoreFromBackup() {
 }
 
 function generateCreateTableSQL(tableName, columns) {
+  // Crear secuencia si la tabla tiene columna id con nextval
+  let sequenceSQL = '';
+  const idColumn = columns.find(col => col.column_name === 'id' && col.column_default && col.column_default.includes('nextval'));
+  
+  if (idColumn) {
+    const sequenceName = `${tableName}_id_seq`;
+    sequenceSQL = `
+      CREATE SEQUENCE IF NOT EXISTS "${sequenceName}";
+    `;
+  }
+  
   const columnDefs = columns.map(col => {
     let def = `"${col.column_name}" ${col.data_type}`;
     
@@ -139,6 +150,7 @@ function generateCreateTableSQL(tableName, columns) {
   }).join(',\n  ');
   
   return `
+    ${sequenceSQL}
     CREATE TABLE IF NOT EXISTS "${tableName}" (
       ${columnDefs}
     );
