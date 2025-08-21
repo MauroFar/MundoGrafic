@@ -35,6 +35,9 @@ module.exports = {
       password: process.env.DB_PASSWORD,
       port: parseInt(process.env.DB_PORT || '5432'),
     },
+    // Configuración para crear la base de datos si no existe
+    postProcessResponse: (result) => result,
+    acquireConnectionTimeout: 60000,
     migrations: {
       directory: './src/db/migrations',
       tableName: 'knex_migrations'
