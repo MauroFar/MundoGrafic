@@ -8,20 +8,21 @@ require('dotenv').config();
 async function restoreFromBackup() {
   console.log('🔄 Restaurando base de datos desde backup...');
   
-  // Buscar el archivo de backup más reciente
+  // Usar específicamente el backup del 20 de agosto que tiene todas las tablas
   const backupDir = path.join(__dirname, 'backups');
-  const backupFiles = await fs.readdir(backupDir);
-  const jsonBackups = backupFiles.filter(file => file.endsWith('.json')).sort().reverse();
+  const targetBackup = 'backup-2025-08-20.json';
+  const backupPath = path.join(backupDir, targetBackup);
   
-  if (jsonBackups.length === 0) {
-    console.error('❌ No se encontraron archivos de backup');
+  // Verificar que el archivo existe
+  try {
+    await fs.access(backupPath);
+  } catch (error) {
+    console.error(`❌ No se encontró el archivo de backup: ${targetBackup}`);
+    console.error('   Asegúrate de que el archivo backup-2025-08-20.json esté en la carpeta backups/');
     return;
   }
   
-  const latestBackup = jsonBackups[0];
-  const backupPath = path.join(backupDir, latestBackup);
-  
-  console.log(`📁 Usando backup: ${latestBackup}`);
+  console.log(`📁 Usando backup: ${targetBackup}`);
   
   try {
     // Leer archivo de backup
