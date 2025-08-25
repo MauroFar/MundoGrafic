@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
+import authRequired from "../middleware/auth";
 require('dotenv').config();
 
 // Configurar el transporter de Nodemailer
@@ -888,7 +889,7 @@ const generarPDF = async (htmlContent) => {
 
 const CotizacionDatos = (client: any) => {
   // Ruta para crear una cotización y guardar todos los datos del cliente
-  router.post("/", async (req: any, res: any) => {
+  router.post("/", authRequired(), async (req: any, res: any) => {
     const { 
       fecha, 
       subtotal, 
@@ -961,7 +962,7 @@ const CotizacionDatos = (client: any) => {
     }
   });
 
-  router.get("/ultima", async (req: any, res: any) => {
+  router.get("/ultima", authRequired(), async (req: any, res: any) => {
     try {
       const ultimoNumeroQuery = "SELECT numero_cotizacion FROM cotizaciones ORDER BY numero_cotizacion DESC LIMIT 1";
       const ultimoNumeroResult = await client.query(ultimoNumeroQuery);
@@ -981,7 +982,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Obtener todas las cotizaciones con filtros simplificados
-  router.get("/todas", async (req: any, res: any) => {
+  router.get("/todas", authRequired(), async (req: any, res: any) => {
     console.log("Recibiendo petición en /todas");
     const { busqueda, fechaDesde, fechaHasta, limite, ordenar } = req.query;
     const user = req.user;
@@ -1060,7 +1061,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   ///*Cotizaciones editar*////////
-  router.get("/:id", async (req: any, res: any) => {
+  router.get("/:id", authRequired(), async (req: any, res: any) => {
     try {
       const { id } = req.params;
   
@@ -1079,7 +1080,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Actualizar una cotización existente
-  router.put("/:id", async (req: any, res: any) => {
+  router.put("/:id", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     const { 
       fecha, 
@@ -1139,8 +1140,43 @@ const CotizacionDatos = (client: any) => {
     }
   });
 
+  // Eliminar una cotización
+  router.delete("/:id", authRequired(), async (req: any, res: any) => {
+    const { id } = req.params;
+
+    try {
+      // Primero verificar si la cotización existe
+      const checkQuery = "SELECT id FROM cotizaciones WHERE id = $1";
+      const checkResult = await client.query(checkQuery, [id]);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      // Eliminar los detalles de la cotización primero (por la foreign key)
+      const deleteDetallesQuery = "DELETE FROM detalle_cotizacion WHERE cotizacion_id = $1";
+      await client.query(deleteDetallesQuery, [id]);
+
+      // Eliminar la cotización
+      const deleteCotizacionQuery = "DELETE FROM cotizaciones WHERE id = $1";
+      const result = await client.query(deleteCotizacionQuery, [id]);
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Cotización eliminada exitosamente" 
+      });
+    } catch (error: any) {
+      console.error("Error al eliminar la cotización:", error);
+      res.status(500).json({ error: "Error al eliminar la cotización" });
+    }
+  });
+
   // Ruta para aprobar una cotización
-  router.put('/:id/aprobar', async (req: any, res: any) => {
+  router.put('/:id/aprobar', authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     try {
       const result = await client.query(
@@ -1158,7 +1194,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Ruta para generar PDF de una cotización
-  router.get("/:id/pdf", async (req: any, res: any) => {
+  router.get("/:id/pdf", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -1232,7 +1268,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Ruta para enviar correo con PDF adjunto
-  router.post('/:id/enviar-correo', async (req: any, res: any) => {
+  router.post('/:id/enviar-correo', authRequired(), async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const { email, asunto, mensaje } = req.body;
@@ -1428,7 +1464,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Ruta para generar vista previa del PDF
-  router.post('/preview', async (req: any, res: any) => {
+  router.post('/preview', authRequired(), async (req: any, res: any) => {
     try {
       const { cotizacion, detalles } = req.body;
 

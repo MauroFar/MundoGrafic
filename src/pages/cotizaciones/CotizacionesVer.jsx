@@ -43,6 +43,11 @@ function CotizacionesVer() {
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [cotizacionToDelete, setCotizacionToDelete] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -104,7 +109,8 @@ function CotizacionesVer() {
       setHayMas(data.length === LIMITE_POR_PAGINA);
     } catch (error) {
       console.error("Error al cargar cotizaciones:", error);
-      alert("Error al cargar las cotizaciones: " + error.message);
+      setConfirmMessage("Error al cargar las cotizaciones: " + error.message);
+      setShowConfirmModal(true);
       setCotizaciones([]);
       setHayMas(false);
     } finally {
@@ -151,47 +157,55 @@ function CotizacionesVer() {
     navigate(`/cotizaciones/crear/${id}`);
   };
 
-  const eliminarCotizacion = async (id) => {
+  const eliminarCotizacion = (id) => {
     // Validación inicial
     if (!id) {
-      alert("ID de cotización no válido");
+      setConfirmMessage("ID de cotización no válido");
+      setShowConfirmModal(true);
       return;
     }
 
-    // Confirmación con mensaje detallado
-    const confirmacion = window.confirm(
-      "¿Estás seguro de que deseas eliminar esta cotización?\nEsta acción no se puede deshacer."
-    );
+    // Buscar la cotización para mostrar información en el modal
+    const cotizacion = cotizaciones.find(c => c.id === id);
+    setCotizacionToDelete(cotizacion);
+    setShowDeleteModal(true);
+  };
 
-    if (!confirmacion) return;
+  const confirmarEliminacion = async () => {
+    if (!cotizacionToDelete) return;
 
     try {
-      // Mostrar indicador de carga
       setLoading(true);
+      setShowDeleteModal(false);
+      const token = localStorage.getItem("token");
 
-      const response = await fetch(`${apiUrl}/api/buscarCotizaciones/${id}`, {
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${cotizacionToDelete.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         }
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Error al eliminar la cotización");
+        throw new Error(errorData?.error || "Error al eliminar la cotización");
       }
 
       // Mostrar mensaje de éxito
-      alert("Cotización eliminada exitosamente");
+      setConfirmMessage("Cotización eliminada exitosamente");
+      setShowConfirmModal(true);
       
       // Reiniciar la página y recargar la lista de cotizaciones desde cero
       setPagina(1);
       await cargarCotizaciones(true);
     } catch (error) {
       console.error("Error al eliminar la cotización:", error);
-      alert(error.message || "Ocurrió un error al eliminar la cotización");
+      setConfirmMessage(error.message || "Ocurrió un error al eliminar la cotización");
+      setShowConfirmModal(true);
     } finally {
       setLoading(false);
+      setCotizacionToDelete(null);
     }
   };
 
@@ -245,13 +259,15 @@ function CotizacionesVer() {
       window.URL.revokeObjectURL(url);
 
       // Mostrar mensaje de éxito
-      alert('PDF descargado exitosamente');
+      setConfirmMessage('PDF descargado exitosamente');
+      setShowConfirmModal(true);
       return true;
     } catch (error) {
       // Solo mostrar error si realmente hubo un problema
       if (error.message !== 'Failed to fetch') {
         console.error('Error:', error);
-        alert('Error al descargar el PDF: ' + error.message);
+        setConfirmMessage('Error al descargar el PDF: ' + error.message);
+        setShowConfirmModal(true);
       }
       return false;
     } finally {
@@ -939,6 +955,83 @@ function CotizacionesVer() {
                 onClick={() => setShowProductoModal(false)}
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteModal && cotizacionToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">Confirmar eliminación</h3>
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="text-sm text-gray-500">
+                ¿Estás seguro de que deseas eliminar la cotización <strong>#{cotizacionToDelete.numero_cotizacion}</strong>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Esta acción no se puede deshacer y eliminará permanentemente la cotización y todos sus detalles.
+              </p>
+            </div>
+            <div className="mt-4 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setCotizacionToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminacion}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación general */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">Información</h3>
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="text-sm text-gray-500">
+                {confirmMessage}
+              </p>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Aceptar
               </button>
             </div>
           </div>
