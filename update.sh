@@ -45,10 +45,11 @@ if git diff --name-only HEAD~1 HEAD | grep -q "backend/"; then
   echo "✅ Backend reiniciado"
 fi
 
-# Ejecutar seeds para insertar datos
-echo "🌱 Ejecutando seeds..."
-sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex seed:run'
-echo "✅ Seeds ejecutados"
+# Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
+# echo "🌱 Ejecutando seeds..."
+# sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex seed:run'
+# echo "✅ Seeds ejecutados"
+echo "⚠️  Seeds deshabilitados para proteger datos existentes"
 
 # Verificar estado de los servicios
 echo "🔍 Verificando estado de servicios..."
