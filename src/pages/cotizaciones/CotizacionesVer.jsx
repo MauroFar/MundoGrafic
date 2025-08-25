@@ -58,7 +58,7 @@ function CotizacionesVer() {
 
   // Cargar las últimas 5 cotizaciones al montar el componente
   useEffect(() => {
-    console.log('Componente montado, cargando cotizaciones...');
+    console.log('🔄 useEffect ejecutado - Componente montado, cargando cotizaciones...');
     console.log('API URL:', apiUrl);
     setPagina(1);
     cargarCotizaciones(true);
@@ -93,6 +93,8 @@ function CotizacionesVer() {
       const data = await response.json();
       
       console.log('Datos recibidos:', data);
+      console.log('Número de cotizaciones recibidas:', data.length);
+      console.log('IDs de cotizaciones:', data.map(c => c.id));
       
       if (!Array.isArray(data)) {
         console.error('Los datos recibidos no son un array:', data);
@@ -101,9 +103,12 @@ function CotizacionesVer() {
         return;
       }
       
+      console.log('Estado anterior de cotizaciones:', cotizaciones.length);
       if (reset) {
+        console.log('Reseteando cotizaciones con', data.length, 'elementos');
         setCotizaciones(data);
       } else {
+        console.log('Agregando', data.length, 'elementos a las', cotizaciones.length, 'existentes');
         setCotizaciones(prev => [...prev, ...data]);
       }
       setHayMas(data.length === LIMITE_POR_PAGINA);
