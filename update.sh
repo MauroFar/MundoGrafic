@@ -38,14 +38,14 @@ echo "🔐 Estableciendo permisos..."
 sudo chown -R www-data:www-data /var/www/myapp
 sudo chmod -R 755 /var/www/myapp
 
-# Verificar si hay cambios en el backend
-if git diff --name-only HEAD~1 HEAD | grep -q "backend/"; then
-  echo "🔨 Recompilando backend..."
-  sudo -u app -H bash -lc 'cd backend && npm run build'
-  echo "🔄 Reiniciando backend..."
-  sudo systemctl restart myapp-backend
-  echo "✅ Backend recompilado y reiniciado"
-fi
+# Siempre recompilar el backend (por si acaso)
+echo "🛑 Deteniendo backend..."
+sudo systemctl stop myapp-backend
+echo "🔨 Recompilando backend..."
+sudo -u app -H bash -lc 'cd backend && rm -rf dist && npm run build'
+echo "🔄 Reiniciando backend..."
+sudo systemctl start myapp-backend
+echo "✅ Backend recompilado y reiniciado"
 
 # Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
 # echo "🌱 Ejecutando seeds..."

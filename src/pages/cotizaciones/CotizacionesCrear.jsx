@@ -262,8 +262,12 @@ function CotizacionesCrear() {
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
   const handleGuardarTodo = async () => {
-    if (isSaving) return; // Prevenir doble guardado
+    if (isSaving) {
+      console.log("Ya se está guardando, ignorando clic adicional");
+      return; // Prevenir doble guardado
+    }
     setIsSaving(true);
+    console.log("Iniciando guardado de cotización...");
     try {
       // Validaciones iniciales
       if (!selectedRuc || !selectedRuc.id) {
@@ -418,6 +422,7 @@ function CotizacionesCrear() {
         }));
       } else {
         // Crear nueva cotización
+        console.log("Creando nueva cotización con datos:", cotizacionData);
         const createResponse = await fetch(`${apiUrl}/api/cotizaciones`, {
           method: "POST",
           headers: {
@@ -471,6 +476,12 @@ function CotizacionesCrear() {
 
   // Nueva función para guardar como nueva cotización
   const handleGuardarComoNueva = async () => {
+    if (isSaving) {
+      console.log("Ya se está guardando, ignorando clic adicional");
+      return; // Prevenir doble guardado
+    }
+    setIsSaving(true);
+    console.log("Iniciando guardado como nueva cotización...");
     try {
       // Validaciones iniciales
       if (!selectedRuc.id) {
@@ -972,6 +983,7 @@ function CotizacionesCrear() {
         nombre_ejecutivo: nombreEjecutivo
       };
 
+      console.log("Guardando cotización como nueva con datos:", cotizacionData);
       const responseCotizacion = await fetch(`${apiUrl}/api/cotizaciones`, {
         method: "POST",
         headers: {
