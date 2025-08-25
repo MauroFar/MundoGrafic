@@ -40,12 +40,15 @@ sudo chmod -R 755 /var/www/myapp
 
 # Verificar si hay cambios en el backend
 if git diff --name-only HEAD~1 HEAD | grep -q "backend/"; then
-    echo "🔄 Reiniciando backend..."
-    sudo systemctl restart myapp-backend
-    echo "✅ Backend reiniciado"
-else
-    echo "ℹ️  No hay cambios en el backend"
+  echo "🔄 Reiniciando backend..."
+  sudo systemctl restart myapp-backend
+  echo "✅ Backend reiniciado"
 fi
+
+# Ejecutar seeds para insertar datos
+echo "🌱 Ejecutando seeds..."
+sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex seed:run'
+echo "✅ Seeds ejecutados"
 
 # Verificar estado de los servicios
 echo "🔍 Verificando estado de servicios..."

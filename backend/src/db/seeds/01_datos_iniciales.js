@@ -73,7 +73,7 @@ exports.seed = async function(knex) {
       total: 112.00,
       estado: 'pendiente',
       ruc_id: 1,
-      numero_cotizacion: 'COT-001',
+      numero_cotizacion: 1,
       tiempo_entrega: '5 días',
       forma_pago: 'Contado',
       validez_proforma: '30 días',
