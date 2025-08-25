@@ -672,22 +672,14 @@ function CotizacionesVer() {
                         <FaDownload />
                         <span className="text-xs mt-1 text-gray-600">PDF</span>
                       </button>
-                      <button
-                        className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
-                        onClick={() => enviarCorreo(cotizacion.id)}
-                        title="Enviar por correo"
-                      >
-                        <FaEnvelope />
-                        <span className="text-xs mt-1 text-gray-600">Enviar</span>
-                      </button>
-                      <button
-                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
-                        onClick={() => handleEnviarCorreoAlternativo(cotizacion.id)}
-                        title="Enviar por correo (Alternativo)"
-                      >
-                        <FaEnvelopeOpen />
-                        <span className="text-xs mt-1 text-gray-600">Alternativo</span>
-                      </button>
+                                             <button
+                         className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
+                         onClick={() => handleEnviarCorreoAlternativo(cotizacion.id)}
+                         title="Enviar por correo"
+                       >
+                         <FaEnvelopeOpen />
+                         <span className="text-xs mt-1 text-gray-600">Enviar Correo</span>
+                       </button>
                       {cotizacion.estado === 'pendiente' && (
                         <button
                           className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
