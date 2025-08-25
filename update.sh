@@ -40,9 +40,11 @@ sudo chmod -R 755 /var/www/myapp
 
 # Verificar si hay cambios en el backend
 if git diff --name-only HEAD~1 HEAD | grep -q "backend/"; then
+  echo "🔨 Recompilando backend..."
+  sudo -u app -H bash -lc 'cd backend && npm run build'
   echo "🔄 Reiniciando backend..."
   sudo systemctl restart myapp-backend
-  echo "✅ Backend reiniciado"
+  echo "✅ Backend recompilado y reiniciado"
 fi
 
 # Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
