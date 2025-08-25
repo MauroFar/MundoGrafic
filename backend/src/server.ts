@@ -8,6 +8,7 @@ import apiRoutes from "./routes/api";
 import authRequired from "./middleware/auth";
 import usuariosRoutes from './routes/usuarios';
 import areasRoutes from './routes/areas';
+import cotizacionesRoutes from './routes/cotizaciones';
 import os from 'os';
 
 dotenv.config();
@@ -73,8 +74,10 @@ client.connect()
 // Rutas de autenticación
 app.use("/api/auth", authRoutes(client));
 
+// Rutas de cotizaciones
+app.use("/api/cotizaciones", cotizacionesRoutes(client));
+
 // Rutas protegidas por rol
-app.use("/api/cotizaciones", authRequired(["admin", "ejecutivo"]));
 app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
 // Importar las rutas agrupadas en api.js
