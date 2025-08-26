@@ -89,6 +89,10 @@ app.use('/api/usuarios', usuariosRoutes(client));
 // Rutas de áreas
 app.use('/api/areas', areasRoutes(client));
 
+// Rutas de firmas
+import firmasRouter from './routes/firmas';
+app.use('/api/firmas', firmasRouter);
+
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   const ips = [];

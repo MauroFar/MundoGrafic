@@ -1361,28 +1361,57 @@ const CotizacionDatos = (client: any) => {
       // Guardar el PDF
       await fs.writeFile(pdfPath, pdfBuffer);
 
-      // Obtener la firma HTML
-      const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
-      let signatureHtml = await fs.readFile(signaturePath, 'utf8');
+      // Obtener la firma del ejecutivo que creó la cotización
+      let signatureHtml = '';
+      let signatureAttachments: any[] = [];
+      
+      try {
+        // Obtener datos del usuario que creó la cotización
+        const userQuery = `
+          SELECT id, nombre, firma_html, firma_activa
+          FROM usuarios 
+          WHERE id = $1
+        `;
+        const userResult = await client.query(userQuery, [cotizacion.usuario_id]);
+        
+        if (userResult.rows.length > 0) {
+          const usuario = userResult.rows[0];
+          
+          if (usuario.firma_activa && usuario.firma_html) {
+            // Usar firma personalizada del ejecutivo
+            signatureHtml = usuario.firma_html;
+            // No necesitamos adjuntos para firmas personalizadas
+            signatureAttachments = [];
+          }
+        }
+      } catch (error) {
+        console.warn('Error al obtener firma personalizada, usando firma por defecto:', error);
+      }
+      
+      // Si no hay firma personalizada, usar la firma por defecto
+      if (!signatureHtml) {
+        const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
+        signatureHtml = await fs.readFile(signaturePath, 'utf8');
+        
+        // Lista de imágenes de la firma por defecto
+        const signatureImages = [
+          'image001.jpg',
+          'image002.png',
+          'image003.png',
+          'image004.png',
+          'image005.png'
+        ];
 
-      // Lista de imágenes de la firma
-      const signatureImages = [
-        'image001.jpg',
-        'image002.png',
-        'image003.png',
-        'image004.png',
-        'image005.png'
-      ];
-
-      // Adjuntos inline para Nodemailer
-      const signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
-        const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
-        return {
-          filename: img,
-          path: imgPath,
-          cid: img // Debe coincidir con el src="cid:..." en el HTML
-        };
-      }));
+        // Adjuntos inline para Nodemailer
+        signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
+          const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
+          return {
+            filename: img,
+            path: imgPath,
+            cid: img // Debe coincidir con el src="cid:..." en el HTML
+          };
+        }));
+      }
 
       // Configurar el correo
       const mailOptions = {

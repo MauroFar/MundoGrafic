@@ -38,4 +38,8 @@ backend/storage/pdfs/*
 backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
 
+# Ignora archivos de firmas de usuarios (imágenes subidas)
+backend/storage/firmas/*
+!backend/storage/firmas/.gitkeep
+
 start-app.bat
