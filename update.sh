@@ -47,6 +47,15 @@ echo "🔄 Reiniciando backend..."
 sudo systemctl start myapp-backend
 echo "✅ Backend recompilado y reiniciado"
 
+# Ejecutar migraciones de Knex para mantener BD sincronizada
+echo "🗄️  Ejecutando migraciones de base de datos..."
+sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex migrate:latest'
+echo "✅ Migraciones ejecutadas"
+
+# Verificar estado de migraciones
+echo "🔍 Verificando estado de migraciones..."
+sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex migrate:status'
+
 # Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
 # echo "🌱 Ejecutando seeds..."
 # sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex seed:run'

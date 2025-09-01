@@ -6,7 +6,7 @@ function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '' });
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
@@ -79,7 +79,8 @@ function GestionUsuarios() {
       nombre: usuario.nombre,
       rol: usuario.rol,
       area_id: usuario.area_id || '',
-      password: ''
+      password: '',
+      email_personal: usuario.email_personal || ''
     });
     setEditId(usuario.id);
   };
@@ -180,6 +181,22 @@ function GestionUsuarios() {
           </select>
           <input name="password" value={form.password} onChange={handleChange} placeholder={editId ? "Nueva contraseña (opcional)" : "Contraseña"} type="password" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2" />
           
+          {/* Campo de email personal para ejecutivos */}
+          {form.rol === 'ejecutivo' && (
+            <div className="md:col-span-2">
+              <input 
+                name="email_personal" 
+                value={form.email_personal || ''} 
+                onChange={handleChange} 
+                placeholder="Email personal para envío de correos (ej: henry@gmail.com)" 
+                className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Este email se usará para enviar cotizaciones desde la cuenta del ejecutivo
+              </p>
+            </div>
+          )}
+          
           {/* Botón de configuración de firma para ejecutivos */}
           {form.rol === 'ejecutivo' && (
             <div className="md:col-span-2">
@@ -208,7 +225,7 @@ function GestionUsuarios() {
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold w-full text-lg shadow transition-all duration-200">
               {editId ? "Actualizar" : "Crear"} Usuario
             </button>
-            {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
+                         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '' }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
           </div>
         </form>
         <div className="overflow-x-auto rounded-2xl shadow-lg border border-blue-100 bg-white">
@@ -219,10 +236,11 @@ function GestionUsuarios() {
                 <th className="px-4 py-3 text-left font-bold text-blue-900">Usuario</th>
                 <th className="px-4 py-3 text-left font-bold text-blue-900">Nombre</th>
                 <th className="px-4 py-3 text-left font-bold text-blue-900">Rol</th>
-                <th className="px-4 py-3 text-left font-bold text-blue-900">Área</th>
-                <th className="px-4 py-3 text-center font-bold text-blue-900">Firma</th>
-                <th className="px-4 py-3 text-center font-bold text-blue-900">Activo</th>
-                <th className="px-4 py-3 text-center font-bold text-blue-900">Acciones</th>
+                                 <th className="px-4 py-3 text-left font-bold text-blue-900">Área</th>
+                 <th className="px-4 py-3 text-center font-bold text-blue-900">Email Personal</th>
+                 <th className="px-4 py-3 text-center font-bold text-blue-900">Firma</th>
+                 <th className="px-4 py-3 text-center font-bold text-blue-900">Activo</th>
+                 <th className="px-4 py-3 text-center font-bold text-blue-900">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-blue-50">
@@ -232,8 +250,23 @@ function GestionUsuarios() {
                   <td className="px-4 py-2 whitespace-nowrap">{u.nombre_usuario}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{u.nombre}</td>
                   <td className="px-4 py-2 whitespace-nowrap capitalize">{u.rol}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{areas.find(a => a.id === u.area_id)?.nombre || u.area_id}</td>
-                  <td className="px-4 py-2 text-center">
+                                     <td className="px-4 py-2 whitespace-nowrap">{areas.find(a => a.id === u.area_id)?.nombre || u.area_id}</td>
+                   <td className="px-4 py-2 text-center">
+                     {u.rol === 'ejecutivo' ? (
+                       u.email_personal ? (
+                         <span className="inline-block px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded" title={u.email_personal}>
+                           ✅ {u.email_personal}
+                         </span>
+                       ) : (
+                         <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded">
+                           ❌ Sin configurar
+                         </span>
+                       )
+                     ) : (
+                       <span className="text-gray-400">-</span>
+                     )}
+                   </td>
+                   <td className="px-4 py-2 text-center">
                     {u.rol === 'ejecutivo' ? (
                       u.firma_html ? (
                         <span className="inline-block px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded">✅ Configurada</span>
