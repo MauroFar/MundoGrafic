@@ -218,6 +218,14 @@ function CotizacionesVer() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+      
+      // Obtener información de la cotización para el nombre del archivo
+      const cotizacion = cotizaciones.find(c => c.id === id);
+      const numeroCotizacion = cotizacion ? cotizacion.numero_cotizacion : id;
+      
+      // Comentario: Esta función ahora permite al usuario elegir la ubicación y nombre del archivo
+      // usando el explorador de Windows (en navegadores modernos) o descarga tradicional como fallback
+      
       // Obtener el PDF directamente
       const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/pdf`, {
         method: 'GET',
@@ -238,21 +246,47 @@ function CotizacionesVer() {
         throw new Error('El archivo recibido no es un PDF válido');
       }
 
-      // Crear un enlace temporal para la descarga
+      // Crear un archivo con nombre sugerido
+      const fileName = `Cotizacion-${numeroCotizacion}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      // Verificar si el navegador soporta la API de archivos
+      if ('showSaveFilePicker' in window) {
+        try {
+          // Abrir el explorador de archivos para elegir ubicación y nombre
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{
+              description: 'Documento PDF',
+              accept: {
+                'application/pdf': ['.pdf']
+              }
+            }]
+          });
+          
+          // Crear un stream de escritura
+          const writable = await fileHandle.createWritable();
+          await writable.write(pdfFile);
+          await writable.close();
+          
+          // Mostrar mensaje de éxito
+          setConfirmMessage('PDF guardado exitosamente en la ubicación seleccionada');
+          setShowConfirmModal(true);
+          return true;
+        } catch (fileError) {
+          // Si el usuario cancela la selección, no mostrar error
+          if (fileError.name === 'AbortError') {
+            return false;
+          }
+          // Si hay otro error con la API de archivos, usar descarga tradicional
+          console.warn('Error con API de archivos, usando descarga tradicional:', fileError);
+        }
+      }
+
+      // Fallback: descarga tradicional si no se soporta la API de archivos
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      
-      // Obtener el nombre del archivo del header Content-Disposition
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let fileName = 'cotizacion.pdf';
-      if (contentDisposition) {
-        const fileNameMatch = contentDisposition.match(/filename=(.+)/);
-        if (fileNameMatch) {
-          fileName = fileNameMatch[1];
-        }
-      }
-      
       link.setAttribute('download', fileName);
       
       // Simular clic para descargar
