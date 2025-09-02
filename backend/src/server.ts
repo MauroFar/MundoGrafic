@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import express from "express";  // DESCOMENTADO
-// import cors from "cors";  // MANTENER COMENTADO
+import cors from "cors";  // DESCOMENTADO
 import { Client } from "pg";
-// import path from "path";  // TEMPORALMENTE COMENTADO
+// import path from "path";  // MANTENER COMENTADO
 // import authRoutes from "./routes/auth";  // TEMPORALMENTE COMENTADO
 // import apiRoutes from "./routes/api";  // TEMPORALMENTE COMENTADO
 // import authRequired from "./middleware/auth";  // TEMPORALMENTE COMENTADO
@@ -21,9 +21,9 @@ const app = express();  // DESCOMENTADO
 //   next();
 // });
 
-// app.use(cors());  // TEMPORALMENTE COMENTADO
-// app.use(express.json());  // TEMPORALMENTE COMENTADO
-// app.use(express.static(path.join(__dirname, '../public')));  // TEMPORALMENTE COMENTADO
+app.use(cors());  // DESCOMENTADO
+app.use(express.json());  // DESCOMENTADO
+// app.use(express.static(path.join(__dirname, '../public'));  // MANTENER COMENTADO
 
 
 // Servir archivos estáticos desde la carpeta storage (TEMPORALMENTE COMENTADO)
