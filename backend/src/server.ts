@@ -2,33 +2,33 @@ import dotenv from "dotenv";
 import express from "express";  // DESCOMENTADO
 import cors from "cors";  // DESCOMENTADO
 import { Client } from "pg";
-import path from "path";  // DESCOMENTADO
-import authRoutes from "./routes/auth";  // DESCOMENTADO
-import apiRoutes from "./routes/api";  // DESCOMENTADO
-import authRequired from "./middleware/auth";  // DESCOMENTADO
-import usuariosRoutes from './routes/usuarios';  // DESCOMENTADO
-import areasRoutes from './routes/areas';  // DESCOMENTADO
-import cotizacionesRoutes from './routes/cotizaciones';  // DESCOMENTADO
+// import path from "path";  // TEMPORALMENTE COMENTADO
+// import authRoutes from "./routes/auth";  // TEMPORALMENTE COMENTADO
+// import apiRoutes from "./routes/api";  // TEMPORALMENTE COMENTADO
+// import authRequired from "./middleware/auth";  // TEMPORALMENTE COMENTADO
+// import usuariosRoutes from './routes/usuarios';  // TEMPORALMENTE COMENTADO
+// import areasRoutes from './routes/areas';  // TEMPORALMENTE COMENTADO
+// import cotizacionesRoutes from './routes/cotizaciones';  // TEMPORALMENTE COMENTADO
 import os from 'os';  // DESCOMENTADO
 
 dotenv.config();
 
 const app = express();  // DESCOMENTADO
 
-// Middleware para logging
-app.use((req: any, res: any, next: any) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
+// Middleware para logging (TEMPORALMENTE COMENTADO)
+// app.use((req: any, res: any, next: any) => {
+//   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+//   next();
+// });
 
 app.use(cors());  // DESCOMENTADO
 app.use(express.json());  // DESCOMENTADO
-app.use(express.static(path.join(__dirname, '../public')));
+// app.use(express.static(path.join(__dirname, '../public')));  // TEMPORALMENTE COMENTADO
 
 
-// Servir archivos estáticos desde la carpeta storage
-app.use('/storage', express.static(path.join(__dirname, '../storage')));
-app.use('/uploads', express.static(path.join(__dirname, '../storage/uploads')));
+// Servir archivos estáticos desde la carpeta storage (TEMPORALMENTE COMENTADO)
+// app.use('/storage', express.static(path.join(__dirname, '../storage')));
+// app.use('/uploads', express.static(path.join(__dirname, '../storage/uploads')));
 
 // Conectar con PostgreSQL
 const client = new Client({
@@ -71,27 +71,27 @@ client.connect()
     process.exit(1);
   });
 
-// Rutas de autenticación
-app.use("/api/auth", authRoutes(client));
+// Rutas de autenticación (TEMPORALMENTE COMENTADO)
+// app.use("/api/auth", authRoutes(client));
 
-// Rutas de cotizaciones
-app.use("/api/cotizaciones", cotizacionesRoutes(client));
+// Rutas de cotizaciones (TEMPORALMENTE COMENTADO)
+// app.use("/api/cotizaciones", cotizacionesRoutes(client));
 
-// Rutas protegidas por rol
-app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
+// Rutas protegidas por rol (TEMPORALMENTE COMENTADO)
+// app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
-// Importar las rutas agrupadas en api.js
-app.use("/api", apiRoutes(client));
+// Importar las rutas agrupadas en api.js (TEMPORALMENTE COMENTADO)
+// app.use("/api", apiRoutes(client));
 
-// Rutas de usuarios
-app.use('/api/usuarios', usuariosRoutes(client));
+// Rutas de usuarios (TEMPORALMENTE COMENTADO)
+// app.use('/api/usuarios', usuariosRoutes(client));
 
-// Rutas de áreas
-app.use('/api/areas', areasRoutes(client));
+// Rutas de áreas (TEMPORALMENTE COMENTADO)
+// app.use('/api/areas', areasRoutes(client));
 
-// Rutas de firmas
-import firmasRouter from './routes/firmas';
-app.use('/api/firmas', firmasRouter);
+// Rutas de firmas (TEMPORALMENTE COMENTADO)
+// import firmasRouter from './routes/firmas';
+// app.use('/api/firmas', firmasRouter);
 
 function getLocalIP() {  // DESCOMENTADO
   const interfaces = os.networkInterfaces();
