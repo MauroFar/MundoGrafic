@@ -1,19 +1,19 @@
 import dotenv from "dotenv";
-import express from "express";  // DESCOMENTADO
-import cors from "cors";  // DESCOMENTADO
+import express from "express";
+import cors from "cors";
 import { Client } from "pg";
-import path from "path";  // DESCOMENTADO
-// import authRoutes from "./routes/auth";  // TEMPORALMENTE COMENTADO
-// import apiRoutes from "./routes/api";  // TEMPORALMENTE COMENTADO
-// import authRequired from "./middleware/auth";  // TEMPORALMENTE COMENTADO
-// import usuariosRoutes from './routes/usuarios';  // TEMPORALMENTE COMENTADO
-// import areasRoutes from './routes/areas';  // TEMPORALMENTE COMENTADO
-// import cotizacionesRoutes from './routes/cotizaciones';  // TEMPORALMENTE COMENTADO
-import os from 'os';  // DESCOMENTADO
+import path from "path";
+import authRoutes from "./routes/auth";
+import apiRoutes from "./routes/api";
+import authRequired from "./middleware/auth";
+import usuariosRoutes from './routes/usuarios';
+import areasRoutes from './routes/areas';
+import cotizacionesRoutes from './routes/cotizaciones';
+import os from 'os';
 
 dotenv.config();
 
-const app = express();  // DESCOMENTADO
+const app = express();
 
 // Middleware para logging
 app.use((req: any, res: any, next: any) => {
@@ -21,10 +21,9 @@ app.use((req: any, res: any, next: any) => {
   next();
 });
 
-app.use(cors());  // DESCOMENTADO
-app.use(express.json());  // DESCOMENTADO
+app.use(cors());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
-
 
 // Servir archivos estáticos desde la carpeta storage
 app.use('/storage', express.static(path.join(__dirname, '../storage')));
@@ -71,29 +70,29 @@ client.connect()
     process.exit(1);
   });
 
-// Rutas de autenticación (TEMPORALMENTE COMENTADO)
-// app.use("/api/auth", authRoutes(client));
+// Rutas de autenticación
+app.use("/api/auth", authRoutes(client));
 
-// Rutas de cotizaciones (TEMPORALMENTE COMENTADO)
-// app.use("/api/cotizaciones", cotizacionesRoutes(client));
+// Rutas de cotizaciones
+app.use("/api/cotizaciones", cotizacionesRoutes(client));
 
-// Rutas protegidas por rol (TEMPORALMENTE COMENTADO)
-// app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
+// Rutas protegidas por rol
+app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
-// Importar las rutas agrupadas en api.js (TEMPORALMENTE COMENTADO)
-// app.use("/api", apiRoutes(client));
+// Importar las rutas agrupadas en api.js
+app.use("/api", apiRoutes(client));
 
-// Rutas de usuarios (TEMPORALMENTE COMENTADO)
-// app.use('/api/usuarios', usuariosRoutes(client));
+// Rutas de usuarios
+app.use('/api/usuarios', usuariosRoutes(client));
 
-// Rutas de áreas (TEMPORALMENTE COMENTADO)
-// app.use('/api/areas', areasRoutes(client));
+// Rutas de áreas
+app.use('/api/areas', areasRoutes(client));
 
-// Rutas de firmas (TEMPORALMENTE COMENTADO)
-// import firmasRouter from './routes/firmas';
-// app.use('/api/firmas', firmasRouter);
+// Rutas de firmas
+import firmasRouter from './routes/firmas';
+app.use('/api/firmas', firmasRouter);
 
-function getLocalIP() {  // DESCOMENTADO
+function getLocalIP() {
   const interfaces = os.networkInterfaces();
   const ips = [];
   
@@ -114,30 +113,7 @@ function getLocalIP() {  // DESCOMENTADO
 // Puerto
 const PORT = process.env.PORT || 3002;
 
-// app.listen(PORT, () => {  // TEMPORALMENTE COMENTADO
-//   const ips = getLocalIP();
-//   const localIP = ips.length > 0 ? ips[0].address : 'localhost';
-//   
-//   console.log('🚀 SERVIDOR INICIADO');
-//   console.log('================================');
-//   console.log(`📍 Puerto: ${PORT}`);
-//   console.log(`🌐 Local: http://localhost:${PORT}`);
-//   
-//   if (ips.length > 0) {
-//     console.log('🌍 Red local:');
-//     ips.forEach((ip, index) => {
-//       console.log(`   ${index + 1}. http://${ip.address}:${PORT} (${ip.name})`);
-//     });
-//   } else {
-//     console.log('⚠️  No se detectaron IPs de red local');
-//     console.log('📱 Frontend debe usar: http://localhost:${PORT}');
-//     }
-//   
-//   console.log('================================');
-//   console.log('📌 Conectado a PostgreSQL');
-// });
-
-app.listen(PORT, () => {  // DESCOMENTADO
+app.listen(PORT, () => {
   const ips = getLocalIP();
   const localIP = ips.length > 0 ? ips[0].address : 'localhost';
   
@@ -159,9 +135,4 @@ app.listen(PORT, () => {  // DESCOMENTADO
   console.log('================================');
   console.log('📌 Conectado a PostgreSQL');
 });
-
-// TEMPORALMENTE: Solo probar la conexión a la base de datos - YA NO ES NECESARIO
-// console.log('🔍 PROBANDO SOLO CONEXIÓN A BASE DE DATOS...');
-// console.log(`📍 Puerto configurado: ${PORT}`);
-// console.log('📌 Intentando conectar a PostgreSQL...');
  
