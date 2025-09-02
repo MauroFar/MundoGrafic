@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import { Client } from "pg";
 import path from "path";
-// import authRoutes from "./routes/auth";
+import authRoutes from "./routes/auth";
 // import apiRoutes from "./routes/api";
 // import authRequired from "./middleware/auth";
 // import usuariosRoutes from './routes/usuarios';
@@ -71,7 +71,7 @@ client.connect()
   });
 
 // Rutas de autenticación (COMENTADO TEMPORALMENTE)
-// app.use("/api/auth", authRoutes(client));
+app.use("/api/auth", authRoutes(client));
 
 // Rutas de cotizaciones (COMENTADO TEMPORALMENTE)
 // app.use("/api/cotizaciones", cotizacionesRoutes(client));
