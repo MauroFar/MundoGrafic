@@ -31,20 +31,21 @@ npm run build
 
 # Desplegar archivos compilados
 echo "📁 Desplegando archivos..."
-sudo rsync -a --delete dist/ /var/www/myapp/
+sudo mkdir -p /var/www/mundografic
+sudo rsync -a --delete dist/ /var/www/mundografic/
 
 # Establecer permisos correctos
 echo "🔐 Estableciendo permisos..."
-sudo chown -R www-data:www-data /var/www/myapp
-sudo chmod -R 755 /var/www/myapp
+sudo chown -R www-data:www-data /var/www/mundografic
+sudo chmod -R 755 /var/www/mundografic
 
 # Siempre recompilar el backend (por si acaso)
 echo "🛑 Deteniendo backend..."
-sudo systemctl stop myapp-backend
+sudo systemctl stop mundografic-backend
 echo "🔨 Recompilando backend..."
 cd backend && rm -rf dist && npm run build
 echo "🔄 Reiniciando backend..."
-sudo systemctl start myapp-backend
+sudo systemctl start mundografic-backend
 echo "✅ Backend recompilado y reiniciado"
 
 # Ejecutar migraciones de Knex para mantener BD sincronizada
@@ -65,7 +66,7 @@ echo "⚠️  Seeds deshabilitados para proteger datos existentes"
 # Verificar estado de los servicios
 echo "🔍 Verificando estado de servicios..."
 echo "Backend:"
-sudo systemctl status myapp-backend --no-pager -l
+sudo systemctl status mundografic-backend --no-pager -l
 
 echo ""
 echo "Nginx:"
@@ -76,6 +77,6 @@ echo "🎉 ¡Actualización completada exitosamente!"
 echo "🌐 Tu aplicación está disponible en: http://$(hostname -I | awk '{print $1}'):3000"
 echo ""
 echo "📋 Comandos útiles:"
-echo "- Ver logs del backend: sudo journalctl -u myapp-backend -f"
+echo "- Ver logs del backend: sudo journalctl -u mundografic-backend -f"
 echo "- Ver logs de Nginx: sudo tail -f /var/log/nginx/error.log"
-echo "- Reiniciar servicios: sudo systemctl restart myapp-backend nginx"
+echo "- Reiniciar servicios: sudo systemctl restart mundografic-backend nginx"
