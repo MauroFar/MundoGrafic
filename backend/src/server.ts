@@ -9,7 +9,7 @@ import { Client } from "pg";
 // import usuariosRoutes from './routes/usuarios';  // TEMPORALMENTE COMENTADO
 // import areasRoutes from './routes/areas';  // TEMPORALMENTE COMENTADO
 // import cotizacionesRoutes from './routes/cotizaciones';  // TEMPORALMENTE COMENTADO
-// import os from 'os';  // TEMPORALMENTE COMENTADO
+import os from 'os';  // DESCOMENTADO
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ const app = express();  // DESCOMENTADO
 
 app.use(cors());  // DESCOMENTADO
 app.use(express.json());  // DESCOMENTADO
-// app.use(express.static(path.join(__dirname, '../public'));  // MANTENER COMENTADO
+// app.use(express.static(path.join(__dirname, '../public')));  // MANTENER COMENTADO
 
 
 // Servir archivos estáticos desde la carpeta storage (TEMPORALMENTE COMENTADO)
@@ -93,23 +93,23 @@ client.connect()
 // import firmasRouter from './routes/firmas';
 // app.use('/api/firmas', firmasRouter);
 
-// function getLocalIP() {  // TEMPORALMENTE COMENTADO
-//   const interfaces = os.networkInterfaces();
-//   const ips = [];
+function getLocalIP() {  // DESCOMENTADO
+  const interfaces = os.networkInterfaces();
+  const ips = [];
   
-//   for (const name of Object.keys(interfaces)) {
-//     for (const iface of interfaces[name] || []) {
-//       if (iface.family === 'IPv4' && !iface.internal) {
-//         ips.push({
-//           name: name,
-//           address: iface.address,
-//           netmask: iface.netmask
-//         });
-//       }
-//     }
-//   }
-//   return ips;
-// }
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ips.push({
+          name: name,
+          address: iface.address,
+          netmask: iface.netmask
+        });
+      }
+    }
+  }
+  return ips;
+}
 
 // Puerto
 const PORT = process.env.PORT || 3002;
@@ -117,12 +117,12 @@ const PORT = process.env.PORT || 3002;
 // app.listen(PORT, () => {  // TEMPORALMENTE COMENTADO
 //   const ips = getLocalIP();
 //   const localIP = ips.length > 0 ? ips[0].address : 'localhost';
-  
+//   
 //   console.log('🚀 SERVIDOR INICIADO');
 //   console.log('================================');
 //   console.log(`📍 Puerto: ${PORT}`);
 //   console.log(`🌐 Local: http://localhost:${PORT}`);
-  
+//   
 //   if (ips.length > 0) {
 //     console.log('🌍 Red local:');
 //     ips.forEach((ip, index) => {
@@ -132,13 +132,36 @@ const PORT = process.env.PORT || 3002;
 //     console.log('⚠️  No se detectaron IPs de red local');
 //     console.log('📱 Frontend debe usar: http://localhost:${PORT}');
 //     }
-  
+//   
 //   console.log('================================');
 //   console.log('📌 Conectado a PostgreSQL');
 // });
 
-// TEMPORALMENTE: Solo probar la conexión a la base de datos
-console.log('🔍 PROBANDO SOLO CONEXIÓN A BASE DE DATOS...');
-console.log(`📍 Puerto configurado: ${PORT}`);
-console.log('📌 Intentando conectar a PostgreSQL...');
+app.listen(PORT, () => {  // DESCOMENTADO
+  const ips = getLocalIP();
+  const localIP = ips.length > 0 ? ips[0].address : 'localhost';
+  
+  console.log('🚀 SERVIDOR INICIADO');
+  console.log('================================');
+  console.log(`📍 Puerto: ${PORT}`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  
+  if (ips.length > 0) {
+    console.log('🌍 Red local:');
+    ips.forEach((ip, index) => {
+      console.log(`   ${index + 1}. http://${ip.address}:${PORT} (${ip.name})`);
+    });
+  } else {
+    console.log('⚠️  No se detectaron IPs de red local');
+    console.log('📱 Frontend debe usar: http://localhost:${PORT}');
+    }
+  
+  console.log('================================');
+  console.log('📌 Conectado a PostgreSQL');
+});
+
+// TEMPORALMENTE: Solo probar la conexión a la base de datos - YA NO ES NECESARIO
+// console.log('🔍 PROBANDO SOLO CONEXIÓN A BASE DE DATOS...');
+// console.log(`📍 Puerto configurado: ${PORT}`);
+// console.log('📌 Intentando conectar a PostgreSQL...');
  
