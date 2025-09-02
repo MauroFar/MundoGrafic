@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +30,7 @@ function Login() {
         alert(data.error || "Credenciales incorrectas. Intenta nuevamente.");
       }
     } catch (err) {
+      console.error("Error de conexión:", err);
       alert("Error de conexión con el servidor");
     }
   };

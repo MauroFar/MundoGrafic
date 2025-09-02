@@ -3,7 +3,7 @@ import authRequired from "../middleware/auth";
 import path from "path";
 import fs from "fs/promises";
 import multer from "multer";
-import sharp from "sharp";
+// import sharp from "sharp"; // TEMPORALMENTE COMENTADO - CAUSA ERROR
 
 const router = express.Router();
 
@@ -43,7 +43,7 @@ const upload = multer({
   }
 });
 
-// Subir imagen de firma
+// Subir imagen de firma (VERSIÓN SIMPLIFICADA - SIN OPTIMIZACIÓN)
 router.post('/upload/:userId', authRequired(['admin']), upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -52,24 +52,25 @@ router.post('/upload/:userId', authRequired(['admin']), upload.single('image'), 
 
     const userId = req.params.userId;
     const originalPath = req.file.path;
-    const optimizedPath = originalPath.replace(/\.[^/.]+$/, '_optimized.jpg');
+    
+    // TEMPORALMENTE: No optimizamos la imagen, usamos la original
+    // const optimizedPath = originalPath.replace(/\.[^/.]+$/, '_optimized.jpg');
+    
+    // await sharp(originalPath)
+    //   .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
+    //   .jpeg({ quality: 80, progressive: true })
+    //   .toFile(optimizedPath);
+    
+    // await fs.unlink(originalPath);
 
-    // Optimizar imagen con Sharp
-    await sharp(originalPath)
-      .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80, progressive: true })
-      .toFile(optimizedPath);
-
-    // Eliminar archivo original
-    await fs.unlink(originalPath);
-
-    // Generar URL pública
-    const publicUrl = `/api/firmas/images/${userId}/${path.basename(optimizedPath)}`;
+    // Generar URL pública (usando archivo original)
+    const publicUrl = `/api/firmas/images/${userId}/${path.basename(originalPath)}`;
 
     res.json({
       success: true,
       url: publicUrl,
-      filename: path.basename(optimizedPath)
+      filename: path.basename(originalPath),
+      note: 'Imagen sin optimizar temporalmente'
     });
 
   } catch (error) {
