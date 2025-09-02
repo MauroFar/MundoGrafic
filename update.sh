@@ -9,25 +9,25 @@ echo "🚀 Iniciando actualización de MundoGrafic..."
 
 # Verificar que estamos en el directorio correcto
 if [ ! -f "package.json" ]; then
-    echo "❌ Error: No se encontró package.json. Ejecuta este script desde /opt/myapp"
+    echo "❌ Error: No se encontró package.json. Ejecuta este script desde el directorio del proyecto"
     exit 1
 fi
 
 # Obtener cambios de Git
 echo "📥 Obteniendo cambios de Git..."
-sudo -u app -H bash -lc 'git pull origin main'
+git pull origin main
 
 # Verificar si hay cambios en package.json
 if git diff --name-only HEAD~1 HEAD | grep -q "package.json"; then
     echo "📦 Instalando nuevas dependencias..."
-    sudo -u app -H bash -lc 'npm install'
+    npm install
 else
     echo "ℹ️  No hay cambios en dependencias"
 fi
 
 # Recompilar frontend
 echo "🔨 Recompilando frontend..."
-sudo -u app -H bash -lc 'npm run build'
+npm run build
 
 # Desplegar archivos compilados
 echo "📁 Desplegando archivos..."
@@ -42,23 +42,23 @@ sudo chmod -R 755 /var/www/myapp
 echo "🛑 Deteniendo backend..."
 sudo systemctl stop myapp-backend
 echo "🔨 Recompilando backend..."
-sudo -u app -H bash -lc 'cd backend && rm -rf dist && npm run build'
+cd backend && rm -rf dist && npm run build
 echo "🔄 Reiniciando backend..."
 sudo systemctl start myapp-backend
 echo "✅ Backend recompilado y reiniciado"
 
 # Ejecutar migraciones de Knex para mantener BD sincronizada
 echo "🗄️  Ejecutando migraciones de base de datos..."
-sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex migrate:latest'
+cd backend && npx knex migrate:latest
 echo "✅ Migraciones ejecutadas"
 
 # Verificar estado de migraciones
 echo "🔍 Verificando estado de migraciones..."
-sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex migrate:status'
+cd backend && npx knex migrate:status
 
 # Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
 # echo "🌱 Ejecutando seeds..."
-# sudo -u app -H bash -lc 'cd /opt/myapp/backend && npx knex seed:run'
+# cd backend && npx knex seed:run
 # echo "✅ Seeds ejecutados"
 echo "⚠️  Seeds deshabilitados para proteger datos existentes"
 
