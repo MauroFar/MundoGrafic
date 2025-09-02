@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-// import express from "express";  // TEMPORALMENTE COMENTADO
-// import cors from "cors";  // TEMPORALMENTE COMENTADO
+import express from "express";  // DESCOMENTADO
+// import cors from "cors";  // MANTENER COMENTADO
 import { Client } from "pg";
 // import path from "path";  // TEMPORALMENTE COMENTADO
 // import authRoutes from "./routes/auth";  // TEMPORALMENTE COMENTADO
@@ -13,7 +13,7 @@ import { Client } from "pg";
 
 dotenv.config();
 
-// const app = express();  // TEMPORALMENTE COMENTADO
+const app = express();  // DESCOMENTADO
 
 // Middleware para logging (TEMPORALMENTE COMENTADO)
 // app.use((req: any, res: any, next: any) => {
