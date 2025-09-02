@@ -15,11 +15,11 @@ dotenv.config();
 
 const app = express();  // DESCOMENTADO
 
-// Middleware para logging (TEMPORALMENTE COMENTADO)
-// app.use((req: any, res: any, next: any) => {
-//   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-//   next();
-// });
+// Middleware para logging
+app.use((req: any, res: any, next: any) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 app.use(cors());  // DESCOMENTADO
 app.use(express.json());  // DESCOMENTADO
