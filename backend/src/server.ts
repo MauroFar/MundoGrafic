@@ -4,9 +4,9 @@ import cors from "cors";
 import { Client } from "pg";
 import path from "path";
 import authRoutes from "./routes/auth";
-// import apiRoutes from "./routes/api";
-// import authRequired from "./middleware/auth";
-// import usuariosRoutes from './routes/usuarios';
+import apiRoutes from "./routes/api";
+import authRequired from "./middleware/auth";
+import usuariosRoutes from './routes/usuarios';
 // import areasRoutes from './routes/areas';
 // import cotizacionesRoutes from './routes/cotizaciones';
 import os from 'os';
@@ -70,20 +70,20 @@ client.connect()
     process.exit(1);
   });
 
-// Rutas de autenticación (COMENTADO TEMPORALMENTE)
+// Rutas de autenticación
 app.use("/api/auth", authRoutes(client));
 
 // Rutas de cotizaciones (COMENTADO TEMPORALMENTE)
 // app.use("/api/cotizaciones", cotizacionesRoutes(client));
 
-// Rutas protegidas por rol (COMENTADO TEMPORALMENTE)
-// app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
+// Rutas protegidas por rol
+app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
-// Importar las rutas agrupadas en api.js (COMENTADO TEMPORALMENTE)
-// app.use("/api", apiRoutes(client));
+// Importar las rutas agrupadas en api.js
+app.use("/api", apiRoutes(client));
 
-// Rutas de usuarios (COMENTADO TEMPORALMENTE)
-// app.use('/api/usuarios', usuariosRoutes(client));
+// Rutas de usuarios
+app.use('/api/usuarios', usuariosRoutes(client));
 
 // Rutas de áreas (COMENTADO TEMPORALMENTE)
 // app.use('/api/areas', areasRoutes(client));
