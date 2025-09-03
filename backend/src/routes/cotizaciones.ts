@@ -1490,42 +1490,26 @@ const CotizacionDatos = (client: any) => {
        console.log('📧 Firma HTML seleccionada:', signatureHtml ? '✅ Personalizada' : '❌ Por defecto');
        console.log('📧 Longitud de la firma:', signatureHtml ? signatureHtml.length : 0);
        
-      const mailOptions = {
-         from: emailUser,
-        to: email,
+      // 6. Enviar el correo
+      await dynamicTransporter.sendMail({
+        from: emailUser,
+        to: email, // ✅ Nodemailer ya soporta múltiples correos separados por coma
         subject: asunto || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
-        text: mensaje || `Estimado/a ${cotizacion.nombre_cliente},\n\nAdjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC`,
-        html: `<div>${mensaje || `Estimado/a ${cotizacion.nombre_cliente},<br><br>Adjunto encontrará la cotización #${cotizacion.numero_cotizacion} solicitada.<br><br>Saludos cordiales,<br>Equipo MUNDOGRAFIC`}</div><br><br>${signatureHtml}`,
+        text: mensaje || 'Adjunto encontrará la cotización solicitada.',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p>${(mensaje || 'Adjunto encontrará la cotización solicitada.').replace(/\n/g, '<br>')}</p>
+            ${signatureHtml || ''}
+          </div>
+        `,
         attachments: [
           {
-            filename: fileName,
-            path: pdfPath
+            filename: `cotizacion_${cotizacion.numero_cotizacion}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
           },
-          ...signatureAttachments
-        ]
-      };
-
-      // Enviar el correo con reintentos
-      const maxRetries = 3;
-      let retryCount = 0;
-      let lastError = null;
-
-      while (retryCount < maxRetries) {
-        try {
-          await dynamicTransporter.sendMail(mailOptions);
-          break;
-        } catch (error: any) {
-          lastError = error;
-          retryCount++;
-          if (retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-          }
-        }
-      }
-
-      if (retryCount === maxRetries) {
-        throw lastError;
-      }
+        ],
+      });
 
       // Limpiar el archivo PDF después de enviarlo
       setTimeout(async () => {

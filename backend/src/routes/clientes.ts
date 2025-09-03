@@ -8,6 +8,22 @@ const createCliente = (client: any) => {
     next();
   });
 
+  // ✅ Ruta para obtener todos los clientes
+  router.get("/", async (req: any, res: any) => {
+    try {
+      const query = `
+        SELECT id, nombre_cliente, email_cliente, telefono_cliente
+        FROM clientes
+        ORDER BY nombre_cliente ASC
+      `;
+      const result = await client.query(query);
+      res.json(result.rows);
+    } catch (error: any) {
+      console.error('Error al obtener clientes:', error);
+      res.status(500).json({ error: 'Error al obtener clientes', details: error.message });
+    }
+  });
+
   // Ruta para buscar clientes
   router.get("/buscar", async (req: any, res: any) => {
     const { q } = req.query;
