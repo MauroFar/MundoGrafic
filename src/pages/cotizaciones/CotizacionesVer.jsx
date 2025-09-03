@@ -411,10 +411,14 @@ function CotizacionesVer() {
         return;
       }
 
-      // Validar formato de email
+      // ✅ Validar formato de email (soporta múltiples correos separados por coma)
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(emailDataAlternativo.to)) {
-        toast.error('El formato del correo electrónico no es válido');
+      const emails = emailDataAlternativo.to.split(',').map(e => e.trim()).filter(e => e.length > 0);
+      
+      // Verificar que todos los emails tengan formato válido
+      const invalidEmails = emails.filter(e => !emailRegex.test(e));
+      if (invalidEmails.length > 0) {
+        toast.error(`Los siguientes correos electrónicos no tienen formato válido: ${invalidEmails.join(', ')}`);
         return;
       }
 
