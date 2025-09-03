@@ -311,7 +311,11 @@ show_menu() {
     echo "5. 🌐 Acceso local y red"
     echo "6. 🔄 Actualizar sistema GREEN"
     echo "7. 🧪 Pruebas rápidas"
-    echo "8. ❌ Salir"
+    echo "8. 🟢 Migrar solo GREEN (staging)"
+    echo "9. 🔵 Migrar solo BLUE (producción)"
+    echo "10. 🟢🔵 Migrar GREEN → BLUE (secuencial)"
+    echo "11. 📊 Ver estado de migraciones"
+    echo "12. ❌ Salir"
     echo ""
 }
 
@@ -368,6 +372,131 @@ test_green() {
     echo "   El sistema GREEN está funcionando perfectamente."
 }
 
+# Función para migrar base de datos GREEN (staging)
+migrate_green() {
+    log "🟢 Migrando base de datos GREEN (staging)..."
+    
+    cd staging/backend
+    
+    # Verificar que existe knexfile
+    if [ ! -f "knexfile.js" ]; then
+        error "No se encontró knexfile.js en staging/backend/"
+        exit 1
+    fi
+    
+    # Verificar que existe .env
+    if [ ! -f ".env" ]; then
+        log "Copiando configuración de staging..."
+        cp ../../staging.env .env
+    fi
+    
+    # Ejecutar migraciones
+    log "📊 Ejecutando migraciones en sistema_mg_staging..."
+    if npm run migrate; then
+        success "✅ Migraciones en GREEN completadas exitosamente"
+    else
+        error "❌ Error en migraciones de GREEN"
+        exit 1
+    fi
+    
+    # Volver al directorio raíz
+    cd ../..
+}
+
+# Función para migrar base de datos BLUE (producción)
+migrate_blue() {
+    log "🔵 Migrando base de datos BLUE (producción)..."
+    
+    cd backend
+    
+    # Verificar que existe knexfile
+    if [ ! -f "knexfile.js" ]; then
+        error "No se encontró knexfile.js en backend/"
+        exit 1
+    fi
+    
+    # Confirmar migración a producción
+    echo ""
+    warning "⚠️  ¿Estás seguro de que quieres migrar la base de datos de PRODUCCIÓN?"
+    warning "⚠️  Esta operación puede afectar datos reales."
+    read -p "¿Continuar con migración a PRODUCCIÓN? (y/N): " confirm
+    
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        log "📊 Ejecutando migraciones en sistema_mg (PRODUCCIÓN)..."
+        if npm run migrate; then
+            success "✅ Migraciones en BLUE (PRODUCCIÓN) completadas exitosamente"
+        else
+            error "❌ Error en migraciones de BLUE (PRODUCCIÓN)"
+            exit 1
+        fi
+    else
+        warning "🛑 Migración a PRODUCCIÓN cancelada por el usuario"
+        return 1
+    fi
+    
+    # Volver al directorio raíz
+    cd ..
+}
+
+# Función para migración secuencial completa
+migrate_sequential() {
+    log "🚀 Iniciando migración secuencial: GREEN → BLUE"
+    
+    # 1. Migrar GREEN
+    migrate_green
+    
+    # 2. Preguntar si probar GREEN
+    echo ""
+    success "✅ GREEN migrado exitosamente"
+    read -p "¿Quieres probar el sistema GREEN antes de migrar BLUE? (Y/n): " test_green
+    
+    if [[ $test_green =~ ^[Nn]$ ]]; then
+        warning "⚠️  Saltando pruebas de GREEN"
+    else
+        log "🧪 Probando sistema GREEN..."
+        start_green
+        echo ""
+        read -p "Presiona Enter cuando hayas terminado de probar GREEN..."
+        stop_green
+    fi
+    
+    # 3. Preguntar si migrar BLUE
+    echo ""
+    read -p "¿GREEN funciona correctamente? ¿Migrar a BLUE (PRODUCCIÓN)? (y/N): " migrate_blue_confirm
+    
+    if [[ $migrate_blue_confirm =~ ^[Yy]$ ]]; then
+        migrate_blue
+        success "🎉 Migración secuencial completada: GREEN → BLUE"
+    else
+        warning "🛑 Migración a BLUE cancelada. GREEN migrado, BLUE sin cambios."
+    fi
+}
+
+# Función para verificar estado de migraciones
+check_migration_status() {
+    log " Verificando estado de migraciones..."
+    
+    echo ""
+    echo "🟢 Estado de migraciones en GREEN (staging):"
+    cd staging/backend
+    if npm run migrate:status >/dev/null 2>&1; then
+        npm run migrate:status
+    else
+        warning "⚠️  No se pudo verificar estado de migraciones en GREEN"
+    fi
+    cd ../..
+    
+    echo ""
+    echo "🔵 Estado de migraciones en BLUE (producción):"
+    cd backend
+    if npm run migrate:status >/dev/null 2>&1; then
+        npm run migrate:status
+    else
+        warning "⚠️  No se pudo verificar estado de migraciones en BLUE"
+    fi
+    cd ..
+}
+
 # Main
 main() {
     # Verificar que estamos en el directorio correcto
@@ -382,7 +511,7 @@ main() {
     # Mostrar menú
     show_menu
     
-    read -p "Selecciona una opción (1-8): " opcion
+    read -p "Selecciona una opción (1-12): " opcion
     
     case $opcion in
         1)
@@ -407,6 +536,18 @@ main() {
             test_green
             ;;
         8)
+            migrate_green
+            ;;
+        9)
+            migrate_blue
+            ;;
+        10)
+            migrate_sequential
+            ;;
+        11)
+            check_migration_status
+            ;;
+        12)
             log "👋 Saliendo..."
             exit 0
             ;;

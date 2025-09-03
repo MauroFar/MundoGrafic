@@ -1,6 +1,3 @@
-// knexfile.js - Configuración de Knex.js para diferentes entornos
-require('dotenv').config();
-
 module.exports = {
   // Configuración para desarrollo local
   development: {

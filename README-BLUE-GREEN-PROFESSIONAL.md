@@ -1,83 +1,72 @@
-# 🟢🔵 Sistema Blue-Green Deployment Profesional - MundoGrafic
+# 🚀 Sistema Blue-Green Deployment Profesional
 
-## 📋 Descripción
+## 📋 **Resumen del Sistema**
 
-Este documento describe la implementación profesional del sistema **Blue-Green Deployment** para MundoGrafic, siguiendo las mejores prácticas de la industria.
+Este sistema implementa un **Blue-Green Deployment** profesional para MundoGrafic, permitiendo:
 
-## 🎯 Arquitectura
+- ✅ **Un solo código base** para BLUE (producción) y GREEN (staging)
+- ✅ **Builds separados** con diferentes configuraciones
+- ✅ **Backend independiente** en `staging/`
+- ✅ **Frontend servido** desde build optimizado
+- ✅ **Migraciones seguras** GREEN → BLUE
+- ✅ **Pruebas integradas** antes de migrar a producción
 
-### **Sistema BLUE (Producción)**
+## 🎯 **Arquitectura del Sistema**
+
+### **BLUE (Producción)**
 - **Frontend**: Puerto 3000
 - **Backend**: Puerto 3002
-- **Base de datos**: `sistema_mg_production`
-- **Estado**: Siempre activo
-- **Acceso**: Público
+- **Base de datos**: `sistema_mg`
+- **Configuración**: `.env` (producción)
 
-### **Sistema GREEN (Staging)**
+### **GREEN (Staging)**
 - **Frontend**: Puerto 3001
 - **Backend**: Puerto 3003
 - **Base de datos**: `sistema_mg_staging`
-- **Estado**: Solo cuando se necesita
-- **Acceso**: Red local
+- **Configuración**: `staging.env` + `.env.staging`
 
-## 🏗️ Estructura del Proyecto
+## 🛠️ **Scripts Principales**
 
-```
-MundoGrafic/
-├── backend/                    # Backend principal (BLUE)
-├── src/                        # Frontend principal (BLUE)
-├── staging/                    # Sistema GREEN
-│   ├── backend/               # Backend GREEN (puerto 3003)
-│   └── logs/                  # Logs del sistema GREEN
-├── .env.staging               # Configuración frontend GREEN
-├── staging.env                # Configuración backend GREEN
-├── control-green.sh           # Script de control profesional
-└── vite.config.js             # Configuración Vite para staging
-```
-
-## 🚀 Uso del Sistema
-
-### **1. Levantar Sistema GREEN**
+### **1. control-green.sh**
+Script principal para manejar el sistema GREEN:
 
 ```bash
-# Ejecutar script de control
 ./control-green.sh
-
-# Seleccionar opción 1: Levantar sistema GREEN completo
 ```
 
-### **2. Probar Cambios**
+**Opciones disponibles:**
+1. 🚀 Levantar sistema GREEN completo
+2. 🛑 Bajar sistema GREEN
+3. 📊 Ver estado
+4. 📝 Ver logs
+5. 🌐 Acceso local y red
+6. 🔄 Actualizar sistema GREEN
+7. 🧪 Pruebas rápidas
+8. 🟢 Migrar solo GREEN (staging)
+9. 🔵 Migrar solo BLUE (producción)
+10. 🟢🔵 Migrar GREEN → BLUE (secuencial)
+11. 📊 Ver estado de migraciones
+12. ❌ Salir
+
+### **2. migrate-sequential.sh**
+Script independiente para migraciones seguras:
 
 ```bash
-# Acceder al sistema GREEN
-# Frontend: http://192.168.130.149:3001
-# Backend:  http://192.168.130.149:3003
-
-# Probar funcionalidades
-curl http://localhost:3003/api/health
+./migrate-sequential.sh
 ```
 
-### **3. Bajar Sistema GREEN**
+**Opciones disponibles:**
+1. 🟢 Migrar solo GREEN (staging)
+2. 🔵 Migrar solo BLUE (producción)
+3. 🟢🔵 Migrar GREEN → BLUE (secuencial)
+4. 📊 Ver estado de migraciones
+5. ❌ Salir
 
-```bash
-# Ejecutar script de control
-./control-green.sh
+## 🔧 **Configuración**
 
-# Seleccionar opción 2: Bajar sistema GREEN
-```
+### **Archivos de Configuración**
 
-## 🔧 Configuración
-
-### **Variables de Entorno**
-
-#### **Frontend GREEN (.env.staging)**
-```bash
-VITE_API_URL=http://localhost:3003
-VITE_ENV=staging
-VITE_APP_NAME=MundoGrafic Staging
-```
-
-#### **Backend GREEN (staging.env)**
+#### **staging.env** (Backend GREEN)
 ```bash
 NODE_ENV=staging
 PORT=3003
@@ -85,209 +74,222 @@ FRONTEND_PORT=3001
 DB_NAME=sistema_mg_staging
 DB_USER=postgres
 DB_PASSWORD=2024Asdaspro@
+DB_HOST=localhost
+DB_PORT=5432
 ```
 
-### **Vite Configuration**
+#### **.env.staging** (Frontend GREEN)
+```bash
+VITE_API_URL=http://localhost:3003
+VITE_ENV=staging
+VITE_APP_NAME=MundoGrafic Staging
+VITE_APP_VERSION=1.0.0-staging
+VITE_FRONTEND_PORT=3001
+```
 
-El archivo `vite.config.js` está configurado para soportar múltiples modos:
-
+#### **knexfile.js** (Staging Backend)
 ```javascript
-export default defineConfig(({ mode }) => {
-  return {
-    plugins: [react(), tailwindcss()],
-    define: {
-      __APP_ENV__: JSON.stringify(mode),
+module.exports = {
+  development: {
+    client: 'postgresql',
+    connection: {
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432'),
     },
-    build: {
-      outDir: 'dist',
-      sourcemap: mode === 'staging',
+    migrations: {
+      directory: './src/db/migrations',
+      tableName: 'knex_migrations'
     },
-    server: {
-      host: mode === 'staging' ? '0.0.0.0' : 'localhost',
-      port: mode === 'staging' ? 3001 : 3000,
-    },
+    seeds: {
+      directory: './src/db/seeds'
+    }
   }
-})
+};
 ```
 
-## 🎮 Script de Control
+## 🚀 **Flujo de Trabajo**
 
-### **Opciones Disponibles**
-
-1. **🚀 Levantar sistema GREEN completo**
-   - Build del frontend para staging
-   - Inicio del backend GREEN
-   - Servir frontend desde build optimizado
-
-2. **🛑 Bajar sistema GREEN**
-   - Detener backend GREEN
-   - Detener frontend GREEN
-   - Limpiar procesos
-
-3. **📊 Ver estado**
-   - Verificar puertos abiertos
-   - Verificar procesos activos
-   - Pruebas de conectividad
-
-4. **📝 Ver logs**
-   - Logs del backend GREEN
-   - Logs del frontend GREEN
-   - Instrucciones para logs en tiempo real
-
-5. **🌐 Acceso local y red**
-   - URLs de acceso local
-   - URLs de acceso de red
-   - Comandos de prueba
-
-6. **🔄 Actualizar sistema GREEN**
-   - Obtener cambios del repositorio
-   - Reinstalar dependencias si es necesario
-   - Reiniciar sistema actualizado
-
-7. **🧪 Pruebas rápidas**
-   - Verificación de puertos
-   - Health check del backend
-   - Prueba del frontend
-   - Verificación de base de datos
-
-## 🔄 Flujo de Trabajo
-
-### **1. Desarrollo**
+### **1. Desarrollo y Testing**
 ```bash
-# Hacer cambios en tu máquina local
+# 1. Hacer cambios en el código
 git add .
-git commit -m "Nueva funcionalidad"
+git commit -m "Nuevas funcionalidades"
 git push origin main
-```
 
-### **2. En el Servidor**
-```bash
-# Obtener cambios
-cd ~/MundoGrafic
-git pull origin main
-
-# Levantar GREEN para probar
+# 2. En el servidor, actualizar y probar GREEN
 ./control-green.sh
-# Seleccionar opción 1
+# Seleccionar opción 6: Actualizar sistema GREEN
+
+# 3. Probar el sistema GREEN
+# Seleccionar opción 1: Levantar sistema GREEN completo
+# Seleccionar opción 7: Pruebas rápidas
 ```
 
-### **3. Pruebas**
-- Acceder a http://192.168.130.149:3001
-- Verificar que los cambios funcionen
-- Probar todas las funcionalidades
-
-### **4. Limpieza**
+### **2. Migración Segura**
 ```bash
-# Bajar GREEN después de las pruebas
+# Opción A: Usar control-green.sh
 ./control-green.sh
-# Seleccionar opción 2
+# Seleccionar opción 10: Migrar GREEN → BLUE (secuencial)
+
+# Opción B: Usar migrate-sequential.sh
+./migrate-sequential.sh
+# Seleccionar opción 3: Migrar GREEN → BLUE (secuencial)
 ```
 
-## 🛡️ Seguridad
-
-### **Firewall**
-- **Puerto 3000**: Frontend BLUE (público)
-- **Puerto 3002**: Backend BLUE (público)
-- **Puerto 3001**: Frontend GREEN (solo red local)
-- **Puerto 3003**: Backend GREEN (solo red local)
-
-### **Base de Datos**
-- **BLUE**: `sistema_mg_production` (datos reales)
-- **GREEN**: `sistema_mg_staging` (datos de prueba)
-
-## 📊 Monitoreo
-
-### **Logs**
+### **3. Verificación**
 ```bash
-# Ver logs del backend GREEN
-tail -f staging/logs/backend.log
+# Ver estado de migraciones
+./control-green.sh
+# Seleccionar opción 11: Ver estado de migraciones
 
-# Ver logs del frontend GREEN
-tail -f staging/logs/frontend.log
+# Ver logs del sistema
+# Seleccionar opción 4: Ver logs
 ```
 
-### **Estado de Servicios**
-```bash
-# Verificar puertos
-sudo netstat -tlnp | grep -E ':(3000|3001|3002|3003)'
-
-# Verificar procesos
-ps aux | grep -E "(staging|serve)"
-```
-
-## 🚨 Troubleshooting
+## 🔍 **Troubleshooting**
 
 ### **Problemas Comunes**
 
 #### **1. Puerto en uso**
 ```bash
-# Verificar qué está usando el puerto
-sudo netstat -tlnp | grep :3001
+# Verificar puertos
+sudo netstat -tlnp | grep -E ':(3001|3003)'
 
-# Matar proceso si es necesario
+# Matar procesos
 sudo kill -9 <PID>
 ```
 
-#### **2. Backend no responde**
+#### **2. Permisos de archivos**
 ```bash
-# Verificar logs
-tail -f staging/logs/backend.log
+# Arreglar permisos
+sudo chown -R mauro_far:mauro_far dist/
+sudo chmod -R 755 dist/
+```
 
+#### **3. Base de datos no conecta**
+```bash
 # Verificar configuración
 cat staging/backend/.env
+
+# Verificar que existe la BD
+psql -U postgres -l | grep sistema_mg_staging
 ```
 
-#### **3. Frontend no carga**
+#### **4. Frontend no se conecta al backend**
 ```bash
-# Verificar build
-ls -la dist/
+# Verificar .env.staging
+cat .env.staging
 
-# Rebuild si es necesario
-npm run build -- --mode staging
+# Verificar que el backend esté corriendo
+curl http://localhost:3003/api/health
 ```
 
-#### **4. Base de datos no conecta**
+## 📊 **Monitoreo**
+
+### **Logs del Sistema**
 ```bash
-# Verificar PostgreSQL
-sudo systemctl status postgresql
+# Backend GREEN
+tail -f staging/logs/backend.log
 
-# Verificar base de datos
-psql -U postgres -d sistema_mg_staging
+# Frontend GREEN
+tail -f staging/logs/frontend.log
+
+# Logs del sistema
+./control-green.sh
+# Seleccionar opción 4: Ver logs
 ```
 
-## ✅ Ventajas del Sistema
+### **Estado del Sistema**
+```bash
+# Ver estado completo
+./control-green.sh
+# Seleccionar opción 3: Ver estado
 
-### **Profesional**
-- ✅ **Un solo código base**: Mantenimiento simple
-- ✅ **Builds optimizados**: Diferentes configuraciones
-- ✅ **Eficiente**: No duplicación de código
-- ✅ **Configurable**: Variables de entorno
-- ✅ **Estándar**: Práctica profesional
+# Ver estado de migraciones
+./control-green.sh
+# Seleccionar opción 11: Ver estado de migraciones
+```
 
-### **Seguro**
-- ✅ **Aislamiento**: Sistemas completamente separados
-- ✅ **Datos protegidos**: Base de datos de prueba
-- ✅ **Acceso controlado**: Solo red local para staging
+## 🎯 **Mejores Prácticas**
 
-### **Eficiente**
-- ✅ **Recursos optimizados**: Solo levantar cuando se necesita
-- ✅ **Despliegue rápido**: Builds optimizados
-- ✅ **Fácil mantenimiento**: Script de control automatizado
+### **1. Desarrollo**
+- ✅ **Siempre probar en GREEN** antes de migrar a BLUE
+- ✅ **Usar migraciones secuenciales** para cambios de BD
+- ✅ **Verificar logs** después de cada cambio
+- ✅ **Hacer backups** antes de migraciones importantes
 
-## 🎯 Próximos Pasos
+### **2. Migraciones**
+- ✅ **Migrar GREEN primero** y probar
+- ✅ **Verificar que GREEN funciona** antes de migrar BLUE
+- ✅ **Usar confirmaciones** para migraciones a producción
+- ✅ **Monitorear logs** durante las migraciones
 
-1. **Automatización**: Integrar con CI/CD
-2. **Monitoreo**: Agregar métricas y alertas
-3. **Backup**: Automatizar respaldos de staging
-4. **Testing**: Integrar tests automatizados
+### **3. Mantenimiento**
+- ✅ **Limpiar logs** periódicamente
+- ✅ **Verificar estado** de migraciones regularmente
+- ✅ **Actualizar dependencias** en ambos entornos
+- ✅ **Hacer backups** de la base de datos
 
-## 📞 Soporte
+## 🔒 **Seguridad**
 
-Para problemas o dudas:
-1. Revisar logs: `./control-green.sh` → opción 4
-2. Verificar estado: `./control-green.sh` → opción 3
-3. Ejecutar pruebas: `./control-green.sh` → opción 7
+### **Firewall**
+```bash
+# Ver reglas activas
+sudo ufw status
+
+# Agregar puertos si es necesario
+sudo ufw allow 3001/tcp
+sudo ufw allow 3003/tcp
+```
+
+### **Base de Datos**
+- ✅ **GREEN usa BD separada** (`sistema_mg_staging`)
+- ✅ **BLUE usa BD de producción** (`sistema_mg`)
+- ✅ **Conexiones locales** por defecto
+- ✅ **Contraseñas en variables de entorno**
+
+## 📞 **Soporte**
+
+### **Comandos de Emergencia**
+```bash
+# Detener todo el sistema GREEN
+./control-green.sh
+# Seleccionar opción 2: Bajar sistema GREEN
+
+# Ver estado completo
+./control-green.sh
+# Seleccionar opción 3: Ver estado
+
+# Ver logs de errores
+./control-green.sh
+# Seleccionar opción 4: Ver logs
+```
+
+### **Información del Sistema**
+```bash
+# Versión del script
+head -10 control-green.sh
+
+# Configuración actual
+cat staging.env
+cat .env.staging
+
+# Estado de la base de datos
+psql -U postgres -c "\l" | grep sistema_mg
+```
 
 ---
 
-**🎉 ¡Sistema Blue-Green Deployment Profesional implementado exitosamente!**
+## 🎉 **¡Sistema Blue-Green Profesional Implementado!**
+
+**El sistema está listo para uso en producción con:**
+- ✅ **Deployment seguro** sin downtime
+- ✅ **Testing integrado** antes de producción
+- ✅ **Migraciones controladas** de base de datos
+- ✅ **Monitoreo completo** del sistema
+- ✅ **Recuperación rápida** en caso de problemas
+
+**¡Disfruta de tu sistema Blue-Green profesional!** 🚀
