@@ -853,7 +853,7 @@ function CotizacionesVer() {
       {/* Modal Alternativo de Correo */}
       {showModalAlternativo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4">Enviar Correo</h2>
             <form onSubmit={handleEnviarCorreoAlternativoSubmit}>
               <div className="mb-4 relative">
@@ -885,12 +885,26 @@ function CotizacionesVer() {
                         const currentEmails = emailDataAlternativo.to;
                         const newEmail = cliente.email_cliente;
                         
+                        // ✅ Lógica mejorada para agregar correos sin borrar los existentes
                         if (currentEmails && currentEmails.trim() !== '') {
-                          // Si ya hay correos, agregar con coma
-                          setEmailDataAlternativo(prev => ({
-                            ...prev,
-                            to: `${currentEmails}, ${newEmail}`
-                          }));
+                          // Si ya hay correos, extraer la parte antes de la última coma
+                          const emailsArray = currentEmails.split(',');
+                          const lastPart = emailsArray[emailsArray.length - 1].trim();
+                          
+                          // Si la última parte está vacía, es solo espacios, o no es un email completo, reemplazarla
+                          if (lastPart === '' || lastPart.length < 2 || !lastPart.includes('@')) {
+                            emailsArray[emailsArray.length - 1] = ` ${newEmail}`;
+                            setEmailDataAlternativo(prev => ({
+                              ...prev,
+                              to: emailsArray.join(',')
+                            }));
+                          } else {
+                            // Si la última parte es un email completo, agregar el nuevo correo
+                            setEmailDataAlternativo(prev => ({
+                              ...prev,
+                              to: `${currentEmails}, ${newEmail}`
+                            }));
+                          }
                         } else {
                           // Si no hay correos, usar solo este
                           setEmailDataAlternativo(prev => ({
@@ -935,7 +949,37 @@ function CotizacionesVer() {
                         <li
                           key={cliente.id}
                           onClick={() => {
-                            setEmailDataAlternativo(prev => ({ ...prev, to: cliente.email_cliente || '' }));
+                            const currentEmails = emailDataAlternativo.to;
+                            const newEmail = cliente.email_cliente;
+                            
+                            // ✅ Lógica mejorada para agregar correos sin borrar los existentes
+                            if (currentEmails && currentEmails.trim() !== '') {
+                              // Si ya hay correos, extraer la parte antes de la última coma
+                              const emailsArray = currentEmails.split(',');
+                              const lastPart = emailsArray[emailsArray.length - 1].trim();
+                              
+                              // Si la última parte está vacía, es solo espacios, o no es un email completo, reemplazarla
+                              if (lastPart === '' || lastPart.length < 2 || !lastPart.includes('@')) {
+                                emailsArray[emailsArray.length - 1] = ` ${newEmail}`;
+                                setEmailDataAlternativo(prev => ({
+                                  ...prev,
+                                  to: emailsArray.join(',')
+                                }));
+                              } else {
+                                // Si la última parte es un email completo, agregar el nuevo correo
+                                setEmailDataAlternativo(prev => ({
+                                  ...prev,
+                                  to: `${currentEmails}, ${newEmail}`
+                                }));
+                              }
+                            } else {
+                              // Si no hay correos, usar solo este
+                              setEmailDataAlternativo(prev => ({
+                                ...prev,
+                                to: newEmail
+                              }));
+                            }
+                            
                             setShowSugerencias(false);
                             setSugerenciaIndex(-1);
                           }}

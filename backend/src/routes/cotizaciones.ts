@@ -1264,12 +1264,16 @@ const CotizacionDatos = (client: any) => {
         });
       }
 
-      // Validar formato de email
+      // ✅ Validar formato de email (soporta múltiples correos separados por coma)
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      const emails = email.split(',').map(e => e.trim()).filter(e => e.length > 0);
+      
+      // Verificar que todos los emails tengan formato válido
+      const invalidEmails = emails.filter(e => !emailRegex.test(e));
+      if (invalidEmails.length > 0) {
         return res.status(400).json({
           success: false,
-          message: 'El formato del correo electrónico no es válido'
+          message: `Los siguientes correos electrónicos no tienen formato válido: ${invalidEmails.join(', ')}`
         });
       }
 
