@@ -80,7 +80,7 @@ install_dependencies() {
     log "Instalando dependencias..."
     
     # Paquetes básicos
-    apt install -y curl wget git build-essential unzip software-properties-common
+    apt install -y curl wget git build-essential unzip
     
     # Instalar Node.js 18.x
     log "Instalando Node.js 18.x..."
