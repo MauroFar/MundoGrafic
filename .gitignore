@@ -42,4 +42,38 @@ backend/storage/uploads/*
 backend/storage/firmas/*
 !backend/storage/firmas/.gitkeep
 
+# Ignora toda la carpeta de staging (archivos temporales y de desarrollo)
+staging/
+
+# Ignora archivos de imágenes subidas por usuarios (uploads)
+**/uploads/*.png
+**/uploads/*.jpg
+**/uploads/*.jpeg
+**/uploads/*.gif
+**/uploads/*.webp
+**/uploads/*.svg
+
+# Ignora imágenes de firmas de usuarios
+**/firmas/*.png
+**/firmas/*.jpg
+**/firmas/*.jpeg
+**/firmas/*.gif
+**/firmas/*.webp
+**/firmas/*.svg
+
+# Ignora imágenes temporales o generadas dinámicamente
+**/temp/*.png
+**/temp/*.jpg
+**/temp/*.jpeg
+**/temp/*.gif
+**/temp/*.webp
+**/temp/*.svg
+
+# Ignora archivos PDF generados dinámicamente
+*.pdf
+
+# Ignora archivos de backup
+*.backup
+*.bak
+
 start-app.bat

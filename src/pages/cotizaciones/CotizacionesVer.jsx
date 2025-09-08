@@ -25,7 +25,8 @@ function CotizacionesVer() {
   const [emailDataAlternativo, setEmailDataAlternativo] = useState({
     to: '',
     subject: '',
-    message: ''
+    message: '',
+    nombrePDF: ''
   });
   const [showClientesModal, setShowClientesModal] = useState(false);
   const [clientesSugeridos, setClientesSugeridos] = useState([]);
@@ -395,7 +396,8 @@ function CotizacionesVer() {
       ...prev,
       to: cotizacion?.email_cliente || "",
       subject: prev.subject || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
-      message: prev.message || 'Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC'
+      message: prev.message || 'Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC',
+      nombrePDF: prev.nombrePDF || `Cotizacion-${cotizacion.numero_cotizacion}`
     }));
     setShowModalAlternativo(true);
   };
@@ -431,7 +433,8 @@ function CotizacionesVer() {
         body: JSON.stringify({
           email: emailDataAlternativo.to,
           asunto: emailDataAlternativo.subject,
-          mensaje: emailDataAlternativo.message
+          mensaje: emailDataAlternativo.message,
+          nombrePDF: emailDataAlternativo.nombrePDF
         })
       });
 
@@ -443,7 +446,7 @@ function CotizacionesVer() {
 
       setShowSuccessModal(true);
       setShowModalAlternativo(false);
-      setEmailDataAlternativo({ to: '', subject: '', message: '' });
+      setEmailDataAlternativo({ to: '', subject: '', message: '', nombrePDF: '' });
 
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -1028,12 +1031,27 @@ function CotizacionesVer() {
                   className="w-full border border-gray-300 rounded-md p-2 h-32"
                 />
               </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre del PDF
+                </label>
+                <input
+                  type="text"
+                  value={emailDataAlternativo.nombrePDF}
+                  onChange={e => setEmailDataAlternativo(prev => ({ ...prev, nombrePDF: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md p-2"
+                  placeholder="Ej: Cotizacion-Cliente-Enero2024"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  El archivo se enviará con extensión .pdf automáticamente
+                </p>
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModalAlternativo(false);
-                    setEmailDataAlternativo({ to: '', subject: '', message: '' });
+                    setEmailDataAlternativo({ to: '', subject: '', message: '', nombrePDF: '' });
                     setClientesSugeridos([]);
                     setShowSugerencias(false);
                     setSugerenciaIndex(-1);

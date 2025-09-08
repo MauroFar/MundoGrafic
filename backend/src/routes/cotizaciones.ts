@@ -1254,7 +1254,7 @@ const CotizacionDatos = (client: any) => {
   router.post('/:id/enviar-correo', authRequired(), async (req: any, res: any) => {
     try {
       const { id } = req.params;
-      const { email, asunto, mensaje } = req.body;
+      const { email, asunto, mensaje, nombrePDF } = req.body;
 
       // Validar que el correo fue proporcionado
       if (!email) {
@@ -1508,7 +1508,7 @@ const CotizacionDatos = (client: any) => {
         `,
         attachments: [
           {
-            filename: `cotizacion_${cotizacion.numero_cotizacion}.pdf`,
+            filename: `${nombrePDF || `cotizacion_${cotizacion.numero_cotizacion}`}.pdf`,
             content: pdfBuffer,
             contentType: 'application/pdf',
           },
