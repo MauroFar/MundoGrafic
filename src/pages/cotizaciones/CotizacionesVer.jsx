@@ -105,12 +105,25 @@ function CotizacionesVer() {
       }
       
       console.log('Estado anterior de cotizaciones:', cotizaciones.length);
+      
+      // Eliminar duplicados por ID
+      const eliminarDuplicados = (array) => {
+        return array.filter((item, index, self) => 
+          index === self.findIndex(t => t.id === item.id)
+        );
+      };
+      
       if (reset) {
         console.log('Reseteando cotizaciones con', data.length, 'elementos');
-        setCotizaciones(data);
+        const cotizacionesUnicas = eliminarDuplicados(data);
+        console.log('Cotizaciones únicas después de eliminar duplicados:', cotizacionesUnicas.length);
+        setCotizaciones(cotizacionesUnicas);
       } else {
         console.log('Agregando', data.length, 'elementos a las', cotizaciones.length, 'existentes');
-        setCotizaciones(prev => [...prev, ...data]);
+        const nuevasCotizaciones = [...cotizaciones, ...data];
+        const cotizacionesUnicas = eliminarDuplicados(nuevasCotizaciones);
+        console.log('Cotizaciones únicas después de eliminar duplicados:', cotizacionesUnicas.length);
+        setCotizaciones(cotizacionesUnicas);
       }
       setHayMas(data.length === LIMITE_POR_PAGINA);
     } catch (error) {
