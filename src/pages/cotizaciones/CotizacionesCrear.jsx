@@ -33,7 +33,7 @@ function CotizacionesCrear() {
   const [formaPago, setFormaPago] = useState("50% anticipo, 50% contra entrega");
   const [validezProforma, setValidezProforma] = useState("15 días");
   const [observaciones, setObservaciones] = useState("");
-  const [numeroCotizacion, setNumeroCotizacion] = useState("Generando...");
+  const [numeroCotizacion, setNumeroCotizacion] = useState("Nueva cotización");
   const textareaRefs = useRef([]);
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -471,7 +471,10 @@ function CotizacionesCrear() {
         }
         const nuevaCotizacion = await createResponse.json();
         cotizacionId = nuevaCotizacion.id;
-        numeroCotizacionGuardada = nuevaCotizacion.numero_cotizacion || numeroCotizacion;
+        numeroCotizacionGuardada = nuevaCotizacion.numero_cotizacion;
+        
+        // Actualizar el número de cotización mostrado con el número real asignado
+        setNumeroCotizacion(numeroCotizacionGuardada.toString().padStart(5, '0'));
         // Guardar detalles de la nueva cotización
         if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
@@ -527,13 +530,9 @@ function CotizacionesCrear() {
         alert("El nombre del cliente es requerido");
         return;
       }
-      // Obtener el número de cotización actual y preparar el siguiente
-      const numeroActual = await obtenerNumeroCotizacion();
-      const siguienteNumero = (parseInt(numeroActual) + 1).toString().padStart(5, '0');
-
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
-        await guardarCotizacionComoNueva(selectedClienteId, siguienteNumero);
+        await guardarCotizacionComoNueva(selectedClienteId);
         return;
       }
 
@@ -543,7 +542,7 @@ function CotizacionesCrear() {
       );
       if (clienteCoincidencia) {
         setSelectedClienteId(clienteCoincidencia.id);
-        await guardarCotizacionComoNueva(clienteCoincidencia.id, siguienteNumero);
+        await guardarCotizacionComoNueva(clienteCoincidencia.id);
         return;
       }
 
@@ -560,14 +559,14 @@ function CotizacionesCrear() {
         // Cliente existente
         clienteId = clientesEncontrados[0].id;
         setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await guardarCotizacionComoNueva(clienteId, siguienteNumero);
+        await guardarCotizacionComoNueva(clienteId);
       } else {
         // Mostrar modal para ingresar datos del nuevo cliente
         setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
         setShowNuevoClienteModal(true);
         setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
           setSelectedClienteId(nuevoClienteId);
-          await guardarCotizacionComoNueva(nuevoClienteId, siguienteNumero);
+          await guardarCotizacionComoNueva(nuevoClienteId);
         });
         return; // Detener flujo hasta que se confirme el modal
       }
@@ -577,42 +576,7 @@ function CotizacionesCrear() {
     }
   };
 
-  // Función para obtener el último número de cotización
-  const obtenerNumeroCotizacion = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${apiUrl}/api/cotizaciones/ultima`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.data && response.data.numero_cotizacion) {
-        // Si estamos en modo edición, mantenemos el número actual
-        if (!id) {
-          // Si es una nueva cotización, usamos el último número sin incrementar
-          const ultimoNumero = parseInt(response.data.numero_cotizacion);
-          const numeroFormateado = ultimoNumero.toString().padStart(5, '0');
-          setNumeroCotizacion(numeroFormateado);
-          return numeroFormateado;
-        }
-      } else {
-        // Si no hay cotizaciones previas, comenzamos desde 00001
-        setNumeroCotizacion("00001");
-        return "00001";
-      }
-    } catch (error) {
-      console.error("Error al obtener el número de cotización:", error);
-      setNumeroCotizacion("Error");
-      return "Error";
-    }
-  };
-
-  // Llamada al cargar el componente o antes de crear una cotización
-  useEffect(() => {
-    if (!id) {
-      obtenerNumeroCotizacion();
-    }
-  }, [id]);
+  // Nota: El número de cotización se asignará automáticamente por la base de datos al guardar
 
   // Función para agregar una nueva fila
   const agregarFila = () => {
@@ -987,7 +951,7 @@ function CotizacionesCrear() {
     }
   };
 
-  const guardarCotizacionComoNueva = async (clienteId, siguienteNumero) => {
+  const guardarCotizacionComoNueva = async (clienteId) => {
     try {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
@@ -1010,7 +974,7 @@ function CotizacionesCrear() {
         total,
         ruc_id: selectedRuc.id,
         cliente_id: clienteId,
-        numero_cotizacion: siguienteNumero,
+        // numero_cotizacion se asignará automáticamente por la base de datos
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
@@ -1063,12 +1027,15 @@ function CotizacionesCrear() {
 
       setShowSuccessModal(true);
       setSuccessMessage('¡Nueva cotización guardada exitosamente!');
-      setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion || siguienteNumero);
+      setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion);
+      
+      // Actualizar el número de cotización mostrado con el número real asignado
+      setNumeroCotizacion(nuevaCotizacion.numero_cotizacion.toString().padStart(5, '0'));
       // Notificación local para el usuario logeado (guardar como nueva)
       window.dispatchEvent(new CustomEvent("nueva-notificacion", {
         detail: {
           titulo: "Cotización guardada como nueva",
-          mensaje: `Has guardado la cotización N° ${(nuevaCotizacion.numero_cotizacion || siguienteNumero)} como nueva.`,
+          mensaje: `Has guardado la cotización N° ${nuevaCotizacion.numero_cotizacion} como nueva.`,
           fecha: new Date().toLocaleString()
         }
       }));
