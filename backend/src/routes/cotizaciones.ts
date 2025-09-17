@@ -936,10 +936,10 @@ const CotizacionDatos = (client: any) => {
 
   router.get("/ultima", authRequired(), async (req: any, res: any) => {
     try {
-      // Ya no calculamos provisionalmente, solo informamos el último número actual
-      const ultimoNumeroQuery = "SELECT numero_cotizacion FROM cotizaciones ORDER BY numero_cotizacion DESC LIMIT 1";
+      // Obtener el valor actual de la secuencia para mostrar el próximo número
+      const ultimoNumeroQuery = "SELECT last_value FROM cotizaciones_numero_cotizacion_seq";
       const ultimoNumeroResult = await client.query(ultimoNumeroQuery);
-      const ultimoNumeroCotizacion = ultimoNumeroResult.rows[0]?.numero_cotizacion || 0;
+      const ultimoNumeroCotizacion = ultimoNumeroResult.rows[0]?.last_value || 0;
       res.json({ numero_cotizacion: ultimoNumeroCotizacion.toString().padStart(5, "0") });
     } catch (error: any) {
       console.error("Error al obtener la última cotización:", error);
