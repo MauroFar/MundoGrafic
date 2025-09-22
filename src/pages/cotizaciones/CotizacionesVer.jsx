@@ -334,6 +334,8 @@ function CotizacionesVer() {
   // Vista previa en modal (igual al flujo de crear cotización)
   const previewEnModal = async (id) => {
     try {
+      setPreviewUrl(null);
+      setShowPreview(true); // Mostrar modal inmediatamente
       setPreviewLoading(true);
       const token = localStorage.getItem("token");
 
@@ -397,11 +399,11 @@ function CotizacionesVer() {
       }
 
       setPreviewUrl(dataPrev.pdf);
-      setShowPreview(true);
     } catch (error) {
       console.error('Error en vista previa:', error);
       setConfirmMessage('Error al generar la vista previa: ' + error.message);
       setShowConfirmModal(true);
+      setShowPreview(false);
     } finally {
       setPreviewLoading(false);
     }
