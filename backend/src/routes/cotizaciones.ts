@@ -936,11 +936,24 @@ const CotizacionDatos = (client: any) => {
 
   router.get("/ultima", authRequired(), async (req: any, res: any) => {
     try {
-      // Obtener el valor actual de la secuencia para mostrar el próximo número
-      const ultimoNumeroQuery = "SELECT last_value FROM cotizaciones_numero_cotizacion_seq";
-      const ultimoNumeroResult = await client.query(ultimoNumeroQuery);
-      const ultimoNumeroCotizacion = ultimoNumeroResult.rows[0]?.last_value || 0;
-      res.json({ numero_cotizacion: ultimoNumeroCotizacion.toString().padStart(5, "0") });
+      // Intentar obtener el siguiente valor de la secuencia sin avanzar la secuencia
+      // Usamos last_value + increment_by para calcular el siguiente
+      try {
+        const seqQuery = "SELECT last_value, increment_by FROM cotizaciones_numero_cotizacion_seq";
+        const seqResult = await client.query(seqQuery);
+        const lastValue = Number(seqResult.rows[0]?.last_value || 0);
+        const incrementBy = Number(seqResult.rows[0]?.increment_by || 1);
+        const nextValue = lastValue + incrementBy;
+        return res.json({ numero_cotizacion: nextValue.toString().padStart(5, "0") });
+      } catch (seqErr) {
+        console.warn("No se pudo leer la secuencia, usando MAX(numero_cotizacion)+1:", seqErr);
+      }
+
+      // Fallback: calcular siguiente número basado en la tabla
+      const fallbackQuery = "SELECT COALESCE(MAX(numero_cotizacion) + 1, 1) AS next_num FROM cotizaciones";
+      const fbResult = await client.query(fallbackQuery);
+      const nextNum = Number(fbResult.rows[0]?.next_num || 1);
+      return res.json({ numero_cotizacion: nextNum.toString().padStart(5, "0") });
     } catch (error: any) {
       console.error("Error al obtener la última cotización:", error);
       res.status(500).json({ error: "Error al obtener la última cotización" });

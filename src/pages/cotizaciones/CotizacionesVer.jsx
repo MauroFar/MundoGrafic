@@ -49,6 +49,9 @@ function CotizacionesVer() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -325,6 +328,82 @@ function CotizacionesVer() {
       return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Vista previa en modal (igual al flujo de crear cotización)
+  const previewEnModal = async (id) => {
+    try {
+      setPreviewLoading(true);
+      const token = localStorage.getItem("token");
+
+      // 1) Obtener cabecera de la cotización
+      const respCot = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!respCot.ok) throw new Error('No se pudo obtener la cotización');
+      const cot = await respCot.json();
+
+      // 2) Obtener detalles
+      const respDet = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!respDet.ok) throw new Error('No se pudieron obtener los detalles');
+      const detalles = await respDet.json();
+
+      // 3) Armar payload esperado por /preview
+      const cotizacionTemp = {
+        numero_cotizacion: cot.numero_cotizacion,
+        fecha: cot.fecha,
+        nombre_cliente: cot.nombre_cliente,
+        ruc: cot.ruc,
+        subtotal: cot.subtotal,
+        iva: cot.iva,
+        descuento: cot.descuento,
+        total: cot.total,
+        tiempo_entrega: cot.tiempo_entrega,
+        forma_pago: cot.forma_pago,
+        validez_proforma: cot.validez_proforma,
+        observaciones: cot.observaciones,
+        nombre_ejecutivo: cot.nombre_ejecutivo,
+      };
+
+      const detallesTemp = Array.isArray(detalles) ? detalles.map((d) => ({
+        cantidad: d.cantidad,
+        detalle: d.detalle,
+        valor_unitario: d.valor_unitario,
+        valor_total: d.valor_total,
+        imagen_ruta: d.imagen_ruta,
+        imagen_width: d.imagen_width || 300,
+        imagen_height: d.imagen_height || 200,
+      })) : [];
+
+      // 4) Pedir vista previa (PDF base64 embebido)
+      const respPrev = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ cotizacion: cotizacionTemp, detalles: detallesTemp }),
+      });
+      if (!respPrev.ok) {
+        const errData = await respPrev.json().catch(() => ({}));
+        throw new Error(errData.error || 'Error al generar la vista previa');
+      }
+      const dataPrev = await respPrev.json();
+      if (!dataPrev.success || !dataPrev.pdf) {
+        throw new Error('Respuesta inválida al generar vista previa');
+      }
+
+      setPreviewUrl(dataPrev.pdf);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error en vista previa:', error);
+      setConfirmMessage('Error al generar la vista previa: ' + error.message);
+      setShowConfirmModal(true);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -743,6 +822,14 @@ function CotizacionesVer() {
                     <div className="flex space-x-2">
                       <button
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
+                        onClick={() => previewEnModal(cotizacion.id)}
+                        title="Vista previa"
+                      >
+                        <FaEye />
+                        <span className="text-xs mt-1 text-gray-600">Previa</span>
+                      </button>
+                      <button
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
                         onClick={() => editarCotizacion(cotizacion.id)}
                         title="Editar"
                       >
@@ -865,6 +952,36 @@ function CotizacionesVer() {
               >
                 {loading ? 'Enviando...' : 'Enviar Correo'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de vista previa */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
+              <button
+                onClick={() => { setShowPreview(false); setPreviewUrl(null); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewLoading ? (
+                <div className="w-full h-full flex items-center justify-center text-gray-600">Generando...</div>
+              ) : (
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
+              )}
             </div>
           </div>
         </div>

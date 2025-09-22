@@ -5,6 +5,7 @@ import clientesRoutes from "./clientes";
 import cotizacionRoutes from "./cotizaciones";
 import cotizacionDetRoutes from "./cotizacionesDetalles";
 import cotizacionesEditar from "./cotizacionesEditar";
+import reportesTrabajoRoutes from "./reportesTrabajo";
 import ordenTrabajoRoutes from "./ordenTrabajo";
 import puppeteer from "puppeteer";
 import uploadRoutes from "./upload-simple";
@@ -20,6 +21,7 @@ export default (client: any) => {
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
   router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
+  router.use("/reportesTrabajo", reportesTrabajoRoutes(client)); // /api/reportesTrabajo
   router.use("/upload", uploadRoutes); // /api/upload
   router.use("/chat", chatRoutes(client)); // /api/chat
 

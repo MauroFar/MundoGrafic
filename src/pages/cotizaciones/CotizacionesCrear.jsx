@@ -91,6 +91,29 @@ function CotizacionesCrear() {
       .catch((error) => console.error("Error al obtener los RUCs:", error));
   }, []);
 
+  // Obtener el número de cotización actual desde la BBDD cuando se crea una nueva
+  useEffect(() => {
+    const fetchNumeroCotizacion = async () => {
+      if (id) return; // En edición ya viene el número desde la carga
+      try {
+        const token = localStorage.getItem("token");
+        const resp = await fetch(`${apiUrl}/api/cotizaciones/ultima`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data?.numero_cotizacion) {
+          setNumeroCotizacion(data.numero_cotizacion);
+        }
+      } catch (e) {
+        console.warn("No se pudo obtener el número de cotización actual:", e);
+      }
+    };
+    fetchNumeroCotizacion();
+  }, [id, apiUrl]);
+
   const cargarCotizacion = async () => {
     try {
       // Cargar datos de la cotización usando la API correcta
