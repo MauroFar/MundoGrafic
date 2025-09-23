@@ -111,9 +111,8 @@ function CotizacionesCrear() {
         const data = await resp.json();
         console.log("📊 Datos recibidos:", data);
         if (data?.numero_cotizacion) {
-          const siguienteNumero = data.numero_cotizacion + 1;
-          console.log("✅ Estableciendo número de cotización:", siguienteNumero);
-          setNumeroCotizacion(siguienteNumero.toString().padStart(5, '0'));
+          console.log("✅ Estableciendo número de cotización:", data.numero_cotizacion);
+          setNumeroCotizacion(data.numero_cotizacion.toString().padStart(5, '0'));
         } else {
           console.log("ℹ️ No hay número de cotización previo, usando 00001");
           setNumeroCotizacion("00001");

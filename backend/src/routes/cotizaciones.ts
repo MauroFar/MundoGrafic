@@ -890,7 +890,24 @@ const CotizacionDatos = (client: any) => {
     const user = req.user;
 
     try {
-      // Insertar dejando que la DB asigne numero_cotizacion automáticamente
+      // Primero, obtener el siguiente número de cotización
+      let numeroCotizacion;
+      try {
+        // Intentar usar la secuencia si existe
+        const seqQuery = "SELECT nextval('cotizaciones_numero_cotizacion_seq') as next_num";
+        const seqResult = await client.query(seqQuery);
+        numeroCotizacion = seqResult.rows[0].next_num;
+        console.log("✅ Usando secuencia para numero_cotizacion:", numeroCotizacion);
+      } catch (seqError) {
+        console.warn("⚠️ Secuencia no disponible, usando MAX+1:", seqError.message);
+        // Fallback: calcular siguiente número basado en la tabla
+        const fallbackQuery = "SELECT COALESCE(MAX(numero_cotizacion) + 1, 1) AS next_num FROM cotizaciones";
+        const fbResult = await client.query(fallbackQuery);
+        numeroCotizacion = Number(fbResult.rows[0].next_num || 1);
+        console.log("✅ Usando MAX+1 para numero_cotizacion:", numeroCotizacion);
+      }
+
+      // Insertar con el número de cotización calculado
       const insertQuery = `
         INSERT INTO cotizaciones (
           cliente_id, 
@@ -905,9 +922,10 @@ const CotizacionDatos = (client: any) => {
           tiempo_entrega,
           forma_pago,
           validez_proforma,
-          observaciones
+          observaciones,
+          numero_cotizacion
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `;
 
@@ -924,38 +942,48 @@ const CotizacionDatos = (client: any) => {
         tiempo_entrega,
         forma_pago,
         validez_proforma,
-        observaciones
+        observaciones,
+        numeroCotizacion
       ]);
+
+      console.log("🎉 Cotización creada exitosamente:", {
+        id: result.rows[0].id,
+        numero_cotizacion: result.rows[0].numero_cotizacion,
+        cliente_id: result.rows[0].cliente_id
+      });
 
       res.json(result.rows[0]);
     } catch (error: any) {
-      console.error("Error al insertar cotización:", error);
+      console.error("❌ Error al insertar cotización:", error);
       res.status(500).json({ error: "Error al insertar cotización" });
     }
   });
 
   router.get("/ultima", authRequired(), async (req: any, res: any) => {
     try {
+      console.log("🔍 Obteniendo último número de cotización...");
+      
       // Intentar obtener el siguiente valor de la secuencia sin avanzar la secuencia
-      // Usamos last_value + increment_by para calcular el siguiente
       try {
         const seqQuery = "SELECT last_value, increment_by FROM cotizaciones_numero_cotizacion_seq";
         const seqResult = await client.query(seqQuery);
         const lastValue = Number(seqResult.rows[0]?.last_value || 0);
         const incrementBy = Number(seqResult.rows[0]?.increment_by || 1);
         const nextValue = lastValue + incrementBy;
-        return res.json({ numero_cotizacion: nextValue.toString().padStart(5, "0") });
+        console.log("✅ Usando secuencia - último valor:", lastValue, "siguiente:", nextValue);
+        return res.json({ numero_cotizacion: nextValue });
       } catch (seqErr) {
-        console.warn("No se pudo leer la secuencia, usando MAX(numero_cotizacion)+1:", seqErr);
+        console.warn("⚠️ No se pudo leer la secuencia, usando MAX(numero_cotizacion)+1:", seqErr.message);
       }
 
       // Fallback: calcular siguiente número basado en la tabla
       const fallbackQuery = "SELECT COALESCE(MAX(numero_cotizacion) + 1, 1) AS next_num FROM cotizaciones";
       const fbResult = await client.query(fallbackQuery);
       const nextNum = Number(fbResult.rows[0]?.next_num || 1);
-      return res.json({ numero_cotizacion: nextNum.toString().padStart(5, "0") });
+      console.log("✅ Usando MAX+1 - siguiente número:", nextNum);
+      return res.json({ numero_cotizacion: nextNum });
     } catch (error: any) {
-      console.error("Error al obtener la última cotización:", error);
+      console.error("❌ Error al obtener la última cotización:", error);
       res.status(500).json({ error: "Error al obtener la última cotización" });
     }
   });
