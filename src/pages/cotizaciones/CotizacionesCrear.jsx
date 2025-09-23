@@ -97,18 +97,30 @@ function CotizacionesCrear() {
       if (id) return; // En edición ya viene el número desde la carga
       try {
         const token = localStorage.getItem("token");
+        console.log("🔍 Obteniendo último número de cotización...");
         const resp = await fetch(`${apiUrl}/api/cotizaciones/ultima`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!resp.ok) return;
+        console.log("📡 Respuesta del servidor:", resp.status, resp.statusText);
+        if (!resp.ok) {
+          console.warn("❌ Error al obtener último número de cotización:", resp.status);
+          return;
+        }
         const data = await resp.json();
+        console.log("📊 Datos recibidos:", data);
         if (data?.numero_cotizacion) {
-          setNumeroCotizacion(data.numero_cotizacion);
+          const siguienteNumero = data.numero_cotizacion + 1;
+          console.log("✅ Estableciendo número de cotización:", siguienteNumero);
+          setNumeroCotizacion(siguienteNumero.toString().padStart(5, '0'));
+        } else {
+          console.log("ℹ️ No hay número de cotización previo, usando 00001");
+          setNumeroCotizacion("00001");
         }
       } catch (e) {
-        console.warn("No se pudo obtener el número de cotización actual:", e);
+        console.error("❌ Error al obtener el número de cotización actual:", e);
+        setNumeroCotizacion("00001"); // Fallback
       }
     };
     fetchNumeroCotizacion();
@@ -467,9 +479,10 @@ function CotizacionesCrear() {
           throw new Error(errorData.error || "Error al actualizar los detalles de la cotización");
         }
 
+        console.log("🎉 Cotización actualizada exitosamente. Número:", numeroCotizacionGuardada);
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización actualizada exitosamente!');
-        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
+        setNumeroCotizacionGuardada(formatearNumeroCotizacion(numeroCotizacionGuardada));
         // Notificación local para el usuario logeado (actualización)
         window.dispatchEvent(new CustomEvent("nueva-notificacion", {
           detail: {
@@ -515,9 +528,10 @@ function CotizacionesCrear() {
           }
         }
 
+        console.log("🎉 Cotización creada exitosamente. Número asignado:", numeroCotizacionGuardada);
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización creada exitosamente!');
-        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
+        setNumeroCotizacionGuardada(formatearNumeroCotizacion(numeroCotizacionGuardada));
         // Notificación local para el usuario logeado
         window.dispatchEvent(new CustomEvent("nueva-notificacion", {
           detail: {
@@ -1054,9 +1068,10 @@ function CotizacionesCrear() {
         }
       }
 
+      console.log("🎉 Nueva cotización guardada exitosamente. Número asignado:", nuevaCotizacion.numero_cotizacion);
       setShowSuccessModal(true);
       setSuccessMessage('¡Nueva cotización guardada exitosamente!');
-      setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion);
+      setNumeroCotizacionGuardada(formatearNumeroCotizacion(nuevaCotizacion.numero_cotizacion));
       
       // Actualizar el número de cotización mostrado con el número real asignado
       setNumeroCotizacion(formatearNumeroCotizacion(nuevaCotizacion.numero_cotizacion));

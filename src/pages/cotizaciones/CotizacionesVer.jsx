@@ -334,24 +334,35 @@ function CotizacionesVer() {
   // Vista previa en modal (igual al flujo de crear cotización)
   const previewEnModal = async (id) => {
     try {
+      console.log("🔍 Iniciando vista previa para cotización ID:", id);
       setPreviewUrl(null);
       setShowPreview(true); // Mostrar modal inmediatamente
       setPreviewLoading(true);
       const token = localStorage.getItem("token");
 
       // 1) Obtener cabecera de la cotización
+      console.log("📡 Obteniendo datos de cotización...");
       const respCot = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!respCot.ok) throw new Error('No se pudo obtener la cotización');
+      if (!respCot.ok) {
+        console.error("❌ Error al obtener cotización:", respCot.status, respCot.statusText);
+        throw new Error('No se pudo obtener la cotización');
+      }
       const cot = await respCot.json();
+      console.log("✅ Datos de cotización obtenidos:", cot);
 
       // 2) Obtener detalles
+      console.log("📡 Obteniendo detalles de cotización...");
       const respDet = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!respDet.ok) throw new Error('No se pudieron obtener los detalles');
+      if (!respDet.ok) {
+        console.error("❌ Error al obtener detalles:", respDet.status, respDet.statusText);
+        throw new Error('No se pudieron obtener los detalles');
+      }
       const detalles = await respDet.json();
+      console.log("✅ Detalles obtenidos:", detalles);
 
       // 3) Armar payload esperado por /preview
       const cotizacionTemp = {
@@ -381,6 +392,7 @@ function CotizacionesVer() {
       })) : [];
 
       // 4) Pedir vista previa (PDF base64 embebido)
+      console.log("📡 Generando vista previa...");
       const respPrev = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
         method: 'POST',
         headers: {
@@ -390,14 +402,18 @@ function CotizacionesVer() {
         body: JSON.stringify({ cotizacion: cotizacionTemp, detalles: detallesTemp }),
       });
       if (!respPrev.ok) {
+        console.error("❌ Error al generar vista previa:", respPrev.status, respPrev.statusText);
         const errData = await respPrev.json().catch(() => ({}));
         throw new Error(errData.error || 'Error al generar la vista previa');
       }
       const dataPrev = await respPrev.json();
+      console.log("✅ Respuesta de vista previa:", dataPrev);
       if (!dataPrev.success || !dataPrev.pdf) {
+        console.error("❌ Respuesta inválida:", dataPrev);
         throw new Error('Respuesta inválida al generar vista previa');
       }
 
+      console.log("🎉 Vista previa generada exitosamente");
       setPreviewUrl(dataPrev.pdf);
     } catch (error) {
       console.error('Error en vista previa:', error);
