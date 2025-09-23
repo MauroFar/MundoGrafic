@@ -399,29 +399,29 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
       const filasData = filas.map(fila => ({
-        cantidad: fila.cantidad,
-        detalle: fila.detalle,
-        valor_unitario: fila.valor_unitario,
-        valor_total: fila.valor_total,
-        imagen_ruta: fila.imagen_ruta,
-        imagen_width: fila.imagen_width,
-        imagen_height: fila.imagen_height
+        cantidad: parseFloat(fila.cantidad) || 0,
+        detalle: fila.detalle || "",
+        valor_unitario: parseFloat(fila.valor_unitario) || 0,
+        valor_total: parseFloat(fila.valor_total) || 0,
+        imagen_ruta: fila.imagen_ruta || null,
+        imagen_width: fila.imagen_width || 300,
+        imagen_height: fila.imagen_height || 200
       }));
 
       // 3. Preparar los datos de la cotización
       const cotizacionData = {
-        fecha,
-        subtotal,
-        iva,
-        descuento,
-        total,
-        ruc_id: selectedRuc.id,
-        cliente_id: clienteId,
-        tiempo_entrega: TxttiempoEntrega,
-        forma_pago: formaPago,
-        validez_proforma: validezProforma,
-        observaciones: observaciones,
-        nombre_ejecutivo: nombreEjecutivo
+        fecha: fecha || new Date().toISOString().split('T')[0],
+        subtotal: parseFloat(subtotal) || 0,
+        iva: parseFloat(iva) || 0,
+        descuento: parseFloat(descuento) || 0,
+        total: parseFloat(total) || 0,
+        ruc_id: selectedRuc?.id || null,
+        cliente_id: clienteId || null,
+        tiempo_entrega: TxttiempoEntrega || "5 días hábiles",
+        forma_pago: formaPago || "50% anticipo, 50% contra entrega",
+        validez_proforma: validezProforma || "15 días",
+        observaciones: observaciones || "",
+        nombre_ejecutivo: nombreEjecutivo || ""
       };
 
       let cotizacionId;
@@ -497,7 +497,7 @@ function CotizacionesCrear() {
         numeroCotizacionGuardada = nuevaCotizacion.numero_cotizacion;
         
         // Actualizar el número de cotización mostrado con el número real asignado
-        setNumeroCotizacion(numeroCotizacionGuardada.toString().padStart(5, '0'));
+        setNumeroCotizacion(formatearNumeroCotizacion(numeroCotizacionGuardada));
         // Guardar detalles de la nueva cotización
         if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
@@ -822,6 +822,12 @@ function CotizacionesCrear() {
     return parseFloat(numero).toFixed(2);
   };
 
+  // Función auxiliar para formatear número de cotización de manera segura
+  const formatearNumeroCotizacion = (numero) => {
+    if (numero === null || numero === undefined) return "Nueva cotización";
+    return numero.toString().padStart(5, '0');
+  };
+
   const calcularTotalFila = (cantidad, valorUnitario) => {
     const total = parseFloat(cantidad) * parseFloat(valorUnitario);
     return isNaN(total) ? 0 : total;
@@ -979,30 +985,30 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo las dimensiones de la imagen
       const filasData = filas.map(fila => ({
-        cantidad: fila.cantidad,
-        detalle: fila.detalle,
-        valor_unitario: fila.valor_unitario,
-        valor_total: fila.valor_total,
-        imagen_ruta: fila.imagen_ruta,
+        cantidad: parseFloat(fila.cantidad) || 0,
+        detalle: fila.detalle || "",
+        valor_unitario: parseFloat(fila.valor_unitario) || 0,
+        valor_total: parseFloat(fila.valor_total) || 0,
+        imagen_ruta: fila.imagen_ruta || null,
         imagen_width: fila.width || 300,
         imagen_height: fila.height || 200
       }));
 
       // 3. Crear la nueva cotización con todas las relaciones
       const cotizacionData = {
-        fecha,
-        subtotal,
-        iva,
-        descuento,
-        total,
-        ruc_id: selectedRuc.id,
-        cliente_id: clienteId,
+        fecha: fecha || new Date().toISOString().split('T')[0],
+        subtotal: parseFloat(subtotal) || 0,
+        iva: parseFloat(iva) || 0,
+        descuento: parseFloat(descuento) || 0,
+        total: parseFloat(total) || 0,
+        ruc_id: selectedRuc?.id || null,
+        cliente_id: clienteId || null,
         // numero_cotizacion se asignará automáticamente por la base de datos
-        tiempo_entrega: TxttiempoEntrega,
-        forma_pago: formaPago,
-        validez_proforma: validezProforma,
-        observaciones: observaciones,
-        nombre_ejecutivo: nombreEjecutivo
+        tiempo_entrega: TxttiempoEntrega || "5 días hábiles",
+        forma_pago: formaPago || "50% anticipo, 50% contra entrega",
+        validez_proforma: validezProforma || "15 días",
+        observaciones: observaciones || "",
+        nombre_ejecutivo: nombreEjecutivo || ""
       };
 
       console.log("Guardando cotización como nueva con datos:", cotizacionData);
@@ -1053,7 +1059,7 @@ function CotizacionesCrear() {
       setNumeroCotizacionGuardada(nuevaCotizacion.numero_cotizacion);
       
       // Actualizar el número de cotización mostrado con el número real asignado
-      setNumeroCotizacion(nuevaCotizacion.numero_cotizacion.toString().padStart(5, '0'));
+      setNumeroCotizacion(formatearNumeroCotizacion(nuevaCotizacion.numero_cotizacion));
       // Notificación local para el usuario logeado (guardar como nueva)
       window.dispatchEvent(new CustomEvent("nueva-notificacion", {
         detail: {
