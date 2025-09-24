@@ -26,7 +26,8 @@ export default function(client) {
           c.validez_proforma,
           c.observaciones,
           c.cliente_id,
-          c.contacto
+          c.contacto,
+          c.celuar
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id

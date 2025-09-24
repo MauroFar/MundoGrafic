@@ -543,26 +543,40 @@ body {
 }
 
 .datos-derecha {
-  text-align: right;
+  text-align: left;
   min-width: 300px;
+}
+
+.datos-derecha .campo-datos {
+  display: flex;
+  align-items: center;
+}
+
+.datos-derecha .campo-datos label {
+  min-width: 180px; /* igual para todas las filas: alinea valores de Ejecutivo y Celular */
+}
+
+/* Alineación explícita de etiquetas en la columna izquierda */
+.datos-izquierda .campo-datos label {
+  min-width: 82px; /* acercar más los valores a la izquierda para alinear con 'QUITO,' */
 }
 
 .campo-datos {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-size: 13px;
   color: #333;
 }
 
 .campo-datos label {
-  min-width: 80px;
+  min-width: 90px;
   font-weight: normal;
   color: #333;
 }
 
 .campo-datos span {
-  margin-left: 10px;
+  margin-left: 4px;
   font-weight: normal;
 }
 
@@ -583,7 +597,7 @@ body {
 }
 
 .campo-datos.fecha .ciudad {
-  margin-right: 10px;
+  margin-right: 3px;
 }
 
 /* Estilos para las imágenes */
@@ -707,7 +721,7 @@ body {
                 <div class="campo-datos fecha">
                   <label>Fecha:</label>
                   <div class="contenido-fecha">
-                    <span class="ciudad">QUITO</span>
+                    <span class="ciudad">QUITO,</span>
                     <span>${new Date(cotizacion.fecha).toLocaleDateString('es-EC', {
                       day: '2-digit',
                       month: '2-digit',
@@ -721,6 +735,12 @@ body {
                   <label>Ejecutivo de Cuenta:</label>
                   <span>${cotizacion.nombre_ejecutivo || 'No asignado'}</span>
                 </div>
+                ${cotizacion.celuar ? `
+                <div class="campo-datos">
+                  <label>Celular:</label>
+                  <span>${cotizacion.celuar}</span>
+                </div>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -891,7 +911,8 @@ const CotizacionDatos = (client: any) => {
       forma_pago,
       validez_proforma,
       observaciones,
-      contacto
+      contacto,
+      celuar
     } = req.body;
     const estado = "pendiente";
     const user = req.user;
@@ -931,7 +952,8 @@ const CotizacionDatos = (client: any) => {
           validez_proforma,
           observaciones,
           numero_cotizacion,
-          contacto
+          contacto,
+          celuar
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
@@ -952,7 +974,8 @@ const CotizacionDatos = (client: any) => {
         validez_proforma,
         observaciones,
         numeroCotizacion,
-        contacto || null
+        contacto || null,
+        celuar || null
       ]);
 
       console.log("🎉 Cotización creada exitosamente:", {
@@ -1115,7 +1138,8 @@ const CotizacionDatos = (client: any) => {
       forma_pago,
       validez_proforma,
       observaciones,
-      contacto
+      contacto,
+      celuar
     } = req.body;
 
     try {
@@ -1132,8 +1156,9 @@ const CotizacionDatos = (client: any) => {
             forma_pago = $9,
             validez_proforma = $10,
             observaciones = $11,
-            contacto = $12
-        WHERE id = $13
+            contacto = $12,
+            celuar = $13
+        WHERE id = $14
         RETURNING *
       `;
 
@@ -1150,6 +1175,7 @@ const CotizacionDatos = (client: any) => {
         validez_proforma,
         observaciones,
         contacto || null,
+        celuar || null,
         id
       ]);
 
@@ -1242,7 +1268,8 @@ const CotizacionDatos = (client: any) => {
           c.forma_pago,
           c.validez_proforma,
           c.observaciones,
-          c.contacto
+          c.contacto,
+          c.celuar
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
@@ -1338,7 +1365,8 @@ const CotizacionDatos = (client: any) => {
           c.forma_pago,
           c.validez_proforma,
           c.observaciones,
-          c.contacto
+          c.contacto,
+          c.celuar
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id

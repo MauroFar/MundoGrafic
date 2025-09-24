@@ -61,6 +61,8 @@ function CotizacionesCrear() {
   const [uploadingImages, setUploadingImages] = useState({}); // Controla el loading de cada imagen
   const [usarContacto, setUsarContacto] = useState(false);
   const [contacto, setContacto] = useState("");
+  const [usarCeluar, setUsarCeluar] = useState(false);
+  const [celuar, setCeluar] = useState("");
   
   // Estados para el modal de clientes
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -158,6 +160,8 @@ function CotizacionesCrear() {
       setObservaciones(cotizacionData.observaciones || "");
       setContacto(cotizacionData.contacto || "");
       setUsarContacto(!!cotizacionData.contacto);
+      setCeluar(cotizacionData.celuar || "");
+      setUsarCeluar(!!cotizacionData.celuar);
       
       // Asegurarse de que el RUC se establezca correctamente
       if (cotizacionData.ruc_id && cotizacionData.ruc) {
@@ -438,7 +442,8 @@ function CotizacionesCrear() {
         validez_proforma: validezProforma || "15 días",
         observaciones: observaciones || "",
         nombre_ejecutivo: nombreEjecutivo || "",
-        contacto: usarContacto && contacto ? contacto : null
+        contacto: usarContacto && contacto ? contacto : null,
+        celuar: usarCeluar && celuar ? celuar : null
       };
 
       let cotizacionId;
@@ -910,6 +915,7 @@ function CotizacionesCrear() {
         fecha: fecha,
         nombre_cliente: nombreCliente,
         contacto: usarContacto && contacto ? contacto : null,
+        celuar: usarCeluar && celuar ? celuar : null,
         ruc: selectedRuc.ruc,
         subtotal: subtotal,
         iva: iva,
@@ -1040,7 +1046,8 @@ function CotizacionesCrear() {
         validez_proforma: validezProforma || "15 días",
         observaciones: observaciones || "",
         nombre_ejecutivo: nombreEjecutivo || "",
-        contacto: usarContacto && contacto ? contacto : null
+        contacto: usarContacto && contacto ? contacto : null,
+        celuar: usarCeluar && celuar ? celuar : null
       };
 
       console.log("Guardando cotización como nueva con datos:", cotizacionData);
@@ -1306,6 +1313,24 @@ function CotizacionesCrear() {
                 className="w-full border border-gray-300 rounded-md p-2 text-sm bg-gray-100 cursor-not-allowed"
                 placeholder="Ejecutivo de cuenta"
               />
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  id="usarCeluar"
+                  type="checkbox"
+                  checked={usarCeluar}
+                  onChange={(e) => setUsarCeluar(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="usarCeluar" className="text-sm text-gray-700">Celular</label>
+                <input
+                  type="text"
+                  value={celuar}
+                  onChange={(e) => setCeluar(e.target.value)}
+                  disabled={!usarCeluar}
+                  placeholder="Número de celular"
+                  className={`flex-1 border rounded-md p-2 ${usarCeluar ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'border-gray-200 bg-gray-100 cursor-not-allowed'}`}
+                />
+              </div>
             </div>
           </div>
         </div>
