@@ -44,16 +44,19 @@ async function runMigration() {
     
     // Verificar la secuencia
     console.log("🔍 Verificando secuencia numero_cotizacion...");
-    const seqResult = await client.query(`
-      SELECT last_value, increment_by 
-      FROM cotizaciones_numero_cotizacion_seq;
-    `);
-    
-    if (seqResult.rows.length > 0) {
-      console.log(`✅ Secuencia encontrada - último valor: ${seqResult.rows[0].last_value}, incremento: ${seqResult.rows[0].increment_by}`);
-    } else {
-      console.log("❌ Secuencia no encontrada");
-    }
+const seqResult = await client.query(`
+  SELECT last_value, seqincrement AS increment
+  FROM pg_sequence
+  JOIN pg_class ON pg_sequence.seqrelid = pg_class.oid
+  WHERE relname = 'cotizaciones_numero_cotizacion_seq';
+`);
+
+if (seqResult.rows.length > 0) {
+  console.log(`✅ Secuencia encontrada - último valor: ${seqResult.rows[0].last_value}, incremento: ${seqResult.rows[0].increment}`);
+} else {
+  console.log("❌ Secuencia no encontrada");
+}
+
     
   } catch (error) {
     console.error("❌ Error ejecutando migración:", error);
