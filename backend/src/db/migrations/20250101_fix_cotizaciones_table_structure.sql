@@ -12,7 +12,8 @@ ADD COLUMN IF NOT EXISTS tiempo_entrega VARCHAR(255),
 ADD COLUMN IF NOT EXISTS forma_pago VARCHAR(255),
 ADD COLUMN IF NOT EXISTS validez_proforma VARCHAR(255),
 ADD COLUMN IF NOT EXISTS observaciones TEXT,
-ADD COLUMN IF NOT EXISTS nombre_ejecutivo VARCHAR(255);
+ADD COLUMN IF NOT EXISTS nombre_ejecutivo VARCHAR(255),
+ADD COLUMN IF NOT EXISTS contacto VARCHAR(255);
 
 -- 2. Crear secuencia para numero_cotizacion si no existe
 DO $$

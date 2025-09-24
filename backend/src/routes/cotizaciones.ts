@@ -698,6 +698,12 @@ body {
                   <label>Cliente:</label>
                   <span>${cotizacion.nombre_cliente}</span>
                 </div>
+                ${cotizacion.contacto ? `
+                <div class="campo-datos">
+                  <label>Contacto:</label>
+                  <span>${cotizacion.contacto}</span>
+                </div>
+                ` : ''}
                 <div class="campo-datos fecha">
                   <label>Fecha:</label>
                   <div class="contenido-fecha">
@@ -884,7 +890,8 @@ const CotizacionDatos = (client: any) => {
       tiempo_entrega,
       forma_pago,
       validez_proforma,
-      observaciones
+      observaciones,
+      contacto
     } = req.body;
     const estado = "pendiente";
     const user = req.user;
@@ -923,9 +930,10 @@ const CotizacionDatos = (client: any) => {
           forma_pago,
           validez_proforma,
           observaciones,
-          numero_cotizacion
+          numero_cotizacion,
+          contacto
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
       `;
 
@@ -943,7 +951,8 @@ const CotizacionDatos = (client: any) => {
         forma_pago,
         validez_proforma,
         observaciones,
-        numeroCotizacion
+        numeroCotizacion,
+        contacto || null
       ]);
 
       console.log("🎉 Cotización creada exitosamente:", {
@@ -1105,7 +1114,8 @@ const CotizacionDatos = (client: any) => {
       tiempo_entrega,
       forma_pago,
       validez_proforma,
-      observaciones
+      observaciones,
+      contacto
     } = req.body;
 
     try {
@@ -1121,8 +1131,9 @@ const CotizacionDatos = (client: any) => {
             tiempo_entrega = $8,
             forma_pago = $9,
             validez_proforma = $10,
-            observaciones = $11
-        WHERE id = $12
+            observaciones = $11,
+            contacto = $12
+        WHERE id = $13
         RETURNING *
       `;
 
@@ -1138,6 +1149,7 @@ const CotizacionDatos = (client: any) => {
         forma_pago,
         validez_proforma,
         observaciones,
+        contacto || null,
         id
       ]);
 
@@ -1229,7 +1241,8 @@ const CotizacionDatos = (client: any) => {
           c.tiempo_entrega,
           c.forma_pago,
           c.validez_proforma,
-          c.observaciones
+          c.observaciones,
+          c.contacto
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
@@ -1324,7 +1337,8 @@ const CotizacionDatos = (client: any) => {
           c.tiempo_entrega,
           c.forma_pago,
           c.validez_proforma,
-          c.observaciones
+          c.observaciones,
+          c.contacto
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id

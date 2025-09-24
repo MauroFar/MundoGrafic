@@ -59,6 +59,8 @@ function CotizacionesCrear() {
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [focusedDropIndex, setFocusedDropIndex] = useState(null);
   const [uploadingImages, setUploadingImages] = useState({}); // Controla el loading de cada imagen
+  const [usarContacto, setUsarContacto] = useState(false);
+  const [contacto, setContacto] = useState("");
   
   // Estados para el modal de clientes
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -154,6 +156,8 @@ function CotizacionesCrear() {
       setFormaPago(cotizacionData.forma_pago || "50% anticipo, 50% contra entrega");
       setValidezProforma(cotizacionData.validez_proforma || "15 días");
       setObservaciones(cotizacionData.observaciones || "");
+      setContacto(cotizacionData.contacto || "");
+      setUsarContacto(!!cotizacionData.contacto);
       
       // Asegurarse de que el RUC se establezca correctamente
       if (cotizacionData.ruc_id && cotizacionData.ruc) {
@@ -433,7 +437,8 @@ function CotizacionesCrear() {
         forma_pago: formaPago || "50% anticipo, 50% contra entrega",
         validez_proforma: validezProforma || "15 días",
         observaciones: observaciones || "",
-        nombre_ejecutivo: nombreEjecutivo || ""
+        nombre_ejecutivo: nombreEjecutivo || "",
+        contacto: usarContacto && contacto ? contacto : null
       };
 
       let cotizacionId;
@@ -904,6 +909,7 @@ function CotizacionesCrear() {
         numero_cotizacion: numeroCotizacion,
         fecha: fecha,
         nombre_cliente: nombreCliente,
+        contacto: usarContacto && contacto ? contacto : null,
         ruc: selectedRuc.ruc,
         subtotal: subtotal,
         iva: iva,
@@ -1033,7 +1039,8 @@ function CotizacionesCrear() {
         forma_pago: formaPago || "50% anticipo, 50% contra entrega",
         validez_proforma: validezProforma || "15 días",
         observaciones: observaciones || "",
-        nombre_ejecutivo: nombreEjecutivo || ""
+        nombre_ejecutivo: nombreEjecutivo || "",
+        contacto: usarContacto && contacto ? contacto : null
       };
 
       console.log("Guardando cotización como nueva con datos:", cotizacionData);
@@ -1248,6 +1255,24 @@ function CotizacionesCrear() {
                 >
                   👥 Ver Clientes
                 </button>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  id="usarContacto"
+                  type="checkbox"
+                  checked={usarContacto}
+                  onChange={(e) => setUsarContacto(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="usarContacto" className="text-sm text-gray-700">Contacto</label>
+                <input
+                  type="text"
+                  value={contacto}
+                  onChange={(e) => setContacto(e.target.value)}
+                  disabled={!usarContacto}
+                  placeholder="Nombre del contacto"
+                  className={`flex-1 border rounded-md p-2 ${usarContacto ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'border-gray-200 bg-gray-100 cursor-not-allowed'}`}
+                />
               </div>
               {sugerencias.length > 0 && (
                 <ul className="absolute z-10 bg-white border border-gray-300 rounded-md mt-1 w-full max-h-48 overflow-y-auto shadow-lg">
