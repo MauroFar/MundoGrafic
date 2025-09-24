@@ -7,14 +7,14 @@ export default (client: any) => {
   // Listar todos los usuarios (acceso para cualquier usuario autenticado)
   router.get('/', authRequired(), async (req: any, res: any) => {
     console.log('Usuario autenticado:', req.user);
-    const result = await client.query('SELECT id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config FROM usuarios');
+    const result = await client.query('SELECT id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular FROM usuarios');
     console.log('Usuarios encontrados:', result.rows);
     res.json(result.rows);
   });
 
   // Crear usuario (solo admin)
   router.post('/', authRequired(['admin']), async (req: any, res: any) => {
-    const { email, nombre_usuario, password, nombre, rol, area_id, email_personal } = req.body;
+    const { email, nombre_usuario, password, nombre, rol, area_id, email_personal, celular } = req.body;
     try {
       const hash = await bcrypt.hash(password, 10);
       
@@ -27,8 +27,8 @@ export default (client: any) => {
       }
       
       const result = await client.query(
-        'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, rol, area_id, email_personal, email_config) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config',
-        [email, nombre_usuario, hash, nombre, rol, area_id, email_personal, email_config]
+        'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, rol, area_id, email_personal, email_config, celular) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular',
+        [email, nombre_usuario, hash, nombre, rol, area_id, email_personal, email_config, celular || null]
       );
       res.json(result.rows[0]);
     } catch (err: any) {
@@ -39,7 +39,7 @@ export default (client: any) => {
   // Editar usuario (solo admin)
   router.put('/:id', authRequired(['admin']), async (req: any, res: any) => {
     const { id } = req.params;
-    const { email, nombre_usuario, nombre, rol, area_id, activo, password, email_personal } = req.body;
+    const { email, nombre_usuario, nombre, rol, area_id, activo, password, email_personal, celular } = req.body;
     try {
       // Generar email_config automáticamente para ejecutivos
       let email_config = 'main'; // Por defecto
@@ -49,14 +49,14 @@ export default (client: any) => {
         email_config = emailName.toLowerCase();
       }
       
-      let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6, email_personal = $7, email_config = $8';
-      let params = [email, nombre_usuario, nombre, rol, area_id, activo, email_personal, email_config, id];
+      let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6, email_personal = $7, email_config = $8, celular = $9';
+      let params = [email, nombre_usuario, nombre, rol, area_id, activo, email_personal, email_config, celular || null, id];
       if (password) {
         const hash = await bcrypt.hash(password, 10);
-        query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6, email_personal = $7, email_config = $8, password_hash = $9 WHERE id = $10 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config';
-        params = [email, nombre_usuario, nombre, rol, area_id, activo, email_personal, email_config, hash, id];
+        query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, area_id = $5, activo = $6, email_personal = $7, email_config = $8, celular = $9, password_hash = $10 WHERE id = $11 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
+        params = [email, nombre_usuario, nombre, rol, area_id, activo, email_personal, email_config, celular || null, hash, id];
       } else {
-        query += ' WHERE id = $9 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config';
+        query += ' WHERE id = $10 RETURNING id, email, nombre_usuario, nombre, rol, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
       }
       const result = await client.query(query, params);
       res.json(result.rows[0]);

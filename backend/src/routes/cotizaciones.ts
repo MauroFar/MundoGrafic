@@ -550,10 +550,11 @@ body {
 .datos-derecha .campo-datos {
   display: flex;
   align-items: center;
+  margin-bottom: 4px;
 }
 
 .datos-derecha .campo-datos label {
-  min-width: 180px; /* igual para todas las filas: alinea valores de Ejecutivo y Celular */
+  min-width: 140px; /* reduce separación entre título y valor */
 }
 
 /* Alineación explícita de etiquetas en la columna izquierda */
@@ -564,7 +565,7 @@ body {
 .campo-datos {
   display: flex;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   font-size: 13px;
   color: #333;
 }
@@ -576,7 +577,7 @@ body {
 }
 
 .campo-datos span {
-  margin-left: 4px;
+  margin-left: 3px;
   font-weight: normal;
 }
 
@@ -955,7 +956,7 @@ const CotizacionDatos = (client: any) => {
           contacto,
           celuar
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `;
 

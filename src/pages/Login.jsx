@@ -21,6 +21,7 @@ function Login() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("rol", data.user.rol);
         localStorage.setItem("nombre", data.user.nombre);
+        try { localStorage.setItem("user", JSON.stringify(data.user)); } catch (_) {}
         if (data.user.rol === "admin") {
           navigate("/admin/usuarios");
         } else {

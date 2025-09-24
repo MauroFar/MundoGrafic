@@ -6,7 +6,7 @@ function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '' });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' });
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
@@ -65,7 +65,7 @@ function GestionUsuarios() {
     });
     if (res.ok) {
       fetchUsuarios();
-      setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '' });
+      setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' });
       setEditId(null);
     } else {
       alert("Error al guardar usuario");
@@ -80,7 +80,8 @@ function GestionUsuarios() {
       rol: usuario.rol,
       area_id: usuario.area_id || '',
       password: '',
-      email_personal: usuario.email_personal || ''
+      email_personal: usuario.email_personal || '',
+      celular: usuario.celular || ''
     });
     setEditId(usuario.id);
   };
@@ -180,6 +181,7 @@ function GestionUsuarios() {
             ))}
           </select>
           <input name="password" value={form.password} onChange={handleChange} placeholder={editId ? "Nueva contraseña (opcional)" : "Contraseña"} type="password" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2" />
+          <input name="celular" value={form.celular} onChange={handleChange} placeholder="Celular del ejecutivo (opcional)" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2" />
           
           {/* Campo de email personal para ejecutivos */}
           {form.rol === 'ejecutivo' && (
@@ -225,7 +227,7 @@ function GestionUsuarios() {
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold w-full text-lg shadow transition-all duration-200">
               {editId ? "Actualizar" : "Crear"} Usuario
             </button>
-                         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '' }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
+                         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
           </div>
         </form>
         <div className="overflow-x-auto rounded-2xl shadow-lg border border-blue-100 bg-white">

@@ -35,11 +35,11 @@ export default (client: any) => {
       if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
 
       const token = jwt.sign(
-        { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email },
+        { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email, celular: user.celular },
         SECRET,
         { expiresIn: '8h' }
       );
-      res.json({ token, user: { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email } });
+      res.json({ token, user: { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email, celular: user.celular } });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

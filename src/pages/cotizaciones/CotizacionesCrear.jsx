@@ -915,7 +915,7 @@ function CotizacionesCrear() {
         fecha: fecha,
         nombre_cliente: nombreCliente,
         contacto: usarContacto && contacto ? contacto : null,
-        celuar: usarCeluar && celuar ? celuar : null,
+        celuar: celuar || null,
         ruc: selectedRuc.ruc,
         subtotal: subtotal,
         iva: iva,
@@ -1047,7 +1047,7 @@ function CotizacionesCrear() {
         observaciones: observaciones || "",
         nombre_ejecutivo: nombreEjecutivo || "",
         contacto: usarContacto && contacto ? contacto : null,
-        celuar: usarCeluar && celuar ? celuar : null
+        celuar: celuar || null
       };
 
       console.log("Guardando cotización como nueva con datos:", cotizacionData);
@@ -1152,6 +1152,21 @@ function CotizacionesCrear() {
       }
     }
   };
+
+  // Cargar celular del ejecutivo autenticado
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed?.celular) {
+          setCeluar(parsed.celular);
+          // Dejar el check desmarcado por defecto, pero mostrar el número
+          setUsarCeluar(false);
+        }
+      }
+    } catch (_) {}
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -1326,9 +1341,7 @@ function CotizacionesCrear() {
                   type="text"
                   value={celuar}
                   onChange={(e) => setCeluar(e.target.value)}
-                  disabled={!usarCeluar}
-                  placeholder="Número de celular"
-                  className={`flex-1 border rounded-md p-2 ${usarCeluar ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'border-gray-200 bg-gray-100 cursor-not-allowed'}`}
+                  className={`flex-1 border rounded-md p-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
             </div>
