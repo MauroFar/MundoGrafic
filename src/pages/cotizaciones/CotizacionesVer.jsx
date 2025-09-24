@@ -52,6 +52,7 @@ function CotizacionesVer() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [buscarGlobal, setBuscarGlobal] = useState(false);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -78,6 +79,7 @@ function CotizacionesVer() {
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
       queryParams.append("limite", LIMITE_POR_PAGINA);
       queryParams.append("ordenar", "fecha_desc");
+      if (buscarGlobal) queryParams.append("global", "true");
 
       const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
       console.log('Realizando petición a:', url);
@@ -171,6 +173,7 @@ function CotizacionesVer() {
       fechaDesde: "",
       fechaHasta: "",
     });
+    setBuscarGlobal(false);
     setPagina(1);
     cargarCotizaciones(true);
   };
@@ -758,7 +761,23 @@ function CotizacionesVer() {
               onChange={handleBusquedaChange}
               className="w-full border border-gray-300 rounded-md p-2"
               placeholder="Número de cotización o nombre del cliente"
-            />
+              />
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                id="buscarGlobal"
+                type="checkbox"
+                checked={buscarGlobal}
+                onChange={(e) => {
+                  setBuscarGlobal(e.target.checked);
+                  setPagina(1);
+                  cargarCotizaciones(true);
+                }}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+              <label htmlFor="buscarGlobal" className="text-sm text-gray-700">
+                Buscar en toda la base de datos
+              </label>
+            </div>
           </div>
           <div className="flex flex-col items-start">
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>

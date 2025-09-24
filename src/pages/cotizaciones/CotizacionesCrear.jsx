@@ -40,6 +40,7 @@ function CotizacionesCrear() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
+  const [imageFitMode, setImageFitMode] = useState('contain'); // 'contain', 'cover', 'fill'
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
     nombre: '',
@@ -975,18 +976,29 @@ function CotizacionesCrear() {
       width: filas[index].width || 300,
       height: filas[index].height || 200
     });
+    setImageFitMode(filas[index].imageFitMode || 'contain');
   };
 
   // Función para aplicar los cambios de dimensiones
   const applyImageDimensions = () => {
     if (selectedImageIndex !== null) {
+      // Aplicar las mismas restricciones que en el redimensionamiento directo
+      const minWidth = 100;
+      const minHeight = 75;
+      const maxWidth = 600;
+      const maxHeight = 400;
+      
+      const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, imageDimensions.width));
+      const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, imageDimensions.height));
+      
       const newFilas = [...filas];
       newFilas[selectedImageIndex] = {
         ...newFilas[selectedImageIndex],
-        width: imageDimensions.width,
-        height: imageDimensions.height,
-        imagen_width: imageDimensions.width,
-        imagen_height: imageDimensions.height
+        width: constrainedWidth,
+        height: constrainedHeight,
+        imagen_width: constrainedWidth,
+        imagen_height: constrainedHeight,
+        imageFitMode: imageFitMode
       };
       setFilas(newFilas);
       setSelectedImageIndex(null);
@@ -1443,39 +1455,67 @@ function CotizacionesCrear() {
                           <Resizable
                             width={fila.width || 200}
                             height={fila.height || 150}
-                            style={{ width: (fila.width || 200), height: (fila.height || 150), position: 'relative', display: 'inline-block' }}
+                            style={{ 
+                              width: (fila.width || 200), 
+                              height: (fila.height || 150), 
+                              position: 'relative', 
+                              display: 'inline-block',
+                              margin: '10px'
+                            }}
                             onResize={(e, { size }) => {
+                              // Limitar el tamaño mínimo y máximo
+                              const minWidth = 100;
+                              const minHeight = 75;
+                              const maxWidth = 600;
+                              const maxHeight = 400;
+                              
+                              const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, size.width));
+                              const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, size.height));
+                              
                               const nuevasFilas = [...filas];
                               nuevasFilas[index] = {
                                 ...nuevasFilas[index],
-                                width: size.width,
-                                height: size.height,
-                                imagen_width: size.width,
-                                imagen_height: size.height
+                                width: constrainedWidth,
+                                height: constrainedHeight,
+                                imagen_width: constrainedWidth,
+                                imagen_height: constrainedHeight,
+                                imageFitMode: nuevasFilas[index].imageFitMode || 'contain'
                               };
                               setFilas(nuevasFilas);
                               if (selectedImageIndex === index) {
                                 setImageDimensions({
-                                  width: size.width,
-                                  height: size.height
+                                  width: constrainedWidth,
+                                  height: constrainedHeight
                                 });
                               }
                             }}
                             onResizeStop={(e, { size }) => {
+                              // Aplicar las mismas restricciones al finalizar el redimensionamiento
+                              const minWidth = 100;
+                              const minHeight = 75;
+                              const maxWidth = 600;
+                              const maxHeight = 400;
+                              
+                              const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, size.width));
+                              const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, size.height));
+                              
                               const nuevasFilas = [...filas];
                               nuevasFilas[index] = {
                                 ...nuevasFilas[index],
-                                width: size.width,
-                                height: size.height,
-                                imagen_width: size.width,
-                                imagen_height: size.height
+                                width: constrainedWidth,
+                                height: constrainedHeight,
+                                imagen_width: constrainedWidth,
+                                imagen_height: constrainedHeight,
+                                imageFitMode: nuevasFilas[index].imageFitMode || 'contain'
                               };
                               setFilas(nuevasFilas);
                             }}
-                            draggableOpts={{ grid: [1, 1] }}
+                            draggableOpts={{ grid: [5, 5] }}
                             resizeHandles={['se']}
-                            handleSize={[16, 16]}
-                            className="relative"
+                            handleSize={[14, 14]}
+                            className="image-resizable-container"
+                            minConstraints={[100, 75]}
+                            maxConstraints={[600, 400]}
                           >
                             <div
                               style={{
@@ -1485,18 +1525,22 @@ function CotizacionesCrear() {
                                 position: "relative",
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center"
+                                justifyContent: "center",
+                                backgroundColor: '#f8f9fa',
+                                borderRadius: '4px',
+                                border: '1px solid #e9ecef'
                               }}
                             >
                               <img
                                 src={fila.imagen}
                                 alt="Imagen del producto"
                                 style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '100%',
-                                  objectFit: 'contain',
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: fila.imageFitMode || 'contain',
+                                  objectPosition: 'center',
                                   display: 'block',
-                                  margin: 'auto'
+                                  borderRadius: '2px'
                                 }}
                                 onError={(e) => {
                                   console.error('Error al cargar la imagen:', e);
@@ -1630,39 +1674,87 @@ function CotizacionesCrear() {
         {/* Modal para ajustar dimensiones de imagen */}
         {selectedImageIndex !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
               <h3 className="text-lg font-bold mb-4">Ajustar tamaño de imagen</h3>
               <div className="space-y-4">
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-sm text-blue-700">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    Tamaño mínimo: 100x75px | Tamaño máximo: 600x400px
+                  </p>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Ancho (px)</label>
                   <input
                     type="number"
+                    min="100"
+                    max="600"
                     value={imageDimensions.width}
-                    onChange={(e) => setImageDimensions(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 100;
+                      setImageDimensions(prev => ({ 
+                        ...prev, 
+                        width: Math.max(100, Math.min(600, value)) 
+                      }));
+                    }}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Rango: 100 - 600 px</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Alto (px)</label>
                   <input
                     type="number"
+                    min="75"
+                    max="400"
                     value={imageDimensions.height}
-                    onChange={(e) => setImageDimensions(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 75;
+                      setImageDimensions(prev => ({ 
+                        ...prev, 
+                        height: Math.max(75, Math.min(400, value)) 
+                      }));
+                    }}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Rango: 75 - 400 px</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Modo de ajuste de imagen</label>
+                  <select
+                    value={imageFitMode}
+                    onChange={(e) => setImageFitMode(e.target.value)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="contain">Contener (mantener proporciones, puede dejar espacios)</option>
+                    <option value="cover">Cubrir (llenar contenedor, puede recortar)</option>
+                    <option value="fill">Llenar (estirar para llenar, puede distorsionar)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <strong>Contener:</strong> La imagen se ajusta manteniendo sus proporciones<br/>
+                    <strong>Cubrir:</strong> La imagen llena el contenedor, puede recortarse<br/>
+                    <strong>Llenar:</strong> La imagen se estira para llenar exactamente el contenedor
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-600">
+                    <i className="fas fa-mouse-pointer mr-2"></i>
+                    También puedes arrastrar el icono azul en la esquina inferior derecha de la imagen para redimensionarla directamente.
+                  </p>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button
                     onClick={() => setSelectedImageIndex(null)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={applyImageDimensions}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-2"
                   >
-                    Aplicar cambio de stilo
+                    <i className="fas fa-check"></i>
+                    Aplicar cambios
                   </button>
                 </div>
               </div>

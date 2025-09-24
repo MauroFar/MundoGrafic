@@ -991,9 +991,9 @@ const CotizacionDatos = (client: any) => {
   // Obtener todas las cotizaciones con filtros simplificados
   router.get("/todas", authRequired(), async (req: any, res: any) => {
     console.log("Recibiendo petición en /todas");
-    const { busqueda, fechaDesde, fechaHasta, limite, ordenar } = req.query;
+    const { busqueda, fechaDesde, fechaHasta, limite, ordenar, global } = req.query;
     const user = req.user;
-    console.log("Parámetros recibidos:", { busqueda, fechaDesde, fechaHasta, limite, ordenar });
+    console.log("Parámetros recibidos:", { busqueda, fechaDesde, fechaHasta, limite, ordenar, global });
     
     try {
       let query = `
@@ -1040,7 +1040,8 @@ const CotizacionDatos = (client: any) => {
         paramCount++;
       }
 
-      if (user && user.rol === 'ejecutivo') {
+      const isGlobal = typeof global === 'string' ? global.toLowerCase() === 'true' : !!global;
+      if (!isGlobal && user && user.rol === 'ejecutivo') {
         query += ` AND c.usuario_id = $${paramCount}`;
         params.push(user.id);
         paramCount++;
@@ -1051,7 +1052,11 @@ const CotizacionDatos = (client: any) => {
 
       // Aplicar límite si no hay filtros de búsqueda
       if (!busqueda && !fechaDesde && !fechaHasta) {
-        query += ` LIMIT ${limite || 15}`;
+        if (isGlobal) {
+          query += ` LIMIT 10`;
+        } else {
+          query += ` LIMIT ${limite || 15}`;
+        }
       }
 
       console.log("Query a ejecutar:", query);

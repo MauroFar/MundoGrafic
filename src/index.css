@@ -52,34 +52,55 @@ h1 {
   @apply border border-gray-300 rounded-md p-1 text-gray-700 text-sm w-full;
 }
 
-/* Asegurar que el handle de react-resizable quede fijo en la esquina inferior derecha */
+/* Mejorado: Handle de react-resizable más intuitivo y cercano a la imagen */
 .react-resizable {
   position: relative;
+  display: inline-block;
 }
+
 .react-resizable-handle {
   position: absolute;
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  border: 2px solid #3498db;
-  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+  width: 14px;
+  height: 14px;
+  background: #3498db;
+  border: 2px solid white;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 10;
+  transition: all 0.2s ease;
 }
+
+.react-resizable-handle:hover {
+  background: #2980b9;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
 .react-resizable-handle-se {
-  right: 0;
-  bottom: 0;
+  right: -7px;
+  bottom: -7px;
   cursor: se-resize;
 }
 
-/* Icono interno con pseudo-elemento */
+/* Icono de redimensionamiento más sutil */
 .react-resizable-handle-se::before {
   content: "";
-  width: 12px;
-  height: 12px;
-  mask: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M3 21L21 3M16 3h5v5M3 16v5h5\" stroke=\"%233498db\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/></svg>') no-repeat center / contain;
-  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M3 21L21 3M16 3h5v5M3 16v5h5\" stroke=\"%233498db\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/></svg>') no-repeat center / contain;
-  background: #3498db;
+  width: 8px;
+  height: 8px;
+  background: white;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M3 21L21 3M16 3h5v5M3 16v5h5\" stroke=\"white\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/></svg>') no-repeat center / contain;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M3 21L21 3M16 3h5v5M3 16v5h5\" stroke=\"white\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/></svg>') no-repeat center / contain;
+}
+
+/* Asegurar que el contenedor de la imagen tenga un borde sutil para indicar que es redimensionable */
+.image-resizable-container {
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.image-resizable-container:hover {
+  border-color: #3498db;
 }
