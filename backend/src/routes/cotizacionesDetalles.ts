@@ -12,8 +12,8 @@ const createCotizacionDetalles = (client: any) => {
           cotizacion_id, 
           cantidad, 
           detalle, 
-          CAST(valor_unitario AS DECIMAL(10,2)) as valor_unitario, 
-          CAST(valor_total AS DECIMAL(10,2)) as valor_total,
+          valor_unitario, 
+          valor_total,
           imagen_ruta,
           imagen_width,
           imagen_height

@@ -842,8 +842,11 @@ function CotizacionesCrear() {
 
   // Función auxiliar para formatear números de manera segura
   const formatearNumero = (numero) => {
-    if (numero === null || numero === undefined || isNaN(numero)) return "0.00";
-    return parseFloat(numero).toFixed(2);
+    if (numero === null || numero === undefined || numero === '') return "0";
+    const n = Number(numero);
+    if (isNaN(n)) return "0";
+    // Mostrar hasta 6 decimales sin forzar 2 decimales
+    return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
   };
 
   // Función auxiliar para formatear número de cotización de manera segura
@@ -1496,7 +1499,7 @@ function CotizacionesCrear() {
                         onWheel={(e) => e.target.blur()}
                         className="w-32 border border-gray-300 rounded-md p-2 text-right"
                         min="0"
-                        step="0.01"
+                        step="0.0001"
                       />
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-right align-top">

@@ -781,7 +781,7 @@ body {
                       </div>
                     </td>
                     <td class="col-unitario">
-                      ${d.valor_unitario % 1 === 0 ? Number(d.valor_unitario).toFixed(2) : d.valor_unitario}
+                      ${Number(d.valor_unitario).toFixed(6).replace(/\.0+$/, '')}
                     </td>
                     <td class="col-total">${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
