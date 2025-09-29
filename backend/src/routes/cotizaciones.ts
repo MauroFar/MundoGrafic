@@ -781,7 +781,7 @@ body {
                       </div>
                     </td>
                     <td class="col-unitario">
-                      ${Number(d.valor_unitario).toFixed(6).replace(/\.0+$/, '')}
+                      ${Number(d.valor_unitario).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 6 })}
                     </td>
                     <td class="col-total">${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
