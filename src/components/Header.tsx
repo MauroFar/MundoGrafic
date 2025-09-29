@@ -18,9 +18,11 @@ const Header: React.FC = () => {
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const nombre = localStorage.getItem("nombre") || "Usuario";
   const rol = localStorage.getItem("rol") || "";
@@ -58,8 +60,11 @@ const Header: React.FC = () => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setNotificationsOpen(false);
       }
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setSettingsOpen(false);
+      }
     };
-    if (menuOpen || messagesOpen || notificationsOpen) {
+    if (menuOpen || messagesOpen || notificationsOpen || settingsOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -67,7 +72,7 @@ const Header: React.FC = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [menuOpen, messagesOpen, notificationsOpen]);
+  }, [menuOpen, messagesOpen, notificationsOpen, settingsOpen]);
 
   // Fetch usuarios al abrir mensajes (para cualquier usuario autenticado)
   useEffect(() => {
@@ -89,6 +94,7 @@ const Header: React.FC = () => {
   }, [messagesOpen, apiUrl]);
 
   return (
+    <>
     <header className="header-topbar">
       <div className="header-right">
         {/* Notificaciones */}
@@ -153,14 +159,30 @@ const Header: React.FC = () => {
             <span className="user-name">{nombre}</span>
             {/* Avatar eliminado */}
           </button>
-          {menuOpen && (
+        </div>
+        {/* Configuración */}
+        <div className="settings-menu-wrapper" ref={settingsRef}>
+          <button className="icon-btn settings-btn" title="Configuración" onClick={() => setSettingsOpen((v) => !v)}>
+            <span role="img" aria-label="configuracion">⚙️</span>
+          </button>
+          {settingsOpen && (
             <div className="user-dropdown">
-              <button className="dropdown-item" onClick={handleLogout}>Cerrar sesión</button>
+              <button
+                className="dropdown-item"
+                onClick={() => { setSettingsOpen(false); navigate('/admin/usuarios'); }}
+              >
+                Editar registros
+              </button>
+              <button className="dropdown-item" onClick={() => { setSettingsOpen(false); handleLogout(); }}>
+                Cerrar sesión
+              </button>
             </div>
           )}
         </div>
       </div>
     </header>
+    
+    </>
   );
 };
 
