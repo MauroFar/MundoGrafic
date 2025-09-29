@@ -125,6 +125,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'prensa' | 'digital'
 
   // Función para calcular el total de pliegos
   const calcularTotalPliegos = () => {
@@ -159,6 +161,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Detectar si hay cotizacionId o no para saber qué hacer
   useEffect(() => {
+    // Si venimos navegando con tipoOrden, guardarlo
+    if (location.state && (location.state as any).tipoOrden) {
+      setTipoOrdenSeleccionado((location.state as any).tipoOrden);
+    }
+
     // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
     if (!cotizacionId && !ordenId) {
       setConcepto('');
@@ -215,6 +222,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
         .then(res => res.json())
         .then(data => setNumero_orden(data.proximoNumero))
         .catch(() => setNumero_orden(''));
+      // Si no tenemos tipo de orden aún, mostrar modal de selección
+      if (!tipoOrdenSeleccionado) {
+        setShowTipoOrdenModal(true);
+      }
       return;
     }
     // Si viene producto por state, inicializar con ese producto
@@ -711,6 +722,29 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   return (
     <>
+      {/* Modal de selección de tipo de orden (solo creación) */}
+      {showTipoOrdenModal && !ordenId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Selecciona el tipo de orden</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => { setTipoOrdenSeleccionado('prensa'); setShowTipoOrdenModal(false); }}
+              >
+                Prensa
+              </button>
+              <button
+                className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                onClick={() => { setTipoOrdenSeleccionado('digital'); setShowTipoOrdenModal(false); }}
+              >
+                Digital
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
       <div className="min-h-screen bg-gray-100">
         <div className="container mx-auto px-4 py-4">
           {/* Encabezado */}

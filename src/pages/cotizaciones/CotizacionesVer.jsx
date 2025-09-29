@@ -44,6 +44,8 @@ function CotizacionesVer() {
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
+  const [showTipoOrdenModal, setShowTipoOrdenModal] = useState(false);
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'prensa' | 'digital'
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cotizacionToDelete, setCotizacionToDelete] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -372,6 +374,8 @@ function CotizacionesVer() {
         numero_cotizacion: cot.numero_cotizacion,
         fecha: cot.fecha,
         nombre_cliente: cot.nombre_cliente,
+        contacto: cot.contacto || null,
+        celuar: cot.celuar || null,
         ruc: cot.ruc,
         subtotal: cot.subtotal,
         iva: cot.iva,
@@ -704,11 +708,19 @@ function CotizacionesVer() {
   };
 
   const generarOrdenTrabajo = async (cotizacionId) => {
+    // Paso 1: seleccionar tipo de orden primero
+    setCotizacionSeleccionada(cotizacionId);
+    setShowTipoOrdenModal(true);
+  };
+
+  // Continuar flujo después de elegir tipo de orden
+  const continuarGeneracionOrden = async (tipoSeleccionado) => {
     try {
+      setTipoOrdenSeleccionado(tipoSeleccionado);
+      setShowTipoOrdenModal(false);
       setLoading(true);
-      // Obtener los detalles/productos de la cotización
       const token = localStorage.getItem("token");
-      const response = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
+      const response = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionSeleccionada}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -718,11 +730,9 @@ function CotizacionesVer() {
       const detalles = await response.json();
       if (Array.isArray(detalles) && detalles.length > 1) {
         setProductosCotizacion(detalles);
-        setCotizacionSeleccionada(cotizacionId);
         setShowProductoModal(true);
       } else if (Array.isArray(detalles) && detalles.length === 1) {
-        // Solo un producto, navegar directo
-        navigate(`/ordendeTrabajo/crear/${cotizacionId}`, { state: { producto: detalles[0] } });
+        navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto: detalles[0], tipoOrden: tipoSeleccionado } });
       } else {
         toast.error('La cotización no tiene productos para generar orden de trabajo.');
       }
@@ -737,7 +747,7 @@ function CotizacionesVer() {
   const handleSeleccionarProducto = (producto) => {
     setShowProductoModal(false);
     if (cotizacionSeleccionada && producto) {
-      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id } });
+      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id, tipoOrden: tipoOrdenSeleccionado } });
     }
   };
 
@@ -1288,6 +1298,37 @@ function CotizacionesVer() {
               <button
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                 onClick={() => setShowProductoModal(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de selección de tipo de orden */}
+      {showTipoOrdenModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Selecciona el tipo de orden</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => continuarGeneracionOrden('prensa')}
+              >
+                Prensa
+              </button>
+              <button
+                className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                onClick={() => continuarGeneracionOrden('digital')}
+              >
+                Digital
+              </button>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                onClick={() => { setShowTipoOrdenModal(false); setCotizacionSeleccionada(null); }}
               >
                 Cancelar
               </button>
