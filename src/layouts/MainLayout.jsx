@@ -7,9 +7,9 @@ const MainLayout = () => {
   return (
     <div className="main-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
-      <div style={{ display: 'flex', flex: 1 }}>
+      <div className="layout-body" style={{ display: 'flex', flex: 1, width: '100%' }}>
         <Sidebar />
-        <div className="flex-1 p-4" style={{ width: '100%' }}>
+        <div className="layout-content" style={{ width: '100%', flex: 1, padding: '1rem' }}>
           <Outlet />
         </div>
       </div>

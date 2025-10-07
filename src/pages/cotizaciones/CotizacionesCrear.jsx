@@ -1174,7 +1174,7 @@ function CotizacionesCrear() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h1 className="text-3xl font-bold text-gray-800">
           {id ? "Editar Cotización" : "Nueva Cotización"}
         </h1>
@@ -1224,8 +1224,8 @@ function CotizacionesCrear() {
             </div>
 
             {/* Derecha: COTIZACIÓN y R.U.C */}
-            {/* Derecha: COTIZACIÓN y R.U.C en una sola línea */}
-<div className="flex flex-row items-start justify-end space-x-6">
+            {/* Derecha: COTIZACIÓN y R.U.C en una sola línea (se apila en móvil) */}
+<div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-end sm:space-x-6 gap-4 w-full sm:w-auto">
   {/* COTIZACIÓN */}
   <div className="bg-gray-100 p-4 rounded-lg text-center">
     <span className="text-sm font-semibold text-gray-600">COTIZACIÓN</span>
@@ -1238,7 +1238,7 @@ function CotizacionesCrear() {
     <select
       value={selectedRuc.ruc}
       onChange={handleRucChange}
-      className="w-48 border border-gray-300 rounded-md p-2"
+      className="w-full sm:w-48 border border-gray-300 rounded-md p-2"
     >
       <option value="">Seleccione un RUC</option>
       {rucs.map((ruc) => (
@@ -1256,7 +1256,7 @@ function CotizacionesCrear() {
 
         {/* Datos del cliente */}
         <div className="mb-6">
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-1">Cliente:</label>
               <div className="flex gap-2">
@@ -1363,15 +1363,15 @@ function CotizacionesCrear() {
         </div>
 
         {/* Tabla de productos */}
-        <div className="mb-6">
-          <table className="w-full border-collapse">
+        <div className="mb-6 overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">Cantidad</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-32">Cantidad</th>
                 <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Valor Unitario</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Total</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-20">Acciones</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-28">Valor Unitario</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-28">Total</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16 sm:w-20">Acciones</th>
               </tr>
             </thead>
             <tbody>

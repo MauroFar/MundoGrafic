@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { buildApiUrl, API_CONFIG } from "../config/api";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const apiUrl = import.meta.env.VITE_API_URL;
+  // Construir URL de login usando configuración centralizada con fallback seguro
+  const loginUrl = buildApiUrl(API_CONFIG.ENDPOINTS.AUTH.LOGIN);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${apiUrl}/api/auth/login`, {
+      const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

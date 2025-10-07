@@ -290,3 +290,19 @@
   color: #888;
   text-align: center;
 } 
+
+/* Responsive tweaks: mobile-first */
+@media (max-width: 640px) {
+  .header-topbar {
+    height: 50px;
+    padding: 0 12px;
+  }
+  .header-right { gap: 10px; }
+  .icon-btn { font-size: 1.25rem; padding: 4px; }
+  .user-name { max-width: 96px; font-size: 0.95rem; }
+  .messages-dropdown, .notifications-dropdown {
+    right: 8px;
+    min-width: 220px;
+    max-width: calc(100vw - 16px);
+  }
+}

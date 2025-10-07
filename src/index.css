@@ -104,3 +104,18 @@ h1 {
 .image-resizable-container:hover {
   border-color: #3498db;
 }
+
+/* Layout responsive sin cambiar estructura de JSX */
+.layout-body {
+  display: flex;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .layout-body {
+    flex-direction: column;
+  }
+  .layout-content {
+    padding: 12px !important;
+  }
+}
