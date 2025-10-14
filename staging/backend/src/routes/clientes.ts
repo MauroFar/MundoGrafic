@@ -1,5 +1,6 @@
 import express from "express";
 const router = express.Router();
+import authRequired from "../middleware/auth";
 
 const createCliente = (client: any) => {
   // Agregar un middleware de logging
@@ -8,8 +9,40 @@ const createCliente = (client: any) => {
     next();
   });
 
+  // Ruta de prueba simple
+  router.get("/test", (req: any, res: any) => {
+    console.log('🧪 [Clientes API] Endpoint de prueba llamado');
+    res.json({ message: "Endpoint de clientes funcionando", timestamp: new Date().toISOString() });
+  });
+
+  // ✅ Ruta para obtener todos los clientes
+  router.get("/", authRequired(), async (req: any, res: any) => {
+    try {
+      console.log('🔍 [Clientes API] Iniciando consulta de clientes...');
+      const query = `
+        SELECT id, nombre_cliente, email_cliente, telefono_cliente
+        FROM clientes
+        ORDER BY nombre_cliente ASC
+      `;
+      const result = await client.query(query);
+      console.log(`✅ [Clientes API] Consulta exitosa. Encontrados ${result.rows.length} clientes`);
+      console.log('📋 [Clientes API] Datos:', result.rows);
+      
+      // Agregar headers CORS explícitos
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+      
+      res.json(result.rows);
+      console.log('📤 [Clientes API] Respuesta enviada exitosamente');
+    } catch (error: any) {
+      console.error('❌ [Clientes API] Error al obtener clientes:', error);
+      res.status(500).json({ error: 'Error al obtener clientes', details: error.message });
+    }
+  });
+
   // Ruta para buscar clientes
-  router.get("/buscar", async (req: any, res: any) => {
+  router.get("/buscar", authRequired(), async (req: any, res: any) => {
     const { q } = req.query;
     // Validar: al menos 2 caracteres y al menos una letra
     if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
@@ -31,7 +64,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para crear un cliente
-  router.post("/", async (req: any, res: any) => {
+  router.post("/", authRequired(), async (req: any, res: any) => {
     const { nombre, direccion, telefono, email } = req.body;
     try {
       // Verificar si el cliente ya existe
