@@ -13,10 +13,15 @@ import chatRoutes from "./chat";
 
 export default (client: any) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
+  
+  console.log('🔧 [API Routes] Registrando rutas...');
     
   // Usamos las rutas importadas (TEMPORALMENTE COMENTADAS)
   router.use("/rucs", rucRoutes(client)); // /api/rucs
+  console.log('✅ [API Routes] Ruta /rucs registrada');
+  
   router.use("/clientes", clientesRoutes(client)); // /api/clientes
+  console.log('✅ [API Routes] Ruta /clientes registrada');
   router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
   router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
   router.use("/cotizacionesEditar", cotizacionesEditar(client));
@@ -29,6 +34,19 @@ export default (client: any) => {
   router.get("/test", (req, res) => {
     res.json({ message: "API funcionando sin dependencias problemáticas" });
   });
+
+  console.log('🎉 [API Routes] Todas las rutas registradas exitosamente');
+  console.log('📋 [API Routes] Rutas disponibles:');
+  console.log('   - /api/rucs');
+  console.log('   - /api/clientes');
+  console.log('   - /api/cotizaciones');
+  console.log('   - /api/cotizacionesDetalles');
+  console.log('   - /api/cotizacionesEditar');
+  console.log('   - /api/ordenTrabajo');
+  console.log('   - /api/reportesTrabajo');
+  console.log('   - /api/upload');
+  console.log('   - /api/chat');
+  console.log('   - /api/test');
 
   return router; // Devolvemos el router que agrupa todas las rutas
 };

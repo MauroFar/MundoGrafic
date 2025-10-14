@@ -80,7 +80,9 @@ app.use("/api/cotizaciones", cotizacionesRoutes(client));
 app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
 // Importar las rutas agrupadas en api.js
+console.log('🚀 [Server] Registrando rutas API...');
 app.use("/api", apiRoutes(client));
+console.log('✅ [Server] Rutas API registradas exitosamente');
 
 // Rutas de usuarios
 app.use('/api/usuarios', usuariosRoutes(client));
