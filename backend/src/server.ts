@@ -84,6 +84,12 @@ console.log('🚀 [Server] Registrando rutas API...');
 app.use("/api", apiRoutes(client));
 console.log('✅ [Server] Rutas API registradas exitosamente');
 
+// Endpoint de prueba directo para clientes
+app.get('/api/clientes/direct', (req, res) => {
+  console.log('🧪 [Direct Test] Endpoint directo de clientes llamado');
+  res.json({ message: 'Endpoint directo funcionando', timestamp: new Date().toISOString() });
+});
+
 // Rutas de usuarios
 app.use('/api/usuarios', usuariosRoutes(client));
 

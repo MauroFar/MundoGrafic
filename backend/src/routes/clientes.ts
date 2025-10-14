@@ -1,5 +1,6 @@
 import express from "express";
 const router = express.Router();
+import authRequired from "../middleware/auth";
 
 const createCliente = (client: any) => {
   // Agregar un middleware de logging
@@ -15,7 +16,7 @@ const createCliente = (client: any) => {
   });
 
   // ✅ Ruta para obtener todos los clientes
-  router.get("/", async (req: any, res: any) => {
+  router.get("/", authRequired(), async (req: any, res: any) => {
     try {
       console.log('🔍 [Clientes API] Iniciando consulta de clientes...');
       const query = `
@@ -41,7 +42,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para buscar clientes
-  router.get("/buscar", async (req: any, res: any) => {
+  router.get("/buscar", authRequired(), async (req: any, res: any) => {
     const { q } = req.query;
     // Validar: al menos 2 caracteres y al menos una letra
     if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
@@ -63,7 +64,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para crear un cliente
-  router.post("/", async (req: any, res: any) => {
+  router.post("/", authRequired(), async (req: any, res: any) => {
     const { nombre, direccion, telefono, email } = req.body;
     try {
       // Verificar si el cliente ya existe
