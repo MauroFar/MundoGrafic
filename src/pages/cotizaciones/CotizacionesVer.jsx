@@ -1245,7 +1245,7 @@ function CotizacionesVer() {
                       className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                       title="Seleccionar miembros"
                     >
-                      + Miembros
+                      + Equipo MundoGrafic
                     </button>
                   </div>
                 </div>
@@ -1343,7 +1343,7 @@ function CotizacionesVer() {
                           className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                           title="Seleccionar miembros"
                         >
-                          + Miembros
+                          + Equipo MundoGrafic
                   </button>
                 </div>
                     </div>
@@ -1443,7 +1443,7 @@ function CotizacionesVer() {
                           className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                           title="Seleccionar miembros"
                         >
-                          + Miembros
+                          + Equipo MundoGrafic
                         </button>
                       </div>
                   </div>
