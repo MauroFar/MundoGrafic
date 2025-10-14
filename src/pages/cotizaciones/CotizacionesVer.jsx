@@ -28,6 +28,14 @@ function CotizacionesVer() {
     message: '',
     nombrePDF: ''
   });
+  
+  // Nuevos estados para la interfaz mejorada
+  const [destinatariosTo, setDestinatariosTo] = useState([]);
+  const [destinatariosCC, setDestinatariosCC] = useState([]);
+  const [destinatariosBCC, setDestinatariosBCC] = useState([]);
+  const [tipoDestinatarioActual, setTipoDestinatarioActual] = useState('to');
+  const [showCCSection, setShowCCSection] = useState(false);
+  const [showBCCSection, setShowBCCSection] = useState(false);
   const [showClientesModal, setShowClientesModal] = useState(false);
   const [clientesSugeridos, setClientesSugeridos] = useState([]);
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -509,6 +517,22 @@ function CotizacionesVer() {
   const handleEnviarCorreoAlternativo = (id) => {
     const cotizacion = cotizaciones.find(c => c.id === id);
     setSelectedCotizacion(cotizacion);
+    
+    // Inicializar destinatarios con el email del cliente si existe
+    const destinatariosToIniciales = [];
+    if (cotizacion?.email_cliente) {
+      destinatariosToIniciales.push({
+        id: Date.now(),
+        email: cotizacion.email_cliente,
+        nombre: cotizacion.nombre_cliente || '',
+        valido: true
+      });
+    }
+    
+    setDestinatariosTo(destinatariosToIniciales);
+    setDestinatariosCC([]);
+    setDestinatariosBCC([]);
+    
     setEmailDataAlternativo(prev => ({
       ...prev,
       to: cotizacion?.email_cliente || "",
@@ -519,27 +543,118 @@ function CotizacionesVer() {
     setShowModalAlternativo(true);
   };
 
+  // Funciones para manejar destinatarios por tipo
+  const agregarDestinatarioPorTipo = (tipo, email, nombre = '') => {
+    if (!email.trim()) return;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const esValido = emailRegex.test(email.trim());
+    
+    if (!esValido) {
+      toast.error('Por favor ingrese un email válido');
+      return;
+    }
+    
+    const nuevo = {
+      id: Date.now(),
+      email: email.trim(),
+      nombre: nombre.trim(),
+      valido: true
+    };
+    
+    // Verificar duplicados en el tipo específico
+    let existe = false;
+    if (tipo === 'to') {
+      existe = destinatariosTo.some(d => d.email.toLowerCase() === email.toLowerCase());
+      if (!existe) {
+        setDestinatariosTo(prev => [...prev, nuevo]);
+      }
+    } else if (tipo === 'cc') {
+      existe = destinatariosCC.some(d => d.email.toLowerCase() === email.toLowerCase());
+      if (!existe) {
+        setDestinatariosCC(prev => [...prev, nuevo]);
+      }
+    } else if (tipo === 'bcc') {
+      existe = destinatariosBCC.some(d => d.email.toLowerCase() === email.toLowerCase());
+      if (!existe) {
+        setDestinatariosBCC(prev => [...prev, nuevo]);
+      }
+    }
+    
+    if (existe) {
+      toast.error('Este email ya está en la lista de destinatarios');
+      return;
+    }
+    
+    // Actualizar el campo de texto para compatibilidad
+    actualizarCampoTexto();
+  };
+
+  const eliminarDestinatarioPorTipo = (tipo, id) => {
+    if (tipo === 'to') {
+      setDestinatariosTo(prev => prev.filter(d => d.id !== id));
+    } else if (tipo === 'cc') {
+      setDestinatariosCC(prev => prev.filter(d => d.id !== id));
+    } else if (tipo === 'bcc') {
+      setDestinatariosBCC(prev => prev.filter(d => d.id !== id));
+    }
+    
+    // Actualizar el campo de texto para compatibilidad
+    actualizarCampoTexto();
+  };
+
+  const actualizarCampoTexto = () => {
+    const todosEmails = [
+      ...destinatariosTo.map(d => d.email),
+      ...destinatariosCC.map(d => d.email),
+      ...destinatariosBCC.map(d => d.email)
+    ].join(', ');
+    
+    setEmailDataAlternativo(prev => ({ ...prev, to: todosEmails }));
+  };
+
+  const abrirModalClientes = (tipo) => {
+    setTipoDestinatarioActual(tipo);
+    setShowClientesModal(true);
+    cargarTodosLosClientes();
+  };
+
+
+  const validarEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleEnviarCorreoAlternativoSubmit = async (e) => {
     e.preventDefault();
     setShowLoadingModal(true);
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      if (!emailDataAlternativo.to) {
-        toast.error('Se requiere un correo electrónico válido');
+      
+      // Validar que haya al menos un destinatario principal
+      if (destinatariosTo.length === 0) {
+        toast.error('Debe agregar al menos un destinatario principal');
         return;
       }
 
-      // ✅ Validar formato de email (soporta múltiples correos separados por coma)
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const emails = emailDataAlternativo.to.split(',').map(e => e.trim()).filter(e => e.length > 0);
-      
-      // Verificar que todos los emails tengan formato válido
-      const invalidEmails = emails.filter(e => !emailRegex.test(e));
-      if (invalidEmails.length > 0) {
-        toast.error(`Los siguientes correos electrónicos no tienen formato válido: ${invalidEmails.join(', ')}`);
+      // Validar que todos los emails sean válidos
+      const todosDestinatarios = [...destinatariosTo, ...destinatariosCC, ...destinatariosBCC];
+      const emailsInvalidos = todosDestinatarios.filter(d => !validarEmail(d.email));
+      if (emailsInvalidos.length > 0) {
+        toast.error(`Los siguientes correos electrónicos no son válidos: ${emailsInvalidos.map(d => d.email).join(', ')}`);
         return;
       }
+
+      // Preparar los emails para el backend (compatibilidad)
+      const todosEmails = todosDestinatarios.map(d => d.email).join(', ');
+      
+      // Preparar destinatarios estructurados para el backend
+      const destinatariosEstructurados = [
+        ...destinatariosTo.map(d => ({ ...d, tipo: 'to' })),
+        ...destinatariosCC.map(d => ({ ...d, tipo: 'cc' })),
+        ...destinatariosBCC.map(d => ({ ...d, tipo: 'bcc' }))
+      ];
 
       const response = await fetch(`${apiUrl}/api/cotizaciones/${selectedCotizacion.id}/enviar-correo`, {
         method: 'POST',
@@ -548,10 +663,11 @@ function CotizacionesVer() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: emailDataAlternativo.to,
+          email: todosEmails,
           asunto: emailDataAlternativo.subject,
           mensaje: emailDataAlternativo.message,
-          nombrePDF: emailDataAlternativo.nombrePDF
+          nombrePDF: emailDataAlternativo.nombrePDF,
+          destinatarios: destinatariosEstructurados // Enviar información adicional de destinatarios
         })
       });
 
@@ -564,6 +680,9 @@ function CotizacionesVer() {
       setShowSuccessModal(true);
       setShowModalAlternativo(false);
       setEmailDataAlternativo({ to: '', subject: '', message: '', nombrePDF: '' });
+      setDestinatariosTo([]); // Limpiar destinatarios
+      setDestinatariosCC([]);
+      setDestinatariosBCC([]);
 
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -1034,221 +1153,400 @@ function CotizacionesVer() {
         </div>
       )}
 
-      {/* Modal Alternativo de Correo */}
+      {/* Modal Mejorado de Correo */}
       {showModalAlternativo && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-            <h2 className="text-xl font-bold mb-4">Enviar Correo</h2>
-            <form onSubmit={handleEnviarCorreoAlternativoSubmit}>
-              <div className="mb-4 relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Correo Destinatario
-                </label>
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">📧 Enviar Cotización por Correo</h2>
+              <button
+                onClick={() => {
+                  setShowModalAlternativo(false);
+                  setDestinatarios([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleEnviarCorreoAlternativoSubmit} className="space-y-6">
+              {/* Sección de Destinatarios por Tipo */}
+              <div className="space-y-6">
+                {/* Destinatario Principal */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold text-blue-800">📧 Destinatario Principal</h3>
+                    <span className="text-sm text-blue-600">
+                      {destinatariosTo.length} destinatario{destinatariosTo.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  {/* Lista de destinatarios TO */}
+                  <div className="mb-3">
+                    {destinatariosTo.length === 0 ? (
+                      <div className="text-center py-4 text-blue-600">
+                        <p className="text-sm">No hay destinatarios principales</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {destinatariosTo.map((destinatario) => (
+                          <div
+                            key={destinatario.id}
+                            className="flex items-center justify-between p-2 bg-white rounded border border-blue-200"
+                          >
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {destinatario.nombre || destinatario.email}
+                              </div>
+                              {destinatario.nombre && (
+                                <div className="text-sm text-gray-500">{destinatario.email}</div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => eliminarDestinatarioPorTipo('to', destinatario.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                              title="Eliminar destinatario"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Campo de entrada y botones */}
                 <div className="flex gap-2">
                   <input
-                    type="text"
-                    value={emailDataAlternativo.to}
-                    onChange={e => {
-                      setEmailDataAlternativo(prev => ({ ...prev, to: e.target.value }));
-                      buscarClientes(e.target.value);
-                    }}
-                    onFocus={e => {
-                      if (emailDataAlternativo.to) buscarClientes(emailDataAlternativo.to);
-                    }}
-                    onBlur={() => setTimeout(() => setShowSugerencias(false), 150)}
-                    onKeyDown={e => {
-                      if (!showSugerencias || clientesSugeridos.length === 0) return;
-                      if (e.key === 'ArrowDown') {
-                        setSugerenciaIndex(prev => (prev < clientesSugeridos.length - 1 ? prev + 1 : 0));
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
                         e.preventDefault();
-                      } else if (e.key === 'ArrowUp') {
-                        setSugerenciaIndex(prev => (prev > 0 ? prev - 1 : clientesSugeridos.length - 1));
-                        e.preventDefault();
-                      } else if (e.key === 'Enter' && sugerenciaIndex >= 0) {
-                        const cliente = clientesSugeridos[sugerenciaIndex];
-                        const currentEmails = emailDataAlternativo.to;
-                        const newEmail = cliente.email_cliente;
-                        
-                        // ✅ Lógica mejorada para agregar correos sin borrar los existentes
-                        if (currentEmails && currentEmails.trim() !== '') {
-                          // Si ya hay correos, extraer la parte antes de la última coma
-                          const emailsArray = currentEmails.split(',');
-                          const lastPart = emailsArray[emailsArray.length - 1].trim();
-                          
-                          // Si la última parte está vacía, es solo espacios, o no es un email completo, reemplazarla
-                          if (lastPart === '' || lastPart.length < 2 || !lastPart.includes('@')) {
-                            emailsArray[emailsArray.length - 1] = ` ${newEmail}`;
-                            setEmailDataAlternativo(prev => ({
-                              ...prev,
-                              to: emailsArray.join(',')
-                            }));
-                          } else {
-                            // Si la última parte es un email completo, agregar el nuevo correo
-                            setEmailDataAlternativo(prev => ({
-                              ...prev,
-                              to: `${currentEmails}, ${newEmail}`
-                            }));
-                          }
-                        } else {
-                          // Si no hay correos, usar solo este
-                          setEmailDataAlternativo(prev => ({
-                            ...prev,
-                            to: newEmail
-                          }));
+                          agregarDestinatarioPorTipo('to', e.target.value);
+                          e.target.value = '';
                         }
-                        
-                        setShowSugerencias(false);
-                        setSugerenciaIndex(-1);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => abrirModalClientes('to')}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      title="Seleccionar de clientes"
+                    >
+                      + Clientes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                      className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      title="Seleccionar miembros"
+                    >
+                      + Miembros
+                    </button>
+                  </div>
+                </div>
+
+                {/* Con Copia (CC) - Desplegable */}
+                <div className="bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div 
+                    className="flex justify-between items-center p-4 cursor-pointer hover:bg-yellow-100 transition-colors"
+                    onClick={() => setShowCCSection(!showCCSection)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-lg font-semibold text-yellow-800">📋 Con Copia (CC)</h3>
+                      <span className="text-sm text-yellow-600">
+                        {destinatariosCC.length} destinatario{destinatariosCC.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-yellow-600 text-sm">
+                        {showCCSection ? 'Ocultar' : 'Mostrar'}
+                      </span>
+                      <svg 
+                        className={`w-5 h-5 text-yellow-600 transition-transform ${showCCSection ? 'rotate-180' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {showCCSection && (
+                    <div className="px-4 pb-4">
+                  
+                      {/* Lista de destinatarios CC */}
+                      <div className="mb-3">
+                        {destinatariosCC.length === 0 ? (
+                          <div className="text-center py-4 text-yellow-600">
+                            <p className="text-sm">No hay destinatarios en copia</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {destinatariosCC.map((destinatario) => (
+                              <div
+                                key={destinatario.id}
+                                className="flex items-center justify-between p-2 bg-white rounded border border-yellow-200"
+                              >
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {destinatario.nombre || destinatario.email}
+                                  </div>
+                                  {destinatario.nombre && (
+                                    <div className="text-sm text-gray-500">{destinatario.email}</div>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarDestinatarioPorTipo('cc', destinatario.id)}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                                  title="Eliminar destinatario"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Campo de entrada y botones */}
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="correo@ejemplo.com"
+                          className="flex-1 px-3 py-2 border border-yellow-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
                         e.preventDefault();
+                              agregarDestinatarioPorTipo('cc', e.target.value);
+                              e.target.value = '';
                       }
                     }}
-                    className="flex-1 border border-gray-300 rounded-md p-2"
-                    required
-                    autoComplete="off"
-                    placeholder="Escribe correos separados por coma (ej: correo1@email.com, correo2@email.com)"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowClientesModal(true);
-                      cargarTodosLosClientes();
-                    }}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                    title="Ver Clientes"
-                  >
-                    👥 Ver Clientes
+                          onClick={() => abrirModalClientes('cc')}
+                          className="px-3 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+                          title="Seleccionar de clientes"
+                        >
+                          + Clientes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                          className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                          title="Seleccionar miembros"
+                        >
+                          + Miembros
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Puedes escribir múltiples correos separados por coma
-                </p>
-                {showSugerencias && clientesSugeridos.length > 0 && emailDataAlternativo.to.length >= 2 && (
-                  <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50, borderTop: '3px solid #2563eb', background: '#f8fafc' }} className="w-full border border-gray-300 rounded-b-md shadow-lg animate-fade-in">
-                    <div className="flex items-center gap-2 px-3 py-1 text-xs text-blue-700 bg-blue-50 border-b border-blue-100 rounded-t-md">
-                      <i className="fas fa-magic"></i>
-                      Sugerencias
                     </div>
-                    <ul className="max-h-48 overflow-auto">
-                      {clientesSugeridos.map((cliente, idx) => (
-                        <li
-                          key={cliente.id}
-                          onClick={() => {
-                            const currentEmails = emailDataAlternativo.to;
-                            const newEmail = cliente.email_cliente;
-                            
-                            // ✅ Lógica mejorada para agregar correos sin borrar los existentes
-                            if (currentEmails && currentEmails.trim() !== '') {
-                              // Si ya hay correos, extraer la parte antes de la última coma
-                              const emailsArray = currentEmails.split(',');
-                              const lastPart = emailsArray[emailsArray.length - 1].trim();
-                              
-                              // Si la última parte está vacía, es solo espacios, o no es un email completo, reemplazarla
-                              if (lastPart === '' || lastPart.length < 2 || !lastPart.includes('@')) {
-                                emailsArray[emailsArray.length - 1] = ` ${newEmail}`;
-                                setEmailDataAlternativo(prev => ({
-                                  ...prev,
-                                  to: emailsArray.join(',')
-                                }));
-                              } else {
-                                // Si la última parte es un email completo, agregar el nuevo correo
-                                setEmailDataAlternativo(prev => ({
-                                  ...prev,
-                                  to: `${currentEmails}, ${newEmail}`
-                                }));
-                              }
-                            } else {
-                              // Si no hay correos, usar solo este
-                              setEmailDataAlternativo(prev => ({
-                                ...prev,
-                                to: newEmail
-                              }));
+                  )}
+                </div>
+
+                {/* Copia Oculta (BCC) - Desplegable */}
+                <div className="bg-gray-50 rounded-lg border border-gray-200">
+                  <div 
+                    className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => setShowBCCSection(!showBCCSection)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-lg font-semibold text-gray-800">🔒 Copia Oculta (BCC)</h3>
+                      <span className="text-sm text-gray-600">
+                        {destinatariosBCC.length} destinatario{destinatariosBCC.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 text-sm">
+                        {showBCCSection ? 'Ocultar' : 'Mostrar'}
+                      </span>
+                      <svg 
+                        className={`w-5 h-5 text-gray-600 transition-transform ${showBCCSection ? 'rotate-180' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {showBCCSection && (
+                    <div className="px-4 pb-4">
+                  
+                      {/* Lista de destinatarios BCC */}
+                      <div className="mb-3">
+                        {destinatariosBCC.length === 0 ? (
+                          <div className="text-center py-4 text-gray-600">
+                            <p className="text-sm">No hay destinatarios en copia oculta</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {destinatariosBCC.map((destinatario) => (
+                              <div
+                                key={destinatario.id}
+                                className="flex items-center justify-between p-2 bg-white rounded border border-gray-200"
+                              >
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {destinatario.nombre || destinatario.email}
+                  </div>
+                                  {destinatario.nombre && (
+                                    <div className="text-sm text-gray-500">{destinatario.email}</div>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarDestinatarioPorTipo('bcc', destinatario.id)}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                                  title="Eliminar destinatario"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                  </div>
+                )}
+                      </div>
+                      
+                      {/* Campo de entrada y botones */}
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="correo@ejemplo.com"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              agregarDestinatarioPorTipo('bcc', e.target.value);
+                              e.target.value = '';
                             }
-                            
-                            setShowSugerencias(false);
-                            setSugerenciaIndex(-1);
                           }}
-                          className={`px-4 py-2 hover:bg-blue-100 cursor-pointer transition-colors ${sugerenciaIndex === idx ? 'bg-blue-600 text-white' : ''}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => abrirModalClientes('bcc')}
+                          className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                          title="Seleccionar de clientes"
                         >
-                          <div className="font-medium">{cliente.nombre_cliente}</div>
-                          <div className="text-xs text-gray-500">{cliente.email_cliente}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {showSugerencias && !loadingClientes && clientesSugeridos.length === 0 && emailDataAlternativo.to.length >= 2 && (
-                  <div className="absolute left-0 right-0 bg-white border rounded shadow z-20 px-3 py-2 text-gray-500 mt-1">
-                    No se encontraron clientes
-                  </div>
-                )}
-                {loadingClientes && emailDataAlternativo.to.length >= 2 && (
-                  <div className="absolute left-0 right-0 bg-white border rounded shadow z-20 px-3 py-2 text-gray-500 mt-1">
-                    Buscando...
+                          + Clientes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                          className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                          title="Seleccionar miembros"
+                        >
+                          + Miembros
+                        </button>
+                      </div>
                   </div>
                 )}
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asunto
+              </div>
+
+
+              {/* Sección de Asunto y Mensaje */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📧 Asunto del Correo
                 </label>
                 <input
                   type="text"
                   value={emailDataAlternativo.subject}
                   onChange={e => setEmailDataAlternativo(prev => ({ ...prev, subject: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                    className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: Cotización MUNDOGRAFIC #123"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mensaje
-                </label>
-                <textarea
-                  value={emailDataAlternativo.message}
-                  onChange={e => setEmailDataAlternativo(prev => ({ ...prev, message: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md p-2 h-32"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del PDF
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📄 Nombre del PDF
                 </label>
                 <input
                   type="text"
                   value={emailDataAlternativo.nombrePDF}
                   onChange={e => setEmailDataAlternativo(prev => ({ ...prev, nombrePDF: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md p-2"
+                    className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Ej: Cotizacion-Cliente-Enero2024"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   El archivo se enviará con extensión .pdf automáticamente
                 </p>
               </div>
-              <div className="flex justify-end gap-2">
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  💬 Mensaje del Correo
+                </label>
+                <textarea
+                  value={emailDataAlternativo.message}
+                  onChange={e => setEmailDataAlternativo(prev => ({ ...prev, message: e.target.value }))}
+                  rows={6}
+                  className="w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Escriba su mensaje aquí..."
+                />
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <div className="text-sm text-gray-500">
+                  {destinatariosTo.length > 0 && (
+                    <span>📊 {destinatariosTo.length + destinatariosCC.length + destinatariosBCC.length} destinatario{(destinatariosTo.length + destinatariosCC.length + destinatariosBCC.length) !== 1 ? 's' : ''} configurado{(destinatariosTo.length + destinatariosCC.length + destinatariosBCC.length) !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+                <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModalAlternativo(false);
                     setEmailDataAlternativo({ to: '', subject: '', message: '', nombrePDF: '' });
+                      setDestinatariosTo([]);
+                      setDestinatariosCC([]);
+                      setDestinatariosBCC([]);
                     setClientesSugeridos([]);
                     setShowSugerencias(false);
                     setSugerenciaIndex(-1);
                   }}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                    className="px-6 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  disabled={loading}
-                >
-                  {loading ? 'Enviando...' : 'Enviar'}
+                    disabled={loading || destinatariosTo.length === 0}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? (
+                      <div className="flex items-center space-x-2">
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        <span>Enviando...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <span>📧</span>
+                        <span>Enviar Correo</span>
+                      </div>
+                    )}
                 </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
+
 
       {showLoadingModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1396,29 +1694,14 @@ function CotizacionesVer() {
                           <td className="px-4 py-2 border-b text-center">
                             <button
                               onClick={() => {
-                                // Agregar el correo al campo existente o reemplazar
-                                const currentEmails = emailDataAlternativo.to;
-                                const newEmail = cliente.email_cliente;
-                                
-                                if (currentEmails && currentEmails.trim() !== '') {
-                                  // Si ya hay correos, agregar con coma
-                                  setEmailDataAlternativo(prev => ({
-                                    ...prev,
-                                    to: `${currentEmails}, ${newEmail}`
-                                  }));
-                                } else {
-                                  // Si no hay correos, usar solo este
-                                  setEmailDataAlternativo(prev => ({
-                                    ...prev,
-                                    to: newEmail
-                                  }));
-                                }
-                                
+                                // Agregar al tipo de destinatario actual
+                                agregarDestinatarioPorTipo(tipoDestinatarioActual, cliente.email_cliente, cliente.nombre_cliente);
                                 setShowClientesModal(false);
+                                toast.success(`Cliente "${cliente.nombre_cliente}" agregado como destinatario ${tipoDestinatarioActual.toUpperCase()}`);
                               }}
                               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                             >
-                              Seleccionar
+                              Agregar
                             </button>
                           </td>
                         </tr>

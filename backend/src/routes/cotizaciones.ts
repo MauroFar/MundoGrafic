@@ -1324,7 +1324,7 @@ const CotizacionDatos = (client: any) => {
   router.post('/:id/enviar-correo', authRequired(), async (req: any, res: any) => {
     try {
       const { id } = req.params;
-      const { email, asunto, mensaje, nombrePDF } = req.body;
+      const { email, asunto, mensaje, nombrePDF, destinatarios } = req.body;
 
       // Validar que el correo fue proporcionado
       if (!email) {
@@ -1344,6 +1344,14 @@ const CotizacionDatos = (client: any) => {
         return res.status(400).json({
           success: false,
           message: `Los siguientes correos electrónicos no tienen formato válido: ${invalidEmails.join(', ')}`
+        });
+      }
+
+      // Log de destinatarios para debugging
+      if (destinatarios && Array.isArray(destinatarios)) {
+        console.log('📧 Destinatarios recibidos:', destinatarios.length);
+        destinatarios.forEach((dest, index) => {
+          console.log(`  ${index + 1}. ${dest.email} (${dest.tipo}) - ${dest.nombre || 'Sin nombre'}`);
         });
       }
 
@@ -1566,10 +1574,41 @@ const CotizacionDatos = (client: any) => {
        console.log('📧 Firma HTML seleccionada:', signatureHtml ? '✅ Personalizada' : '❌ Por defecto');
        console.log('📧 Longitud de la firma:', signatureHtml ? signatureHtml.length : 0);
        
-      // 6. Enviar el correo
-      await dynamicTransporter.sendMail({
+      // 6. Preparar destinatarios por tipo
+      let toEmails = [];
+      let ccEmails = [];
+      let bccEmails = [];
+
+      if (destinatarios && Array.isArray(destinatarios)) {
+        // Usar la nueva estructura de destinatarios
+        destinatarios.forEach(dest => {
+          if (dest.tipo === 'to') {
+            toEmails.push(dest.email);
+          } else if (dest.tipo === 'cc') {
+            ccEmails.push(dest.email);
+          } else if (dest.tipo === 'bcc') {
+            bccEmails.push(dest.email);
+          }
+        });
+      } else {
+        // Fallback al método anterior (compatibilidad)
+        toEmails = emails;
+      }
+
+      // Asegurar que haya al menos un destinatario principal
+      if (toEmails.length === 0) {
+        toEmails = emails;
+      }
+
+      console.log('📧 Configuración de destinatarios:');
+      console.log('📧 Para (TO):', toEmails.join(', '));
+      if (ccEmails.length > 0) console.log('📧 CC:', ccEmails.join(', '));
+      if (bccEmails.length > 0) console.log('📧 BCC:', bccEmails.join(', '));
+
+      // 7. Enviar el correo
+      const mailOptions: any = {
         from: emailUser,
-        to: email, // ✅ Nodemailer ya soporta múltiples correos separados por coma
+        to: toEmails.join(', '),
         subject: asunto || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
         text: mensaje || 'Adjunto encontrará la cotización solicitada.',
         html: `
@@ -1585,7 +1624,17 @@ const CotizacionDatos = (client: any) => {
             contentType: 'application/pdf',
           },
         ],
-      });
+      };
+
+      // Agregar CC y BCC si existen
+      if (ccEmails.length > 0) {
+        mailOptions.cc = ccEmails.join(', ');
+      }
+      if (bccEmails.length > 0) {
+        mailOptions.bcc = bccEmails.join(', ');
+      }
+
+      await dynamicTransporter.sendMail(mailOptions);
 
       // Limpiar el archivo PDF después de enviarlo
       setTimeout(async () => {
