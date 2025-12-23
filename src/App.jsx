@@ -18,7 +18,7 @@ import ModuloPrensa from "./pages/Produccion/ModuloPrensa";
 import ModuloAcabados from "./pages/Produccion/ModuloAcabados";
 import ModuloControlCalidad from "./pages/Produccion/ModuloControlCalidad";
 import ModuloEmpacadoEntrega from "./pages/Produccion/ModuloEmpacadoEntrega";
-import SeguimientoOrden from "./pages/produccion/SeguimientoOrden";
+
 import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProduccionDiaria from "./pages/Produccion/ProduccionDiaria";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
@@ -105,11 +105,7 @@ function App() {
               <ModuloEmpacadoEntrega />
             </PrivateRoute>
           } />
-          <Route path="/produccion/seguimiento/:id" element={
-            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <SeguimientoOrden />
-            </PrivateRoute>
-          } />
+          
           <Route path="/dashboardGeneral" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <DashboardGeneral />
