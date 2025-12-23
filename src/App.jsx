@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import PrivateRoute from "./components/PrivateRoute";
+import ToastNotificaciones from "./components/ToastNotificaciones";
 
 // Páginas
 import Login from "./pages/Login";
@@ -10,6 +11,14 @@ import Welcome from "./components/Welcome";
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
 import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
 import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
+import DashboardProduccion from "./pages/Produccion/DashboardProduccion";
+import VistaKanban from "./pages/Produccion/VistaKanban";
+import ModuloPreprensa from "./pages/Produccion/ModuloPreprensa";
+import ModuloPrensa from "./pages/Produccion/ModuloPrensa";
+import ModuloAcabados from "./pages/Produccion/ModuloAcabados";
+import ModuloControlCalidad from "./pages/Produccion/ModuloControlCalidad";
+import ModuloEmpacadoEntrega from "./pages/Produccion/ModuloEmpacadoEntrega";
+import SeguimientoOrden from "./pages/produccion/SeguimientoOrden";
 import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProduccionDiaria from "./pages/Produccion/ProduccionDiaria";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
@@ -24,6 +33,7 @@ function App() {
   return (
     <Router>
       <ToastContainer position="top-right" autoClose={3000} />
+      <ToastNotificaciones />
       <Routes>
         {/* Ruta Login */}
         <Route path="/" element={<Login />} />
@@ -57,10 +67,47 @@ function App() {
           {/* Producción y órdenes de trabajo: admin, ejecutivo, impresion */}
           <Route path="/produccion" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Welcome 
-                title="Producción" 
-                message="Bienvenido al área de Producción. Seleccione una opción del menú para continuar." 
-              />
+              <DashboardProduccion />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/dashboard" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <DashboardProduccion />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/kanban" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <VistaKanban />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/preprensa" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ModuloPreprensa />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/prensa" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ModuloPrensa />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/acabados" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ModuloAcabados />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/calidad" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ModuloControlCalidad />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/entrega" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ModuloEmpacadoEntrega />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/seguimiento/:id" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <SeguimientoOrden />
             </PrivateRoute>
           } />
           <Route path="/dashboardGeneral" element={

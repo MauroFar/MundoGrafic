@@ -56,7 +56,14 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
     ],
     produccion: [
-      { path: "/dashboardGeneral", label: "En Producción" },
+      { path: "/produccion", label: "Dashboard Producción" },
+      { path: "/produccion/kanban", label: "Vista Kanban" },
+      { path: "/produccion/preprensa", label: "Módulo Preprensa" },
+      { path: "/produccion/prensa", label: "Módulo Prensa" },
+      { path: "/produccion/acabados", label: "Módulo Acabados" },
+      { path: "/produccion/calidad", label: "Control de Calidad" },
+      { path: "/produccion/entrega", label: "Empacado y Entrega" },
+      { path: "/dashboardGeneral", label: "Dashboard General" },
       { path: "/produccionDiaria", label: "Producción Diaria" },
       { path: "/productosTerminados", label: "Productos Terminados" },
     ],
@@ -118,6 +125,13 @@ const Sidebar = () => {
             </li>
           ))}
         </ul>
+
+        <button
+  onClick={() => window.open("https://registrosmantenimientos.onrender.com/", "_blank")}
+  className="mt-4 w-full bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded-md"
+>
+  🌐 Gestion area TI  
+</button>
 
         {/* Botón para volver al menú principal si estás en un submenú */}
         {inSubmenu && (
