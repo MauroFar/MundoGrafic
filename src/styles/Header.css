@@ -4,12 +4,31 @@
   background: #002554;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between; /* Left and right sections */
   padding: 0 24px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.04);
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-principal-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.menu-principal-btn:hover {
+  background: rgba(255,255,255,0.04);
 }
 
 .header-right {

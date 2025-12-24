@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Header.css";
 
 interface Usuario {
@@ -24,6 +24,8 @@ const Header: React.FC = () => {
   const notificationsRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const showMenuButton = location.pathname !== '/' && location.pathname !== '/welcome';
   const nombre = localStorage.getItem("nombre") || "Usuario";
   const rol = localStorage.getItem("rol") || "";
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -96,6 +98,11 @@ const Header: React.FC = () => {
   return (
     <>
     <header className="header-topbar">
+      <div className="header-left">
+        {showMenuButton && (
+          <button className="menu-principal-btn" onClick={() => navigate('/welcome')} title="Ir al Menú Principal">🏠 Menú Principal</button>
+        )}
+      </div>
       <div className="header-right">
         {/* Notificaciones */}
         <div className="notifications-menu-wrapper" ref={notificationsRef}>

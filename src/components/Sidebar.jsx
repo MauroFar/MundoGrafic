@@ -55,7 +55,10 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
       { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
     ],
+    // Submenú de Producción: ahora incluye enlaces a Cotizaciones y Ordenes de Trabajo
     produccion: [
+      { path: "/cotizaciones", label: "Cotizaciones" },
+      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Dashboard Producción" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
       { path: "/produccion/preprensa", label: "Módulo Preprensa" },
@@ -78,7 +81,8 @@ const Sidebar = () => {
       location.pathname.startsWith("/ordendeTrabajo") ||
       location.pathname.startsWith("/produccion") ||
       location.pathname === "/dashboardGeneral" ||
-      location.pathname === "/productosTerminados"
+      location.pathname === "/productosTerminados" ||
+      location.pathname === "/produccionDiaria"
     );
   };
 
@@ -88,8 +92,19 @@ const Sidebar = () => {
     if (
       location.pathname.startsWith("/produccion") ||
       location.pathname === "/dashboardGeneral" ||
-      location.pathname === "/productosTerminados"
-    ) return menus.produccion;
+      location.pathname === "/productosTerminados" ||
+      location.pathname === "/produccionDiaria"
+    ) {
+      // Filtrar las opciones que el rol no debe ver
+      let items = [...menus.produccion];
+      if (rol !== 'admin' && rol !== 'ejecutivo') {
+        items = items.filter(i => i.path !== '/cotizaciones');
+      }
+      if (rol !== 'admin' && rol !== 'ejecutivo' && rol !== 'impresion') {
+        items = items.filter(i => i.path !== '/ordendeTrabajo');
+      }
+      return items;
+    }
     // Menú principal según el rol
     if (rol === 'admin') return menus.admin;
     if (rol === 'ejecutivo') return menus.ejecutivo;
@@ -126,20 +141,16 @@ const Sidebar = () => {
           ))}
         </ul>
 
-        <button
-  onClick={() => window.open("https://registrosmantenimientos.onrender.com/", "_blank")}
-  className="mt-4 w-full bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded-md"
->
-  🌐 Gestion area TI  
-</button>
+        {/* Gestión TI: ahora disponible desde el Menú Principal */}
 
-        {/* Botón para volver al menú principal si estás en un submenú */}
+        {/* Botón para regresar al menú anterior si estás en un submenú */}
         {inSubmenu && (
           <button
             className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md"
-            onClick={() => navigate("/welcome")}
+            onClick={() => navigate(-1)}
+            title="Regresar al menú anterior"
           >
-            ⬅️ Volver al Menú Principal
+            ⬅️ Regresar
           </button>
         )}
       </div>

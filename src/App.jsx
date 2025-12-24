@@ -8,6 +8,7 @@ import ToastNotificaciones from "./components/ToastNotificaciones";
 // Páginas
 import Login from "./pages/Login";
 import Welcome from "./components/Welcome";
+import MainMenu from "./pages/MainMenu";
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
 import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
 import DashboardGeneral from "./pages/Produccion/DashboardGeneral";
@@ -27,6 +28,7 @@ import Inventario from "./pages/Inventario/Inventario";
 import PageNotFound from "./pages/PageNotFound";
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
+import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
 
 function App() {
@@ -40,7 +42,7 @@ function App() {
 
         {/* Rutas del sistema con MainLayout global */}
         <Route element={<MainLayout />}>
-          <Route path="/welcome" element={<Welcome title="Bienvenido" message="Has iniciado sesión correctamente." />} />
+          <Route path="/welcome" element={<MainMenu />} />
 
           {/* Cotizaciones solo admin y ejecutivo */}
           <Route path="/cotizaciones" element={
@@ -160,6 +162,14 @@ function App() {
               <GestionUsuarios />
             </PrivateRoute>
           } />
+
+          {/* Administración: placeholder para futuras herramientas (solo admin) */}
+          <Route path="/administracion" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <Administracion />
+            </PrivateRoute>
+          } />
+
           <Route path="/reportesTrabajoDiario" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <ReportesTrabajoDiario />
