@@ -47,6 +47,10 @@ const Sidebar = () => {
     default: [
       { path: "/inventario", label: "Inventario" },
     ],
+    clientes: [
+      { path: "/clientes/ver", label: "Ver Clientes" },
+      { path: "/clientes/crear", label: "Crear Cliente" }
+    ],
     cotizaciones: [
       { path: "/cotizaciones/crear", label: "Crear Cotización" },
       { path: "/cotizaciones/ver", label: "Ver Cotizaciones" }
@@ -55,8 +59,9 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
       { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
     ],
-    // Submenú de Producción: ahora incluye enlaces a Cotizaciones y Ordenes de Trabajo
+    // Submenú de Producción: ahora incluye enlaces a Clientes, Cotizaciones y Ordenes de Trabajo
     produccion: [
+      { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Dashboard Producción" },
@@ -77,6 +82,7 @@ const Sidebar = () => {
 
   const isSubmenu = () => {
     return (
+      location.pathname.startsWith("/clientes") ||
       location.pathname.startsWith("/cotizaciones") ||
       location.pathname.startsWith("/ordendeTrabajo") ||
       location.pathname.startsWith("/produccion") ||
@@ -87,6 +93,7 @@ const Sidebar = () => {
   };
 
   const getMenuItems = () => {
+    if (location.pathname.startsWith("/clientes")) return menus.clientes;
     if (location.pathname.startsWith("/cotizaciones")) return menus.cotizaciones;
     if (location.pathname.startsWith("/ordendeTrabajo")) return menus.ordenTrabajo;
     if (
@@ -147,8 +154,8 @@ const Sidebar = () => {
         {inSubmenu && (
           <button
             className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md"
-            onClick={() => navigate(-1)}
-            title="Regresar al menú anterior"
+            onClick={() => navigate('/produccion')}
+            title="Regresar al menú principal de Producción"
           >
             ⬅️ Regresar
           </button>

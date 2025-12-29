@@ -2017,7 +2017,7 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  navigate("/cotizaciones/ver");
+                  navigate("/produccion");
                 }
               }}
               tabIndex={0}
@@ -2035,7 +2035,7 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  navigate("/cotizaciones/ver");
+                  navigate("/produccion");
                 }}
               >
                 OK

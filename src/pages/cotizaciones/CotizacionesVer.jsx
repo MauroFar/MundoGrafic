@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 function CotizacionesVer() {
@@ -960,6 +960,12 @@ function CotizacionesVer() {
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Total</th>
                 <th className="px-6 py-3 border-b text-left">Estado</th>
+                <th className="px-4 py-3 border-b text-left">
+                  <div className="flex items-center gap-1">
+                    <FaHistory className="text-blue-600" />
+                    <span>Creado por</span>
+                  </div>
+                </th>
                 <th className="px-6 py-3 border-b text-left">Acciones</th>
               </tr>
             </thead>
@@ -983,6 +989,28 @@ function CotizacionesVer() {
                     >
                       {cotizacion.estado}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 border-b">
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900">
+                        {cotizacion.created_by_nombre || 'Sistema'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {cotizacion.created_at 
+                          ? new Date(cotizacion.created_at).toLocaleDateString('es-EC', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })
+                          : 'N/A'
+                        }
+                      </div>
+                      {cotizacion.updated_by_nombre && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Modificado: {cotizacion.updated_by_nombre}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2">

@@ -917,6 +917,7 @@ const CotizacionDatos = (client: any) => {
     } = req.body;
     const estado = "pendiente";
     const user = req.user;
+    const userId = req.user?.id; // Usuario de la sesión para auditoría
 
     try {
       // Primero, obtener el siguiente número de cotización
@@ -954,9 +955,11 @@ const CotizacionDatos = (client: any) => {
           observaciones,
           numero_cotizacion,
           contacto,
-          celuar
+          celuar,
+          created_by,
+          created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
         RETURNING *
       `;
 
@@ -976,7 +979,8 @@ const CotizacionDatos = (client: any) => {
         observaciones,
         numeroCotizacion,
         contacto || null,
-        celuar || null
+        celuar || null,
+        user.id // created_by
       ]);
 
       console.log("🎉 Cotización creada exitosamente:", {
@@ -1040,11 +1044,19 @@ const CotizacionDatos = (client: any) => {
           c.total,
           r.ruc,
           r.descripcion as ruc_descripcion,
-          u.nombre as nombre_ejecutivo
+          u.nombre as nombre_ejecutivo,
+          c.created_at,
+          c.created_by,
+          c.updated_by,
+          c.updated_at,
+          u1.nombre as created_by_nombre,
+          u2.nombre as updated_by_nombre
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
         JOIN usuarios u ON c.usuario_id = u.id
+        LEFT JOIN usuarios u1 ON c.created_by = u1.id
+        LEFT JOIN usuarios u2 ON c.updated_by = u2.id
         WHERE 1=1
       `;
       
@@ -1142,6 +1154,7 @@ const CotizacionDatos = (client: any) => {
       contacto,
       celuar
     } = req.body;
+    const userId = req.user?.id; // Usuario de la sesión para auditoría
 
     try {
       const query = `
@@ -1158,8 +1171,10 @@ const CotizacionDatos = (client: any) => {
             validez_proforma = $10,
             observaciones = $11,
             contacto = $12,
-            celuar = $13
-        WHERE id = $14
+            celuar = $13,
+            updated_by = $14,
+            updated_at = NOW()
+        WHERE id = $15
         RETURNING *
       `;
 
@@ -1177,6 +1192,7 @@ const CotizacionDatos = (client: any) => {
         observaciones,
         contacto || null,
         celuar || null,
+        userId,
         id
       ]);
 

@@ -30,6 +30,8 @@ import GestionUsuarios from "./pages/admin/GestionUsuarios";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
 import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
+import ClientesVer from "./pages/clientes/ClientesVer";
+import ClientesCrear from "./pages/clientes/ClientesCrear";
 
 function App() {
   return (
@@ -43,6 +45,28 @@ function App() {
         {/* Rutas del sistema con MainLayout global */}
         <Route element={<MainLayout />}>
           <Route path="/welcome" element={<MainMenu />} />
+
+          {/* Clientes: admin y ejecutivo */}
+          <Route path="/clientes" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
+              <Welcome title="Clientes" message="Bienvenido a la gestión de clientes. Selecciona una opción del menú para continuar." />
+            </PrivateRoute>
+          } />
+          <Route path="/clientes/ver" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
+              <ClientesVer />
+            </PrivateRoute>
+          } />
+          <Route path="/clientes/crear" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
+              <ClientesCrear />
+            </PrivateRoute>
+          } />
+          <Route path="/clientes/editar/:id" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
+              <ClientesCrear />
+            </PrivateRoute>
+          } />
 
           {/* Cotizaciones solo admin y ejecutivo */}
           <Route path="/cotizaciones" element={

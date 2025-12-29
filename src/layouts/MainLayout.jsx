@@ -7,8 +7,9 @@ const MainLayout = () => {
   const location = useLocation();
 
   // Mostrar Sidebar solo en secciones de Producción y páginas relacionadas
-  // Incluye Cotizaciones y Ordenes de Trabajo porque son parte del flujo de Producción
+  // Incluye Clientes, Cotizaciones y Ordenes de Trabajo porque son parte del flujo de Producción
   const showSidebar = location.pathname.startsWith('/produccion') ||
+    location.pathname.startsWith('/clientes') ||
     location.pathname.startsWith('/cotizaciones') ||
     location.pathname.startsWith('/ordendeTrabajo') ||
     location.pathname === '/dashboardGeneral' ||
