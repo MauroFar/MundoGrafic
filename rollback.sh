@@ -41,11 +41,16 @@ if [[ $REPLY =~ ^[Ss]$ ]]; then
     
     # Restaurar BD
     cd $BACKEND_DIR
-    DB_NAME=$(grep DB_NAME .env | cut -d '=' -f2)
-    DB_USER=$(grep DB_USER .env | cut -d '=' -f2)
-    DB_PASSWORD=$(grep DB_PASSWORD .env | cut -d '=' -f2)
     
-    PGPASSWORD=$DB_PASSWORD psql -U $DB_USER $DB_NAME < $LAST_BACKUP
+    # Cargar variables del .env
+    if [ -f .env ]; then
+        export $(cat .env | grep -v '^#' | xargs)
+    else
+        echo -e "${RED}❌ Archivo .env no encontrado${NC}"
+        exit 1
+    fi
+    
+    PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME < $LAST_BACKUP
     
     # Revertir última migración (opcional)
     echo -e "${YELLOW}¿Desea revertir la última migración? (s/n):${NC}"

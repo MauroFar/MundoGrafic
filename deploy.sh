@@ -34,12 +34,24 @@ mkdir -p $BACKUP_DIR
 ##############################################################################
 echo -e "${YELLOW}📦 Paso 1: Creando backup de base de datos...${NC}"
 cd $BACKEND_DIR
-DB_NAME=$(grep DB_NAME .env | cut -d '=' -f2)
-DB_USER=$(grep DB_USER .env | cut -d '=' -f2)
-DB_PASSWORD=$(grep DB_PASSWORD .env | cut -d '=' -f2)
 
-PGPASSWORD=$DB_PASSWORD pg_dump -U $DB_USER $DB_NAME > "$BACKUP_DIR/backup_$TIMESTAMP.sql"
-echo -e "${GREEN}✅ Backup creado: backup_$TIMESTAMP.sql${NC}"
+# Cargar variables del .env
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+else
+    echo -e "${RED}❌ Archivo .env no encontrado${NC}"
+    exit 1
+fi
+
+# Usar variables del .env
+PGPASSWORD=$DB_PASSWORD pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME > "$BACKUP_DIR/backup_$TIMESTAMP.sql"
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Backup creado: backup_$TIMESTAMP.sql${NC}"
+else
+    echo -e "${RED}❌ Error al crear backup${NC}"
+    echo -e "${YELLOW}Continuando sin backup...${NC}"
+fi
 echo ""
 
 ##############################################################################
