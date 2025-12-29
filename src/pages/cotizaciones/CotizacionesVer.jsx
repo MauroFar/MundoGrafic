@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 function CotizacionesVer() {
@@ -63,6 +63,8 @@ function CotizacionesVer() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [buscarGlobal, setBuscarGlobal] = useState(false);
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [cotizacionDetalle, setCotizacionDetalle] = useState(null);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -190,6 +192,33 @@ function CotizacionesVer() {
 
   const editarCotizacion = (id) => {
     navigate(`/cotizaciones/crear/${id}`);
+  };
+
+  const handleVerDetalle = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cargar los detalles de la cotización');
+      }
+
+      const data = await response.json();
+      setCotizacionDetalle(data);
+      setShowDetalleModal(true);
+    } catch (error) {
+      console.error('Error al cargar detalle:', error);
+      toast.error('Error al cargar los detalles de la cotización');
+    }
+  };
+
+  const handleCerrarDetalleModal = () => {
+    setShowDetalleModal(false);
+    setCotizacionDetalle(null);
   };
 
   const eliminarCotizacion = (id) => {
@@ -960,18 +989,16 @@ function CotizacionesVer() {
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Total</th>
                 <th className="px-6 py-3 border-b text-left">Estado</th>
-                <th className="px-4 py-3 border-b text-left">
-                  <div className="flex items-center gap-1">
-                    <FaHistory className="text-blue-600" />
-                    <span>Creado por</span>
-                  </div>
-                </th>
                 <th className="px-6 py-3 border-b text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cotizaciones.map((cotizacion) => (
-                <tr key={cotizacion.id} className="hover:bg-gray-50">
+                <tr 
+                  key={cotizacion.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleVerDetalle(cotizacion.id)}
+                >
                   <td className="px-6 py-4 border-b">{cotizacion.numero_cotizacion}</td>
                   <td className="px-6 py-4 border-b">{cotizacion.nombre_cliente}</td>
                   <td className="px-6 py-4 border-b">{cotizacion.nombre_ejecutivo || 'No asignado'}</td>
@@ -990,41 +1017,25 @@ function CotizacionesVer() {
                       {cotizacion.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-4 border-b">
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">
-                        {cotizacion.created_by_nombre || 'Sistema'}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {cotizacion.created_at 
-                          ? new Date(cotizacion.created_at).toLocaleDateString('es-EC', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })
-                          : 'N/A'
-                        }
-                      </div>
-                      {cotizacion.updated_by_nombre && (
-                        <div className="text-xs text-blue-600 mt-1">
-                          Modificado: {cotizacion.updated_by_nombre}
-                        </div>
-                      )}
-                    </div>
-                  </td>
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2">
                       <button
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                        onClick={() => previewEnModal(cotizacion.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          previewEnModal(cotizacion.id);
+                        }}
                         title="Vista previa"
                       >
                         <FaEye />
-                        <span className="text-xs mt-1 text-gray-600">Previa</span>
+                        <span className="text-xs mt-1 text-gray-600">VistaPreviaPDF</span>
                       </button>
                       <button
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                        onClick={() => editarCotizacion(cotizacion.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          editarCotizacion(cotizacion.id);
+                        }}
                         title="Editar"
                       >
                         <FaEdit />
@@ -1032,7 +1043,10 @@ function CotizacionesVer() {
                       </button>
                       <button
                         className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
-                        onClick={() => eliminarCotizacion(cotizacion.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          eliminarCotizacion(cotizacion.id);
+                        }}
                         title="Eliminar"
                       >
                         <FaTrash />
@@ -1040,24 +1054,33 @@ function CotizacionesVer() {
                       </button>
                       <button
                         className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
-                        onClick={() => descargarPDF(cotizacion.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          descargarPDF(cotizacion.id);
+                        }}
                         title="Descargar PDF"
                       >
                         <FaDownload />
-                        <span className="text-xs mt-1 text-gray-600">PDF</span>
+                        <span className="text-xs mt-1 text-gray-600">Descargar PDF</span>
                       </button>
-                                             <button
-                         className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
-                         onClick={() => handleEnviarCorreoAlternativo(cotizacion.id)}
-                         title="Enviar por correo"
-                       >
-                         <FaEnvelopeOpen />
-                         <span className="text-xs mt-1 text-gray-600">Enviar Correo</span>
-                       </button>
+                      <button
+                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEnviarCorreoAlternativo(cotizacion.id);
+                        }}
+                        title="Enviar por correo"
+                      >
+                        <FaEnvelopeOpen />
+                        <span className="text-xs mt-1 text-gray-600">Enviar Correo</span>
+                      </button>
                       {cotizacion.estado === 'pendiente' && (
                         <button
                           className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                          onClick={() => aprobarCotizacion(cotizacion.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            aprobarCotizacion(cotizacion.id);
+                          }}
                           title="Aprobar cotización"
                         >
                           <FaCheck />
@@ -1067,7 +1090,10 @@ function CotizacionesVer() {
                       {cotizacion.estado === 'aprobada' && (
                         <button
                           className="p-2 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
-                          onClick={() => generarOrdenTrabajo(cotizacion.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generarOrdenTrabajo(cotizacion.id);
+                          }}
                           title="Generar Orden de Trabajo"
                         >
                           <FaTools />
@@ -1823,6 +1849,276 @@ function CotizacionesVer() {
               >
                 Aceptar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalles de Cotización */}
+      {showDetalleModal && cotizacionDetalle && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCerrarDetalleModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Detalles de la Cotización</h2>
+                  <div className="text-blue-100 text-lg font-semibold">
+                    Cotización #{cotizacionDetalle.numero_cotizacion}
+                  </div>
+                </div>
+                <button
+                  onClick={handleCerrarDetalleModal}
+                  className="text-white hover:bg-blue-500 rounded-full p-2 transition-colors"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+              <div className="mt-3">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    cotizacionDetalle.estado === "aprobada"
+                      ? "bg-green-500 text-white"
+                      : cotizacionDetalle.estado === "rechazada"
+                      ? "bg-red-500 text-white"
+                      : "bg-yellow-500 text-white"
+                  }`}
+                >
+                  {cotizacionDetalle.estado?.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-6 space-y-6">
+              {/* Información del Cliente */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaUser className="mr-2 text-blue-600" />
+                  Información del Cliente
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Cliente</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.nombre_cliente || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Email</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.email_cliente || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Ejecutivo</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.nombre_ejecutivo || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detalles de la Cotización */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaFileAlt className="mr-2 text-blue-600" />
+                  Detalles de la Cotización
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+                    <FaCalendar className="text-blue-600 mr-3" />
+                    <div>
+                      <label className="text-sm text-gray-500 block">Fecha</label>
+                      <p className="text-gray-900 font-medium">
+                        {cotizacionDetalle.fecha 
+                          ? new Date(cotizacionDetalle.fecha).toLocaleDateString('es-EC', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">RUC</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.ruc || 'N/A'}</p>
+                    {cotizacionDetalle.ruc_descripcion && (
+                      <p className="text-xs text-gray-500">{cotizacionDetalle.ruc_descripcion}</p>
+                    )}
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Tiempo de Entrega</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.tiempo_entrega || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Forma de Pago</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.forma_pago || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Validez de Proforma</label>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.validez_proforma || 'N/A'}</p>
+                  </div>
+                  {cotizacionDetalle.contacto && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <label className="text-sm text-gray-500 block mb-1">Contacto</label>
+                      <p className="text-gray-900 font-medium">{cotizacionDetalle.contacto}</p>
+                      {cotizacionDetalle.celuar && (
+                        <p className="text-xs text-gray-500">{cotizacionDetalle.celuar}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Productos y Montos */}
+              {cotizacionDetalle.detalles && cotizacionDetalle.detalles.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaDollarSign className="mr-2 text-blue-600" />
+                    Productos y Valores
+                  </h3>
+                  <div className="border border-gray-300 rounded-lg overflow-hidden">
+                    {/* Tabla de productos */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Cant.</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Detalle</th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 border-b">P. Unit.</th>
+                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 border-b">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cotizacionDetalle.detalles.map((detalle, index) => (
+                            <tr key={detalle.id || index} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 border-b text-center">
+                                <span className="font-semibold text-gray-900">{detalle.cantidad}</span>
+                              </td>
+                              <td className="px-4 py-3 border-b">
+                                <p className="text-gray-900 whitespace-pre-wrap">{detalle.detalle}</p>
+                              </td>
+                              <td className="px-4 py-3 border-b text-right text-gray-900">
+                                ${formatearTotal(detalle.precio_unitario)}
+                              </td>
+                              <td className="px-4 py-3 border-b text-right">
+                                <span className="font-semibold text-gray-900">${formatearTotal(detalle.subtotal)}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Resumen de totales */}
+                    <div className="bg-gray-50 p-4 border-t-2 border-gray-300">
+                      <div className="max-w-md ml-auto space-y-2">
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-gray-700 font-medium">Subtotal:</span>
+                          <span className="text-gray-900 font-semibold text-lg">${formatearTotal(cotizacionDetalle.subtotal)}</span>
+                        </div>
+                        {parseFloat(cotizacionDetalle.descuento || 0) > 0 && (
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-gray-700 font-medium">Descuento:</span>
+                            <span className="text-red-600 font-semibold text-lg">-${formatearTotal(cotizacionDetalle.descuento)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-gray-700 font-medium">IVA (15%):</span>
+                          <span className="text-gray-900 font-semibold text-lg">${formatearTotal(cotizacionDetalle.iva)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 border-t-2 border-gray-400">
+                          <span className="text-gray-900 font-bold text-lg">Total:</span>
+                          <span className="text-blue-600 font-bold text-2xl">${formatearTotal(cotizacionDetalle.total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Observaciones */}
+              {cotizacionDetalle.observaciones && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaFileAlt className="mr-2 text-blue-600" />
+                    Observaciones
+                  </h3>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <p className="text-gray-700 whitespace-pre-wrap">{cotizacionDetalle.observaciones}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Información de Auditoría */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaHistory className="mr-2 text-blue-600" />
+                  Auditoría
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                      Creado por
+                    </label>
+                    <p className="text-gray-900 font-medium mb-1">
+                      {cotizacionDetalle.created_by_nombre || 'Sistema'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {cotizacionDetalle.created_at 
+                        ? new Date(cotizacionDetalle.created_at).toLocaleString('es-EC', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  {cotizacionDetalle.updated_by_nombre && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                        Última modificación por
+                      </label>
+                      <p className="text-gray-900 font-medium mb-1">
+                        {cotizacionDetalle.updated_by_nombre}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {cotizacionDetalle.updated_at 
+                          ? new Date(cotizacionDetalle.updated_at).toLocaleString('es-EC', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    handleCerrarDetalleModal();
+                    editarCotizacion(cotizacionDetalle.id);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FaEdit />
+                  Editar Cotización
+                </button>
+                <button
+                  onClick={handleCerrarDetalleModal}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FaTimes />
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1122,14 +1122,52 @@ const CotizacionDatos = (client: any) => {
     try {
       const { id } = req.params;
   
-      const query = "SELECT * FROM cotizaciones WHERE id = $1";
+      const query = `
+        SELECT 
+          c.*,
+          cl.nombre_cliente,
+          cl.email_cliente,
+          r.ruc,
+          r.descripcion as ruc_descripcion,
+          u.nombre as nombre_ejecutivo,
+          u1.nombre as created_by_nombre,
+          u2.nombre as updated_by_nombre
+        FROM cotizaciones c
+        LEFT JOIN clientes cl ON c.cliente_id = cl.id
+        LEFT JOIN rucs r ON c.ruc_id = r.id
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
+        LEFT JOIN usuarios u1 ON c.created_by = u1.id
+        LEFT JOIN usuarios u2 ON c.updated_by = u2.id
+        WHERE c.id = $1
+      `;
       const result = await client.query(query, [id]);
   
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Cotización no encontrada" });
       }
+
+      // Obtener los detalles de la cotización
+      const detallesQuery = `
+        SELECT 
+          id,
+          cotizacion_id,
+          cantidad,
+          detalle,
+          valor_unitario as precio_unitario,
+          valor_total as subtotal
+        FROM detalle_cotizacion
+        WHERE cotizacion_id = $1
+        ORDER BY id
+      `;
+      const detallesResult = await client.query(detallesQuery, [id]);
   
-      res.json(result.rows[0]);
+      // Agregar los detalles a la respuesta
+      const cotizacion = {
+        ...result.rows[0],
+        detalles: detallesResult.rows
+      };
+
+      res.json(cotizacion);
     } catch (error: any) {
       console.error("Error al obtener cotización por ID:", error);
       res.status(500).json({ error: "Error al obtener cotización por ID" });
