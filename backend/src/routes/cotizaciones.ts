@@ -989,7 +989,24 @@ const CotizacionDatos = (client: any) => {
         cliente_id: result.rows[0].cliente_id
       });
 
-      res.json(result.rows[0]);
+      // Generar código único basado en el ID
+      const cotizacionId = result.rows[0].id;
+      const codigoCotizacion = `COT${String(cotizacionId).padStart(10, '0')}`;
+      
+      await client.query(
+        'UPDATE cotizaciones SET codigo_cotizacion = $1 WHERE id = $2',
+        [codigoCotizacion, cotizacionId]
+      );
+
+      console.log("✅ Código generado:", codigoCotizacion);
+
+      // Retornar con el código actualizado
+      const cotizacionActualizada = {
+        ...result.rows[0],
+        codigo_cotizacion: codigoCotizacion
+      };
+
+      res.json(cotizacionActualizada);
     } catch (error: any) {
       console.error("❌ Error al insertar cotización:", error);
       res.status(500).json({ error: "Error al insertar cotización" });
@@ -1037,6 +1054,7 @@ const CotizacionDatos = (client: any) => {
         SELECT 
           c.id,
           c.numero_cotizacion,
+          c.codigo_cotizacion,
           cl.nombre_cliente,
           cl.email_cliente,
           c.fecha,
@@ -1050,7 +1068,8 @@ const CotizacionDatos = (client: any) => {
           c.updated_by,
           c.updated_at,
           u1.nombre as created_by_nombre,
-          u2.nombre as updated_by_nombre
+          u2.nombre as updated_by_nombre,
+          (SELECT detalle FROM detalle_cotizacion WHERE cotizacion_id = c.id ORDER BY id LIMIT 1) as primer_detalle
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id

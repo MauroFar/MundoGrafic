@@ -985,7 +985,7 @@ function CotizacionesVer() {
               <tr className="bg-gray-100">
                 <th className="px-6 py-3 border-b text-left">Número</th>
                 <th className="px-6 py-3 border-b text-left">Cliente</th>
-                <th className="px-6 py-3 border-b text-left">Ejecutivo</th>
+                <th className="px-6 py-3 border-b text-left">Descripción</th>
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Total</th>
                 <th className="px-6 py-3 border-b text-left">Estado</th>
@@ -999,9 +999,19 @@ function CotizacionesVer() {
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleVerDetalle(cotizacion.id)}
                 >
-                  <td className="px-6 py-4 border-b">{cotizacion.numero_cotizacion}</td>
+                  <td className="px-6 py-4 border-b">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-blue-600">
+                        {cotizacion.codigo_cotizacion 
+                          ? cotizacion.codigo_cotizacion.slice(-4)
+                          : String(cotizacion.id).padStart(4, '0')
+                        }
+                      </span>
+                      <span className="text-xs text-gray-500">#{cotizacion.numero_cotizacion}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 border-b">{cotizacion.nombre_cliente}</td>
-                  <td className="px-6 py-4 border-b">{cotizacion.nombre_ejecutivo || 'No asignado'}</td>
+                  <td className="px-6 py-4 border-b">{cotizacion.primer_detalle || 'Sin descripción'}</td>
                   <td className="px-6 py-4 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
                   <td className="px-6 py-4 border-b">${formatearTotal(cotizacion.total)}</td>
                   <td className="px-6 py-4 border-b">
@@ -1870,6 +1880,9 @@ function CotizacionesVer() {
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Detalles de la Cotización</h2>
                   <div className="text-blue-100 text-lg font-semibold">
+                    {cotizacionDetalle.codigo_cotizacion || `COT${String(cotizacionDetalle.id).padStart(10, '0')}`}
+                  </div>
+                  <div className="text-blue-200 text-sm">
                     Cotización #{cotizacionDetalle.numero_cotizacion}
                   </div>
                 </div>
