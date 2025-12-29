@@ -9,7 +9,7 @@ export default function(client) {
       const result = await client.query(`
         SELECT 
           c.id, 
-          c.numero_cotizacion, 
+          c.codigo_cotizacion, 
           c.fecha, 
           c.estado,
           c.subtotal,
@@ -17,7 +17,7 @@ export default function(client) {
           c.descuento,
           c.total,
           cl.nombre_cliente,
-          u.nombre AS nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, u.nombre) AS nombre_ejecutivo,
           r.id AS ruc_id,
           r.ruc,
           r.descripcion AS ruc_descripcion,

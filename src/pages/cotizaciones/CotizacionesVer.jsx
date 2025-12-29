@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
 
 function CotizacionesVer() {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -373,102 +374,18 @@ function CotizacionesVer() {
     }
   };
 
-  // Vista previa en modal (igual al flujo de crear cotización)
+  // Vista previa en modal usando servicio centralizado
   const previewEnModal = async (id) => {
     try {
       console.log("🔍 Iniciando vista previa para cotización ID:", id);
       setPreviewUrl(null);
-      setShowPreview(true); // Mostrar modal inmediatamente
+      setShowPreview(true);
       setPreviewLoading(true);
-      const token = localStorage.getItem("token");
 
-      // 1) Obtener cabecera de la cotización
-      console.log("📡 Obteniendo datos de cotización...");
-      const respCot = await fetch(`${apiUrl}/api/cotizacionesEditar/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!respCot.ok) {
-        console.error("❌ Error al obtener cotización:", respCot.status, respCot.statusText);
-        throw new Error('No se pudo obtener la cotización');
-      }
-      const cot = await respCot.json();
-      console.log("✅ Datos de cotización obtenidos:", cot);
+      // Usar el servicio centralizado
+      const pdfUrl = await generarVistaPreviaPDF(id, null, null);
+      setPreviewUrl(pdfUrl);
 
-      // 2) Obtener detalles
-      console.log("📡 Obteniendo detalles de cotización...");
-      const respDet = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!respDet.ok) {
-        console.error("❌ Error al obtener detalles:", respDet.status, respDet.statusText);
-        throw new Error('No se pudieron obtener los detalles');
-      }
-      const detalles = await respDet.json();
-      console.log("✅ Detalles obtenidos:", detalles);
-
-      // 3) Armar payload esperado por /preview
-      const cotizacionTemp = {
-        numero_cotizacion: cot.numero_cotizacion,
-        fecha: cot.fecha,
-        nombre_cliente: cot.nombre_cliente,
-        contacto: cot.contacto || null,
-        celuar: cot.celuar || null,
-        ruc: cot.ruc,
-        subtotal: cot.subtotal,
-        iva: cot.iva,
-        descuento: cot.descuento,
-        total: cot.total,
-        tiempo_entrega: cot.tiempo_entrega,
-        forma_pago: cot.forma_pago,
-        validez_proforma: cot.validez_proforma,
-        observaciones: cot.observaciones,
-        nombre_ejecutivo: cot.nombre_ejecutivo,
-      };
-
-      const detallesTemp = Array.isArray(detalles) ? detalles.map((d) => ({
-        cantidad: d.cantidad,
-        detalle: d.detalle,
-        valor_unitario: d.valor_unitario,
-        valor_total: d.valor_total,
-        alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
-        imagenes: (d.imagenes && Array.isArray(d.imagenes)) 
-          ? d.imagenes.map(img => ({
-              imagen_ruta: img.imagen_ruta,
-              orden: img.orden || 0,
-              imagen_width: img.imagen_width || 200,
-              imagen_height: img.imagen_height || 150
-            }))
-          : []
-      })) : [];
-
-      console.log("📤 Enviando datos al backend para preview:");
-      console.log("   Cotización:", cotizacionTemp);
-      console.log("   Detalles:", JSON.stringify(detallesTemp, null, 2));
-
-      // 4) Pedir vista previa (PDF base64 embebido)
-      console.log("📡 Generando vista previa...");
-      const respPrev = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ cotizacion: cotizacionTemp, detalles: detallesTemp }),
-      });
-      if (!respPrev.ok) {
-        console.error("❌ Error al generar vista previa:", respPrev.status, respPrev.statusText);
-        const errData = await respPrev.json().catch(() => ({}));
-        throw new Error(errData.error || 'Error al generar la vista previa');
-      }
-      const dataPrev = await respPrev.json();
-      console.log("✅ Respuesta de vista previa:", dataPrev);
-      if (!dataPrev.success || !dataPrev.pdf) {
-        console.error("❌ Respuesta inválida:", dataPrev);
-        throw new Error('Respuesta inválida al generar vista previa');
-      }
-
-      console.log("🎉 Vista previa generada exitosamente");
-      setPreviewUrl(dataPrev.pdf);
     } catch (error) {
       console.error('Error en vista previa:', error);
       setConfirmMessage('Error al generar la vista previa: ' + error.message);
@@ -575,9 +492,9 @@ function CotizacionesVer() {
     setEmailDataAlternativo(prev => ({
       ...prev,
       to: cotizacion?.email_cliente || "",
-      subject: prev.subject || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
+      subject: prev.subject || `Cotización MUNDOGRAFIC ${cotizacion.codigo_cotizacion}`,
       message: prev.message || 'Estimado cliente,\n\nAdjunto encontrará la cotización solicitada.\n\nSaludos cordiales,\nEquipo MUNDOGRAFIC',
-      nombrePDF: prev.nombrePDF || `Cotizacion-${cotizacion.numero_cotizacion}`
+      nombrePDF: prev.nombrePDF || `Cotizacion-${cotizacion.codigo_cotizacion}`
     }));
     setShowModalAlternativo(true);
   };
@@ -849,7 +766,18 @@ function CotizacionesVer() {
       
       const data = await res.json();
       console.log('✅ Clientes cargados:', data.length);
-      setClientesSugeridos(data);
+      console.log('📋 Muestra de datos:', data[0]);
+      
+      // Normalizar los datos para que tengan los campos esperados
+      const clientesNormalizados = data.map(cliente => ({
+        id: cliente.id,
+        nombre_cliente: cliente.nombre || cliente.nombre_cliente,
+        email_cliente: cliente.email || cliente.email_cliente,
+        empresa: cliente.empresa || cliente.empresa_cliente || '-',
+        telefono: cliente.telefono || cliente.telefono_cliente
+      }));
+      
+      setClientesSugeridos(clientesNormalizados);
     } catch (e) {
       console.error('❌ Error al cargar clientes:', e);
       setClientesSugeridos([]);
@@ -1017,7 +945,7 @@ function CotizacionesVer() {
                           : String(cotizacion.id).padStart(4, '0')
                         }
                       </span>
-                      <span className="text-xs text-gray-500">#{cotizacion.numero_cotizacion}</span>
+                      <span className="text-xs text-gray-500">{cotizacion.codigo_cotizacion}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 border-b">{cotizacion.nombre_cliente}</td>
@@ -1749,6 +1677,7 @@ function CotizacionesVer() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left border-b">Nombre</th>
+                      <th className="px-4 py-2 text-left border-b">Empresa</th>
                       <th className="px-4 py-2 text-left border-b">Correo</th>
                       <th className="px-4 py-2 text-left border-b">Teléfono</th>
                       <th className="px-4 py-2 text-center border-b">Acción</th>
@@ -1763,6 +1692,7 @@ function CotizacionesVer() {
                       .map((cliente) => (
                         <tr key={cliente.id} className="hover:bg-gray-50">
                           <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
+                          <td className="px-4 py-2 border-b">{cliente.empresa}</td>
                           <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
                           <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
                           <td className="px-4 py-2 border-b text-center">
@@ -1813,7 +1743,7 @@ function CotizacionesVer() {
             </div>
             <div className="mt-2">
               <p className="text-sm text-gray-500">
-                ¿Estás seguro de que deseas eliminar la cotización <strong>#{cotizacionToDelete.numero_cotizacion}</strong>?
+                ¿Estás seguro de que deseas eliminar la cotización <strong>{cotizacionToDelete.codigo_cotizacion}</strong>?
               </p>
               <p className="text-sm text-gray-500 mt-2">
                 Esta acción no se puede deshacer y eliminará permanentemente la cotización y todos sus detalles.
@@ -1893,7 +1823,7 @@ function CotizacionesVer() {
                     {cotizacionDetalle.codigo_cotizacion || `COT${String(cotizacionDetalle.id).padStart(10, '0')}`}
                   </div>
                   <div className="text-blue-200 text-sm">
-                    Cotización #{cotizacionDetalle.numero_cotizacion}
+                    Cotización {cotizacionDetalle.codigo_cotizacion}
                   </div>
                 </div>
                 <button

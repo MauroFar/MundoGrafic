@@ -144,21 +144,34 @@ const createCliente = (client: any) => {
   // Ruta para buscar clientes
   router.get("/buscar", authRequired(), async (req: any, res: any) => {
     const { q } = req.query;
+    console.log('🔍 [Clientes API] Búsqueda de clientes con término:', q);
+    
     // Validar: al menos 2 caracteres y al menos una letra
     if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
+      console.log('⚠️ [Clientes API] Término de búsqueda no válido');
       return res.json([]); // No sugerencias si no cumple
     }
+    
     try {
       const query = `
-        SELECT id, nombre_cliente, email_cliente
+        SELECT 
+          id, 
+          nombre_cliente, 
+          email_cliente,
+          telefono_cliente as telefono
         FROM clientes
-        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1
+        WHERE 
+          nombre_cliente ILIKE $1 
+          OR email_cliente ILIKE $1
+          OR empresa_cliente ILIKE $1
         ORDER BY nombre_cliente ASC
         LIMIT 10
       `;
       const result = await client.query(query, [`%${q}%`]);
+      console.log(`✅ [Clientes API] Búsqueda exitosa. Encontrados ${result.rows.length} clientes`);
       res.json(result.rows);
     } catch (error: any) {
+      console.error('❌ [Clientes API] Error al buscar clientes:', error);
       res.status(500).json({ error: 'Error al buscar clientes', details: error.message });
     }
   });

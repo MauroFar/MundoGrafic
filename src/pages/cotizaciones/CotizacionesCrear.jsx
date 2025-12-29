@@ -7,6 +7,7 @@ import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
 import Encabezado from "../../components/Encabezado";
 import { FaSave, FaEye, FaTimes } from "react-icons/fa";
+import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
 
 function CotizacionesCrear() {
   const { id } = useParams();
@@ -115,9 +116,9 @@ function CotizacionesCrear() {
         }
         const data = await resp.json();
         console.log("📊 Datos recibidos:", data);
-        if (data?.numero_cotizacion) {
-          console.log("✅ Estableciendo número de cotización:", data.numero_cotizacion);
-          setNumeroCotizacion(data.numero_cotizacion.toString().padStart(5, '0'));
+        if (data?.codigo_cotizacion) {
+          console.log("✅ Estableciendo código de cotización:", data.codigo_cotizacion);
+          setNumeroCotizacion(data.codigo_cotizacion);
         } else {
           console.log("ℹ️ No hay número de cotización previo, usando 00001");
           setNumeroCotizacion("00001");
@@ -153,7 +154,7 @@ function CotizacionesCrear() {
 
       // Actualizar el estado con los datos completos
       setFecha(cotizacionData.fecha ? cotizacionData.fecha.split('T')[0] : today);
-      setNumeroCotizacion(cotizacionData.numero_cotizacion || "");
+      setNumeroCotizacion(cotizacionData.codigo_cotizacion || "");
       setTxtTiempoEntrega(cotizacionData.tiempo_entrega || "5 días hábiles");
       setFormaPago(cotizacionData.forma_pago || "50% anticipo, 50% contra entrega");
       setValidezProforma(cotizacionData.validez_proforma || "15 días");
@@ -162,6 +163,7 @@ function CotizacionesCrear() {
       setUsarContacto(!!cotizacionData.contacto);
       setCeluar(cotizacionData.celuar || "");
       setUsarCeluar(!!cotizacionData.celuar);
+      setNombreEjecutivo(cotizacionData.nombre_ejecutivo || localStorage.getItem('nombre') || "");
       
       // Asegurarse de que el RUC se establezca correctamente
       if (cotizacionData.ruc_id && cotizacionData.ruc) {
@@ -263,18 +265,31 @@ function CotizacionesCrear() {
 
   const buscarClientes = async (nombre) => {
     try {
+      console.log('🔍 Buscando clientes con:', nombre);
       let url = `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombre)}`;
       if (selectedRuc.id) {
         url += `&ruc_id=${selectedRuc.id}`;
       }
-      const response = await fetch(url);
+      console.log('📡 URL de búsqueda:', url);
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
       if (!response.ok) {
+        console.log('❌ Error en respuesta:', response.status);
         setSugerencias([]);
         return;
       }
       const data = await response.json();
+      console.log('✅ Datos recibidos:', data);
+      console.log('📊 Cantidad de sugerencias:', data.length);
       setSugerencias(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('❌ Error al buscar clientes:', error);
       setSugerencias([]);
     }
   };
@@ -305,7 +320,18 @@ function CotizacionesCrear() {
       
       const data = await res.json();
       console.log('✅ Clientes cargados:', data.length);
-      setClientesSugeridos(data);
+      console.log('📋 Muestra de datos:', data[0]);
+      
+      // Normalizar los datos para que tengan los campos esperados
+      const clientesNormalizados = data.map(cliente => ({
+        id: cliente.id,
+        nombre_cliente: cliente.nombre || cliente.nombre_cliente,
+        email_cliente: cliente.email || cliente.email_cliente,
+        empresa: cliente.empresa || cliente.empresa_cliente || '-',
+        telefono: cliente.telefono || cliente.telefono_cliente
+      }));
+      
+      setClientesSugeridos(clientesNormalizados);
     } catch (e) {
       console.error('❌ Error al cargar clientes:', e);
       setClientesSugeridos([]);
@@ -468,7 +494,7 @@ function CotizacionesCrear() {
         }
         const updatedCotizacion = await updateResponse.json();
         cotizacionId = updatedCotizacion.id;
-        numeroCotizacionGuardada = updatedCotizacion.numero_cotizacion || numeroCotizacion;
+        numeroCotizacionGuardada = updatedCotizacion.codigo_cotizacion || numeroCotizacion;
         // Actualizar detalles existentes
         const detallesActualizados = filasData.map(fila => ({
           cantidad: fila.cantidad,
@@ -495,7 +521,7 @@ function CotizacionesCrear() {
         console.log("🎉 Cotización actualizada exitosamente. Número:", numeroCotizacionGuardada);
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización actualizada exitosamente!');
-        setNumeroCotizacionGuardada(formatearNumeroCotizacion(numeroCotizacionGuardada));
+        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
         // Notificación local para el usuario logeado (actualización)
         window.dispatchEvent(new CustomEvent("nueva-notificacion", {
           detail: {
@@ -520,10 +546,10 @@ function CotizacionesCrear() {
         }
         const nuevaCotizacion = await createResponse.json();
         cotizacionId = nuevaCotizacion.id;
-        numeroCotizacionGuardada = nuevaCotizacion.numero_cotizacion;
+        numeroCotizacionGuardada = nuevaCotizacion.codigo_cotizacion;
         
         // Actualizar el número de cotización mostrado con el número real asignado
-        setNumeroCotizacion(formatearNumeroCotizacion(numeroCotizacionGuardada));
+        setNumeroCotizacion(numeroCotizacionGuardada);
         // Guardar detalles de la nueva cotización
         if (filasData.length > 0) {
           const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
@@ -544,7 +570,7 @@ function CotizacionesCrear() {
         console.log("🎉 Cotización creada exitosamente. Número asignado:", numeroCotizacionGuardada);
         setShowSuccessModal(true);
         setSuccessMessage('¡Cotización creada exitosamente!');
-        setNumeroCotizacionGuardada(formatearNumeroCotizacion(numeroCotizacionGuardada));
+        setNumeroCotizacionGuardada(numeroCotizacionGuardada);
         // Notificación local para el usuario logeado
         window.dispatchEvent(new CustomEvent("nueva-notificacion", {
           detail: {
@@ -923,9 +949,9 @@ function CotizacionesCrear() {
     try {
       setPreviewLoading(true);
       
-      // Crear un objeto temporal con los datos actuales
+      // Siempre usar los datos actuales del formulario (en tiempo real)
       const cotizacionTemp = {
-        numero_cotizacion: numeroCotizacion,
+        codigo_cotizacion: numeroCotizacion,
         fecha: fecha,
         nombre_cliente: nombreCliente,
         contacto: usarContacto && contacto ? contacto : null,
@@ -942,7 +968,6 @@ function CotizacionesCrear() {
         nombre_ejecutivo: nombreEjecutivo
       };
 
-      // Convertir las filas al formato esperado con array de imágenes
       const detallesTemp = filas.map(fila => ({
         cantidad: fila.cantidad,
         detalle: fila.detalle,
@@ -959,35 +984,9 @@ function CotizacionesCrear() {
           : []
       }));
 
-      console.log('📤 Enviando datos al backend para preview:');
-      console.log('   Cotización:', cotizacionTemp);
-      console.log('   Detalles:', JSON.stringify(detallesTemp, null, 2));
-
-      const token = localStorage.getItem("token");
-      // Enviar los datos al backend para generar el PDF
-      const response = await fetch(`${apiUrl}/api/cotizaciones/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cotizacion: cotizacionTemp,
-          detalles: detallesTemp
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al generar la vista previa');
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Error al generar la vista previa');
-      }
-
-      setPreviewUrl(data.pdf);
+      // Siempre pasar los datos del formulario (null como ID para forzar uso de datos proporcionados)
+      const pdfUrl = await generarVistaPreviaPDF(null, cotizacionTemp, detallesTemp);
+      setPreviewUrl(pdfUrl);
       setShowPreview(true);
     } catch (error) {
       console.error('Error:', error);
@@ -1125,18 +1124,18 @@ function CotizacionesCrear() {
         }
       }
 
-      console.log("🎉 Nueva cotización guardada exitosamente. Número asignado:", nuevaCotizacion.numero_cotizacion);
+      console.log("🎉 Nueva cotización guardada exitosamente. Código asignado:", nuevaCotizacion.codigo_cotizacion);
       setShowSuccessModal(true);
       setSuccessMessage('¡Nueva cotización guardada exitosamente!');
-      setNumeroCotizacionGuardada(formatearNumeroCotizacion(nuevaCotizacion.numero_cotizacion));
+      setNumeroCotizacionGuardada(nuevaCotizacion.codigo_cotizacion || '');
       
-      // Actualizar el número de cotización mostrado con el número real asignado
-      setNumeroCotizacion(formatearNumeroCotizacion(nuevaCotizacion.numero_cotizacion));
+      // Actualizar el número de cotización mostrado con el código real asignado
+      setNumeroCotizacion(nuevaCotizacion.codigo_cotizacion || '');
       // Notificación local para el usuario logeado (guardar como nueva)
       window.dispatchEvent(new CustomEvent("nueva-notificacion", {
         detail: {
           titulo: "Cotización guardada como nueva",
-          mensaje: `Has guardado la cotización N° ${nuevaCotizacion.numero_cotizacion} como nueva.`,
+          mensaje: `Has guardado la cotización N° ${nuevaCotizacion.codigo_cotizacion} como nueva.`,
           fecha: new Date().toLocaleString()
         }
       }));
@@ -1310,6 +1309,20 @@ function CotizacionesCrear() {
                   👥 Ver Clientes
                 </button>
               </div>
+              {/* Sugerencias de autocompletado */}
+              {sugerencias.length > 0 && (
+                <ul className="absolute z-10 bg-white border border-gray-300 rounded-md mt-1 w-full max-h-48 overflow-y-auto shadow-lg" style={{ top: '100%' }}>
+                  {sugerencias.map((s, idx) => (
+                    <li
+                      key={s.id}
+                      className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${clienteIndex === idx ? 'bg-blue-100' : ''}`}
+                      onMouseDown={() => handleSeleccionarCliente(s)}
+                    >
+                      {s.nombre_cliente} {s.email_cliente ? <span className="text-xs text-gray-500 ml-2">({s.email_cliente})</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="mt-2 flex items-center gap-2">
                 <input
                   id="usarContacto"
@@ -1328,19 +1341,6 @@ function CotizacionesCrear() {
                   className={`flex-1 border rounded-md p-2 ${usarContacto ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'border-gray-200 bg-gray-100 cursor-not-allowed'}`}
                 />
               </div>
-              {sugerencias.length > 0 && (
-                <ul className="absolute z-10 bg-white border border-gray-300 rounded-md mt-1 w-full max-h-48 overflow-y-auto shadow-lg">
-                  {sugerencias.map((s, idx) => (
-                    <li
-                      key={s.id}
-                      className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${clienteIndex === idx ? 'bg-blue-100' : ''}`}
-                      onMouseDown={() => handleSeleccionarCliente(s)}
-                    >
-                      {s.nombre_cliente} {s.email_cliente ? <span className="text-xs text-gray-500 ml-2">({s.email_cliente})</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
             <div className="relative flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha:</label>
@@ -1356,8 +1356,8 @@ function CotizacionesCrear() {
               <input
                 type="text"
                 value={nombreEjecutivo}
-                readOnly
-                className="w-full border border-gray-300 rounded-md p-2 text-sm bg-gray-100 cursor-not-allowed"
+                onChange={(e) => setNombreEjecutivo(e.target.value)}
+                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ejecutivo de cuenta"
               />
               <div className="mt-2 flex items-center gap-2">
@@ -1957,6 +1957,7 @@ function CotizacionesCrear() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2 text-left border-b">Nombre</th>
+                        <th className="px-4 py-2 text-left border-b">Empresa</th>
                         <th className="px-4 py-2 text-left border-b">Correo</th>
                         <th className="px-4 py-2 text-left border-b">Teléfono</th>
                         <th className="px-4 py-2 text-center border-b">Acción</th>
@@ -1971,6 +1972,7 @@ function CotizacionesCrear() {
                         .map((cliente) => (
                           <tr key={cliente.id} className="hover:bg-gray-50">
                             <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
+                            <td className="px-4 py-2 border-b">{cliente.empresa}</td>
                             <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
                             <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
                             <td className="px-4 py-2 border-b text-center">
@@ -2016,8 +2018,8 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  // Si está editando (tiene id), ir a cotizaciones, si no a producción
-                  navigate(id ? "/cotizaciones" : "/produccion");
+                  // Siempre ir a cotizaciones después de guardar
+                  navigate("/cotizaciones");
                 }
               }}
               tabIndex={0}
@@ -2035,8 +2037,8 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  // Si está editando (tiene id), ir a cotizaciones, si no a producción
-                  navigate(id ? "/cotizaciones" : "/produccion");
+                  // Siempre ir a cotizaciones después de guardar
+                  navigate("/cotizaciones");
                 }}
               >
                 OK

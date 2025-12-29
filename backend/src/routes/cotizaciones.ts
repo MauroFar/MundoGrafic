@@ -664,7 +664,7 @@ body {
               
               <div class="cotizacion-section">
                 <div class="cotizacion-box">
-                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${cotizacion.numero_cotizacion.toString().padStart(10, '0')}</span>
+                  <span>COTIZACIÓN</span> <span class="numero-cotizacion">${cotizacion.codigo_cotizacion || '000000000'}</span>
                 </div>
                 <div class="ruc-box">
                   R.U.C.:<span class="ruc-numero">${cotizacion.ruc}</span>
@@ -927,31 +927,15 @@ const CotizacionDatos = (client: any) => {
       validez_proforma,
       observaciones,
       contacto,
-      celuar
+      celuar,
+      nombre_ejecutivo
     } = req.body;
     const estado = "pendiente";
     const user = req.user;
     const userId = req.user?.id; // Usuario de la sesión para auditoría
 
     try {
-      // Primero, obtener el siguiente número de cotización
-      let numeroCotizacion;
-      try {
-        // Intentar usar la secuencia si existe
-        const seqQuery = "SELECT nextval('cotizaciones_numero_cotizacion_seq') as next_num";
-        const seqResult = await client.query(seqQuery);
-        numeroCotizacion = seqResult.rows[0].next_num;
-        console.log("✅ Usando secuencia para numero_cotizacion:", numeroCotizacion);
-      } catch (seqError) {
-        console.warn("⚠️ Secuencia no disponible, usando MAX+1:", seqError.message);
-        // Fallback: calcular siguiente número basado en la tabla
-        const fallbackQuery = "SELECT COALESCE(MAX(numero_cotizacion) + 1, 1) AS next_num FROM cotizaciones";
-        const fbResult = await client.query(fallbackQuery);
-        numeroCotizacion = Number(fbResult.rows[0].next_num || 1);
-        console.log("✅ Usando MAX+1 para numero_cotizacion:", numeroCotizacion);
-      }
-
-      // Insertar con el número de cotización calculado
+      // Insertar sin numero_cotizacion (ya no existe)
       const insertQuery = `
         INSERT INTO cotizaciones (
           cliente_id, 
@@ -967,9 +951,9 @@ const CotizacionDatos = (client: any) => {
           forma_pago,
           validez_proforma,
           observaciones,
-          numero_cotizacion,
           contacto,
           celuar,
+          nombre_ejecutivo,
           created_by,
           created_at
         )
@@ -991,21 +975,21 @@ const CotizacionDatos = (client: any) => {
         forma_pago,
         validez_proforma,
         observaciones,
-        numeroCotizacion,
         contacto || null,
         celuar || null,
+        nombre_ejecutivo || user.nombre || null,
         user.id // created_by
       ]);
 
       console.log("🎉 Cotización creada exitosamente:", {
         id: result.rows[0].id,
-        numero_cotizacion: result.rows[0].numero_cotizacion,
+        codigo_cotizacion: result.rows[0].codigo_cotizacion,
         cliente_id: result.rows[0].cliente_id
       });
 
-      // Generar código único basado en el ID (CO + 5 dígitos)
+      // Generar código único basado en el ID (9 dígitos: 000000001)
       const cotizacionId = result.rows[0].id;
-      const codigoCotizacion = `CO${String(cotizacionId).padStart(5, '0')}`;
+      const codigoCotizacion = String(cotizacionId).padStart(9, '0');
       
       await client.query(
         'UPDATE cotizaciones SET codigo_cotizacion = $1 WHERE id = $2',
@@ -1029,30 +1013,19 @@ const CotizacionDatos = (client: any) => {
 
   router.get("/ultima", authRequired(), async (req: any, res: any) => {
     try {
-      console.log("🔍 Obteniendo último número de cotización...");
+      console.log("🔍 Obteniendo último código de cotización...");
       
-      // Intentar obtener el siguiente valor de la secuencia sin avanzar la secuencia
-      try {
-        const seqQuery = "SELECT last_value, increment_by FROM cotizaciones_numero_cotizacion_seq";
-        const seqResult = await client.query(seqQuery);
-        const lastValue = Number(seqResult.rows[0]?.last_value || 0);
-        const incrementBy = Number(seqResult.rows[0]?.increment_by || 1);
-        const nextValue = lastValue + incrementBy;
-        console.log("✅ Usando secuencia - último valor:", lastValue, "siguiente:", nextValue);
-        return res.json({ numero_cotizacion: nextValue });
-      } catch (seqErr) {
-        console.warn("⚠️ No se pudo leer la secuencia, usando MAX(numero_cotizacion)+1:", seqErr.message);
-      }
-
-      // Fallback: calcular siguiente número basado en la tabla
-      const fallbackQuery = "SELECT COALESCE(MAX(numero_cotizacion) + 1, 1) AS next_num FROM cotizaciones";
-      const fbResult = await client.query(fallbackQuery);
-      const nextNum = Number(fbResult.rows[0]?.next_num || 1);
-      console.log("✅ Usando MAX+1 - siguiente número:", nextNum);
-      return res.json({ numero_cotizacion: nextNum });
+      // Obtener el último ID y calcular el siguiente código
+      const query = "SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM cotizaciones";
+      const result = await client.query(query);
+      const nextId = Number(result.rows[0]?.next_id || 1);
+      const nextCodigo = String(nextId).padStart(9, '0');
+      
+      console.log("✅ Siguiente código:", nextCodigo);
+      return res.json({ codigo_cotizacion: nextCodigo });
     } catch (error: any) {
-      console.error("❌ Error al obtener la última cotización:", error);
-      res.status(500).json({ error: "Error al obtener la última cotización" });
+      console.error("❌ Error al obtener último código:", error);
+      return res.json({ codigo_cotizacion: '000000001' });
     }
   });
 
@@ -1067,7 +1040,6 @@ const CotizacionDatos = (client: any) => {
       let query = `
         SELECT 
           c.id,
-          c.numero_cotizacion,
           c.codigo_cotizacion,
           cl.nombre_cliente,
           cl.email_cliente,
@@ -1098,7 +1070,7 @@ const CotizacionDatos = (client: any) => {
 
       if (busqueda) {
         query += ` AND (
-          CAST(c.numero_cotizacion AS TEXT) ILIKE $${paramCount} 
+          CAST(c.codigo_cotizacion AS TEXT) ILIKE $${paramCount} 
           OR cl.nombre_cliente ILIKE $${paramCount}
           OR u.nombre ILIKE $${paramCount}
         )`;
@@ -1126,7 +1098,7 @@ const CotizacionDatos = (client: any) => {
       }
 
       // Ordenar por número de cotización descendente (más recientes primero)
-      query += ` ORDER BY c.numero_cotizacion DESC`;
+      query += ` ORDER BY c.id DESC`;
 
       // Aplicar límite si no hay filtros de búsqueda
       if (!busqueda && !fechaDesde && !fechaHasta) {
@@ -1223,7 +1195,8 @@ const CotizacionDatos = (client: any) => {
       validez_proforma,
       observaciones,
       contacto,
-      celuar
+      celuar,
+      nombre_ejecutivo
     } = req.body;
     const userId = req.user?.id; // Usuario de la sesión para auditoría
 
@@ -1243,9 +1216,10 @@ const CotizacionDatos = (client: any) => {
             observaciones = $11,
             contacto = $12,
             celuar = $13,
-            updated_by = $14,
+            nombre_ejecutivo = $14,
+            updated_by = $15,
             updated_at = NOW()
-        WHERE id = $15
+        WHERE id = $16
         RETURNING *
       `;
 
@@ -1263,6 +1237,7 @@ const CotizacionDatos = (client: any) => {
         observaciones,
         contacto || null,
         celuar || null,
+        nombre_ejecutivo || null,
         userId,
         id
       ]);
@@ -1342,7 +1317,7 @@ const CotizacionDatos = (client: any) => {
       const cotizacionQuery = `
         SELECT 
           c.id,
-          c.numero_cotizacion,
+          c.codigo_cotizacion,
           c.fecha,
           c.subtotal,
           c.iva,
@@ -1415,7 +1390,7 @@ const CotizacionDatos = (client: any) => {
       
       // 4. Enviar el PDF al cliente
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=cotizacion-${cotizacion.numero_cotizacion.toString().padStart(5, '0')}.pdf`);
+      res.setHeader('Content-Disposition', `attachment; filename=cotizacion-${cotizacion.codigo_cotizacion}.pdf`);
       res.send(pdfBuffer);
 
     } catch (error: any) {
@@ -1463,7 +1438,7 @@ const CotizacionDatos = (client: any) => {
       const cotizacionQuery = `
         SELECT 
           c.id,
-          c.numero_cotizacion,
+          c.codigo_cotizacion,
           c.fecha,
           c.subtotal,
           c.iva,
@@ -1521,7 +1496,7 @@ const CotizacionDatos = (client: any) => {
 
       // Generar nombre único para el PDF
       const timestamp = new Date().getTime();
-      const fileName = `cotizacion-${cotizacion.numero_cotizacion}-${timestamp}.pdf`;
+      const fileName = `cotizacion-${cotizacion.codigo_cotizacion}-${timestamp}.pdf`;
       const pdfPath = path.join(pdfDir, fileName);
 
       // Generar el HTML
@@ -1713,7 +1688,7 @@ const CotizacionDatos = (client: any) => {
       const mailOptions: any = {
         from: emailUser,
         to: toEmails.join(', '),
-        subject: asunto || `Cotización MUNDOGRAFIC #${cotizacion.numero_cotizacion}`,
+        subject: asunto || `Cotización MUNDOGRAFIC ${cotizacion.codigo_cotizacion}`,
         text: mensaje || 'Adjunto encontrará la cotización solicitada.',
         html: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -1723,7 +1698,7 @@ const CotizacionDatos = (client: any) => {
         `,
         attachments: [
           {
-            filename: `${nombrePDF || `cotizacion_${cotizacion.numero_cotizacion}`}.pdf`,
+            filename: `${nombrePDF || `cotizacion_${cotizacion.codigo_cotizacion}`}.pdf`,
             content: pdfBuffer,
             contentType: 'application/pdf',
           },

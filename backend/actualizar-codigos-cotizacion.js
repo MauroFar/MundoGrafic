@@ -14,14 +14,14 @@ async function actualizarCodigosCotizacion() {
     await client.connect();
     console.log('✅ Conectado a la base de datos');
 
-    // Actualizar todos los códigos de cotización basándose en el ID
+    // Actualizar todos los códigos de cotización basándose en el ID (9 dígitos)
     console.log('🔄 Actualizando códigos de cotización...');
     
     const updateQuery = `
       UPDATE cotizaciones 
-      SET codigo_cotizacion = 'CO' || LPAD(id::TEXT, 5, '0')
+      SET codigo_cotizacion = LPAD(id::TEXT, 9, '0')
       WHERE codigo_cotizacion IS NULL 
-         OR codigo_cotizacion != ('CO' || LPAD(id::TEXT, 5, '0'))
+         OR codigo_cotizacion != LPAD(id::TEXT, 9, '0')
     `;
     
     const result = await client.query(updateQuery);
@@ -30,7 +30,7 @@ async function actualizarCodigosCotizacion() {
     
     // Mostrar algunos ejemplos
     const ejemplos = await client.query(`
-      SELECT id, codigo_cotizacion, numero_cotizacion 
+      SELECT id, codigo_cotizacion, fecha 
       FROM cotizaciones 
       ORDER BY id 
       LIMIT 10
@@ -38,7 +38,7 @@ async function actualizarCodigosCotizacion() {
     
     console.log('\n📋 Ejemplos de códigos actualizados:');
     ejemplos.rows.forEach(row => {
-      console.log(`   ID: ${row.id} → Código: ${row.codigo_cotizacion} (Nº Cotización: ${row.numero_cotizacion})`);
+      console.log(`   ID: ${row.id} → Código: ${row.codigo_cotizacion} (${row.fecha.toDateString()})`);
     });
     
     console.log('\n✅ Actualización completada exitosamente');
