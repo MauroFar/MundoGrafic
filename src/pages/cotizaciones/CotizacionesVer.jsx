@@ -430,10 +430,20 @@ function CotizacionesVer() {
         detalle: d.detalle,
         valor_unitario: d.valor_unitario,
         valor_total: d.valor_total,
-        imagen_ruta: d.imagen_ruta,
-        imagen_width: d.imagen_width || 300,
-        imagen_height: d.imagen_height || 200,
+        alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
+        imagenes: (d.imagenes && Array.isArray(d.imagenes)) 
+          ? d.imagenes.map(img => ({
+              imagen_ruta: img.imagen_ruta,
+              orden: img.orden || 0,
+              imagen_width: img.imagen_width || 200,
+              imagen_height: img.imagen_height || 150
+            }))
+          : []
       })) : [];
+
+      console.log("📤 Enviando datos al backend para preview:");
+      console.log("   Cotización:", cotizacionTemp);
+      console.log("   Detalles:", JSON.stringify(detallesTemp, null, 2));
 
       // 4) Pedir vista previa (PDF base64 embebido)
       console.log("📡 Generando vista previa...");

@@ -188,27 +188,27 @@ function CotizacionesCrear() {
           const valorUnitario = parseFloat(detalle.valor_unitario) || 0;
           const valorTotal = parseFloat(detalle.valor_total) || (cantidad * valorUnitario);
 
-          // Construir las URLs de las imágenes
-          const imagenRuta = detalle.imagen_ruta || null;
-          const imagenUrl = imagenRuta ? `${apiUrl}${imagenRuta}` : null;
-          const imagenRutaJpeg = imagenRuta ? imagenRuta.replace('.webp', '.jpeg') : null;
+          // Procesar las imágenes (ahora es un array)
+          const imagenes = (detalle.imagenes && Array.isArray(detalle.imagenes)) 
+            ? detalle.imagenes.map(img => ({
+                imagen: `${apiUrl}${img.imagen_ruta}`,
+                imagen_ruta: img.imagen_ruta,
+                imagen_ruta_jpeg: img.imagen_ruta.replace('.webp', '.jpeg'),
+                width: img.imagen_width || 200,
+                height: img.imagen_height || 150,
+                id: img.id
+              }))
+            : [];
 
-          console.log('Rutas de imagen:', {
-            original: imagenRuta,
-            url: imagenUrl,
-            jpeg: imagenRutaJpeg
-          });
+          console.log('Imágenes cargadas para detalle:', detalle.detalle, imagenes);
 
           return {
             cantidad,
             detalle: detalle.detalle || "",
             valor_unitario: valorUnitario,
             valor_total: valorTotal,
-            imagen: imagenUrl,
-            imagen_ruta: imagenRuta,
-            imagen_ruta_jpeg: imagenRutaJpeg,
-            width: detalle.imagen_width || 200,
-            height: detalle.imagen_height || 150
+            imagenes: imagenes,
+            alineacion_imagenes: detalle.alineacion_imagenes || 'horizontal'
           };
         });
 
@@ -417,15 +417,20 @@ function CotizacionesCrear() {
   const continuarGuardadoCotizacion = async (clienteId) => {
     try {
       const token = localStorage.getItem("token");
-      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
+      // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
         cantidad: parseFloat(fila.cantidad) || 0,
         detalle: fila.detalle || "",
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
-        imagen_ruta: fila.imagen_ruta || null,
-        imagen_width: fila.imagen_width || 300,
-        imagen_height: fila.imagen_height || 200
+        alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
+          ? fila.imagenes.map(img => ({
+              imagen_ruta: img.imagen_ruta,
+              imagen_width: img.width || 200,
+              imagen_height: img.height || 150
+            }))
+          : []
       }));
 
       // 3. Preparar los datos de la cotización
@@ -470,9 +475,7 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
-          imagen_ruta: fila.imagen_ruta,
-          imagen_width: fila.imagen_width,
-          imagen_height: fila.imagen_height
+          imagenes: fila.imagenes
         }));
 
         const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
@@ -634,9 +637,8 @@ function CotizacionesCrear() {
         detalle: "",
         valor_unitario: 0,
         valor_total: 0,
-        imagen: null,
-        width: 200,
-        height: 150
+        imagenes: [],  // Array vacío para múltiples imágenes
+        alineacion_imagenes: 'horizontal'  // Alineación por defecto
       }
     ]);
   };
@@ -647,7 +649,7 @@ function CotizacionesCrear() {
     setFilas(nuevasFilas);
   };
 
-  // Función para manejar el cambio de imagen
+  // Función para manejar el cambio de imagen - ahora agrega al array
   const handleImagenChange = async (index, file) => {
     if (file) {
       try {
@@ -670,15 +672,28 @@ function CotizacionesCrear() {
 
         const data = await response.json();
         
-        // Actualizar el estado con la ruta de la imagen
+        // Agregar la nueva imagen al array de imágenes
         const nuevasFilas = [...filas];
+        const imagenesActuales = nuevasFilas[index].imagenes || [];
+        
+        // Si ya hay imágenes, tomar el tamaño de la primera; si no, usar valores por defecto
+        const width = imagenesActuales.length > 0 ? imagenesActuales[0].width : 200;
+        const height = imagenesActuales.length > 0 ? imagenesActuales[0].height : 150;
+        
         nuevasFilas[index] = {
           ...nuevasFilas[index],
-          imagen: `${apiUrl}${data.imagenRuta}`,
-          imagen_ruta: data.imagenRuta,
-          imagen_ruta_jpeg: data.imagenRutaJpeg,
-          thumbnail: data.thumbnail,
-          metadata: data.metadata
+          imagenes: [
+            ...imagenesActuales,
+            {
+              imagen: `${apiUrl}${data.imagenRuta}`,
+              imagen_ruta: data.imagenRuta,
+              imagen_ruta_jpeg: data.imagenRutaJpeg,
+              width: width,
+              height: height,
+              thumbnail: data.thumbnail,
+              metadata: data.metadata
+            }
+          ]
         };
         setFilas(nuevasFilas);
 
@@ -789,10 +804,11 @@ function CotizacionesCrear() {
     }
   };
 
-  // Función para eliminar una imagen
-  const handleEliminarImagen = async (index) => {
+  // Función para eliminar una imagen del array
+  const handleEliminarImagen = async (rowIndex, imageIndex) => {
     try {
-      const imagenRuta = filas[index].imagen_ruta;
+      const imagen = filas[rowIndex].imagenes[imageIndex];
+      const imagenRuta = imagen?.imagen_ruta;
       
       // Solo intentar eliminar la imagen del servidor si estamos en modo edición y existe una ruta
       if (id && imagenRuta) {
@@ -818,22 +834,17 @@ function CotizacionesCrear() {
         }
       }
 
-      // Actualizar el estado local independientemente de si estamos en modo edición o creación
+      // Actualizar el estado local eliminando la imagen del array
       const nuevasFilas = [...filas];
-      nuevasFilas[index] = {
-        ...nuevasFilas[index],
-        imagen: null,
-        imagen_ruta: null,
-        imagen_ruta_jpeg: null,
-        thumbnail: null,
-        metadata: null,
-        width: 200,
-        height: 150
+      const imagenesActuales = nuevasFilas[rowIndex].imagenes || [];
+      nuevasFilas[rowIndex] = {
+        ...nuevasFilas[rowIndex],
+        imagenes: imagenesActuales.filter((_, idx) => idx !== imageIndex)
       };
       setFilas(nuevasFilas);
 
       // Mostrar mensaje de éxito
-      alert('Imagen eliminada correctamente');
+      console.log('Imagen eliminada correctamente');
     } catch (error) {
       console.error('Error al eliminar la imagen:', error);
       alert('Error al eliminar la imagen: ' + error.message);
@@ -931,18 +942,26 @@ function CotizacionesCrear() {
         nombre_ejecutivo: nombreEjecutivo
       };
 
-      // Convertir las filas al formato esperado
+      // Convertir las filas al formato esperado con array de imágenes
       const detallesTemp = filas.map(fila => ({
         cantidad: fila.cantidad,
         detalle: fila.detalle,
         valor_unitario: fila.valor_unitario,
         valor_total: fila.valor_total,
-        imagen_ruta: fila.imagen_ruta,
-        imagen_width: fila.width || 300,
-        imagen_height: fila.height || 200
+        alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
+          ? fila.imagenes.map(img => ({
+              imagen_ruta: img.imagen_ruta,
+              orden: 0,
+              imagen_width: img.width || 200,
+              imagen_height: img.height || 150
+            }))
+          : []
       }));
 
-      console.log('Enviando datos al backend:', { cotizacion: cotizacionTemp, detalles: detallesTemp });
+      console.log('📤 Enviando datos al backend para preview:');
+      console.log('   Cotización:', cotizacionTemp);
+      console.log('   Detalles:', JSON.stringify(detallesTemp, null, 2));
 
       const token = localStorage.getItem("token");
       // Enviar los datos al backend para generar el PDF
@@ -984,20 +1003,23 @@ function CotizacionesCrear() {
     setPreviewUrl(null);
   };
 
-  // Función para mostrar el modal de ajuste de imagen
-  const showImageAdjustModal = (index) => {
-    setSelectedImageIndex(index);
+  // Función para mostrar el modal de ajuste de imagen - ahora recibe rowIndex e imageIndex
+  const [selectedImageIndices, setSelectedImageIndices] = React.useState({ row: null, img: null });
+
+  const showImageAdjustModal = (rowIndex, imgIndex) => {
+    setSelectedImageIndices({ row: rowIndex, img: imgIndex });
+    const imagen = filas[rowIndex].imagenes[imgIndex];
     setImageDimensions({
-      width: filas[index].width || 300,
-      height: filas[index].height || 200
+      width: imagen.width || 200,
+      height: imagen.height || 150
     });
-    setImageFitMode(filas[index].imageFitMode || 'contain');
+    setImageFitMode('contain'); // Siempre contain para PDF
   };
 
   // Función para aplicar los cambios de dimensiones
   const applyImageDimensions = () => {
-    if (selectedImageIndex !== null) {
-      // Aplicar las mismas restricciones que en el redimensionamiento directo
+    if (selectedImageIndices.row !== null && selectedImageIndices.img !== null) {
+      // Aplicar las mismas restricciones
       const minWidth = 100;
       const minHeight = 75;
       const maxWidth = 600;
@@ -1007,31 +1029,38 @@ function CotizacionesCrear() {
       const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, imageDimensions.height));
       
       const newFilas = [...filas];
-      newFilas[selectedImageIndex] = {
-        ...newFilas[selectedImageIndex],
+      const imagenesActuales = [...newFilas[selectedImageIndices.row].imagenes];
+      imagenesActuales[selectedImageIndices.img] = {
+        ...imagenesActuales[selectedImageIndices.img],
         width: constrainedWidth,
-        height: constrainedHeight,
-        imagen_width: constrainedWidth,
-        imagen_height: constrainedHeight,
-        imageFitMode: imageFitMode
+        height: constrainedHeight
+      };
+      newFilas[selectedImageIndices.row] = {
+        ...newFilas[selectedImageIndices.row],
+        imagenes: imagenesActuales
       };
       setFilas(newFilas);
-      setSelectedImageIndex(null);
+      setSelectedImageIndices({ row: null, img: null });
     }
   };
 
   const guardarCotizacionComoNueva = async (clienteId) => {
     try {
       const token = localStorage.getItem("token");
-      // Preparar los datos de las filas incluyendo las dimensiones de la imagen
+      // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
         cantidad: parseFloat(fila.cantidad) || 0,
         detalle: fila.detalle || "",
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
-        imagen_ruta: fila.imagen_ruta || null,
-        imagen_width: fila.width || 300,
-        imagen_height: fila.height || 200
+        alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
+          ? fila.imagenes.map(img => ({
+              imagen_ruta: img.imagen_ruta,
+              imagen_width: img.width || 200,
+              imagen_height: img.height || 150
+            }))
+          : []
       }));
 
       // 3. Crear la nueva cotización con todas las relaciones
@@ -1351,8 +1380,17 @@ function CotizacionesCrear() {
           </div>
         </div>
 
-        {/* Botón Agregar Producto encima de la tabla */}
-        <div className="flex justify-end mb-2">
+        {/* Botones de acciones encima de la tabla */}
+        <div className="flex justify-between items-center mb-2">
+          <button
+            onClick={generarVistaPrevia}
+            disabled={previewLoading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FaEye />
+            {previewLoading ? 'Generando...' : 'Vista Previa PDF'}
+          </button>
+          
           <button 
             className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-sm transition-all duration-300 ease-in-out flex items-center gap-2"
             onClick={agregarFila}
@@ -1399,97 +1437,157 @@ function CotizacionesCrear() {
                         }}
                         className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
                       />
-                      {!fila.imagen ? (
-                        <div className="space-y-2 mt-2">
-                          {/* Botón para subir desde archivo */}
-                          <div className="flex justify-center">
-                            <label className={`cursor-pointer px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${
-                              uploadingImages[index] 
-                                ? 'bg-gray-400 cursor-not-allowed' 
-                                : 'bg-blue-500 hover:bg-blue-600 text-white'
-                            }`}>
-                              {uploadingImages[index] ? (
-                                <>
-                                  <i className="fas fa-spinner fa-spin"></i>
-                                  Subiendo...
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fas fa-upload"></i>
-                                  Subir desde archivo
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                id={`file-upload-${index}`}
-                                accept="image/*"
-                                disabled={uploadingImages[index]}
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    uploadFileToRow(index, file);
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                            </label>
+                      
+                      {/* Mostrar imágenes existentes */}
+                      {fila.imagenes && fila.imagenes.length > 0 && (
+                        <>
+                          {/* Botones de alineación */}
+                          <div className="flex gap-2 mt-2 mb-2 justify-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nuevasFilas = [...filas];
+                                nuevasFilas[index].alineacion_imagenes = 'horizontal';
+                                setFilas(nuevasFilas);
+                              }}
+                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                fila.alineacion_imagenes === 'horizontal' 
+                                  ? 'bg-blue-500 text-white' 
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                              title="Alinear horizontalmente"
+                            >
+                              <i className="fas fa-arrows-alt-h"></i>
+                              Horizontal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nuevasFilas = [...filas];
+                                nuevasFilas[index].alineacion_imagenes = 'vertical';
+                                setFilas(nuevasFilas);
+                              }}
+                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                fila.alineacion_imagenes === 'vertical' 
+                                  ? 'bg-blue-500 text-white' 
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                              title="Alinear verticalmente"
+                            >
+                              <i className="fas fa-arrows-alt-v"></i>
+                              Vertical
+                            </button>
                           </div>
                           
-                          {/* Área de drag & drop y pegar */}
-                          <div
-                            className={`border-2 border-dashed rounded-md p-3 text-center text-sm cursor-pointer select-none focus:outline-none ${
-                              uploadingImages[index] 
-                                ? 'border-gray-400 bg-gray-100 text-gray-500 cursor-not-allowed' 
-                                : dragOverIndex === index 
-                                  ? 'border-blue-400 bg-blue-50 text-blue-700' 
-                                  : 'border-gray-300 text-gray-600'
-                            } ${focusedDropIndex === index ? 'ring-2 ring-blue-400 border-blue-400' : ''}`}
-                            onDragOver={(e) => !uploadingImages[index] && handleDragOverRow(index, e)}
-                            onDragEnter={(e) => !uploadingImages[index] && handleDragEnterRow(index, e)}
-                            onDragLeave={(e) => !uploadingImages[index] && handleDragLeaveRow(index, e)}
-                            onDrop={(e) => !uploadingImages[index] && handleDropImage(index, e)}
-                            onPaste={(e) => !uploadingImages[index] && handlePasteImage(index, e)}
-                            tabIndex={uploadingImages[index] ? -1 : 0}
-                            onFocus={() => !uploadingImages[index] && setFocusedDropIndex(index)}
-                            onBlur={() => !uploadingImages[index] && setFocusedDropIndex(prev => (prev === index ? null : prev))}
-                            title={uploadingImages[index] ? "Subiendo imagen..." : "Pegue (Ctrl+V) o arrastre su imagen aquí"}
-                          >
-                            <div className="flex items-center justify-center gap-2">
-                              {uploadingImages[index] ? (
-                                <>
-                                  <i className="fas fa-spinner fa-spin text-lg"></i>
-                                  <span>Subiendo imagen...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fas fa-image text-lg"></i>
-                                  <span>Pegue (Ctrl+V) o arrastre su imagen aquí</span>
-                                </>
-                              )}
-                            </div>
+                          {/* Contenedor de imágenes con alineación dinámica */}
+                          <div className={`flex ${fila.alineacion_imagenes === 'horizontal' ? 'flex-row flex-wrap' : 'flex-col'} gap-2 mt-2`}>
+                            {fila.imagenes.map((img, imgIndex) => (
+                              <div key={imgIndex} className="flex flex-col items-center bg-gray-50 p-2 rounded border border-gray-200">
+                                <img 
+                                  src={img.imagen} 
+                                  alt={`Imagen ${imgIndex + 1}`} 
+                                  className="w-20 h-20 object-cover rounded mb-2"
+                                />
+                                <span className="text-xs text-gray-600 mb-2">Img {imgIndex + 1}</span>
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => showImageAdjustModal(index, imgIndex)}
+                                    className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-xs"
+                                    title="Ajustar tamaño"
+                                  >
+                                    <i className="fas fa-crop"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEliminarImagen(index, imgIndex)}
+                                    className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-xs"
+                                    title="Eliminar imagen"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          
-                          {/* Mensaje de ayuda */}
-                          <div className="text-xs text-gray-500 text-center mt-1">
-                            Formatos soportados: JPG, PNG, GIF, WEBP • Máximo 10MB
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            onClick={() => showImageAdjustModal(index)}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1 text-sm"
-                          >
-                            <i className="fas fa-crop"></i> Ajustar Tamaño
-                          </button>
-                          <button
-                            onClick={() => handleEliminarImagen(index)}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center gap-1 text-sm"
-                          >
-                            <i className="fas fa-trash"></i> Eliminar Imagen
-                          </button>
-                        </div>
+                        </>
                       )}
+                      
+                      {/* Área para agregar más imágenes */}
+                      <div className="space-y-2 mt-2">
+                        {/* Botón para subir desde archivo */}
+                        <div className="flex justify-center">
+                          <label className={`cursor-pointer px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${
+                            uploadingImages[index] 
+                              ? 'bg-gray-400 cursor-not-allowed' 
+                              : 'bg-blue-500 hover:bg-blue-600 text-white'
+                          }`}>
+                            {uploadingImages[index] ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin"></i>
+                                Subiendo...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-upload"></i>
+                                {fila.imagenes && fila.imagenes.length > 0 ? 'Agregar más imágenes' : 'Subir desde archivo'}
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              id={`file-upload-${index}`}
+                              accept="image/*"
+                              disabled={uploadingImages[index]}
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  uploadFileToRow(index, file);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        
+                        {/* Área de drag & drop y pegar */}
+                        <div
+                          className={`border-2 border-dashed rounded-md p-3 text-center text-sm cursor-pointer select-none focus:outline-none ${
+                            uploadingImages[index] 
+                              ? 'border-gray-400 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                              : dragOverIndex === index 
+                                ? 'border-blue-400 bg-blue-50 text-blue-700' 
+                                : 'border-gray-300 text-gray-600'
+                          } ${focusedDropIndex === index ? 'ring-2 ring-blue-400 border-blue-400' : ''}`}
+                          onDragOver={(e) => !uploadingImages[index] && handleDragOverRow(index, e)}
+                          onDragEnter={(e) => !uploadingImages[index] && handleDragEnterRow(index, e)}
+                          onDragLeave={(e) => !uploadingImages[index] && handleDragLeaveRow(index, e)}
+                          onDrop={(e) => !uploadingImages[index] && handleDropImage(index, e)}
+                          onPaste={(e) => !uploadingImages[index] && handlePasteImage(index, e)}
+                          tabIndex={uploadingImages[index] ? -1 : 0}
+                          onFocus={() => !uploadingImages[index] && setFocusedDropIndex(index)}
+                          onBlur={() => !uploadingImages[index] && setFocusedDropIndex(prev => (prev === index ? null : prev))}
+                          title={uploadingImages[index] ? "Subiendo imagen..." : "Pegue (Ctrl+V) o arrastre su imagen aquí"}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            {uploadingImages[index] ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin text-lg"></i>
+                                <span>Subiendo imagen...</span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-image text-lg"></i>
+                                <span>Pegue (Ctrl+V) o arrastre su imagen aquí</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Mensaje de ayuda */}
+                        <div className="text-xs text-gray-500 text-center mt-1">
+                          Formatos soportados: JPG, PNG, GIF, WEBP • Máximo 10MB
+                        </div>
+                      </div>
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
                       <input
@@ -1514,115 +1612,6 @@ function CotizacionesCrear() {
                       </button>
                     </td>
                   </tr>
-                  {fila.imagen && (
-                    <tr>
-                      <td colSpan="5" className="border border-gray-300 px-4 py-2 bg-gray-50" style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
-                          <Resizable
-                            width={fila.width || 200}
-                            height={fila.height || 150}
-                            style={{ 
-                              width: (fila.width || 200), 
-                              height: (fila.height || 150), 
-                              position: 'relative', 
-                              display: 'inline-block',
-                              margin: '10px'
-                            }}
-                            onResize={(e, { size }) => {
-                              // Limitar el tamaño mínimo y máximo
-                              const minWidth = 100;
-                              const minHeight = 75;
-                              const maxWidth = 600;
-                              const maxHeight = 400;
-                              
-                              const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, size.width));
-                              const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, size.height));
-                              
-                              const nuevasFilas = [...filas];
-                              nuevasFilas[index] = {
-                                ...nuevasFilas[index],
-                                width: constrainedWidth,
-                                height: constrainedHeight,
-                                imagen_width: constrainedWidth,
-                                imagen_height: constrainedHeight,
-                                imageFitMode: nuevasFilas[index].imageFitMode || 'contain'
-                              };
-                              setFilas(nuevasFilas);
-                              if (selectedImageIndex === index) {
-                                setImageDimensions({
-                                  width: constrainedWidth,
-                                  height: constrainedHeight
-                                });
-                              }
-                            }}
-                            onResizeStop={(e, { size }) => {
-                              // Aplicar las mismas restricciones al finalizar el redimensionamiento
-                              const minWidth = 100;
-                              const minHeight = 75;
-                              const maxWidth = 600;
-                              const maxHeight = 400;
-                              
-                              const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, size.width));
-                              const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, size.height));
-                              
-                              const nuevasFilas = [...filas];
-                              nuevasFilas[index] = {
-                                ...nuevasFilas[index],
-                                width: constrainedWidth,
-                                height: constrainedHeight,
-                                imagen_width: constrainedWidth,
-                                imagen_height: constrainedHeight,
-                                imageFitMode: nuevasFilas[index].imageFitMode || 'contain'
-                              };
-                              setFilas(nuevasFilas);
-                            }}
-                            draggableOpts={{ grid: [5, 5] }}
-                            resizeHandles={['se']}
-                            handleSize={[14, 14]}
-                            className="image-resizable-container"
-                            minConstraints={[100, 75]}
-                            maxConstraints={[600, 400]}
-                          >
-                            <div
-                              style={{
-                                width: `${fila.width || 200}px`,
-                                height: `${fila.height || 150}px`,
-                                overflow: "hidden",
-                                position: "relative",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '4px',
-                                border: '1px solid #e9ecef'
-                              }}
-                            >
-                              <img
-                                src={fila.imagen}
-                                alt="Imagen del producto"
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: fila.imageFitMode || 'contain',
-                                  objectPosition: 'center',
-                                  display: 'block',
-                                  borderRadius: '2px'
-                                }}
-                                onError={(e) => {
-                                  console.error('Error al cargar la imagen:', e);
-                                  if (fila.imagen_ruta_jpeg) {
-                                    e.target.src = `${apiUrl}${fila.imagen_ruta_jpeg}`;
-                                  } else {
-                                    e.target.style.display = 'none';
-                                  }
-                                }}
-                              />
-                            </div>
-                          </Resizable>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
             </tbody>
@@ -1698,18 +1687,6 @@ function CotizacionesCrear() {
           </div>
         </div>
 
-        {/* Agregar botón de vista previa junto al botón de guardar */}
-        <div className="flex justify-end gap-4 mb-6">
-          <button
-            onClick={generarVistaPrevia}
-            disabled={previewLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-2"
-          >
-            <FaEye />
-            {previewLoading ? 'Generando...' : 'Vista Previa PDF'}
-          </button>
-         
-        </div>
 
         {/* Modal de vista previa */}
         {showPreview && (
@@ -1738,79 +1715,101 @@ function CotizacionesCrear() {
         )}
 
         {/* Modal para ajustar dimensiones de imagen */}
-        {selectedImageIndex !== null && (
+        {selectedImageIndices.row !== null && selectedImageIndices.img !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4">
               <h3 className="text-lg font-bold mb-4">Ajustar tamaño de imagen</h3>
+              
+              {/* Preview de la imagen */}
+              <div className="mb-4 bg-gray-100 rounded-lg p-4 flex justify-center items-center" style={{ minHeight: '200px' }}>
+                <img 
+                  src={filas[selectedImageIndices.row]?.imagenes[selectedImageIndices.img]?.imagen}
+                  alt="Preview"
+                  style={{
+                    width: `${imageDimensions.width}px`,
+                    height: `${imageDimensions.height}px`,
+                    objectFit: 'contain',
+                    border: '2px dashed #3B82F6'
+                  }}
+                />
+              </div>
+              
               <div className="space-y-4">
                 <div className="bg-blue-50 p-3 rounded-md">
                   <p className="text-sm text-blue-700">
                     <i className="fas fa-info-circle mr-2"></i>
-                    Tamaño mínimo: 100x75px | Tamaño máximo: 600x400px
+                    Este tamaño se aplicará en el PDF. Tamaño mínimo: 100x75px | Tamaño máximo: 600x400px
                   </p>
                 </div>
+                
+                {/* Controles de tamaño en dos columnas */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ancho (px)</label>
+                    <input
+                      type="number"
+                      min="100"
+                      max="600"
+                      value={imageDimensions.width}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 100;
+                        setImageDimensions(prev => ({ 
+                          ...prev, 
+                          width: Math.max(100, Math.min(600, value)) 
+                        }));
+                      }}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-2"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Rango: 100 - 600 px</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Alto (px)</label>
+                    <input
+                      type="number"
+                      min="75"
+                      max="400"
+                      value={imageDimensions.height}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value) || 75;
+                        setImageDimensions(prev => ({ 
+                          ...prev, 
+                          height: Math.max(75, Math.min(400, value)) 
+                        }));
+                      }}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-2"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Rango: 75 - 400 px</p>
+                  </div>
+                </div>
+
+                {/* Botones de tamaños predefinidos */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Ancho (px)</label>
-                  <input
-                    type="number"
-                    min="100"
-                    max="600"
-                    value={imageDimensions.width}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 100;
-                      setImageDimensions(prev => ({ 
-                        ...prev, 
-                        width: Math.max(100, Math.min(600, value)) 
-                      }));
-                    }}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Rango: 100 - 600 px</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tamaños predefinidos</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setImageDimensions({ width: 200, height: 150 })}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                    >
+                      Pequeño<br/>(200x150)
+                    </button>
+                    <button
+                      onClick={() => setImageDimensions({ width: 300, height: 200 })}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                    >
+                      Mediano<br/>(300x200)
+                    </button>
+                    <button
+                      onClick={() => setImageDimensions({ width: 400, height: 300 })}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                    >
+                      Grande<br/>(400x300)
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Alto (px)</label>
-                  <input
-                    type="number"
-                    min="75"
-                    max="400"
-                    value={imageDimensions.height}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 75;
-                      setImageDimensions(prev => ({ 
-                        ...prev, 
-                        height: Math.max(75, Math.min(400, value)) 
-                      }));
-                    }}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Rango: 75 - 400 px</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Modo de ajuste de imagen</label>
-                  <select
-                    value={imageFitMode}
-                    onChange={(e) => setImageFitMode(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value="contain">Contener (mantener proporciones, puede dejar espacios)</option>
-                    <option value="cover">Cubrir (llenar contenedor, puede recortar)</option>
-                    <option value="fill">Llenar (estirar para llenar, puede distorsionar)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <strong>Contener:</strong> La imagen se ajusta manteniendo sus proporciones<br/>
-                    <strong>Cubrir:</strong> La imagen llena el contenedor, puede recortarse<br/>
-                    <strong>Llenar:</strong> La imagen se estira para llenar exactamente el contenedor
-                  </p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-600">
-                    <i className="fas fa-mouse-pointer mr-2"></i>
-                    También puedes arrastrar el icono azul en la esquina inferior derecha de la imagen para redimensionarla directamente.
-                  </p>
-                </div>
-                <div className="flex justify-end space-x-2">
+                
+                <div className="flex justify-end space-x-2 pt-4 border-t">
                   <button
-                    onClick={() => setSelectedImageIndex(null)}
+                    onClick={() => setSelectedImageIndices({ row: null, img: null })}
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
                   >
                     Cancelar
@@ -2017,7 +2016,8 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  navigate("/produccion");
+                  // Si está editando (tiene id), ir a cotizaciones, si no a producción
+                  navigate(id ? "/cotizaciones" : "/produccion");
                 }
               }}
               tabIndex={0}
@@ -2035,7 +2035,8 @@ function CotizacionesCrear() {
                   setShowSuccessModal(false);
                   setSuccessMessage('');
                   setNumeroCotizacionGuardada('');
-                  navigate("/produccion");
+                  // Si está editando (tiene id), ir a cotizaciones, si no a producción
+                  navigate(id ? "/cotizaciones" : "/produccion");
                 }}
               >
                 OK

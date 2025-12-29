@@ -49,7 +49,7 @@ function App() {
           {/* Clientes: admin y ejecutivo */}
           <Route path="/clientes" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Welcome title="Clientes" message="Bienvenido a la gestión de clientes. Selecciona una opción del menú para continuar." />
+              <ClientesVer />
             </PrivateRoute>
           } />
           <Route path="/clientes/ver" element={
@@ -71,7 +71,7 @@ function App() {
           {/* Cotizaciones solo admin y ejecutivo */}
           <Route path="/cotizaciones" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
-              <Welcome title="Cotizaciones" message="Bienvenido a Cotizaciones. Selecciona una opción del menú para continuar." />
+              <CotizacionesVer />
             </PrivateRoute>
           } />
           <Route path="/cotizaciones/crear" element={
@@ -150,7 +150,7 @@ function App() {
           {/* Ordenes de trabajo */}
           <Route path="/OrdendeTrabajo" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <Welcome title="Cotizaciones" message="Bienvenido a Ordenes de trabajo. Selecciona una opción del menú para continuar." />
+              <OrdenesVer />
             </PrivateRoute>
           } />
           <Route path="/ordendeTrabajo/crear/:cotizacionId" element={

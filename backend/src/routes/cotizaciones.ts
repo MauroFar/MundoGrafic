@@ -66,36 +66,48 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
     }
   };
 
-  // Procesar las imágenes de los detalles
+  // Procesar las imágenes de los detalles - ahora soporta múltiples imágenes por detalle
   const detallesConImagenes = await Promise.all(detalles.map(async (d) => {
     console.log('🔍 Procesando detalle:', d.detalle);
-    console.log('🖼️  Ruta de imagen:', d.imagen_ruta);
     
-    if (d.imagen_ruta) {
-      console.log('📸 Detalle tiene imagen, procesando...');
-      const base64Image = await getBase64Image(d.imagen_ruta);
+    // Procesar todas las imágenes del detalle
+    if (d.imagenes && Array.isArray(d.imagenes) && d.imagenes.length > 0) {
+      console.log(`📸 Detalle tiene ${d.imagenes.length} imagen(es), procesando...`);
       
-      if (base64Image) {
-        console.log('✅ Imagen procesada exitosamente para:', d.detalle);
-      } else {
-        console.log('❌ No se pudo procesar la imagen para:', d.detalle);
-      }
+      const imagenesBase64 = await Promise.all(
+        d.imagenes.map(async (img) => {
+          const base64Image = await getBase64Image(img.imagen_ruta);
+          
+          if (base64Image) {
+            console.log('✅ Imagen procesada exitosamente');
+            return {
+              base64: base64Image,
+              width: img.imagen_width || 300,
+              height: img.imagen_height || 200
+            };
+          } else {
+            console.log('❌ No se pudo procesar una imagen');
+            return null;
+          }
+        })
+      );
+      
+      // Filtrar las imágenes que no se pudieron procesar
+      const imagenesValidas = imagenesBase64.filter(img => img !== null);
       
       return { 
         ...d, 
-        base64Image,
-        imagen_width: d.imagen_width || 300,
-        imagen_height: d.imagen_height || 200
+        imagenesBase64: imagenesValidas
       };
     } else {
-      console.log('📝 Detalle sin imagen:', d.detalle);
-      return d;
+      console.log('📝 Detalle sin imágenes:', d.detalle);
+      return { ...d, imagenesBase64: [] };
     }
   }));
 
   console.log('📊 Resumen de detalles procesados:');
   detallesConImagenes.forEach((d, index) => {
-    console.log(`  ${index + 1}. ${d.detalle} - Imagen: ${d.base64Image ? '✅' : '❌'}`);
+    console.log(`  ${index + 1}. ${d.detalle} - Imágenes: ${d.imagenesBase64?.length || 0}`);
   });
 
   // Leer y convertir el logo a base64
@@ -768,14 +780,16 @@ body {
                     <td class="col-detalle">
                       <div class="detalle-con-imagen">
                         <div class="detalle-texto">${d.detalle}</div>
-                        ${d.base64Image ? `
-                          <div class="imagen-container" style="display: flex; justify-content: center; align-items: center;">
-                            <img 
-                              src="${d.base64Image}" 
-                              alt="Imagen del producto" 
-                              class="imagen-producto"
-                              style="width: ${d.imagen_width}px; height: ${d.imagen_height}px; display: block; margin: auto;"
-                            />
+                        ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
+                          <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
+                            ${d.imagenesBase64.map(img => `
+                              <img 
+                                src="${img.base64}" 
+                                alt="Imagen del producto" 
+                                class="imagen-producto"
+                                style="width: ${img.width}px; height: ${img.height}px; display: block;"
+                              />
+                            `).join('')}
                           </div>
                         ` : ''}
                       </div>
@@ -989,9 +1003,9 @@ const CotizacionDatos = (client: any) => {
         cliente_id: result.rows[0].cliente_id
       });
 
-      // Generar código único basado en el ID
+      // Generar código único basado en el ID (CO + 5 dígitos)
       const cotizacionId = result.rows[0].id;
-      const codigoCotizacion = `COT${String(cotizacionId).padStart(10, '0')}`;
+      const codigoCotizacion = `CO${String(cotizacionId).padStart(5, '0')}`;
       
       await client.query(
         'UPDATE cotizaciones SET codigo_cotizacion = $1 WHERE id = $2',
@@ -1359,24 +1373,41 @@ const CotizacionDatos = (client: any) => {
       const cotizacion = cotizacionResult.rows[0];
       console.log('Datos de cotización obtenidos:', cotizacion);
 
-      // 2. Obtener los detalles de la cotización
+      // 2. Obtener los detalles de la cotización con sus imágenes
       const detallesQuery = `
         SELECT 
-          cantidad, 
-          detalle, 
-          valor_unitario, 
-          valor_total, 
-          imagen_ruta,
-          imagen_width,
-          imagen_height
-        FROM detalle_cotizacion
-        WHERE cotizacion_id = $1
-        ORDER BY id ASC
+          d.id,
+          d.cantidad, 
+          d.detalle, 
+          d.valor_unitario, 
+          d.valor_total,
+          d.alineacion_imagenes
+        FROM detalle_cotizacion d
+        WHERE d.cotizacion_id = $1
+        ORDER BY d.id ASC
       `;
       console.log('Obteniendo detalles de la cotización...');
       const detallesResult = await client.query(detallesQuery, [id]);
-      const detalles = detallesResult.rows;
-      console.log('Detalles obtenidos:', detalles);
+      
+      // Para cada detalle, obtener sus imágenes
+      const detalles = await Promise.all(
+        detallesResult.rows.map(async (detalle) => {
+          const imagenesQuery = `
+            SELECT imagen_ruta, orden, imagen_width, imagen_height
+            FROM detalle_cotizacion_imagenes
+            WHERE detalle_cotizacion_id = $1
+            ORDER BY orden ASC
+          `;
+          const imagenesResult = await client.query(imagenesQuery, [detalle.id]);
+          
+          return {
+            ...detalle,
+            imagenes: imagenesResult.rows
+          };
+        })
+      );
+      
+      console.log('Detalles obtenidos con imágenes:', detalles);
 
       // 3. Generar el PDF
       const html = await generarHTMLCotizacion(cotizacion, detalles);
@@ -1755,7 +1786,11 @@ const CotizacionDatos = (client: any) => {
     try {
       const { cotizacion, detalles } = req.body;
 
-      // Generar el HTML
+      console.log('📋 Recibiendo preview request');
+      console.log('📊 Detalles recibidos:', JSON.stringify(detalles, null, 2));
+      console.log('🖼️ Total de detalles con imágenes:', detalles.filter(d => d.imagenes && d.imagenes.length > 0).length);
+
+      // Generar el HTML (esto ya procesa las imágenes a base64 internamente)
       const html = await generarHTMLCotizacion(cotizacion, detalles);
 
       // Generar el PDF
@@ -1764,13 +1799,15 @@ const CotizacionDatos = (client: any) => {
       // Convertir el buffer a base64
       const base64PDF = pdfBuffer.toString('base64');
 
+      console.log('✅ PDF generado exitosamente, tamaño:', pdfBuffer.length, 'bytes');
+
       // Enviar el PDF en base64
       res.json({ 
         success: true, 
         pdf: `data:application/pdf;base64,${base64PDF}`
       });
     } catch (error: any) {
-      console.error('Error al generar vista previa:', error);
+      console.error('❌ Error al generar vista previa:', error);
       res.status(500).json({ 
         success: false, 
         error: 'Error al generar la vista previa del PDF' 
