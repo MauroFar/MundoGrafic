@@ -45,6 +45,10 @@ backend/storage/firmas/*
 # Ignora toda la carpeta de staging (archivos temporales y de desarrollo)
 staging/
 
+# Ignora backups de base de datos
+backups/
+*.sql
+
 # Ignora archivos de imágenes subidas por usuarios (uploads)
 **/uploads/*.png
 **/uploads/*.jpg

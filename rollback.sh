@@ -18,8 +18,8 @@ echo -e "${RED}   ⚠️  ROLLBACK Sistema MundoGrafic${NC}"
 echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-BACKEND_DIR="/var/www/sistema-mg/backend"
-BACKUP_DIR="/var/backups/sistema-mg"
+BACKEND_DIR="$HOME/MundoGrafic/backend"
+BACKUP_DIR="$HOME/MundoGrafic/backups"
 
 # Listar backups disponibles
 echo -e "${YELLOW}Backups disponibles:${NC}"

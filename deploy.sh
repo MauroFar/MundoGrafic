@@ -21,9 +21,9 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Variables de configuración
-PROJECT_DIR="/var/www/sistema-mg"
+PROJECT_DIR="$HOME/MundoGrafic"  # Usar directorio home del usuario
 BACKEND_DIR="$PROJECT_DIR/backend"
-BACKUP_DIR="/var/backups/sistema-mg"
+BACKUP_DIR="$PROJECT_DIR/backups"  # Backups en el proyecto
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Crear directorio de backups si no existe
