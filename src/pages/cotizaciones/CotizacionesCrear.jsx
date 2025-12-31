@@ -65,6 +65,7 @@ function CotizacionesCrear() {
   const [contacto, setContacto] = useState("");
   const [usarCeluar, setUsarCeluar] = useState(false);
   const [celuar, setCeluar] = useState("");
+  const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   
   // Estados para el modal de clientes
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -704,6 +705,7 @@ function CotizacionesCrear() {
         procesos: itemData.procesos
       };
       setFilas(nuevasFilas);
+      calcularTotales(nuevasFilas); // Recalcular totales después de actualizar el ítem
     }
     setShowProcesosModal(false);
     setFilaEditandoProcesos(null);
@@ -952,11 +954,12 @@ function CotizacionesCrear() {
       const totalFila = parseFloat(fila.valor_total) || 0;
       return sum + totalFila;
     }, 0);
-    const iva = subtotal * 0.15;
-    const total = subtotal + iva;
+    const ivaCalculado = aplicarIva ? subtotal * 0.15 : 0;
+    const descuentoNum = parseFloat(descuento) || 0;
+    const total = subtotal + ivaCalculado - descuentoNum;
 
     setSubtotal(subtotal);
-    setIva(iva);
+    setIva(ivaCalculado);
     setTotal(total);
   };
 
@@ -967,6 +970,11 @@ function CotizacionesCrear() {
     }, 0);
     setSubtotal(nuevoSubtotal);
   }, [filas]); // Se ejecuta cada vez que `filas` cambia
+
+  // Recalcular totales cuando cambie el IVA o el descuento
+  useEffect(() => {
+    calcularTotales(filas);
+  }, [aplicarIva, descuento]);
 
   // Efecto para ajustar la altura de los textareas al cargar o actualizar las filas
   useEffect(() => {
@@ -1713,7 +1721,18 @@ function CotizacionesCrear() {
               <span className="text-lg font-semibold">${formatearNumero(subtotal)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700">IVA 15%:</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="aplicar-iva"
+                  checked={aplicarIva}
+                  onChange={(e) => setAplicarIva(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="aplicar-iva" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  IVA 15%:
+                </label>
+              </div>
               <span className="text-lg font-semibold">${formatearNumero(iva)}</span>
             </div>
             <div className="flex justify-between items-center">
