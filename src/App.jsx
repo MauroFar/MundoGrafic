@@ -83,7 +83,8 @@ function App() {
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
               <CotizacionesCrear />
             </PrivateRoute>
-          } />
+          } /> 
+          
           <Route path="/cotizaciones/ver" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
               <CotizacionesVer />
