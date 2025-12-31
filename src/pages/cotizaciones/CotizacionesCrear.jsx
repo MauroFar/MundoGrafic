@@ -6,8 +6,9 @@ import axios from 'axios';
 import "react-resizable/css/styles.css";
 import { Resizable } from "react-resizable";
 import Encabezado from "../../components/Encabezado";
-import { FaSave, FaEye, FaTimes } from "react-icons/fa";
+import { FaSave, FaEye, FaTimes, FaCalculator } from "react-icons/fa";
 import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
+import ItemEditorModal from './ItemEditorModal';
 
 function CotizacionesCrear() {
   const { id } = useParams();
@@ -70,6 +71,10 @@ function CotizacionesCrear() {
   const [clientesSugeridos, setClientesSugeridos] = useState([]);
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [loadingClientes, setLoadingClientes] = useState(false);
+
+  // Estados para el modal de procesos
+  const [showProcesosModal, setShowProcesosModal] = useState(false);
+  const [filaEditandoProcesos, setFilaEditandoProcesos] = useState(null);
 
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
@@ -673,6 +678,35 @@ function CotizacionesCrear() {
   const eliminarFila = (index) => {
     const nuevasFilas = filas.filter((_, i) => i !== index);
     setFilas(nuevasFilas);
+  };
+
+  // Función para abrir el modal de procesos
+  const abrirModalProcesos = (index) => {
+    setFilaEditandoProcesos(index);
+    setShowProcesosModal(true);
+  };
+
+  // Función para guardar los datos del modal de procesos
+  const guardarDatosItemProcesos = (itemData) => {
+    if (filaEditandoProcesos !== null) {
+      const nuevasFilas = [...filas];
+      nuevasFilas[filaEditandoProcesos] = {
+        ...nuevasFilas[filaEditandoProcesos],
+        cantidad: itemData.cantidad,
+        detalle: `${itemData.tipo_trabajo} - ${itemData.descripcion}\nTamaño: C:${itemData.tamano_cerrado} / A:${itemData.tamano_abierto}`,
+        valor_unitario: itemData.precio_unitario,
+        valor_total: itemData.total,
+        // Guardar datos adicionales para referencia
+        tipo_trabajo: itemData.tipo_trabajo,
+        descripcion_trabajo: itemData.descripcion,
+        tamano_cerrado: itemData.tamano_cerrado,
+        tamano_abierto: itemData.tamano_abierto,
+        procesos: itemData.procesos
+      };
+      setFilas(nuevasFilas);
+    }
+    setShowProcesosModal(false);
+    setFilaEditandoProcesos(null);
   };
 
   // Función para manejar el cambio de imagen - ahora agrega al array
@@ -1405,6 +1439,7 @@ function CotizacionesCrear() {
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50">
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16">Procesos</th>
                 <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-32">Cantidad</th>
                 <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th>
                 <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-28">Valor Unitario</th>
@@ -1416,6 +1451,16 @@ function CotizacionesCrear() {
               {filas.map((fila, index) => (
                 <React.Fragment key={index}>
                   <tr>
+                    <td className="border border-gray-300 px-2 py-2 text-center align-top">
+                      <button
+                        onClick={() => abrirModalProcesos(index)}
+                        className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex flex-col items-center gap-1"
+                        title="Calcular con procesos de producción"
+                      >
+                        <FaCalculator className="text-lg" />
+                        <span className="text-xs whitespace-nowrap">Calcular</span>
+                      </button>
+                    </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
                       <input
                         type="number"
@@ -2006,6 +2051,27 @@ function CotizacionesCrear() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Modal de Procesos de Producción */}
+        {showProcesosModal && filaEditandoProcesos !== null && (
+          <ItemEditorModal
+            item={filas[filaEditandoProcesos] ? {
+              tipo_trabajo: filas[filaEditandoProcesos].tipo_trabajo || '',
+              descripcion: filas[filaEditandoProcesos].descripcion_trabajo || '',
+              cantidad: filas[filaEditandoProcesos].cantidad || 1,
+              tamano_cerrado: filas[filaEditandoProcesos].tamano_cerrado || '',
+              tamano_abierto: filas[filaEditandoProcesos].tamano_abierto || '',
+              precio_unitario: filas[filaEditandoProcesos].valor_unitario || 0,
+              total: filas[filaEditandoProcesos].valor_total || 0,
+              procesos: filas[filaEditandoProcesos].procesos || []
+            } : null}
+            onClose={() => {
+              setShowProcesosModal(false);
+              setFilaEditandoProcesos(null);
+            }}
+            onSave={guardarDatosItemProcesos}
+          />
         )}
 
         {showSuccessModal && (

@@ -1,0 +1,310 @@
+/* Contenedor principal */
+.cotizacion-items-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header de la cotización */
+.cotizacion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.cotizacion-info h2 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.cliente-nombre {
+  font-size: 16px;
+  color: #3498db;
+  font-weight: 600;
+  margin: 4px 0;
+}
+
+.fecha-cotizacion {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin: 4px 0;
+}
+
+.cotizacion-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Lista de ítems */
+.items-lista {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #7f8c8d;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+/* Tabla de ítems */
+.items-table-container {
+  overflow-x: auto;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items-table thead {
+  background: #34495e;
+  color: white;
+}
+
+.items-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.items-table tbody tr {
+  border-bottom: 1px solid #ecf0f1;
+  transition: background-color 0.2s;
+}
+
+.items-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.items-table td {
+  padding: 12px;
+  font-size: 14px;
+}
+
+.item-numero {
+  font-weight: 600;
+  color: #7f8c8d;
+  text-align: center;
+  width: 50px;
+}
+
+.item-tipo {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.item-descripcion {
+  color: #7f8c8d;
+}
+
+.item-cantidad {
+  text-align: right;
+  font-weight: 600;
+}
+
+.item-tamano {
+  font-size: 12px;
+}
+
+.tamano-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tamano-info small {
+  color: #7f8c8d;
+}
+
+.item-precio,
+.item-total {
+  text-align: right;
+  font-weight: 600;
+  color: #27ae60;
+}
+
+.item-acciones {
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Botones de acción */
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin: 0 2px;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+.btn-edit {
+  color: #3498db;
+}
+
+.btn-edit:hover {
+  background: #e8f4f8;
+}
+
+.btn-delete {
+  color: #e74c3c;
+}
+
+.btn-delete:hover {
+  background: #fdeaea;
+}
+
+/* Total general */
+.total-row {
+  background: #ecf0f1;
+  font-weight: bold;
+}
+
+.total-label {
+  text-align: right;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.total-value {
+  font-size: 18px;
+  color: #27ae60;
+  text-align: right;
+}
+
+/* Botones principales */
+.btn-primary {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #7f8c8d;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+}
+
+/* Modal de confirmación */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-confirm {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal-confirm h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.modal-confirm p {
+  margin: 0 0 20px 0;
+  color: #7f8c8d;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cotizacion-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .items-table {
+    font-size: 12px;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 8px;
+  }
+}

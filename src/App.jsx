@@ -32,6 +32,7 @@ import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
 import ClientesVer from "./pages/clientes/ClientesVer";
 import ClientesCrear from "./pages/clientes/ClientesCrear";
+import CotizacionItems from "./pages/cotizaciones/CotizacionItems";
 
 function App() {
   return (
@@ -84,10 +85,17 @@ function App() {
               <CotizacionesCrear />
             </PrivateRoute>
           } /> 
-          
+
           <Route path="/cotizaciones/ver" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
               <CotizacionesVer />
+            </PrivateRoute>
+          } />
+
+          {/* PROTOTIPO: Vista de ítems de cotización */}
+          <Route path="/cotizaciones/items-prototipo" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo']}>
+              <CotizacionItems />
             </PrivateRoute>
           } />
 
