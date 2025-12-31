@@ -30,6 +30,7 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
+      { path: "/administracion", label: "Administración" },
       { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
     ],
     ejecutivo: [
@@ -75,6 +76,14 @@ const Sidebar = () => {
       { path: "/produccionDiaria", label: "Producción Diaria" },
       { path: "/productosTerminados", label: "Productos Terminados" },
     ],
+    // Submenú de Administración
+    administracion: [
+      { path: "/admin/usuarios", label: "Gestión de Usuarios" },
+      { path: "/admin/catalogo-procesos", label: "Catálogo de Procesos" },
+      { path: "/admin/tipos-trabajo", label: "Tipos de Trabajo" },
+      { path: "/inventario", label: "Inventario" },
+      { path: "/reportesTrabajoDiario", label: "Reportes" },
+    ],
   };
 
   const noBackButtonPaths = ["/welcome", "/"];
@@ -86,6 +95,8 @@ const Sidebar = () => {
       location.pathname.startsWith("/cotizaciones") ||
       location.pathname.startsWith("/ordendeTrabajo") ||
       location.pathname.startsWith("/produccion") ||
+      location.pathname.startsWith("/admin") ||
+      location.pathname === "/administracion" ||
       location.pathname === "/dashboardGeneral" ||
       location.pathname === "/productosTerminados" ||
       location.pathname === "/produccionDiaria"
@@ -96,6 +107,9 @@ const Sidebar = () => {
     if (location.pathname.startsWith("/clientes")) return menus.clientes;
     if (location.pathname.startsWith("/cotizaciones")) return menus.cotizaciones;
     if (location.pathname.startsWith("/ordendeTrabajo")) return menus.ordenTrabajo;
+    if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
+      return menus.administracion;
+    }
     if (
       location.pathname.startsWith("/produccion") ||
       location.pathname === "/dashboardGeneral" ||
@@ -154,8 +168,14 @@ const Sidebar = () => {
         {inSubmenu && (
           <button
             className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md"
-            onClick={() => navigate('/produccion')}
-            title="Regresar al menú principal de Producción"
+            onClick={() => {
+              if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
+                navigate('/welcome');
+              } else {
+                navigate('/produccion');
+              }
+            }}
+            title="Regresar al menú principal"
           >
             ⬅️ Regresar
           </button>

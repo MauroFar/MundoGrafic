@@ -24,11 +24,8 @@ function Login() {
         localStorage.setItem("rol", data.user.rol);
         localStorage.setItem("nombre", data.user.nombre);
         try { localStorage.setItem("user", JSON.stringify(data.user)); } catch (_) {}
-        if (data.user.rol === "admin") {
-          navigate("/admin/usuarios");
-        } else {
-          navigate("/welcome");
-        }
+        // Todos los usuarios van al menú principal
+        navigate("/welcome");
       } else {
         alert(data.error || "Credenciales incorrectas. Intenta nuevamente.");
       }

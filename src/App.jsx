@@ -27,6 +27,8 @@ import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
 import Inventario from "./pages/Inventario/Inventario";
 import PageNotFound from "./pages/PageNotFound";
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
+import CatalogoProcesos from "./pages/admin/CatalogoProcesos";
+import TiposTrabajo from "./pages/admin/TiposTrabajo";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
 import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
@@ -193,6 +195,20 @@ function App() {
           <Route path="/admin/usuarios" element={
             <PrivateRoute allowedRoles={['admin']}>
               <GestionUsuarios />
+            </PrivateRoute>
+          } />
+
+          {/* Catálogo de Procesos */}
+          <Route path="/admin/catalogo-procesos" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <CatalogoProcesos />
+            </PrivateRoute>
+          } />
+
+          {/* Catálogo de Tipos de Trabajo */}
+          <Route path="/admin/tipos-trabajo" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <TiposTrabajo />
             </PrivateRoute>
           } />
 

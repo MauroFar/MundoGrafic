@@ -16,13 +16,6 @@ function GestionUsuarios() {
 
   const apiUrl = import.meta.env.VITE_API_URL;
 
-  // Cerrar sesión
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("rol");
-    navigate("/");
-  };
-
   // Cargar usuarios y áreas al montar
   useEffect(() => {
     fetchUsuarios();
@@ -159,10 +152,10 @@ function GestionUsuarios() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center py-8 px-2">
       <div className="relative w-full max-w-6xl mx-auto bg-white p-12 rounded-3xl shadow-2xl border border-gray-100 flex flex-col gap-8">
         <button
-          onClick={handleLogout}
-          className="absolute top-8 right-8 bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg shadow transition-all duration-200 text-base font-semibold"
+          onClick={() => navigate('/administracion')}
+          className="absolute top-8 left-8 bg-gray-500 hover:bg-gray-600 text-white px-5 py-2 rounded-lg shadow transition-all duration-200 text-base font-semibold flex items-center gap-2"
         >
-          Cerrar sesión
+          ← Regresar
         </button>
         <h2 className="text-4xl font-extrabold mb-10 text-center text-blue-900 tracking-tight drop-shadow">Gestión de Usuarios</h2>
         <form onSubmit={handleSubmit} className="mb-8 bg-blue-50/60 p-8 rounded-2xl shadow-inner grid grid-cols-1 md:grid-cols-2 gap-6 border border-blue-100">

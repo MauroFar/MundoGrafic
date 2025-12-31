@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 const Inventario = () => {
+  const navigate = useNavigate();
   const [productos, setProductos] = useState([
     {
       id: 1,
@@ -118,7 +121,15 @@ const Inventario = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Inventario de Imprenta</h1>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/administracion')}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow transition-all duration-200 flex items-center gap-2"
+          >
+            ← Regresar
+          </button>
+          <h1 className="text-2xl font-bold">Inventario de Imprenta</h1>
+        </div>
         <button
           onClick={() => setModalAbierto(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"

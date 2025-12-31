@@ -1,0 +1,431 @@
+.catalogo-procesos-container {
+  padding: 24px;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+
+/* Header */
+.catalogo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.catalogo-titulo {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.catalogo-subtitulo {
+  font-size: 14px;
+  color: #64748b;
+  margin: 4px 0 0 0;
+}
+
+.btn-nuevo-proceso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-nuevo-proceso:hover {
+  background: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* Estadísticas */
+.estadisticas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.estadistica-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.estadistica-card.activos {
+  border-left: 4px solid #10b981;
+}
+
+.estadistica-card.inactivos {
+  border-left: 4px solid #ef4444;
+}
+
+.estadistica-card.categoria {
+  text-align: left;
+}
+
+.estadistica-numero {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.estadistica-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.estadistica-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+/* Formulario Nuevo Proceso */
+.formulario-nuevo-proceso {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 2px solid #8b5cf6;
+}
+
+.formulario-nuevo-proceso h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px 0;
+  color: #8b5cf6;
+  font-size: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-guardar, .btn-cancelar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-guardar {
+  background: #10b981;
+  color: white;
+}
+
+.btn-guardar:hover {
+  background: #059669;
+}
+
+.btn-cancelar {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-cancelar:hover {
+  background: #d1d5db;
+}
+
+/* Filtros */
+.filtros-container {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filtro-grupo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filtro-grupo label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.filtro-grupo select {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+  cursor: pointer;
+}
+
+/* Tabla */
+.tabla-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tabla-procesos {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-procesos thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.tabla-procesos th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabla-procesos td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.tabla-procesos tbody tr {
+  transition: background-color 0.2s;
+}
+
+.tabla-procesos tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.tabla-procesos tbody tr.fila-inactiva {
+  opacity: 0.6;
+  background-color: #fee;
+}
+
+.nombre-proceso {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.precio {
+  font-weight: 600;
+  color: #10b981;
+  font-size: 15px;
+}
+
+.unidad {
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-categoria {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-categoria.pre-prensa {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-categoria.materiales {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-categoria.impresion {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.badge-categoria.acabados {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
+.descripcion {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* Botón Toggle */
+.btn-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle.activo {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.btn-toggle.activo:hover {
+  background: #a7f3d0;
+}
+
+.btn-toggle.inactivo {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-toggle.inactivo:hover {
+  background: #fecaca;
+}
+
+/* Acciones */
+.acciones-grupo {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-accion {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.btn-accion.editar {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.btn-accion.editar:hover {
+  background: #bfdbfe;
+}
+
+.btn-accion.eliminar {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-accion.eliminar:hover {
+  background: #fecaca;
+}
+
+.btn-accion.guardar {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.btn-accion.guardar:hover {
+  background: #a7f3d0;
+}
+
+.btn-accion.cancelar {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-accion.cancelar:hover {
+  background: #d1d5db;
+}
+
+/* Input Edición */
+.input-edicion {
+  padding: 6px 10px;
+  border: 2px solid #8b5cf6;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.input-edicion:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* No resultados */
+.no-resultados {
+  padding: 60px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 16px;
+}
