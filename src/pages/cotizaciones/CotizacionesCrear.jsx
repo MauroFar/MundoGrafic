@@ -2031,24 +2031,42 @@ function CotizacionesCrear() {
                       {clientesSugeridos
                         .filter(cliente => 
                           cliente.nombre_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+                          cliente.empresa?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
                           cliente.email_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase())
                         )
                         .map((cliente) => (
-                          <tr key={cliente.id} className="hover:bg-gray-50">
+                          <tr 
+                            key={cliente.id} 
+                            className="hover:bg-blue-50 cursor-pointer transition-colors"
+                            onClick={() => {
+                              // Seleccionar el cliente y cerrar el modal
+                              // Poner la empresa en el campo Cliente
+                              setNombreCliente(cliente.empresa || cliente.nombre_cliente);
+                              setSelectedClienteId(cliente.id);
+                              
+                              // Poner el nombre del contacto en el campo Contacto
+                              if (cliente.nombre_cliente && cliente.nombre_cliente !== cliente.empresa) {
+                                setContacto(cliente.nombre_cliente);
+                                setUsarContacto(true);
+                              } else {
+                                setContacto("");
+                                setUsarContacto(false);
+                              }
+                              
+                              setShowClientesModal(false);
+                              setBusquedaCliente("");
+                            }}
+                          >
                             <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
                             <td className="px-4 py-2 border-b">{cliente.empresa}</td>
                             <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
                             <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
                             <td className="px-4 py-2 border-b text-center">
                               <button
-                                onClick={() => {
-                                  // Seleccionar el cliente y cerrar el modal
-                                  setNombreCliente(cliente.nombre_cliente);
-                                  setSelectedClienteId(cliente.id);
-                                  setShowClientesModal(false);
-                                  setBusquedaCliente("");
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Evitar doble click
                                 }}
-                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm pointer-events-none"
                               >
                                 Seleccionar
                               </button>
