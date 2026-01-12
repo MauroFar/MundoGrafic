@@ -56,7 +56,7 @@ function CotizacionesVer() {
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'prensa' | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'prensa' (Offset) | 'digital'
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cotizacionToDelete, setCotizacionToDelete] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -68,6 +68,8 @@ function CotizacionesVer() {
   const [buscarGlobal, setBuscarGlobal] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [cotizacionDetalle, setCotizacionDetalle] = useState(null);
+  const [showAprobarModal, setShowAprobarModal] = useState(false);
+  const [cotizacionToApprove, setCotizacionToApprove] = useState(null);
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -1041,7 +1043,8 @@ function CotizacionesVer() {
                           className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
                           onClick={(e) => {
                             e.stopPropagation();
-                            aprobarCotizacion(cotizacion.id);
+                            setCotizacionToApprove(cotizacion);
+                            setShowAprobarModal(true);
                           }}
                           title="Aprobar cotización"
                         >
@@ -1630,7 +1633,7 @@ function CotizacionesVer() {
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onClick={() => continuarGeneracionOrden('prensa')}
               >
-                Prensa
+                Offset
               </button>
               <button
                 className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
@@ -2099,6 +2102,51 @@ function CotizacionesVer() {
           >
             Cargar más
           </button>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Aprobación */}
+      {showAprobarModal && cotizacionToApprove && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-fadeIn">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-green-100 rounded-full mb-4">
+                <FaCheck className="text-3xl text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-center text-gray-800 mb-2">
+                ¿Aprobar Cotización?
+              </h3>
+              <p className="text-gray-600 text-center mb-4">
+                Estás por aprobar la cotización <span className="font-semibold">{cotizacionToApprove.codigo_cotizacion}</span> de <span className="font-semibold">{cotizacionToApprove.nombre_cliente}</span>.
+              </p>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Una vez aprobada, se habilitará la opción de generar la orden de trabajo.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowAprobarModal(false);
+                    setCotizacionToApprove(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    const id = cotizacionToApprove.id;
+                    setShowAprobarModal(false);
+                    setCotizacionToApprove(null);
+                    await aprobarCotizacion(id);
+                  }}
+                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <FaCheck />
+                  Aprobar Cotización
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
