@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
+import { usePermisos } from '../../hooks/usePermisos';
 
 function CotizacionesVer() {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
   
   const [cotizaciones, setCotizaciones] = useState([]);
   const [filtros, setFiltros] = useState({
@@ -192,6 +194,9 @@ function CotizacionesVer() {
   };
 
   const editarCotizacion = (id) => {
+    if (!verificarYMostrarError('cotizaciones', 'editar', 'editar esta cotización')) {
+      return;
+    }
     navigate(`/cotizaciones/crear/${id}`);
   };
 
@@ -223,6 +228,11 @@ function CotizacionesVer() {
   };
 
   const eliminarCotizacion = (id) => {
+    // Validación de permisos
+    if (!verificarYMostrarError('cotizaciones', 'eliminar', 'eliminar esta cotización')) {
+      return;
+    }
+    
     // Validación inicial
     if (!id) {
       setConfirmMessage("ID de cotización no válido");
@@ -978,28 +988,32 @@ function CotizacionesVer() {
                         <FaEye />
                         <span className="text-xs mt-1 text-gray-600">VistaPreviaPDF</span>
                       </button>
-                      <button
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editarCotizacion(cotizacion.id);
-                        }}
-                        title="Editar"
-                      >
-                        <FaEdit />
-                        <span className="text-xs mt-1 text-gray-600">Editar</span>
-                      </button>
-                      <button
-                        className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          eliminarCotizacion(cotizacion.id);
-                        }}
-                        title="Eliminar"
-                      >
-                        <FaTrash />
-                        <span className="text-xs mt-1 text-gray-600">Eliminar</span>
-                      </button>
+                      {puedeEditar('cotizaciones') && (
+                        <button
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editarCotizacion(cotizacion.id);
+                          }}
+                          title="Editar"
+                        >
+                          <FaEdit />
+                          <span className="text-xs mt-1 text-gray-600">Editar</span>
+                        </button>
+                      )}
+                      {puedeEliminar('cotizaciones') && (
+                        <button
+                          className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            eliminarCotizacion(cotizacion.id);
+                          }}
+                          title="Eliminar"
+                        >
+                          <FaTrash />
+                          <span className="text-xs mt-1 text-gray-600">Eliminar</span>
+                        </button>
+                      )}
                       <button
                         className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
                         onClick={(e) => {

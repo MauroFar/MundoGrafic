@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import authRequired from "../middleware/auth";
+import checkPermission from "../middleware/checkPermission";
 
 const createCliente = (client: any) => {
   // Agregar un middleware de logging
@@ -16,7 +17,7 @@ const createCliente = (client: any) => {
   });
 
   // ✅ Ruta para obtener todos los clientes
-  router.get("/", authRequired(), async (req: any, res: any) => {
+  router.get("/", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
     try {
       console.log('🔍 [Clientes API] Iniciando consulta de clientes...');
       const query = `
@@ -177,7 +178,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para crear un cliente
-  router.post("/", authRequired(), async (req: any, res: any) => {
+  router.post("/", authRequired(), checkPermission(client, 'clientes', 'crear'), async (req: any, res: any) => {
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
     
@@ -269,7 +270,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para actualizar un cliente
-  router.put("/:id", authRequired(), async (req: any, res: any) => {
+  router.put("/:id", authRequired(), checkPermission(client, 'clientes', 'editar'), async (req: any, res: any) => {
     const { id } = req.params;
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
@@ -349,7 +350,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para eliminar un cliente
-  router.delete("/:id", authRequired(), async (req: any, res: any) => {
+  router.delete("/:id", authRequired(), checkPermission(client, 'clientes', 'eliminar'), async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -359,14 +360,23 @@ const createCliente = (client: any) => {
       const checkQuery = `
         SELECT 
           (SELECT COUNT(*) FROM cotizaciones WHERE cliente_id = $1) as cotizaciones,
-          (SELECT COUNT(*) FROM ordenes_trabajo WHERE cliente_id = $1) as ordenes
+          (SELECT COUNT(*) FROM orden_trabajo ot 
+           JOIN cotizaciones c ON ot.id_cotizacion = c.id 
+           WHERE c.cliente_id = $1) as ordenes
       `;
       const checkResult = await client.query(checkQuery, [id]);
       
-      if (checkResult.rows[0].cotizaciones > 0 || checkResult.rows[0].ordenes > 0) {
+      const cotizaciones = parseInt(checkResult.rows[0].cotizaciones) || 0;
+      const ordenes = parseInt(checkResult.rows[0].ordenes) || 0;
+      
+      if (cotizaciones > 0 || ordenes > 0) {
         return res.status(409).json({ 
           error: 'No se puede eliminar el cliente',
-          details: 'El cliente tiene cotizaciones u órdenes de trabajo asociadas'
+          message: 'El cliente tiene registros asociados',
+          detalles: {
+            cotizaciones,
+            ordenes
+          }
         });
       }
       

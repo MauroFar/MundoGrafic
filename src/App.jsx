@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { PermisosProvider } from "./context/PermisosContext";
 import PrivateRoute from "./components/PrivateRoute";
 import ToastNotificaciones from "./components/ToastNotificaciones";
 
@@ -38,10 +39,11 @@ import CotizacionItems from "./pages/cotizaciones/CotizacionItems";
 
 function App() {
   return (
-    <Router>
-      <ToastContainer position="top-right" autoClose={3000} />
-      <ToastNotificaciones />
-      <Routes>
+    <PermisosProvider>
+      <Router>
+        <ToastContainer position="top-right" autoClose={3000} />
+        <ToastNotificaciones />
+        <Routes>
         {/* Ruta Login */}
         <Route path="/" element={<Login />} />
 
@@ -227,6 +229,7 @@ function App() {
         </Route>
       </Routes>
     </Router>
+    </PermisosProvider>
   );
 }
 

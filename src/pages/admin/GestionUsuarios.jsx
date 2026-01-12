@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FirmaModalOptimized from "../../components/FirmaModalOptimized";
+import PermisosModal from "../../components/PermisosModal";
 
 function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
@@ -10,6 +11,8 @@ function GestionUsuarios() {
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
+  const [showPermisosModal, setShowPermisosModal] = useState(false);
+  const [usuarioParaPermisos, setUsuarioParaPermisos] = useState(null);
 
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
@@ -92,6 +95,11 @@ function GestionUsuarios() {
   const handleConfigurarFirma = (usuario) => {
     setSelectedUsuario(usuario);
     setShowFirmaModal(true);
+  };
+
+  const handleConfigurarPermisos = (usuario) => {
+    setUsuarioParaPermisos(usuario);
+    setShowPermisosModal(true);
   };
 
   const handleSaveFirma = async (htmlCode) => {
@@ -283,6 +291,9 @@ function GestionUsuarios() {
                          📧 Firma
                        </button>
                      )}
+                     <button className="text-green-700 hover:text-green-900 font-bold transition-all px-3 py-1 rounded-lg bg-green-100/60 shadow-sm" onClick={() => handleConfigurarPermisos(u)} title="Configurar Permisos">
+                       🔒 Permisos
+                     </button>
                      {u.rol !== "admin" && (
                        <button className="text-red-700 hover:text-red-900 font-bold transition-all px-3 py-1 rounded-lg bg-red-100/60 shadow-sm" onClick={() => handleDelete(u.id)} title="Borrar">
                          <svg xmlns="http://www.w3.org/2000/svg" className="inline w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -304,6 +315,18 @@ function GestionUsuarios() {
           onSave={handleSaveFirma}
           usuario={selectedUsuario}
         />
+
+        {/* Modal de Permisos */}
+        {showPermisosModal && usuarioParaPermisos && (
+          <PermisosModal
+            usuario={usuarioParaPermisos}
+            onClose={() => {
+              setShowPermisosModal(false);
+              setUsuarioParaPermisos(null);
+            }}
+            onSave={fetchUsuarios}
+          />
+        )}
      </div>
    );
  }

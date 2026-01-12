@@ -9,11 +9,13 @@ import Encabezado from "../../components/Encabezado";
 import { FaSave, FaEye, FaTimes, FaCalculator } from "react-icons/fa";
 import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
 import ItemEditorModal from './ItemEditorModal';
+import { usePermisos } from '../../hooks/usePermisos';
 
 function CotizacionesCrear() {
   const { id } = useParams();
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  const { puedeCrear, puedeEditar, verificarYMostrarError } = usePermisos();
   const today = new Date().toISOString().split("T")[0];
   
   // Initialize all state variables with default values
@@ -386,13 +388,30 @@ function CotizacionesCrear() {
     setIsSaving(true);
     console.log("Iniciando guardado de cotización...");
     try {
+      // Validar permisos según si es nueva o actualización
+      if (!id) {
+        // Es nueva cotización, verificar permiso de crear
+        if (!verificarYMostrarError('cotizaciones', 'crear', 'crear esta cotización')) {
+          setIsSaving(false);
+          return;
+        }
+      } else {
+        // Es actualización, verificar permiso de editar
+        if (!verificarYMostrarError('cotizaciones', 'editar', 'actualizar esta cotización')) {
+          setIsSaving(false);
+          return;
+        }
+      }
+      
       // Validaciones iniciales
       if (!selectedRuc || !selectedRuc.id) {
         alert("Por favor seleccione un RUC para proceder");
+        setIsSaving(false);
         return;
       }
       if (!nombreCliente) {
         alert("Por favor ingrese el nombre del cliente");
+        setIsSaving(false);
         return;
       }
       // Validar que haya al menos un producto con detalle y valores
@@ -600,7 +619,11 @@ function CotizacionesCrear() {
       }
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
-      alert("Error al procesar la cotización: " + error.message);
+      // El error 403 ya es manejado por el interceptor de axios y el modal global
+      // Solo mostramos alert para otros errores
+      if (error.message && !error.message.includes('403') && !error.message.includes('Permiso denegado')) {
+        alert("Error al procesar la cotización: " + error.message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -615,13 +638,21 @@ function CotizacionesCrear() {
     setIsSaving(true);
     console.log("Iniciando guardado como nueva cotización...");
     try {
+      // Validar permiso de crear antes de continuar
+      if (!verificarYMostrarError('cotizaciones', 'crear', 'crear esta cotización')) {
+        setIsSaving(false);
+        return;
+      }
+      
       // Validaciones iniciales
       if (!selectedRuc.id) {
         alert("Selecciona un RUC para la cotización");
+        setIsSaving(false);
         return;
       }
       if (!nombreCliente.trim()) {
         alert("El nombre del cliente es requerido");
+        setIsSaving(false);
         return;
       }
       // 2. Si hay un cliente seleccionado, usar su id directamente
@@ -672,7 +703,12 @@ function CotizacionesCrear() {
       return; // Detener flujo hasta que se confirme el modal
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
-      alert("Error al guardar la nueva cotización: " + error.message);
+      // El error 403 ya es manejado por el interceptor de axios y el modal global
+      if (error.message && !error.message.includes('403') && !error.message.includes('Permiso denegado')) {
+        alert("Error al guardar la nueva cotización: " + error.message);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 

@@ -1,10 +1,12 @@
 import express from "express";
+import authRequired from "../middleware/auth";
+import checkPermission from "../middleware/checkPermission";
 
 export default (client: any) => {
   const router = express.Router();
 
   // Listar reportes con filtros opcionales: area, operador
-  router.get("/", async (req: any, res: any) => {
+  router.get("/", authRequired(), checkPermission(client, 'reportes', 'leer'), async (req: any, res: any) => {
     try {
       const { area, operador } = req.query;
       const conditions: string[] = [];
@@ -32,7 +34,7 @@ export default (client: any) => {
   });
 
   // Crear un nuevo reporte
-  router.post("/", async (req: any, res: any) => {
+  router.post("/", authRequired(), checkPermission(client, 'reportes', 'crear'), async (req: any, res: any) => {
     try {
       const { area, operador, proceso, inicio, fin } = req.body;
       if (!area || !proceso || !inicio || !fin) {

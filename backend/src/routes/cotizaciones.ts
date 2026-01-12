@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
 import authRequired from "../middleware/auth";
+import checkPermission from "../middleware/checkPermission";
 require('dotenv').config();
 
 // Sistema de emails personalizados por ejecutivo
@@ -913,7 +914,7 @@ const generarPDF = async (htmlContent) => {
 
 const CotizacionDatos = (client: any) => {
   // Ruta para crear una cotización y guardar todos los datos del cliente
-  router.post("/", authRequired(), async (req: any, res: any) => {
+  router.post("/", authRequired(), checkPermission(client, 'cotizaciones', 'crear'), async (req: any, res: any) => {
     const { 
       fecha, 
       subtotal, 
@@ -1030,7 +1031,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Obtener todas las cotizaciones con filtros simplificados
-  router.get("/todas", authRequired(), async (req: any, res: any) => {
+  router.get("/todas", authRequired(), checkPermission(client, 'cotizaciones', 'leer'), async (req: any, res: any) => {
     console.log("Recibiendo petición en /todas");
     const { busqueda, fechaDesde, fechaHasta, limite, ordenar, global } = req.query;
     const user = req.user;
@@ -1123,7 +1124,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   ///*Cotizaciones editar*////////
-  router.get("/:id", authRequired(), async (req: any, res: any) => {
+  router.get("/:id", authRequired(), checkPermission(client, 'cotizaciones', 'leer'), async (req: any, res: any) => {
     try {
       const { id } = req.params;
   
@@ -1180,7 +1181,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Actualizar una cotización existente
-  router.put("/:id", authRequired(), async (req: any, res: any) => {
+  router.put("/:id", authRequired(), checkPermission(client, 'cotizaciones', 'editar'), async (req: any, res: any) => {
     const { id } = req.params;
     const { 
       fecha, 
@@ -1254,7 +1255,7 @@ const CotizacionDatos = (client: any) => {
   });
 
   // Eliminar una cotización
-  router.delete("/:id", authRequired(), async (req: any, res: any) => {
+  router.delete("/:id", authRequired(), checkPermission(client, 'cotizaciones', 'eliminar'), async (req: any, res: any) => {
     const { id } = req.params;
 
     try {

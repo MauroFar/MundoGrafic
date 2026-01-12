@@ -3,15 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { FaEdit, FaTrash, FaSearch, FaPlus, FaPhone, FaEnvelope, FaMapMarkerAlt, FaTimes, FaIdCard, FaBuilding, FaUser, FaStickyNote, FaCalendar, FaHistory } from "react-icons/fa";
 import { toast } from 'react-toastify';
 import { obtenerClientes, eliminarCliente } from "../../services/clientesService";
+import { usePermisos } from "../../hooks/usePermisos";
+import ModalNoSePuedeEliminar from "../../components/ModalNoSePuedeEliminar";
 
 const ClientesVer = () => {
   const navigate = useNavigate();
+  const { puedeCrear, puedeEditar, puedeEliminar, modalData, cerrarModal, verificarYMostrarError } = usePermisos();
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredClientes, setFilteredClientes] = useState([]);
   const [filtroEstado, setFiltroEstado] = useState("todos"); // "todos", "activo", "inactivo"
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null); // Para el modal
+  const [showModalNoEliminar, setShowModalNoEliminar] = useState(false);
+  const [detallesNoEliminar, setDetallesNoEliminar] = useState(null);
+  const [clienteNoEliminar, setClienteNoEliminar] = useState(null);
 
   // Cargar clientes desde la base de datos
   useEffect(() => {
@@ -57,10 +63,20 @@ const ClientesVer = () => {
   }, [searchTerm, clientes, filtroEstado]);
 
   const handleEdit = (id) => {
+    if (!verificarYMostrarError('clientes', 'editar', 'editar este cliente')) {
+      return;
+    }
     navigate(`/clientes/editar/${id}`);
   };
 
   const handleDelete = async (id) => {
+    if (!verificarYMostrarError('clientes', 'eliminar', 'eliminar este cliente')) {
+      return;
+    }
+    
+    // Buscar el cliente para obtener su nombre
+    const cliente = clientes.find(c => c.id === id);
+    
     if (window.confirm("¿Estás seguro de eliminar este cliente?")) {
       try {
         await eliminarCliente(id);
@@ -69,7 +85,14 @@ const ClientesVer = () => {
       } catch (error) {
         console.error('Error al eliminar cliente:', error);
         if (error.response?.status === 409) {
-          toast.error('No se puede eliminar: el cliente tiene cotizaciones u órdenes asociadas');
+          // Mostrar modal detallado
+          const errorData = error.response?.data;
+          setClienteNoEliminar(cliente?.nombre || 'el cliente seleccionado');
+          setDetallesNoEliminar(errorData?.detalles || null);
+          setShowModalNoEliminar(true);
+        } else if (error.response?.status === 403) {
+          // El interceptor ya maneja el 403
+          return;
         } else {
           toast.error('Error al eliminar el cliente');
         }
@@ -78,6 +101,9 @@ const ClientesVer = () => {
   };
 
   const handleCreateNew = () => {
+    if (!verificarYMostrarError('clientes', 'crear', 'crear un nuevo cliente')) {
+      return;
+    }
     navigate("/clientes/crear");
   };
 
@@ -94,13 +120,15 @@ const ClientesVer = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Clientes</h1>
-        <button
-          onClick={handleCreateNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md"
-        >
-          <FaPlus />
-          Nuevo Cliente
-        </button>
+        {puedeCrear('clientes') && (
+          <button
+            onClick={handleCreateNew}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200 shadow-md"
+          >
+            <FaPlus />
+            Nuevo Cliente
+          </button>
+        )}
       </div>
 
       {/* Barra de búsqueda */}
@@ -228,26 +256,30 @@ const ClientesVer = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(cliente.id);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 transition-colors p-2 hover:bg-blue-50 rounded"
-                          title="Editar cliente"
-                        >
-                          <FaEdit size={18} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(cliente.id);
-                          }}
-                          className="text-red-600 hover:text-red-900 transition-colors p-2 hover:bg-red-50 rounded"
-                          title="Eliminar cliente"
-                        >
-                          <FaTrash size={18} />
-                        </button>
+                        {puedeEditar('clientes') && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(cliente.id);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 transition-colors p-2 hover:bg-blue-50 rounded"
+                            title="Editar cliente"
+                          >
+                            <FaEdit size={18} />
+                          </button>
+                        )}
+                        {puedeEliminar('clientes') && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(cliente.id);
+                            }}
+                            className="text-red-600 hover:text-red-900 transition-colors p-2 hover:bg-red-50 rounded"
+                            title="Eliminar cliente"
+                          >
+                            <FaTrash size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -455,6 +487,14 @@ const ClientesVer = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de No Se Puede Eliminar */}
+      <ModalNoSePuedeEliminar
+        isOpen={showModalNoEliminar}
+        onClose={() => setShowModalNoEliminar(false)}
+        clienteNombre={clienteNoEliminar}
+        detalles={detallesNoEliminar}
+      />
     </div>
   );
 };

@@ -4,6 +4,8 @@ import path from "path";
 import fs from "fs/promises";
 import puppeteer from "puppeteer";
 import nodemailer from "nodemailer";
+import authRequired from "../middleware/auth";
+import checkPermission from "../middleware/checkPermission";
 import { validateOrdenTrabajo, validateOrdenTrabajoUpdate } from "../middleware/ordenTrabajoValidation";
 
 export default (client: any) => {
@@ -46,7 +48,7 @@ export default (client: any) => {
   });
 
   // Crear una orden de trabajo desde una cotización o manualmente
-  router.post("/crearOrdenTrabajo", validateOrdenTrabajo, async (req, res): Promise<void> => {
+  router.post("/crearOrdenTrabajo", authRequired(), checkPermission(client, 'ordenes_trabajo', 'crear'), validateOrdenTrabajo, async (req, res): Promise<void> => {
     console.log('🚀 CREAR ORDEN - Iniciando proceso de creación');
     
     const {
@@ -133,7 +135,7 @@ export default (client: any) => {
   });
 
   // Listar órdenes de trabajo con filtros y paginación
-  router.get('/listar', async (req, res): Promise<void> => {
+  router.get('/listar', authRequired(), checkPermission(client, 'ordenes_trabajo', 'leer'), async (req, res): Promise<void> => {
     try {
       const { busqueda, fechaDesde, fechaHasta, limite } = req.query;
       let query = `
@@ -228,7 +230,7 @@ export default (client: any) => {
   });
 
   // Obtener datos de una orden de trabajo por ID
-  router.get('/orden/:id', async (req: any, res: any) => {
+  router.get('/orden/:id', authRequired(), checkPermission(client, 'ordenes_trabajo', 'leer'), async (req: any, res: any) => {
     const { id } = req.params;
     try {
       // Obtener datos generales de la orden
@@ -269,7 +271,7 @@ export default (client: any) => {
   });
 
   /////editar y actualizar datos orden de trabajo   // Editar una orden de trabajo existente
-  router.put('/editarOrden/:id', validateOrdenTrabajoUpdate, async (req, res): Promise<void> => {
+  router.put('/editarOrden/:id', authRequired(), checkPermission(client, 'ordenes_trabajo', 'editar'), validateOrdenTrabajoUpdate, async (req, res): Promise<void> => {
     const { id } = req.params;
     const {
       nombre_cliente,
@@ -419,7 +421,7 @@ export default (client: any) => {
   });
 
   // Eliminar una orden de trabajo por id
-  router.delete('/eliminar/:id', async (req, res): Promise<void> => {
+  router.delete('/eliminar/:id', authRequired(), checkPermission(client, 'ordenes_trabajo', 'eliminar'), async (req, res): Promise<void> => {
     const { id } = req.params;
     try {
       const result = await client.query('DELETE FROM orden_trabajo WHERE id = $1 RETURNING *', [id]);
