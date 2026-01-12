@@ -46,9 +46,11 @@ function CotizacionesCrear() {
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
     nombre: '',
+    empresa: '',
     direccion: '',
     telefono: '',
-    email: ''
+    email: '',
+    ruc_cedula: ''
   });
   const [onNuevoClienteConfirm, setOnNuevoClienteConfirm] = useState(null); // callback para continuar flujo
   const [selectedClienteId, setSelectedClienteId] = useState(null);
@@ -66,6 +68,11 @@ function CotizacionesCrear() {
   const [usarCeluar, setUsarCeluar] = useState(false);
   const [celuar, setCeluar] = useState("");
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
+  
+  // Estados para modales de confirmación
+  const [showConfirmGuardar, setShowConfirmGuardar] = useState(false);
+  const [showConfirmActualizar, setShowConfirmActualizar] = useState(false);
+  const [showConfirmGuardarComoNueva, setShowConfirmGuardarComoNueva] = useState(false);
   
   // Estados para el modal de clientes
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -413,30 +420,35 @@ function CotizacionesCrear() {
         return;
       }
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
-      const buscarClienteResponse = await fetch(
-        `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
-      );
-      if (!buscarClienteResponse.ok) {
-        throw new Error("Error al buscar cliente");
+      try {
+        const buscarClienteResponse = await fetch(
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+        );
+        
+        let clientesEncontrados = [];
+        if (buscarClienteResponse.ok) {
+          clientesEncontrados = await buscarClienteResponse.json();
+        }
+        
+        if (clientesEncontrados.length > 0) {
+          // Cliente existente
+          const clienteId = clientesEncontrados[0].id;
+          setSelectedClienteId(clienteId);
+          await continuarGuardadoCotizacion(clienteId);
+          return;
+        }
+      } catch (searchError) {
+        console.warn("Error al buscar cliente, se procederá a crear uno nuevo:", searchError);
       }
-      const clientesEncontrados = await buscarClienteResponse.json();
-      let clienteId;
-      if (clientesEncontrados.length > 0) {
-        // Cliente existente
-        clienteId = clientesEncontrados[0].id;
-        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await continuarGuardadoCotizacion(clienteId);
-        return;
-      } else {
-        // Mostrar modal para ingresar datos del nuevo cliente
-        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
-        setShowNuevoClienteModal(true);
-        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
-          setSelectedClienteId(nuevoClienteId);
-          await continuarGuardadoCotizacion(nuevoClienteId);
-        });
-        return; // Detener flujo hasta que se confirme el modal
-      }
+      
+      // Si no se encontró el cliente o hubo error en la búsqueda, mostrar modal para crear nuevo
+      setNuevoClienteDatos({ nombre: nombreCliente, empresa: '', direccion: '', telefono: '', email: '', ruc_cedula: '' });
+      setShowNuevoClienteModal(true);
+      setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+        setSelectedClienteId(nuevoClienteId);
+        await continuarGuardadoCotizacion(nuevoClienteId);
+      });
+      return; // Detener flujo hasta que se confirme el modal
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
       alert("Error al procesar la cotización: " + error.message);
@@ -629,29 +641,35 @@ function CotizacionesCrear() {
       }
 
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
-      const buscarClienteResponse = await fetch(
-        `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
-      );
-      if (!buscarClienteResponse.ok) {
-        throw new Error("Error al buscar cliente");
+      try {
+        const buscarClienteResponse = await fetch(
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+        );
+        
+        let clientesEncontrados = [];
+        if (buscarClienteResponse.ok) {
+          clientesEncontrados = await buscarClienteResponse.json();
+        }
+        
+        if (clientesEncontrados.length > 0) {
+          // Cliente existente
+          const clienteId = clientesEncontrados[0].id;
+          setSelectedClienteId(clienteId);
+          await guardarCotizacionComoNueva(clienteId);
+          return;
+        }
+      } catch (searchError) {
+        console.warn("Error al buscar cliente, se procederá a crear uno nuevo:", searchError);
       }
-      const clientesEncontrados = await buscarClienteResponse.json();
-      let clienteId;
-      if (clientesEncontrados.length > 0) {
-        // Cliente existente
-        clienteId = clientesEncontrados[0].id;
-        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await guardarCotizacionComoNueva(clienteId);
-      } else {
-        // Mostrar modal para ingresar datos del nuevo cliente
-        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
-        setShowNuevoClienteModal(true);
-        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
-          setSelectedClienteId(nuevoClienteId);
-          await guardarCotizacionComoNueva(nuevoClienteId);
-        });
-        return; // Detener flujo hasta que se confirme el modal
-      }
+      
+      // Si no se encontró el cliente o hubo error en la búsqueda, mostrar modal para crear nuevo
+      setNuevoClienteDatos({ nombre: nombreCliente, empresa: '', direccion: '', telefono: '', email: '', ruc_cedula: '' });
+      setShowNuevoClienteModal(true);
+      setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+        setSelectedClienteId(nuevoClienteId);
+        await guardarCotizacionComoNueva(nuevoClienteId);
+      });
+      return; // Detener flujo hasta que se confirme el modal
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -1192,8 +1210,8 @@ function CotizacionesCrear() {
     if (e.key === "Enter") {
       e.preventDefault();
       // Validar campos mínimos
-      if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-        alert('Por favor complete todos los campos.');
+      if (!nuevoClienteDatos.empresa || !nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email || !nuevoClienteDatos.ruc_cedula) {
+        alert('Por favor complete todos los campos requeridos.');
         return;
       }
       // Guardar cliente en la BBDD
@@ -1207,18 +1225,21 @@ function CotizacionesCrear() {
           },
           body: JSON.stringify({
             nombre: nuevoClienteDatos.nombre,
+            empresa: nuevoClienteDatos.empresa,
             direccion: nuevoClienteDatos.direccion,
             telefono: nuevoClienteDatos.telefono,
-            email: nuevoClienteDatos.email
+            email: nuevoClienteDatos.email,
+            ruc_cedula: nuevoClienteDatos.ruc_cedula
           })
         });
         if (!crearClienteResponse.ok) {
-          throw new Error("Error al crear cliente");
+          const errorData = await crearClienteResponse.json();
+          throw new Error(errorData.details || "Error al crear cliente");
         }
         const clienteCreado = await crearClienteResponse.json();
         setShowNuevoClienteModal(false);
         if (onNuevoClienteConfirm) {
-          await onNuevoClienteConfirm(clienteCreado.clienteId);
+          await onNuevoClienteConfirm(clienteCreado.cliente.id);
         }
       } catch (error) {
         alert('Error al guardar el cliente: ' + error.message);
@@ -1252,13 +1273,13 @@ function CotizacionesCrear() {
           {id ? (
             <>
               <button
-                onClick={handleGuardarComoNueva}
+                onClick={() => setShowConfirmGuardarComoNueva(true)}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
               >
                 <FaSave className="mr-2" /> Guardar como Nueva
               </button>
               <button
-                onClick={handleGuardarTodo}
+                onClick={() => setShowConfirmActualizar(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
                 disabled={isSaving}
               >
@@ -1267,7 +1288,7 @@ function CotizacionesCrear() {
             </>
           ) : (
             <button
-              onClick={handleGuardarTodo}
+              onClick={() => setShowConfirmGuardar(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
               disabled={isSaving}
             >
@@ -1891,59 +1912,211 @@ function CotizacionesCrear() {
           </div>
         )}
 
+        {/* Modal de confirmación para Guardar Cotización (nueva) */}
+        {showConfirmGuardar && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <h3 className="text-xl font-bold mb-4 text-blue-600">Confirmar Guardado</h3>
+              <p className="text-gray-700 mb-6">
+                ¿Está seguro que desea guardar esta cotización?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmGuardar(false)}
+                  className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmGuardar(false);
+                    handleGuardarTodo();
+                  }}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Sí, Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para Actualizar Cotización */}
+        {showConfirmActualizar && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <h3 className="text-xl font-bold mb-4 text-blue-600">Confirmar Actualización</h3>
+              <p className="text-gray-700 mb-6">
+                ¿Está seguro que desea actualizar esta cotización?<br/>
+                <span className="text-sm text-gray-500">Los cambios se guardarán sobre la cotización actual.</span>
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmActualizar(false)}
+                  className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmActualizar(false);
+                    handleGuardarTodo();
+                  }}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Sí, Actualizar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para Guardar como Nueva */}
+        {showConfirmGuardarComoNueva && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <h3 className="text-xl font-bold mb-4 text-green-600">Confirmar Guardar como Nueva</h3>
+              <p className="text-gray-700 mb-6">
+                ¿Está seguro que desea guardar esto como una nueva cotización?<br/>
+                <span className="text-sm text-gray-500">Se creará una cotización nueva con un código diferente.</span>
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConfirmGuardarComoNueva(false)}
+                  className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmGuardarComoNueva(false);
+                    handleGuardarComoNueva();
+                  }}
+                  className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
+                >
+                  Sí, Guardar como Nueva
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Modal para nuevo cliente */}
         {showNuevoClienteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
-              className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+              className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
               onKeyDown={handleNuevoClienteKeyDown}
               tabIndex={0}
             >
-              <h3 className="text-lg font-bold mb-4">Nuevo cliente</h3>
-              <p className="mb-2">El cliente <span className="font-semibold">{nuevoClienteDatos.nombre}</span> no existe. Se creará un nuevo cliente. Por favor, complete los datos:</p>
-              <div className="space-y-3">
+              <h3 className="text-xl font-bold mb-4 text-blue-600">Crear Nuevo Cliente</h3>
+              <p className="mb-4 text-gray-600">El cliente <span className="font-semibold text-gray-800">{nuevoClienteDatos.nombre}</span> no existe en la base de datos. Complete los datos para crearlo:</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    value={nuevoClienteDatos.direccion}
-                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, direccion: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={nuevoClienteDatos.nombre}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nombre del cliente"
                   />
                 </div>
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Empresa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.empresa}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, empresa: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nombre de la empresa"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    RUC / Cédula <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.ruc_cedula}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, ruc_cedula: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="RUC o Cédula"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={nuevoClienteDatos.telefono}
                     onChange={e => setNuevoClienteDatos(prev => ({ ...prev, telefono: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Teléfono de contacto"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     value={nuevoClienteDatos.email}
                     onChange={e => setNuevoClienteDatos(prev => ({ ...prev, email: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="correo@ejemplo.com"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Dirección <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={nuevoClienteDatos.direccion}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, direccion: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Dirección completa"
+                    rows="2"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-6">
+              
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button
-                  onClick={() => setShowNuevoClienteModal(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                  onClick={() => {
+                    setShowNuevoClienteModal(false);
+                    setIsSaving(false);
+                  }}
+                  className="px-5 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={async () => {
                     // Validar campos mínimos
-                    if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-                      alert('Por favor complete todos los campos.');
+                    if (!nuevoClienteDatos.empresa || !nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email || !nuevoClienteDatos.ruc_cedula) {
+                      alert('Por favor complete todos los campos marcados con * (obligatorios).');
                       return;
                     }
+                    
+                    // Validar formato de email
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(nuevoClienteDatos.email)) {
+                      alert('Por favor ingrese un email válido.');
+                      return;
+                    }
+                    
                     // Guardar cliente en la BBDD
                     try {
                       const token = localStorage.getItem("token");
@@ -1955,26 +2128,43 @@ function CotizacionesCrear() {
                         },
                         body: JSON.stringify({
                           nombre: nuevoClienteDatos.nombre,
+                          empresa: nuevoClienteDatos.empresa,
                           direccion: nuevoClienteDatos.direccion,
                           telefono: nuevoClienteDatos.telefono,
-                          email: nuevoClienteDatos.email
+                          email: nuevoClienteDatos.email,
+                          ruc_cedula: nuevoClienteDatos.ruc_cedula
                         })
                       });
+                      
                       if (!crearClienteResponse.ok) {
-                        throw new Error("Error al crear cliente");
+                        const errorData = await crearClienteResponse.json();
+                        throw new Error(errorData.details || "Error al crear cliente");
                       }
+                      
                       const clienteCreado = await crearClienteResponse.json();
                       setShowNuevoClienteModal(false);
+                      
+                      // Actualizar el ID del cliente seleccionado
+                      setSelectedClienteId(clienteCreado.cliente.id);
+                      
+                      // Agregar el cliente a las sugerencias
+                      setSugerencias(prev => [...prev, {
+                        id: clienteCreado.cliente.id,
+                        nombre_cliente: clienteCreado.cliente.nombre_cliente,
+                        email_cliente: clienteCreado.cliente.email_cliente
+                      }]);
+                      
                       if (onNuevoClienteConfirm) {
-                        await onNuevoClienteConfirm(clienteCreado.clienteId);
+                        await onNuevoClienteConfirm(clienteCreado.cliente.id);
                       }
                     } catch (error) {
                       alert('Error al guardar el cliente: ' + error.message);
+                      setIsSaving(false);
                     }
                   }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
                 >
-                  Guardar cliente
+                  Guardar Cliente y Continuar
                 </button>
               </div>
             </div>
