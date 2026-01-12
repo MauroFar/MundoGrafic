@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import { usePermisos } from '../../hooks/usePermisos';
 
 interface OrdenTrabajo {
   id: number;
@@ -29,6 +31,10 @@ const OrdenesVer: React.FC = () => {
   const LIMITE_POR_PAGINA = 15;
   const [modalProduccionId, setModalProduccionId] = useState<number | null>(null);
   const [produccionEnviada, setProduccionEnviada] = useState<{ [id: number]: boolean }>({});
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
 
   useEffect(() => {
     setPagina(1);
@@ -39,13 +45,18 @@ const OrdenesVer: React.FC = () => {
   const cargarOrdenes = async (reset = false) => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const queryParams = new URLSearchParams();
       if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
       if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
       queryParams.append("limite", LIMITE_POR_PAGINA.toString());
       const url = `${apiUrl}/api/ordenTrabajo/listar?${queryParams}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Error al cargar las órdenes de trabajo");
       const data = await response.json();
       if (reset) {
@@ -94,17 +105,24 @@ const OrdenesVer: React.FC = () => {
   };
 
   const eliminarOrden = async (id: number) => {
+    if (!verificarYMostrarError('ordenes_trabajo', 'eliminar', 'eliminar esta orden de trabajo')) {
+      return;
+    }
     if (!window.confirm("¿Estás seguro de que deseas eliminar esta orden de trabajo?")) return;
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/eliminar/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!response.ok) throw new Error("Error al eliminar la orden");
-      alert("Orden eliminada exitosamente");
+      toast.success("✅ Orden eliminada exitosamente");
       cargarOrdenes(true);
     } catch (error: any) {
-      alert(error.message || "Ocurrió un error al eliminar la orden");
+      toast.error(error.message || "Ocurrió un error al eliminar la orden");
     } finally {
       setLoading(false);
     }
@@ -125,12 +143,58 @@ const OrdenesVer: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      alert('PDF descargado exitosamente');
+      toast.success('✅ PDF descargado exitosamente');
     } catch (error: any) {
-      alert('Error al descargar el PDF: ' + error.message);
+      toast.error('Error al descargar el PDF: ' + error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const verPDF = async (id: number) => {
+    try {
+      console.log('🔍 Iniciando vista previa de PDF para orden:', id);
+      setPreviewUrl(null);
+      setShowPreview(true);
+      setPreviewLoading(true);
+      
+      console.log('📡 Solicitando PDF al backend...');
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/preview`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('📥 Respuesta recibida:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error('❌ Error en respuesta:', response.status);
+        throw new Error('Error al obtener el PDF');
+      }
+      
+      const data = await response.json();
+      console.log('📦 Datos recibidos:', data.success);
+      
+      if (!data.success || !data.pdf) {
+        console.error('❌ Respuesta inválida:', data);
+        throw new Error('Respuesta inválida al generar vista previa');
+      }
+      
+      console.log('✅ PDF en base64 recibido');
+      setPreviewUrl(data.pdf);
+      console.log('🎉 Vista previa lista para mostrar');
+    } catch (error: any) {
+      console.error('❌ Error en verPDF:', error);
+      toast.error('Error al cargar el PDF: ' + error.message);
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const cerrarPreview = () => {
+    setShowPreview(false);
+    setPreviewUrl(null);
   };
 
   const enviarAProduccion = async (id: number) => {
@@ -229,14 +293,24 @@ const OrdenesVer: React.FC = () => {
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2">
                       <button
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                        onClick={() => editarOrden(orden.id)}
-                        title="Editar"
+                        className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
+                        onClick={() => verPDF(orden.id)}
+                        title="Ver PDF"
                       >
-                        <FaEdit />
-                        <span className="text-xs mt-1 text-gray-600">Editar</span>
+                        <FaEye />
+                        <span className="text-xs mt-1 text-gray-600">Ver PDF</span>
                       </button>
-                      {!(orden.estado && orden.estado.toLowerCase() === "en producción") && (
+                      {puedeEditar('ordenes_trabajo') && (
+                        <button
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
+                          onClick={() => editarOrden(orden.id)}
+                          title="Editar"
+                        >
+                          <FaEdit />
+                          <span className="text-xs mt-1 text-gray-600">Editar</span>
+                        </button>
+                      )}
+                      {puedeEliminar('ordenes_trabajo') && !(orden.estado && orden.estado.toLowerCase() === "en producción") && (
                         <button
                           className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                           onClick={() => eliminarOrden(orden.id)}
@@ -252,7 +326,7 @@ const OrdenesVer: React.FC = () => {
                         title="Descargar PDF"
                       >
                         <FaDownload />
-                        <span className="text-xs mt-1 text-gray-600">PDF</span>
+                        <span className="text-xs mt-1 text-gray-600">Descargar</span>
                       </button>
                       {orden.estado && orden.estado.toLowerCase() === "en producción" ? (
                         <button
@@ -304,6 +378,41 @@ const OrdenesVer: React.FC = () => {
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Preview de PDF */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
+              <button
+                onClick={cerrarPreview}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewLoading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Generando vista previa...</p>
+                  </div>
+                </div>
+              ) : (
+                <object
+                  data={previewUrl || ''}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
+              )}
             </div>
           </div>
         </div>

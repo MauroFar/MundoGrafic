@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import Logo from "../../components/Logo";
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
+import { usePermisos } from '../../hooks/usePermisos';
 
 // Tipos para los datos de la orden
 interface OrdenData {
@@ -48,6 +49,7 @@ declare global {
 }
 
 const OrdendeTrabajoEditar: React.FC = () => {
+  const { verificarYMostrarError } = usePermisos();
   
   const [concepto, setConcepto] = useState<string>('');
   const [nombre_cliente, setNombre_cliente] = useState<string>('');
@@ -450,6 +452,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
     console.log('🚀 FRONTEND - Iniciando creación de orden');
     console.log('🔍 FRONTEND - Verificando que la función se ejecute');
     
+    // Validar permisos ANTES de continuar
+    if (!verificarYMostrarError('ordenes_trabajo', 'crear', 'crear esta orden de trabajo')) {
+      return;
+    }
+    
     const errores = validarCampos();
     if (errores.length > 0) {
       console.log('❌ FRONTEND - Errores de validación:', errores);
@@ -501,9 +508,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
     console.log('📤 FRONTEND - Datos a enviar:', dataToSend);
     
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(dataToSend)
       });
       
@@ -544,6 +555,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
     console.log('🚀 FRONTEND - Iniciando actualización de orden');
     console.log('📋 FRONTEND - ordenId:', ordenId);
     
+    // Validar permisos ANTES de continuar
+    if (!verificarYMostrarError('ordenes_trabajo', 'editar', 'actualizar esta orden de trabajo')) {
+      return;
+    }
+    
     const errores = validarCampos();
     if (errores.length > 0) {
       console.log('❌ FRONTEND - Errores de validación:', errores);
@@ -552,10 +568,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
       return;
     }
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/editarOrden/${ordenId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           // Datos generales
@@ -625,6 +643,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
     console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
     console.log('📋 FRONTEND - ordenId actual:', ordenId);
     
+    // Validar permisos ANTES de continuar
+    if (!verificarYMostrarError('ordenes_trabajo', 'crear', 'crear esta orden de trabajo')) {
+      return;
+    }
+    
     const errores = validarCampos();
     if (errores.length > 0) {
       console.log('❌ FRONTEND - Errores de validación:', errores);
@@ -686,9 +709,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
       
       console.log('📤 FRONTEND - Datos a enviar para nueva orden:', dataToSend);
       
+      const token = localStorage.getItem("token");
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/crearOrdenTrabajo`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(dataToSend)
       });
       

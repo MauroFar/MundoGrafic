@@ -4,8 +4,42 @@ import path from "path";
 
 const app = express();
 
-// Habilitar CORS
-app.use(cors());
+// Configurar CORS dinámicamente para desarrollo y producción
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Permitir solicitudes sin origin (como Postman, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Permitir todos los orígenes de localhost (cualquier puerto)
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Permitir IPs de la red local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    if (origin.match(/^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    
+    // Si hay una variable de entorno con orígenes permitidos adicionales
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // En desarrollo, permitir todo
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Rechazar otros orígenes
+    callback(new Error('No permitido por CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+};
+
+app.use(cors(corsOptions));
 
 // Middleware para parsear JSON con límite aumentado para firmas con imágenes
 app.use(express.json({ limit: '50mb' }));

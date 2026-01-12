@@ -60,6 +60,10 @@ export default (client: any) => {
       detalle
     } = req.body;
 
+    // Obtener el ID del usuario del token JWT
+    const userId = (req as any).user.id;
+    console.log('👤 Usuario creando orden:', userId);
+
     // Extraer campos del detalle
     const material = detalle?.material;
     const corteMaterial = detalle?.corte_material;
@@ -84,14 +88,14 @@ export default (client: any) => {
           nombre_cliente, contacto, email, telefono, cantidad, concepto,
           fecha_creacion, fecha_entrega, estado, notas_observaciones,
           vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-          id_detalle_cotizacion
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          id_detalle_cotizacion, created_by
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
         RETURNING id, numero_orden
       `, [
         nombre_cliente, contacto, email, telefono, cantidad, concepto,
         fecha_creacion, fecha_entrega, estado, notas_observaciones,
         vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-        id_detalle_cotizacion
+        id_detalle_cotizacion, userId
       ]);
       const ordenId = ordenResult.rows[0].id;
 
@@ -293,6 +297,10 @@ export default (client: any) => {
       detalle
     } = req.body;
 
+    // Obtener el ID del usuario del token JWT
+    const userId = (req as any).user.id;
+    console.log('👤 Usuario editando orden:', userId);
+
     // Extraer campos del detalle
     const material = detalle?.material;
     const corteMaterial = detalle?.corte_material;
@@ -328,7 +336,8 @@ export default (client: any) => {
             prensa = $12,
             terminados = $13,
             facturado = $14,
-            id_detalle_cotizacion = $15
+            id_detalle_cotizacion = $15,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = $16
         RETURNING *`,
         [
@@ -438,7 +447,7 @@ export default (client: any) => {
   });
 
   // Generar y descargar PDF de una orden de trabajo
-  router.get("/:id/pdf", async (req: any, res: any) => {
+  router.get("/:id/pdf", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     try {
       // 1. Obtener los datos de la orden de trabajo
@@ -458,42 +467,369 @@ export default (client: any) => {
       );
       const detalle = detalleResult.rows[0] || {};
 
-      // 3. Generar HTML (puedes personalizar esta plantilla)
+      // 3. Leer y convertir el logo a base64
+      const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
+      let logoBase64 = '';
+      try {
+        const logoBuffer = await fs.readFile(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      } catch (e: any) {
+        console.error('No se pudo leer el logo:', e);
+        logoBase64 = '';
+      }
+
+      // 4. Generar HTML con el diseño de la interfaz
       const html = `
+        <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="UTF-8">
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #2563eb; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background: #f3f4f6; }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: 'Arial', sans-serif;
+              padding: 20px;
+              background: white;
+              color: #333;
+            }
+            
+            .orden-container {
+              max-width: 1200px;
+              margin: 0 auto;
+              background: white;
+            }
+            
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 3px solid #e74c3c;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            
+            .logo-section img {
+              height: 60px;
+            }
+            
+            .orden-info {
+              text-align: right;
+            }
+            
+            .orden-numero {
+              font-size: 24px;
+              font-weight: bold;
+              color: #e74c3c;
+              margin-bottom: 5px;
+            }
+            
+            .orden-fecha {
+              font-size: 14px;
+              color: #666;
+            }
+            
+            .titulo-principal {
+              text-align: center;
+              font-size: 28px;
+              font-weight: bold;
+              color: #2c3e50;
+              margin: 20px 0;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            .seccion {
+              margin-bottom: 25px;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              overflow: hidden;
+            }
+            
+            .seccion-titulo {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 12px 20px;
+              font-size: 16px;
+              font-weight: bold;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            
+            .seccion-contenido {
+              padding: 20px;
+              background: #f8f9fa;
+            }
+            
+            .campo-grupo {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin-bottom: 15px;
+            }
+            
+            .campo {
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .campo-label {
+              font-size: 12px;
+              color: #666;
+              font-weight: 600;
+              margin-bottom: 5px;
+              text-transform: uppercase;
+            }
+            
+            .campo-valor {
+              font-size: 14px;
+              color: #2c3e50;
+              padding: 8px 12px;
+              background: white;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              min-height: 36px;
+            }
+            
+            .campo-completo {
+              grid-column: 1 / -1;
+            }
+            
+            .responsables-grid {
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 10px;
+            }
+            
+            .responsable {
+              text-align: center;
+              padding: 10px;
+              background: white;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+            }
+            
+            .responsable-titulo {
+              font-size: 11px;
+              color: #666;
+              font-weight: 600;
+              margin-bottom: 5px;
+              text-transform: uppercase;
+            }
+            
+            .responsable-nombre {
+              font-size: 13px;
+              color: #2c3e50;
+              font-weight: bold;
+            }
+            
+            .detalle-tecnico-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 12px;
+            }
+            
+            .footer {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 2px solid #e74c3c;
+              text-align: center;
+              font-size: 11px;
+              color: #666;
+            }
+            
+            .prensa-badge {
+              display: inline-block;
+              padding: 6px 12px;
+              background: #e74c3c;
+              color: white;
+              border-radius: 4px;
+              font-weight: bold;
+              font-size: 13px;
+            }
           </style>
         </head>
         <body>
-          <h1>Orden de Trabajo #${orden.numero_orden}</h1>
-          <p><strong>Cliente:</strong> ${orden.nombre_cliente}</p>
-          <p><strong>Concepto:</strong> ${orden.concepto}</p>
-          <p><strong>Fecha de creación:</strong> ${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString() : ''}</p>
-          <h2>Detalle Técnico</h2>
-          <table>
-            <tr><th>Campo</th><th>Valor</th></tr>
-            ${Object.entries(detalle).map(([k, v]) => `<tr><td>${k}</td><td>${v ?? ''}</td></tr>`).join('')}
-          </table>
+          <div class="orden-container">
+            <div class="header">
+              <div class="logo-section">
+                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo MUNDOGRAFIC" />` : '<div style="font-size: 24px; font-weight: bold;">MUNDOGRAFIC</div>'}
+              </div>
+              <div class="orden-info">
+                <div class="orden-numero">ORDEN #${orden.numero_orden || 'N/A'}</div>
+                <div class="orden-fecha">Fecha: ${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : 'N/A'}</div>
+                ${orden.fecha_entrega ? `<div class="orden-fecha">Entrega: ${new Date(orden.fecha_entrega).toLocaleDateString('es-EC')}</div>` : ''}
+              </div>
+            </div>
+            
+            <h1 class="titulo-principal">ORDEN DE TRABAJO</h1>
+            
+            <!-- Información del Cliente -->
+            <div class="seccion">
+              <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+              <div class="seccion-contenido">
+                <div class="campo-grupo">
+                  <div class="campo">
+                    <div class="campo-label">Cliente</div>
+                    <div class="campo-valor">${orden.nombre_cliente || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Contacto</div>
+                    <div class="campo-valor">${orden.contacto || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Teléfono</div>
+                    <div class="campo-valor">${orden.telefono || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Email</div>
+                    <div class="campo-valor">${orden.email || 'N/A'}</div>
+                  </div>
+                  <div class="campo campo-completo">
+                    <div class="campo-label">Concepto del Trabajo</div>
+                    <div class="campo-valor">${orden.concepto || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Cantidad</div>
+                    <div class="campo-valor">${orden.cantidad || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Estado</div>
+                    <div class="campo-valor">${orden.estado || 'Pendiente'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Responsables del Proceso -->
+            <div class="seccion">
+              <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
+              <div class="seccion-contenido">
+                <div class="responsables-grid">
+                  <div class="responsable">
+                    <div class="responsable-titulo">Vendedor</div>
+                    <div class="responsable-nombre">${orden.vendedor || '-'}</div>
+                  </div>
+                  <div class="responsable">
+                    <div class="responsable-titulo">Pre-prensa</div>
+                    <div class="responsable-nombre">${orden.preprensa || '-'}</div>
+                  </div>
+                  <div class="responsable">
+                    <div class="responsable-titulo">Offset</div>
+                    <div class="responsable-nombre">${orden.prensa || '-'}</div>
+                  </div>
+                  <div class="responsable">
+                    <div class="responsable-titulo">Terminados</div>
+                    <div class="responsable-nombre">${orden.terminados || '-'}</div>
+                  </div>
+                  <div class="responsable">
+                    <div class="responsable-titulo">Facturado</div>
+                    <div class="responsable-nombre">${orden.facturado || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Información Técnica del Trabajo -->
+            <div class="seccion">
+              <div class="seccion-titulo">🔧 INFORMACIÓN TÉCNICA DEL TRABAJO</div>
+              <div class="seccion-contenido">
+                <div class="detalle-tecnico-grid">
+                  <div class="campo">
+                    <div class="campo-label">Material</div>
+                    <div class="campo-valor">${detalle.material || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Corte Material</div>
+                    <div class="campo-valor">${detalle.corte_material || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Cant. Pliegos Compra</div>
+                    <div class="campo-valor">${detalle.cantidad_pliegos_compra || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Exceso</div>
+                    <div class="campo-valor">${detalle.exceso || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Total Pliegos</div>
+                    <div class="campo-valor">${detalle.total_pliegos || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Tamaño Abierto</div>
+                    <div class="campo-valor">${detalle.tamano_abierto_1 || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Tamaño Cerrado</div>
+                    <div class="campo-valor">${detalle.tamano_cerrado_1 || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Impresión</div>
+                    <div class="campo-valor">${detalle.impresion || 'N/A'}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">Prensa</div>
+                    <div class="campo-valor">${detalle.prensa_seleccionada ? `<span class="prensa-badge">${detalle.prensa_seleccionada}</span>` : 'N/A'}</div>
+                  </div>
+                  <div class="campo campo-completo">
+                    <div class="campo-label">Instrucciones de Impresión</div>
+                    <div class="campo-valor">${detalle.instrucciones_impresion || 'N/A'}</div>
+                  </div>
+                  <div class="campo campo-completo">
+                    <div class="campo-label">Instrucciones de Acabados</div>
+                    <div class="campo-valor">${detalle.instrucciones_acabados || 'N/A'}</div>
+                  </div>
+                  <div class="campo campo-completo">
+                    <div class="campo-label">Instrucciones de Empacado</div>
+                    <div class="campo-valor">${detalle.instrucciones_empacado || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Observaciones -->
+            ${orden.notas_observaciones || detalle.observaciones ? `
+            <div class="seccion">
+              <div class="seccion-titulo">📝 OBSERVACIONES</div>
+              <div class="seccion-contenido">
+                <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || 'Sin observaciones'}</div>
+              </div>
+            </div>
+            ` : ''}
+            
+            <div class="footer">
+              <p><strong>MUNDOGRAFIC®</strong> - Impresión Comercial y Servicios Gráficos</p>
+              <p>Quito: Pasaje San Luis N12-87 y Antonio Ante • Telf.: 2589134 • Email: ventas@mundografic.com</p>
+              <p>www.mundografic.com</p>
+            </div>
+          </div>
         </body>
         </html>
       `;
 
-      // 4. Generar PDF usando Puppeteer
+      // 5. Generar PDF usando Puppeteer
       const browser = await puppeteer.launch({ headless: "new" });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
-      const pdfBuffer = await page.pdf({ format: "A4" });
+      const pdfBuffer = await page.pdf({ 
+        format: "A4",
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
+        }
+      });
       await browser.close();
 
-      // 5. Enviar el PDF al cliente
+      // 6. Enviar el PDF al cliente para vista previa (sin forzar descarga)
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=orden_trabajo_${orden.numero_orden}.pdf`);
+      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Cache-Control', 'no-cache');
       res.send(pdfBuffer);
     } catch (error: any) {
       console.error('Error al generar PDF de orden de trabajo:', error);
@@ -608,6 +944,274 @@ export default (client: any) => {
     } catch (error: any) {
       console.error("Error al enviar a producción:", error);
       res.status(500).json({ error: "Error al enviar a producción" });
+    }
+  });
+
+  // Endpoint de preview para generar PDF en base64 (igual que cotizaciones)
+  router.get("/:id/preview", authRequired(), async (req: any, res: any) => {
+    const { id } = req.params;
+    try {
+      console.log('📋 Generando preview de orden de trabajo:', id);
+      
+      // 1. Obtener los datos de la orden de trabajo
+      const result = await client.query(
+        `SELECT * FROM orden_trabajo WHERE id = $1`,
+        [id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Orden de trabajo no encontrada" });
+      }
+      const orden = result.rows[0];
+
+      // 2. Obtener el detalle técnico
+      const detalleResult = await client.query(
+        `SELECT * FROM detalle_orden_trabajo WHERE orden_trabajo_id = $1`,
+        [id]
+      );
+      const detalle = detalleResult.rows[0] || {};
+
+      // 3. Leer y convertir el logo a base64
+      const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
+      let logoBase64 = '';
+      try {
+        const logoBuffer = await fs.readFile(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      } catch (e: any) {
+        console.error('No se pudo leer el logo:', e);
+      }
+
+      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .logo-section img { height: 45px; }
+            .orden-info { text-align: right; font-size: 10px; }
+            .orden-numero { font-size: 18px; font-weight: bold; }
+            .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+            .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
+            .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+            .seccion-contenido { padding: 10px; }
+            .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+            .campo { flex: 1; }
+            .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
+            .responsables { display: flex; gap: 6px; }
+            .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
+            .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .responsable-nombre { font-size: 10px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo-section">
+              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
+            </div>
+            <div class="orden-info">
+              <div class="orden-numero">Orden de Trabajo</div>
+              <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
+              <div>Contacto Nº: ${orden.contacto || ''}</div>
+            </div>
+          </div>
+          
+          <div class="titulo">ORDEN DE TRABAJO</div>
+          
+          <div class="seccion">
+            <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">CLIENTE</div>
+                  <div class="campo-valor">${orden.nombre_cliente || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CONTACTO</div>
+                  <div class="campo-valor">${orden.contacto || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">TELÉFONO</div>
+                  <div class="campo-valor">${orden.telefono || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">EMAIL</div>
+                  <div class="campo-valor">${orden.email || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Información del Trabajo</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo" style="flex: 2;">
+                  <div class="campo-label">CONCEPTO</div>
+                  <div class="campo-valor">${orden.concepto || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CANTIDAD</div>
+                  <div class="campo-valor">${orden.cantidad || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">TAMAÑO ABIERTO</div>
+                  <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">TAMAÑO CERRADO</div>
+                  <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Material y Corte</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">MATERIAL</div>
+                  <div class="campo-valor">${detalle.material || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CORTE DE MATERIAL</div>
+                  <div class="campo-valor">${detalle.corte_material || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Cantidad de Pliegos</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">PLIEGOS DE COMPRA</div>
+                  <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">EXCESO</div>
+                  <div class="campo-valor">${detalle.exceso || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">TOTAL</div>
+                  <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Impresión y Acabados</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">IMPRESIÓN</div>
+                  <div class="campo-valor">${detalle.impresion || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
+                  <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
+                  <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
+                  <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Prensa y Observaciones</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">SELECCIONAR PRENSA</div>
+                  <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+                </div>
+                <div class="campo" style="flex: 2;">
+                  <div class="campo-label">OBSERVACIONES GENERALES</div>
+                  <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Responsables del Proceso</div>
+            <div class="seccion-contenido">
+              <div class="responsables">
+                <div class="responsable">
+                  <div class="responsable-titulo">VENDEDOR</div>
+                  <div class="responsable-nombre">${orden.vendedor || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">PREPRENSA</div>
+                  <div class="responsable-nombre">${orden.preprensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">OFFSET</div>
+                  <div class="responsable-nombre">${orden.prensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">TERMINADOS</div>
+                  <div class="responsable-nombre">${orden.terminados || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">FACTURADO</div>
+                  <div class="responsable-nombre">${orden.facturado || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // 5. Generar PDF usando Puppeteer (compacto para una página)
+      const browser = await puppeteer.launch({ 
+        headless: "new",
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+      const pdfBuffer = await page.pdf({ 
+        format: "A4",
+        printBackground: true,
+        margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
+        scale: 0.95
+      });
+      await browser.close();
+
+      // 6. Convertir a base64
+      const base64PDF = pdfBuffer.toString('base64');
+      console.log('✅ PDF generado exitosamente, tamaño:', pdfBuffer.length, 'bytes');
+
+      // 7. Enviar respuesta en formato JSON (igual que cotizaciones)
+      res.json({ 
+        success: true, 
+        pdf: `data:application/pdf;base64,${base64PDF}`
+      });
+    } catch (error: any) {
+      console.error('❌ Error al generar preview de orden:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Error al generar la vista previa del PDF' 
+      });
     }
   });
 
