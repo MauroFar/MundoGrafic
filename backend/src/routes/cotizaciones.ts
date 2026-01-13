@@ -1092,23 +1092,36 @@ const CotizacionDatos = (client: any) => {
       }
 
       const isGlobal = typeof global === 'string' ? global.toLowerCase() === 'true' : !!global;
+      console.log("🔍 Filtrado de usuario - isGlobal:", isGlobal, "| user.rol:", user?.rol, "| user.id:", user?.id);
+      
+      // Si NO es búsqueda global Y el usuario es ejecutivo, filtrar solo sus cotizaciones
       if (!isGlobal && user && user.rol === 'ejecutivo') {
+        console.log("✅ Aplicando filtro de usuario (solo cotizaciones del ejecutivo)");
         query += ` AND c.usuario_id = $${paramCount}`;
         params.push(user.id);
         paramCount++;
+      } else {
+        console.log("🌐 Mostrando todas las cotizaciones (sin filtro de usuario)");
       }
 
       // Ordenar por número de cotización descendente (más recientes primero)
       query += ` ORDER BY c.id DESC`;
 
-      // Aplicar límite si no hay filtros de búsqueda
-      if (!busqueda && !fechaDesde && !fechaHasta) {
-        if (isGlobal) {
-          query += ` LIMIT 10`;
-        } else {
-          query += ` LIMIT ${limite || 15}`;
-        }
+      // Aplicar límite
+      // Si es búsqueda global con filtros de búsqueda, traer todos los resultados
+      // Si es búsqueda global sin filtros, limitamos a un número razonable para evitar problemas de rendimiento
+      // Si no es global, aplicamos el límite normal
+      if (!busqueda && !fechaDesde && !fechaHasta && !isGlobal) {
+        // Sin filtros y sin búsqueda global: mostrar solo las últimas cotizaciones
+        query += ` LIMIT ${limite || 15}`;
+      } else if (isGlobal && !busqueda && !fechaDesde && !fechaHasta) {
+        // Búsqueda global sin filtros: mostrar todas las cotizaciones (sin límite)
+        // O si prefieres un límite razonable, usa: query += ` LIMIT 1000`;
+      } else if (!isGlobal) {
+        // Con filtros pero sin global: aplicar límite
+        query += ` LIMIT ${limite || 15}`;
       }
+      // Si es global CON filtros: no aplicar límite para traer todos los resultados
 
       console.log("Query a ejecutar:", query);
       console.log("Parámetros:", params);

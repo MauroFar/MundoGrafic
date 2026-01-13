@@ -147,8 +147,8 @@ const createCliente = (client: any) => {
     const { q } = req.query;
     console.log('🔍 [Clientes API] Búsqueda de clientes con término:', q);
     
-    // Validar: al menos 2 caracteres y al menos una letra
-    if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
+    // Validar: al menos 2 caracteres
+    if (!q || q.trim().length < 2) {
       console.log('⚠️ [Clientes API] Término de búsqueda no válido');
       return res.json([]); // No sugerencias si no cumple
     }
@@ -159,14 +159,19 @@ const createCliente = (client: any) => {
           id, 
           nombre_cliente, 
           email_cliente,
-          telefono_cliente as telefono
+          telefono_cliente,
+          direccion_cliente,
+          ruc_cedula_cliente,
+          empresa_cliente
         FROM clientes
         WHERE 
           nombre_cliente ILIKE $1 
           OR email_cliente ILIKE $1
           OR empresa_cliente ILIKE $1
+          OR telefono_cliente ILIKE $1
+          OR ruc_cedula_cliente ILIKE $1
         ORDER BY nombre_cliente ASC
-        LIMIT 10
+        LIMIT 20
       `;
       const result = await client.query(query, [`%${q}%`]);
       console.log(`✅ [Clientes API] Búsqueda exitosa. Encontrados ${result.rows.length} clientes`);

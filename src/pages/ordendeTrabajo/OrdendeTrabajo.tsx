@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from 'react-toastify';
 import Logo from "../../components/Logo";
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 import { usePermisos } from '../../hooks/usePermisos';
@@ -123,6 +124,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [showConfirmCreateNewModal, setShowConfirmCreateNewModal] = useState(false);
   const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
   const [idDetalleCotizacion, setIdDetalleCotizacion] = useState<number | null>(null);
+  const [showClientesModal, setShowClientesModal] = useState(false);
+  const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  const [clienteIdSeleccionado, setClienteIdSeleccionado] = useState<number | null>(null);
 
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
@@ -238,25 +244,60 @@ const OrdendeTrabajoEditar: React.FC = () => {
       if (location.state.id_detalle_cotizacion) {
         setIdDetalleCotizacion(location.state.id_detalle_cotizacion);
       }
-      // Si quieres inicializar más campos, agrégalos aquí
-      // Los datos del cliente y cotización se pueden seguir trayendo por fetch
-      fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          setOrdenData(data);
-          setNombre_cliente(data.nombre_cliente || '');
-          setNumero_cotizacion(data.numero_cotizacion || '');
-          setTelefono_cliente(data.telefono_cliente || '');
-          setEmail_cliente(data.email_cliente || '');
-          setDireccion_cliente(data.direccion_cliente || '');
-        })
-        .catch((error) => console.error("Error fetching data:", error));
+      // Cargar datos del cliente y cotización desde el backend
+      if (cotizacionId) {
+        fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log('📦 Datos de cotización recibidos:', data);
+            // Setear ordenData para que no se quede en "Cargando..."
+            setOrdenData(data);
+            // Setear TODOS los datos del cliente
+            setNombre_cliente(data.nombre_cliente || '');
+            setNumero_cotizacion(data.numero_cotizacion || '');
+            setTelefono_cliente(data.telefono_cliente || '');
+            setEmail_cliente(data.email_cliente || '');
+            setDireccion_cliente(data.direccion_cliente || '');
+            // Obtener el próximo número de orden
+            return fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`);
+          })
+          .then(res => res?.json())
+          .then(data => {
+            if (data) setNumero_orden(data.proximoNumero);
+          })
+          .catch((error) => {
+            console.error("Error fetching data:", error);
+            // En caso de error, setear un objeto vacío para que no se quede cargando
+            setOrdenData({});
+          });
+      } else {
+        // Si no hay cotizacionId pero hay producto, setear ordenData vacío
+        setOrdenData({});
+      }
+      return;
     } else if(ordenId){
       // Modo edición: cargar datos de una orden existente
-      fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`)
-        .then((res) => res.json())
-        .then((data) => setOrdenData(data))
-        .catch((error) => console.error("Error al cargar orden existente:", error));
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error('Error al cargar la orden');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          console.log('📦 Datos de orden cargados para edición:', data);
+          setOrdenData(data);
+        })
+        .catch((error) => {
+          console.error("Error al cargar orden existente:", error);
+          toast.error('Error al cargar la orden');
+        });
     } else if (cotizacionId) {
       // Si hay cotización, traemos datos del backend
       fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
@@ -445,6 +486,45 @@ const OrdendeTrabajoEditar: React.FC = () => {
     
     console.log('✅ FRONTEND - Validación completada, errores:', errores);
     return errores;
+  };
+
+  // Función para cargar todos los clientes para el modal
+  const cargarTodosLosClientes = async () => {
+    setLoadingClientes(true);
+    try {
+      const token = localStorage.getItem("token");
+      console.log('🔍 Cargando todos los clientes...');
+      
+      const res = await fetch(`${apiUrl}/api/clientes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      console.log('✅ Clientes cargados:', data.length);
+      
+      // Normalizar los datos para que tengan los campos esperados
+      const clientesNormalizados = data.map((cliente: any) => ({
+        id: cliente.id,
+        nombre_cliente: cliente.nombre || cliente.nombre_cliente,
+        email_cliente: cliente.email || cliente.email_cliente,
+        empresa: cliente.empresa || cliente.empresa_cliente || '-',
+        telefono: cliente.telefono || cliente.telefono_cliente || '-',
+        direccion_cliente: cliente.direccion || cliente.direccion_cliente || ''
+      }));
+      
+      setClientesSugeridos(clientesNormalizados);
+    } catch (error) {
+      console.error('❌ Error al cargar clientes:', error);
+      setClientesSugeridos([]);
+    } finally {
+      setLoadingClientes(false);
+    }
   };
 
   // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
@@ -812,7 +892,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Orden N°:</label>
                   <input
-                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-20"
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-32"
                     type="text"
                     value={numero_orden}
                     readOnly
@@ -821,7 +901,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Cotización N°:</label>
                   <input 
-                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-20" 
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-28" 
                     type="text" 
                     value={String(numero_cotizacion).padStart(6, '0')}
                     onChange={(e) => setNumero_cotizacion(e.target.value)}
@@ -854,12 +934,26 @@ const OrdendeTrabajoEditar: React.FC = () => {
                              {/* Tercera columna: Cliente y Contacto */}
                <div className="space-y-2">
                  <div>
-                   <label className="block text-sm font-semibold text-gray-700">Cliente:</label>
+                   <div className="flex items-center justify-between mb-1">
+                     <label className="text-sm font-semibold text-gray-700">Cliente:</label>
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setShowClientesModal(true);
+                         cargarTodosLosClientes();
+                       }}
+                       className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                       title="Ver Clientes"
+                     >
+                       👥 Ver Clientes
+                     </button>
+                   </div>
                    <input 
                      className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
                      type="text"  
                      value={nombre_cliente}
                      onChange={(e) => setNombre_cliente(e.target.value)}
+                     placeholder="Ingrese el nombre del cliente..."
                    />
                  </div>
                  <div>
@@ -1289,6 +1383,113 @@ const OrdendeTrabajoEditar: React.FC = () => {
               >
                 Ir al listado de órdenes
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Clientes */}
+        {showClientesModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Seleccionar Cliente</h2>
+                <button
+                  onClick={() => {
+                    setShowClientesModal(false);
+                    setBusquedaCliente('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* Buscador */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, empresa o correo..."
+                  value={busquedaCliente}
+                  onChange={(e) => setBusquedaCliente(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md p-2"
+                />
+              </div>
+              
+              {/* Lista de Clientes */}
+              <div className="overflow-y-auto max-h-96">
+                {loadingClientes ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="text-gray-500">Cargando clientes...</div>
+                  </div>
+                ) : clientesSugeridos.length === 0 ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="text-gray-500">No se encontraron clientes</div>
+                  </div>
+                ) : (
+                  <table className="min-w-full border border-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left border-b">Nombre</th>
+                        <th className="px-4 py-2 text-left border-b">Empresa</th>
+                        <th className="px-4 py-2 text-left border-b">Correo</th>
+                        <th className="px-4 py-2 text-left border-b">Teléfono</th>
+                        <th className="px-4 py-2 text-center border-b">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clientesSugeridos
+                        .filter((cliente: any) => 
+                          cliente.nombre_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+                          cliente.empresa?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+                          cliente.email_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase())
+                        )
+                        .map((cliente: any) => (
+                          <tr 
+                            key={cliente.id} 
+                            className="hover:bg-blue-50 cursor-pointer transition-colors"
+                            onClick={() => {
+                              // Seleccionar el cliente y cerrar el modal
+                              setNombre_cliente(cliente.empresa || cliente.nombre_cliente);
+                              setTelefono_cliente(cliente.telefono || '');
+                              setEmail_cliente(cliente.email_cliente || '');
+                              setDireccion_cliente(cliente.direccion_cliente || '');
+                              setClienteIdSeleccionado(cliente.id);
+                              setShowClientesModal(false);
+                              setBusquedaCliente('');
+                            }}
+                          >
+                            <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
+                            <td className="px-4 py-2 border-b">{cliente.empresa}</td>
+                            <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
+                            <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
+                            <td className="px-4 py-2 border-b text-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm pointer-events-none"
+                              >
+                                Seleccionar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => {
+                    setShowClientesModal(false);
+                    setBusquedaCliente('');
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUserFriends, FaFileAlt, FaTools, FaHistory } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -34,6 +34,8 @@ const OrdenesVer: React.FC = () => {
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showDetalleModal, setShowDetalleModal] = useState<boolean>(false);
+  const [ordenDetalle, setOrdenDetalle] = useState<any>(null);
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
 
   useEffect(() => {
@@ -131,7 +133,12 @@ const OrdenesVer: React.FC = () => {
   const descargarPDF = async (id: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/pdf`);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error('Error al obtener el PDF');
       const pdfBlob = await response.blob();
       if (pdfBlob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
@@ -216,6 +223,33 @@ const OrdenesVer: React.FC = () => {
     }
   };
 
+  const handleVerDetalle = async (id: number) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/orden/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cargar los detalles de la orden');
+      }
+
+      const data = await response.json();
+      setOrdenDetalle(data);
+      setShowDetalleModal(true);
+    } catch (error: any) {
+      console.error('Error al cargar detalle:', error);
+      toast.error('Error al cargar los detalles de la orden de trabajo');
+    }
+  };
+
+  const handleCerrarDetalleModal = () => {
+    setShowDetalleModal(false);
+    setOrdenDetalle(null);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Órdenes de Trabajo</h1>
@@ -285,20 +319,24 @@ const OrdenesVer: React.FC = () => {
             </thead>
             <tbody>
               {ordenes.map((orden) => (
-                <tr key={orden.id} className="hover:bg-gray-50">
+                <tr 
+                  key={orden.id} 
+                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                  onClick={() => handleVerDetalle(orden.id)}
+                >
                   <td className="px-6 py-4 border-b">{orden.numero_orden}</td>
                   <td className="px-6 py-4 border-b">{orden.nombre_cliente}</td>
                   <td className="px-6 py-4 border-b">{orden.concepto}</td>
                   <td className="px-6 py-4 border-b">{orden.fecha_creacion?.slice(0,10)}</td>
-                  <td className="px-6 py-4 border-b">
+                  <td className="px-6 py-4 border-b" onClick={(e) => e.stopPropagation()}>
                     <div className="flex space-x-2">
                       <button
                         className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
                         onClick={() => verPDF(orden.id)}
-                        title="Ver PDF"
+                        title="Ver PDF/Imprimir"
                       >
                         <FaEye />
-                        <span className="text-xs mt-1 text-gray-600">Ver PDF</span>
+                        <span className="text-xs mt-1 text-gray-600">Ver PDF/Imprimir</span>
                       </button>
                       {puedeEditar('ordenes_trabajo') && (
                         <button
@@ -413,6 +451,297 @@ const OrdenesVer: React.FC = () => {
                   <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
                 </object>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalles de Orden de Trabajo */}
+      {showDetalleModal && ordenDetalle && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCerrarDetalleModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Detalles de la Orden de Trabajo</h2>
+                  <div className="text-green-100 text-lg font-semibold">
+                    Orden N° {ordenDetalle.numero_orden}
+                  </div>
+                </div>
+                <button
+                  onClick={handleCerrarDetalleModal}
+                  className="text-white hover:bg-green-500 rounded-full p-2 transition-colors"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+              <div className="mt-3">
+                <span className="px-3 py-1 rounded-full text-sm font-semibold bg-white text-green-700">
+                  {ordenDetalle.estado?.toUpperCase() || 'PENDIENTE'}
+                </span>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="p-6 space-y-6">
+              {/* Información del Cliente */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaUserFriends className="mr-2 text-green-600" />
+                  Información del Cliente
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Cliente</label>
+                    <p className="text-gray-900 font-medium">{ordenDetalle.nombre_cliente || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Contacto</label>
+                    <p className="text-gray-900 font-medium">{ordenDetalle.contacto || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Teléfono</label>
+                    <p className="text-gray-900 font-medium">{ordenDetalle.telefono || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Email</label>
+                    <p className="text-gray-900 font-medium">{ordenDetalle.email || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detalles de la Orden */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaFileAlt className="mr-2 text-green-600" />
+                  Detalles de la Orden
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">N° Cotización</label>
+                    <p className="text-gray-900 font-medium">{ordenDetalle.numero_cotizacion || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Fecha Creación</label>
+                    <p className="text-gray-900 font-medium">
+                      {ordenDetalle.fecha_creacion 
+                        ? new Date(ordenDetalle.fecha_creacion).toLocaleDateString('es-EC')
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Fecha Entrega</label>
+                    <p className="text-gray-900 font-medium">
+                      {ordenDetalle.fecha_entrega 
+                        ? new Date(ordenDetalle.fecha_entrega).toLocaleDateString('es-EC')
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Concepto y Cantidad */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaTools className="mr-2 text-green-600" />
+                  Trabajo a Realizar
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Concepto</label>
+                    <p className="text-gray-900 font-medium whitespace-pre-wrap">{ordenDetalle.concepto || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Cantidad</label>
+                    <p className="text-gray-900 font-medium text-2xl">{ordenDetalle.cantidad || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Responsables del Proceso */}
+              {(ordenDetalle.vendedor || ordenDetalle.preprensa || ordenDetalle.prensa || ordenDetalle.terminados || ordenDetalle.facturado) && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaUserFriends className="mr-2 text-green-600" />
+                    Responsables del Proceso
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {ordenDetalle.vendedor && (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <label className="text-sm text-gray-600 block mb-1 font-semibold">Vendedor</label>
+                        <p className="text-gray-900">{ordenDetalle.vendedor}</p>
+                      </div>
+                    )}
+                    {ordenDetalle.preprensa && (
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <label className="text-sm text-gray-600 block mb-1 font-semibold">Preprensa</label>
+                        <p className="text-gray-900">{ordenDetalle.preprensa}</p>
+                      </div>
+                    )}
+                    {ordenDetalle.prensa && (
+                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                        <label className="text-sm text-gray-600 block mb-1 font-semibold">Prensa</label>
+                        <p className="text-gray-900">{ordenDetalle.prensa}</p>
+                      </div>
+                    )}
+                    {ordenDetalle.terminados && (
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <label className="text-sm text-gray-600 block mb-1 font-semibold">Terminados</label>
+                        <p className="text-gray-900">{ordenDetalle.terminados}</p>
+                      </div>
+                    )}
+                    {ordenDetalle.facturado && (
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <label className="text-sm text-gray-600 block mb-1 font-semibold">Facturado</label>
+                        <p className="text-gray-900">{ordenDetalle.facturado}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Observaciones */}
+              {ordenDetalle.notas_observaciones && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaFileAlt className="mr-2 text-green-600" />
+                    Observaciones
+                  </h3>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <p className="text-gray-700 whitespace-pre-wrap">{ordenDetalle.notas_observaciones}</p>
+                  </div>
+                </div>
+              )}
+              {/* Información de Auditoría */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaHistory className="mr-2 text-blue-600" />
+                  Auditoría
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                      Creado por
+                    </label>
+                    <p className="text-gray-900 font-medium mb-1">
+                      {ordenDetalle.created_by_nombre || 'Sistema'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {ordenDetalle.created_at 
+                        ? new Date(ordenDetalle.created_at).toLocaleString('es-EC', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  {ordenDetalle.updated_by_nombre && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                        Última modificación por
+                      </label>
+                      <p className="text-gray-900 font-medium mb-1">
+                        {ordenDetalle.updated_by_nombre}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {ordenDetalle.updated_at 
+                          ? new Date(ordenDetalle.updated_at).toLocaleString('es-EC', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Información de Auditoría */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                  <FaHistory className="mr-2 text-blue-600" />
+                  Auditoría
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                      Creado por
+                    </label>
+                    <p className="text-gray-900 font-medium mb-1">
+                      {ordenDetalle.created_by_nombre || 'Sistema'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {ordenDetalle.created_at 
+                        ? new Date(ordenDetalle.created_at).toLocaleString('es-EC', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  {ordenDetalle.updated_by_nombre && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <label className="text-sm text-gray-600 block mb-2 font-semibold">
+                        Última modificación por
+                      </label>
+                      <p className="text-gray-900 font-medium mb-1">
+                        {ordenDetalle.updated_by_nombre}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {ordenDetalle.updated_at 
+                          ? new Date(ordenDetalle.updated_at).toLocaleString('es-EC', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    handleCerrarDetalleModal();
+                    editarOrden(ordenDetalle.id);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FaEdit />
+                  Editar Orden
+                </button>
+                <button
+                  onClick={() => {
+                    handleCerrarDetalleModal();
+                    verPDF(ordenDetalle.id);
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FaEye />
+                  Ver PDF/Imprimir
+                </button>
+                <button
+                  onClick={handleCerrarDetalleModal}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <FaTimes />
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -265,57 +265,23 @@ export const validateOrdenTrabajoUpdate = (req: Request, res: Response, next: Ne
   const instruccionesEmpacadoStr = asegurarString(instruccionesEmpacado);
   const prensaSeleccionadaStr = asegurarString(prensaSeleccionada);
 
-  // Validaciones de nuevos campos de trabajo (solo si se proporcionan)
-  if (material !== undefined && !materialStr.trim()) {
-    errors.push({ field: 'material', message: 'El campo Material no puede estar vacío' });
-  }
-
-  if (corteMaterial !== undefined && !corteMaterialStr.trim()) {
-    errors.push({ field: 'corteMaterial', message: 'El campo Corte de Material no puede estar vacío' });
-  }
-
-  if (cantidadPliegosCompra !== undefined && (!cantidadPliegosCompraStr.trim() || isNaN(Number(cantidadPliegosCompraStr)))) {
+  // Validaciones de nuevos campos de trabajo (permitir campos vacíos, son opcionales)
+  // Solo validar si tienen valor, no forzar que sean obligatorios
+  
+  if (cantidadPliegosCompra !== undefined && cantidadPliegosCompraStr.trim() && isNaN(Number(cantidadPliegosCompraStr))) {
     errors.push({ field: 'cantidadPliegosCompra', message: 'La Cantidad de Pliegos de Compra debe ser un número válido' });
   }
 
-  if (exceso !== undefined && (!excesoStr.trim() || isNaN(Number(excesoStr)))) {
+  if (exceso !== undefined && excesoStr.trim() && isNaN(Number(excesoStr))) {
     errors.push({ field: 'exceso', message: 'El Exceso debe ser un número válido' });
   }
 
-  if (tamanoAbierto1 !== undefined && !tamanoAbierto1Str.trim()) {
-    errors.push({ field: 'tamanoAbierto1', message: 'El campo Tamaño Abierto no puede estar vacío' });
-  }
-
-  if (tamanoCerrado1 !== undefined && !tamanoCerrado1Str.trim()) {
-    errors.push({ field: 'tamanoCerrado1', message: 'El campo Tamaño Cerrado no puede estar vacío' });
-  }
-
-  if (impresion !== undefined && !impresionStr.trim()) {
-    errors.push({ field: 'impresion', message: 'El campo Impresión no puede estar vacío' });
-  }
-
-  if (instruccionesImpresion !== undefined && !instruccionesImpresionStr.trim()) {
-    errors.push({ field: 'instruccionesImpresion', message: 'El campo Instrucciones de Impresión no puede estar vacío' });
-  }
-
-  if (instruccionesAcabados !== undefined && !instruccionesAcabadosStr.trim()) {
-    errors.push({ field: 'instruccionesAcabados', message: 'El campo Instrucciones de Acabados no puede estar vacío' });
-  }
-
-  if (instruccionesEmpacado !== undefined && !instruccionesEmpacadoStr.trim()) {
-    errors.push({ field: 'instruccionesEmpacado', message: 'El campo Instrucciones de Empacado no puede estar vacío' });
-  }
-
-  if (prensaSeleccionada !== undefined && !prensaSeleccionadaStr.trim()) {
-    errors.push({ field: 'prensaSeleccionada', message: 'El campo Prensa no puede estar vacío' });
-  }
-
-  // Validaciones adicionales de formato (solo si se proporcionan)
-  if (cantidadPliegosCompra !== undefined && Number(cantidadPliegosCompraStr) < 0) {
+  // Validaciones adicionales de formato (solo si se proporcionan y tienen valor)
+  if (cantidadPliegosCompra !== undefined && cantidadPliegosCompraStr.trim() && Number(cantidadPliegosCompraStr) < 0) {
     errors.push({ field: 'cantidadPliegosCompra', message: 'La Cantidad de Pliegos de Compra no puede ser negativa' });
   }
 
-  if (exceso !== undefined && Number(excesoStr) < 0) {
+  if (exceso !== undefined && excesoStr.trim() && Number(excesoStr) < 0) {
     errors.push({ field: 'exceso', message: 'El Exceso no puede ser negativo' });
   }
 

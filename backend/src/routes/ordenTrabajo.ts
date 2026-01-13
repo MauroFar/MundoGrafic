@@ -11,39 +11,38 @@ import { validateOrdenTrabajo, validateOrdenTrabajoUpdate } from "../middleware/
 export default (client: any) => {
   const router = express.Router();
 
-  // Obtener nombre del cliente y el primer concepto de la cotización
+  // Obtener datos del cliente de una cotización
   router.get("/datosCotizacion/:id", async (req, res): Promise<void> => {
     const { id } = req.params;
 
     try {
+      console.log(`🔍 Obteniendo datos de cotización ${id}`);
+      
       const result = await client.query(`
         SELECT 
           cl.nombre_cliente AS nombre_cliente,
           cl.telefono_cliente AS telefono_cliente,
           cl.email_cliente AS email_cliente,
           cl.direccion_cliente AS direccion_cliente,
-          dc.detalle AS concepto,
-          dc.cantidad AS cantidad,
-          c.numero_cotizacion AS numero_cotizacion,
-          ot.numero_orden AS numero_orden
+          c.codigo_cotizacion AS numero_cotizacion,
+          c.id AS cotizacion_id
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
-        JOIN detalle_cotizacion dc ON c.id = dc.cotizacion_id
-        LEFT JOIN orden_trabajo ot ON c.id = ot.id_cotizacion
         WHERE c.id = $1
-        LIMIT 1
       `, [id]);
 
       if (result.rows.length === 0) {
-        res.status(404).json({ message: "Cotización no encontrada o sin detalles" });
+        console.error(`❌ Cotización ${id} no encontrada`);
+        res.status(404).json({ message: "Cotización no encontrada" });
         return;
       }
 
+      console.log(`✅ Datos de cotización obtenidos:`, result.rows[0]);
       res.json(result.rows[0]);
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("Error al obtener datos de cotización:", err.message);
-      res.status(500).json({ error: "Error al obtener los datos de la cotización" });
+      console.error("❌ Error al obtener datos de cotización:", err.message);
+      res.status(500).json({ error: "Error al obtener los datos de la cotización", details: err.message });
     }
   });
 
@@ -237,12 +236,20 @@ export default (client: any) => {
   router.get('/orden/:id', authRequired(), checkPermission(client, 'ordenes_trabajo', 'leer'), async (req: any, res: any) => {
     const { id } = req.params;
     try {
-      // Obtener datos generales de la orden
+      // Obtener datos generales de la orden con información de auditoría
       const result = await client.query(
-        `SELECT ot.*, c.numero_cotizacion, cl.telefono_cliente, cl.email_cliente, cl.direccion_cliente
+        `SELECT ot.*, 
+         c.codigo_cotizacion as numero_cotizacion, 
+         cl.telefono_cliente, 
+         cl.email_cliente, 
+         cl.direccion_cliente,
+         u1.nombre as created_by_nombre,
+         u2.nombre as updated_by_nombre
          FROM orden_trabajo ot
          LEFT JOIN cotizaciones c ON ot.id_cotizacion = c.id
          LEFT JOIN clientes cl ON c.cliente_id = cl.id
+         LEFT JOIN usuarios u1 ON ot.created_by = u1.id
+         LEFT JOIN usuarios u2 ON ot.updated_by = u2.id
          WHERE ot.id = $1`,
         [id]
       );
@@ -337,8 +344,9 @@ export default (client: any) => {
             terminados = $13,
             facturado = $14,
             id_detalle_cotizacion = $15,
+            updated_by = $16,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $16
+        WHERE id = $17
         RETURNING *`,
         [
           nombre_cliente,
@@ -356,6 +364,7 @@ export default (client: any) => {
           terminados,
           facturado,
           id_detalle_cotizacion,
+          userId,
           id
         ]
       );
@@ -478,333 +487,202 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
-      // 4. Generar HTML con el diseño de la interfaz
+      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
       const html = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="UTF-8">
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body {
-              font-family: 'Arial', sans-serif;
-              padding: 20px;
-              background: white;
-              color: #333;
-            }
-            
-            .orden-container {
-              max-width: 1200px;
-              margin: 0 auto;
-              background: white;
-            }
-            
-            .header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              border-bottom: 3px solid #e74c3c;
-              padding-bottom: 15px;
-              margin-bottom: 20px;
-            }
-            
-            .logo-section img {
-              height: 60px;
-            }
-            
-            .orden-info {
-              text-align: right;
-            }
-            
-            .orden-numero {
-              font-size: 24px;
-              font-weight: bold;
-              color: #e74c3c;
-              margin-bottom: 5px;
-            }
-            
-            .orden-fecha {
-              font-size: 14px;
-              color: #666;
-            }
-            
-            .titulo-principal {
-              text-align: center;
-              font-size: 28px;
-              font-weight: bold;
-              color: #2c3e50;
-              margin: 20px 0;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            }
-            
-            .seccion {
-              margin-bottom: 25px;
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              overflow: hidden;
-            }
-            
-            .seccion-titulo {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 12px 20px;
-              font-size: 16px;
-              font-weight: bold;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            
-            .seccion-contenido {
-              padding: 20px;
-              background: #f8f9fa;
-            }
-            
-            .campo-grupo {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 15px;
-              margin-bottom: 15px;
-            }
-            
-            .campo {
-              display: flex;
-              flex-direction: column;
-            }
-            
-            .campo-label {
-              font-size: 12px;
-              color: #666;
-              font-weight: 600;
-              margin-bottom: 5px;
-              text-transform: uppercase;
-            }
-            
-            .campo-valor {
-              font-size: 14px;
-              color: #2c3e50;
-              padding: 8px 12px;
-              background: white;
-              border: 1px solid #ddd;
-              border-radius: 4px;
-              min-height: 36px;
-            }
-            
-            .campo-completo {
-              grid-column: 1 / -1;
-            }
-            
-            .responsables-grid {
-              display: grid;
-              grid-template-columns: repeat(5, 1fr);
-              gap: 10px;
-            }
-            
-            .responsable {
-              text-align: center;
-              padding: 10px;
-              background: white;
-              border: 1px solid #ddd;
-              border-radius: 4px;
-            }
-            
-            .responsable-titulo {
-              font-size: 11px;
-              color: #666;
-              font-weight: 600;
-              margin-bottom: 5px;
-              text-transform: uppercase;
-            }
-            
-            .responsable-nombre {
-              font-size: 13px;
-              color: #2c3e50;
-              font-weight: bold;
-            }
-            
-            .detalle-tecnico-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 12px;
-            }
-            
-            .footer {
-              margin-top: 30px;
-              padding-top: 15px;
-              border-top: 2px solid #e74c3c;
-              text-align: center;
-              font-size: 11px;
-              color: #666;
-            }
-            
-            .prensa-badge {
-              display: inline-block;
-              padding: 6px 12px;
-              background: #e74c3c;
-              color: white;
-              border-radius: 4px;
-              font-weight: bold;
-              font-size: 13px;
-            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .logo-section img { height: 45px; }
+            .orden-info { text-align: right; font-size: 10px; }
+            .orden-numero { font-size: 18px; font-weight: bold; }
+            .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+            .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
+            .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+            .seccion-contenido { padding: 10px; }
+            .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+            .campo { flex: 1; }
+            .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
+            .responsables { display: flex; gap: 6px; }
+            .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
+            .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .responsable-nombre { font-size: 10px; font-weight: bold; }
           </style>
         </head>
         <body>
-          <div class="orden-container">
-            <div class="header">
-              <div class="logo-section">
-                ${logoBase64 ? `<img src="${logoBase64}" alt="Logo MUNDOGRAFIC" />` : '<div style="font-size: 24px; font-weight: bold;">MUNDOGRAFIC</div>'}
-              </div>
-              <div class="orden-info">
-                <div class="orden-numero">ORDEN #${orden.numero_orden || 'N/A'}</div>
-                <div class="orden-fecha">Fecha: ${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : 'N/A'}</div>
-                ${orden.fecha_entrega ? `<div class="orden-fecha">Entrega: ${new Date(orden.fecha_entrega).toLocaleDateString('es-EC')}</div>` : ''}
-              </div>
+          <div class="header">
+            <div class="logo-section">
+              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
             </div>
-            
-            <h1 class="titulo-principal">ORDEN DE TRABAJO</h1>
-            
-            <!-- Información del Cliente -->
-            <div class="seccion">
-              <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
-              <div class="seccion-contenido">
-                <div class="campo-grupo">
-                  <div class="campo">
-                    <div class="campo-label">Cliente</div>
-                    <div class="campo-valor">${orden.nombre_cliente || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Contacto</div>
-                    <div class="campo-valor">${orden.contacto || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Teléfono</div>
-                    <div class="campo-valor">${orden.telefono || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Email</div>
-                    <div class="campo-valor">${orden.email || 'N/A'}</div>
-                  </div>
-                  <div class="campo campo-completo">
-                    <div class="campo-label">Concepto del Trabajo</div>
-                    <div class="campo-valor">${orden.concepto || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Cantidad</div>
-                    <div class="campo-valor">${orden.cantidad || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Estado</div>
-                    <div class="campo-valor">${orden.estado || 'Pendiente'}</div>
-                  </div>
+            <div class="orden-info">
+              <div class="orden-numero">Orden de Trabajo</div>
+              <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
+              <div>Contacto Nº: ${orden.contacto || ''}</div>
+            </div>
+          </div>
+          
+          <div class="titulo">ORDEN DE TRABAJO</div>
+          
+          <div class="seccion">
+            <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">CLIENTE</div>
+                  <div class="campo-valor">${orden.nombre_cliente || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CONTACTO</div>
+                  <div class="campo-valor">${orden.contacto || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">TELÉFONO</div>
+                  <div class="campo-valor">${orden.telefono || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">EMAIL</div>
+                  <div class="campo-valor">${orden.email || ''}</div>
                 </div>
               </div>
             </div>
-            
-            <!-- Responsables del Proceso -->
-            <div class="seccion">
-              <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
-              <div class="seccion-contenido">
-                <div class="responsables-grid">
-                  <div class="responsable">
-                    <div class="responsable-titulo">Vendedor</div>
-                    <div class="responsable-nombre">${orden.vendedor || '-'}</div>
-                  </div>
-                  <div class="responsable">
-                    <div class="responsable-titulo">Pre-prensa</div>
-                    <div class="responsable-nombre">${orden.preprensa || '-'}</div>
-                  </div>
-                  <div class="responsable">
-                    <div class="responsable-titulo">Offset</div>
-                    <div class="responsable-nombre">${orden.prensa || '-'}</div>
-                  </div>
-                  <div class="responsable">
-                    <div class="responsable-titulo">Terminados</div>
-                    <div class="responsable-nombre">${orden.terminados || '-'}</div>
-                  </div>
-                  <div class="responsable">
-                    <div class="responsable-titulo">Facturado</div>
-                    <div class="responsable-nombre">${orden.facturado || '-'}</div>
-                  </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Información del Trabajo</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo" style="flex: 2;">
+                  <div class="campo-label">CONCEPTO</div>
+                  <div class="campo-valor">${orden.concepto || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CANTIDAD</div>
+                  <div class="campo-valor">${orden.cantidad || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">TAMAÑO ABIERTO</div>
+                  <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">TAMAÑO CERRADO</div>
+                  <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
                 </div>
               </div>
             </div>
-            
-            <!-- Información Técnica del Trabajo -->
-            <div class="seccion">
-              <div class="seccion-titulo">🔧 INFORMACIÓN TÉCNICA DEL TRABAJO</div>
-              <div class="seccion-contenido">
-                <div class="detalle-tecnico-grid">
-                  <div class="campo">
-                    <div class="campo-label">Material</div>
-                    <div class="campo-valor">${detalle.material || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Corte Material</div>
-                    <div class="campo-valor">${detalle.corte_material || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Cant. Pliegos Compra</div>
-                    <div class="campo-valor">${detalle.cantidad_pliegos_compra || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Exceso</div>
-                    <div class="campo-valor">${detalle.exceso || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Total Pliegos</div>
-                    <div class="campo-valor">${detalle.total_pliegos || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Tamaño Abierto</div>
-                    <div class="campo-valor">${detalle.tamano_abierto_1 || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Tamaño Cerrado</div>
-                    <div class="campo-valor">${detalle.tamano_cerrado_1 || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Impresión</div>
-                    <div class="campo-valor">${detalle.impresion || 'N/A'}</div>
-                  </div>
-                  <div class="campo">
-                    <div class="campo-label">Prensa</div>
-                    <div class="campo-valor">${detalle.prensa_seleccionada ? `<span class="prensa-badge">${detalle.prensa_seleccionada}</span>` : 'N/A'}</div>
-                  </div>
-                  <div class="campo campo-completo">
-                    <div class="campo-label">Instrucciones de Impresión</div>
-                    <div class="campo-valor">${detalle.instrucciones_impresion || 'N/A'}</div>
-                  </div>
-                  <div class="campo campo-completo">
-                    <div class="campo-label">Instrucciones de Acabados</div>
-                    <div class="campo-valor">${detalle.instrucciones_acabados || 'N/A'}</div>
-                  </div>
-                  <div class="campo campo-completo">
-                    <div class="campo-label">Instrucciones de Empacado</div>
-                    <div class="campo-valor">${detalle.instrucciones_empacado || 'N/A'}</div>
-                  </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Material y Corte</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">MATERIAL</div>
+                  <div class="campo-valor">${detalle.material || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CORTE DE MATERIAL</div>
+                  <div class="campo-valor">${detalle.corte_material || ''}</div>
                 </div>
               </div>
             </div>
-            
-            <!-- Observaciones -->
-            ${orden.notas_observaciones || detalle.observaciones ? `
-            <div class="seccion">
-              <div class="seccion-titulo">📝 OBSERVACIONES</div>
-              <div class="seccion-contenido">
-                <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || 'Sin observaciones'}</div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Cantidad de Pliegos</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">PLIEGOS DE COMPRA</div>
+                  <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">EXCESO</div>
+                  <div class="campo-valor">${detalle.exceso || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">TOTAL</div>
+                  <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+                </div>
               </div>
             </div>
-            ` : ''}
-            
-            <div class="footer">
-              <p><strong>MUNDOGRAFIC®</strong> - Impresión Comercial y Servicios Gráficos</p>
-              <p>Quito: Pasaje San Luis N12-87 y Antonio Ante • Telf.: 2589134 • Email: ventas@mundografic.com</p>
-              <p>www.mundografic.com</p>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Impresión y Acabados</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">IMPRESIÓN</div>
+                  <div class="campo-valor">${detalle.impresion || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
+                  <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
+                  <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
+                  <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Prensa y Observaciones</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">SELECCIONAR PRENSA</div>
+                  <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+                </div>
+                <div class="campo" style="flex: 2;">
+                  <div class="campo-label">OBSERVACIONES GENERALES</div>
+                  <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Responsables del Proceso</div>
+            <div class="seccion-contenido">
+              <div class="responsables">
+                <div class="responsable">
+                  <div class="responsable-titulo">VENDEDOR</div>
+                  <div class="responsable-nombre">${orden.vendedor || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">PREPRENSA</div>
+                  <div class="responsable-nombre">${orden.preprensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">OFFSET</div>
+                  <div class="responsable-nombre">${orden.prensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">TERMINADOS</div>
+                  <div class="responsable-nombre">${orden.terminados || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">FACTURADO</div>
+                  <div class="responsable-nombre">${orden.facturado || ''}</div>
+                </div>
+              </div>
             </div>
           </div>
         </body>
@@ -817,18 +695,20 @@ export default (client: any) => {
       await page.setContent(html, { waitUntil: "networkidle0" });
       const pdfBuffer = await page.pdf({ 
         format: "A4",
+        printBackground: true,
         margin: {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm'
-        }
+          top: '8mm',
+          right: '8mm',
+          bottom: '8mm',
+          left: '8mm'
+        },
+        scale: 0.95
       });
       await browser.close();
 
-      // 6. Enviar el PDF al cliente para vista previa (sin forzar descarga)
+      // 6. Enviar el PDF al cliente para descarga
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline');
+      res.setHeader('Content-Disposition', `attachment; filename="orden_trabajo_${orden.numero_orden || id}.pdf"`);
       res.setHeader('Cache-Control', 'no-cache');
       res.send(pdfBuffer);
     } catch (error: any) {
