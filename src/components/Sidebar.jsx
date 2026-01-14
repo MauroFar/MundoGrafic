@@ -65,7 +65,7 @@ const Sidebar = () => {
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/produccion", label: "Dashboard Producción" },
+      { path: "/produccion", label: "Trabajos en Producción" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
       { path: "/produccion/preprensa", label: "Módulo Preprensa" },
       { path: "/produccion/prensa", label: "Módulo Prensa" },

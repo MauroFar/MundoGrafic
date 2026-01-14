@@ -6,185 +6,170 @@ import {
   FaExclamationTriangle, 
   FaCheckCircle, 
   FaPlay, 
-  FaPause, 
-  FaStop,
-  FaEye,
-  FaFilter,
   FaSync,
   FaEdit,
   FaPrint,
-  FaCut
+  FaCut,
+  FaEye
 } from 'react-icons/fa';
-import AlertasTiempo from '../../components/AlertasTiempo';
-import EstadisticasTiempoReal from '../../components/EstadisticasTiempoReal';
-import ResumenPorArea from '../../components/ResumenPorArea';
-import AccionesRapidas from '../../components/AccionesRapidas';
-import FiltrosAvanzados from '../../components/FiltrosAvanzados';
-import GraficosEstadisticas from '../../components/GraficosEstadisticas';
-import ProductividadDiaria from '../../components/ProductividadDiaria';
-import MetricasClave from '../../components/MetricasClave';
-import EstadoSistema from '../../components/EstadoSistema';
-import ActividadesRecientes from '../../components/ActividadesRecientes';
-import ProductividadEmpleados from '../../components/ProductividadEmpleados';
-import MetricasCalidad from '../../components/MetricasCalidad';
-import MetricasTiempo from '../../components/MetricasTiempo';
-import MetricasCostos from '../../components/MetricasCostos';
-import MetricasSatisfaccion from '../../components/MetricasSatisfaccion';
-import MetricasInnovacion from '../../components/MetricasInnovacion';
-import MetricasSostenibilidad from '../../components/MetricasSostenibilidad';
-import MetricasSeguridad from '../../components/MetricasSeguridad';
 
 const DashboardProduccion = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
   
   const [metricas, setMetricas] = useState({
-    totalOrdenes: 0,
-    pendientes: 0,
-    enProceso: 0,
+    totalEnProduccion: 0,
     retrasadas: 0,
-    completadasHoy: 0
+    porEntregarHoy: 0,
+    porEntregarSemana: 0,
+    completadasHoy: 0,
+    distribucionEtapas: [],
+    promedioDiasProduccion: '0.0'
   });
   
-  const [ordenesRecientes, setOrdenesRecientes] = useState([]);
+  const [ordenesEnProduccion, setOrdenesEnProduccion] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroEstado, setFiltroEstado] = useState('todos');
-  const [filtroFecha, setFiltroFecha] = useState('hoy');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarDatos();
-  }, [filtroEstado, filtroFecha]);
+    // Actualizar cada 30 segundos
+    const interval = setInterval(cargarDatos, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const cargarDatos = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Simular carga de datos con datos ficticios
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = localStorage.getItem('token');
       
-      // Datos ficticios para métricas
-      const dataMetricas = {
-        totalOrdenes: 45,
-        pendientes: 12,
-        enProceso: 18,
-        retrasadas: 3,
-        completadasHoy: 7
-      };
-      setMetricas(dataMetricas);
+      if (!token) {
+        navigate('/login');
+        return;
+      }
 
-      // Datos ficticios para órdenes recientes
-      const dataOrdenes = [
-        {
-          id: 1,
-          numero_orden: 'OT-2024-001',
-          nombre_cliente: 'Empresa ABC S.A.',
-          concepto: 'Tarjetas de presentación corporativas',
-          estado: 'en_preprensa',
-          fecha_entrega: '2024-01-15',
-          responsable_actual: 'Juan Pérez'
-        },
-        {
-          id: 2,
-          numero_orden: 'OT-2024-002',
-          nombre_cliente: 'Tienda XYZ',
-          concepto: 'Volantes promocionales',
-          estado: 'en_prensa',
-          fecha_entrega: '2024-01-12',
-          responsable_actual: 'María García'
-        },
-        {
-          id: 3,
-          numero_orden: 'OT-2024-003',
-          nombre_cliente: 'Restaurante El Buen Sabor',
-          concepto: 'Menús del restaurante',
-          estado: 'en_acabados',
-          fecha_entrega: '2024-01-10',
-          responsable_actual: 'Carlos López'
-        },
-        {
-          id: 4,
-          numero_orden: 'OT-2024-004',
-          nombre_cliente: 'Clínica San José',
-          concepto: 'Folleto médico',
-          estado: 'en_control_calidad',
-          fecha_entrega: '2024-01-08',
-          responsable_actual: 'Ana Martínez'
-        },
-        {
-          id: 5,
-          numero_orden: 'OT-2024-005',
-          nombre_cliente: 'Gym Fitness Plus',
-          concepto: 'Posters promocionales',
-          estado: 'entregado',
-          fecha_entrega: '2024-01-05',
-          responsable_actual: 'Roberto Silva'
+      // Cargar órdenes en producción
+      const ordenesResponse = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/ordenes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      ];
-      setOrdenesRecientes(dataOrdenes);
+      });
+
+      if (!ordenesResponse.ok) {
+        throw new Error('Error al cargar órdenes en producción');
+      }
+
+      const ordenesData = await ordenesResponse.json();
+      
+      // Cargar métricas
+      const metricasResponse = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/metricas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!metricasResponse.ok) {
+        throw new Error('Error al cargar métricas');
+      }
+
+      const metricasData = await metricasResponse.json();
+
+      setOrdenesEnProduccion(ordenesData.ordenes || []);
+      setMetricas(metricasData.metricas || {
+        totalEnProduccion: 0,
+        retrasadas: 0,
+        porEntregarHoy: 0,
+        porEntregarSemana: 0,
+        completadasHoy: 0,
+        distribucionEtapas: [],
+        promedioDiasProduccion: '0.0'
+      });
+
+      console.log('✅ Datos de producción cargados:', {
+        ordenes: ordenesData.ordenes?.length || 0,
+        metricas: metricasData.metricas
+      });
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error('❌ Error al cargar datos de producción:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const cambiarEstadoOrden = async (ordenId, nuevoEstado) => {
+  const cambiarEstadoOrden = async (ordenId, nuevoEstado, preprensa, prensa, terminados) => {
     try {
-      // Simular cambio de estado con datos ficticios
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const token = localStorage.getItem('token');
       
-      // Actualizar el estado local
-      setOrdenesRecientes(prev => 
-        prev.map(orden => 
-          orden.id === ordenId 
-            ? { ...orden, estado: nuevoEstado }
-            : orden
-        )
-      );
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${ordenId}/estado`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          estado: nuevoEstado,
+          preprensa,
+          prensa,
+          terminados
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar estado');
+      }
+
+      // Recargar datos
+      await cargarDatos();
 
       // Mostrar notificación de éxito
       window.dispatchEvent(new CustomEvent("nueva-notificacion", {
         detail: {
           titulo: "Estado actualizado",
-          mensaje: `Orden #${ordenId} actualizada a estado: ${nuevoEstado.replace('_', ' ')}`,
+          mensaje: `Orden actualizada correctamente`,
           tipo: "success",
           fecha: new Date().toLocaleString()
         }
       }));
     } catch (error) {
       console.error('Error al cambiar estado:', error);
+      window.dispatchEvent(new CustomEvent("nueva-notificacion", {
+        detail: {
+          titulo: "Error",
+          mensaje: error.message || "No se pudo actualizar el estado",
+          tipo: "error",
+          fecha: new Date().toLocaleString()
+        }
+      }));
     }
-  };
-
-  const getEstadoColor = (estado) => {
-    const colores = {
-      'pendiente': 'bg-yellow-100 text-yellow-800',
-      'en_preprensa': 'bg-blue-100 text-blue-800',
-      'en_prensa': 'bg-purple-100 text-purple-800',
-      'en_acabados': 'bg-orange-100 text-orange-800',
-      'en_control_calidad': 'bg-indigo-100 text-indigo-800',
-      'entregado': 'bg-green-100 text-green-800',
-      'retrasada': 'bg-red-100 text-red-800'
-    };
-    return colores[estado] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getIconoEstado = (estado) => {
-    const iconos = {
-      'pendiente': <FaClock className="text-yellow-600" />,
-      'en_preprensa': <FaPlay className="text-blue-600" />,
-      'en_prensa': <FaPlay className="text-purple-600" />,
-      'en_acabados': <FaPlay className="text-orange-600" />,
-      'en_control_calidad': <FaEye className="text-indigo-600" />,
-      'entregado': <FaCheckCircle className="text-green-600" />,
-      'retrasada': <FaExclamationTriangle className="text-red-600" />
-    };
-    return iconos[estado] || <FaClock className="text-gray-600" />;
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="ml-4 text-gray-600">Cargando datos de producción...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <FaExclamationTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <p className="text-gray-900 font-semibold mb-2">Error al cargar datos</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={cargarDatos}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }
@@ -192,9 +177,18 @@ const DashboardProduccion = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard de Producción</h1>
-        <p className="text-gray-600">Seguimiento y control del flujo de trabajo</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Trabajos en Producción</h1>
+          <p className="text-gray-600">Seguimiento y control del flujo de trabajo en tiempo real</p>
+        </div>
+        <button 
+          onClick={cargarDatos}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <FaSync className={loading ? 'animate-spin' : ''} />
+          Actualizar
+        </button>
       </div>
 
       {/* Métricas Generales */}
@@ -205,8 +199,8 @@ const DashboardProduccion = () => {
               <FaChartLine className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Órdenes</p>
-              <p className="text-2xl font-semibold text-gray-900">{metricas.totalOrdenes}</p>
+              <p className="text-sm font-medium text-gray-600">En Producción</p>
+              <p className="text-2xl font-semibold text-gray-900">{metricas.totalEnProduccion}</p>
             </div>
           </div>
         </div>
@@ -217,20 +211,20 @@ const DashboardProduccion = () => {
               <FaClock className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pendientes</p>
-              <p className="text-2xl font-semibold text-gray-900">{metricas.pendientes}</p>
+              <p className="text-sm font-medium text-gray-600">Entregar Hoy</p>
+              <p className="text-2xl font-semibold text-gray-900">{metricas.porEntregarHoy}</p>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              <FaPlay className="h-6 w-6" />
+            <div className="p-3 rounded-full bg-orange-100 text-orange-600">
+              <FaClock className="h-6 w-6" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">En Proceso</p>
-              <p className="text-2xl font-semibold text-gray-900">{metricas.enProceso}</p>
+              <p className="text-sm font-medium text-gray-600">Esta Semana</p>
+              <p className="text-2xl font-semibold text-gray-900">{metricas.porEntregarSemana}</p>
             </div>
           </div>
         </div>
@@ -260,252 +254,175 @@ const DashboardProduccion = () => {
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <FaFilter className="text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filtros:</span>
-          </div>
-          
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="en_preprensa">En Preprensa</option>
-            <option value="en_prensa">En Prensa</option>
-            <option value="en_acabados">En Acabados</option>
-            <option value="en_control_calidad">En Control</option>
-            <option value="entregado">Entregadas</option>
-            <option value="retrasada">Retrasadas</option>
-          </select>
-
-          <select
-            value={filtroFecha}
-            onChange={(e) => setFiltroFecha(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="hoy">Hoy</option>
-            <option value="semana">Esta semana</option>
-            <option value="mes">Este mes</option>
-            <option value="todos">Todos</option>
-          </select>
-
-          <button
-            onClick={cargarDatos}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            <FaSync className="h-4 w-4" />
-            Actualizar
-          </button>
-        </div>
-      </div>
-
-      {/* Filtros Avanzados */}
-      <div className="mb-8">
-        <FiltrosAvanzados onFiltrosChange={(filtros) => {
-          setFiltroEstado(filtros.estado);
-          setFiltroFecha(filtros.fecha);
-        }} />
-      </div>
-
-      {/* Actividades Recientes */}
-      <div className="mb-8">
-        <ActividadesRecientes />
-      </div>
-
-      {/* Estado del Sistema */}
-      <div className="mb-8">
-        <EstadoSistema />
-      </div>
-
-      {/* Métricas Clave */}
-      <div className="mb-8">
-        <MetricasClave />
-      </div>
-
-      {/* Productividad Diaria */}
-      <div className="mb-8">
-        <ProductividadDiaria />
-      </div>
-
-      {/* Productividad por Empleado */}
-      <div className="mb-8">
-        <ProductividadEmpleados />
-      </div>
-
-      {/* Gráficos Estadísticos */}
-      <div className="mb-8">
-        <GraficosEstadisticas />
-      </div>
-
-      {/* Métricas de Calidad */}
-      <div className="mb-8">
-        <MetricasCalidad />
-      </div>
-
-      {/* Métricas de Tiempo */}
-      <div className="mb-8">
-        <MetricasTiempo />
-      </div>
-
-      {/* Métricas de Costos */}
-      <div className="mb-8">
-        <MetricasCostos />
-      </div>
-
-      {/* Métricas de Satisfacción */}
-      <div className="mb-8">
-        <MetricasSatisfaccion />
-      </div>
-
-      {/* Métricas de Innovación */}
-      <div className="mb-8">
-        <MetricasInnovacion />
-      </div>
-
-      {/* Métricas de Sostenibilidad */}
-      <div className="mb-8">
-        <MetricasSostenibilidad />
-      </div>
-
-      {/* Métricas de Seguridad */}
-      <div className="mb-8">
-        <MetricasSeguridad />
-      </div>
-
-      {/* Resumen por Área */}
-      <div className="mb-8">
-        <ResumenPorArea />
-      </div>
-
-      {/* Estadísticas en Tiempo Real */}
-      <div className="mb-8">
-        <EstadisticasTiempoReal />
-      </div>
-
-      {/* Alertas de Tiempo */}
-      <div className="mb-8">
-        <AlertasTiempo />
-      </div>
-
-      {/* Órdenes Recientes */}
+      {/* Órdenes en Producción */}
       <div className="bg-white rounded-lg shadow-md">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Órdenes de Trabajo</h2>
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Órdenes en Producción</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {ordenesEnProduccion.length} {ordenesEnProduccion.length === 1 ? 'orden activa' : 'órdenes activas'}
+            </p>
+          </div>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Orden
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Concepto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha Entrega
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsable
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {ordenesRecientes.map((orden) => (
-                <tr key={orden.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{orden.numero_orden}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {orden.nombre_cliente}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                    {orden.concepto}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {getIconoEstado(orden.estado)}
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(orden.estado)}`}>
-                        {orden.estado.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString() : 'Sin fecha'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {orden.responsable_actual || 'Sin asignar'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => navigate(`/produccion/seguimiento/${orden.id}`)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Ver seguimiento"
-                      >
-                        <FaEye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => navigate(`/ordendeTrabajo/editar/${orden.id}`)}
-                        className="text-green-600 hover:text-green-900"
-                        title="Editar orden"
-                      >
-                        <FaEdit className="h-4 w-4" />
-                      </button>
-                      {orden.estado === 'pendiente' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_preprensa')}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Iniciar preprensa"
-                        >
-                          <FaPlay className="h-4 w-4" />
-                        </button>
-                      )}
-                      {orden.estado === 'en_preprensa' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_prensa')}
-                          className="text-orange-600 hover:text-orange-900"
-                          title="Mover a prensa"
-                        >
-                          <FaPrint className="h-4 w-4" />
-                        </button>
-                      )}
-                      {orden.estado === 'en_prensa' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_acabados')}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Mover a acabados"
-                        >
-                          <FaCut className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {ordenesEnProduccion.length === 0 ? (
+          <div className="p-12 text-center">
+            <FaCheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No hay órdenes en producción
+            </h3>
+            <p className="text-gray-600">
+              Las órdenes aparecerán aquí cuando sean enviadas a producción desde la sección de Orden de Trabajo
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Orden
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Concepto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cantidad
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Etapa
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fecha Entrega
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Vendedor
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Acciones Rápidas */}
-      <div className="mt-8">
-        <AccionesRapidas />
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {ordenesEnProduccion.map((orden) => {
+                  const fechaEntrega = new Date(orden.fecha_entrega);
+                  const hoy = new Date();
+                  const esRetrasada = fechaEntrega < hoy;
+                  const esHoy = fechaEntrega.toDateString() === hoy.toDateString();
+                  
+                  // Determinar etapa actual
+                  let etapa = 'Pendiente';
+                  let etapaColor = 'bg-yellow-100 text-yellow-800';
+                  
+                  if (orden.terminados) {
+                    etapa = 'Acabados';
+                    etapaColor = 'bg-green-100 text-green-800';
+                  } else if (orden.prensa) {
+                    etapa = 'Prensa';
+                    etapaColor = 'bg-purple-100 text-purple-800';
+                  } else if (orden.preprensa) {
+                    etapa = 'Preprensa';
+                    etapaColor = 'bg-blue-100 text-blue-800';
+                  }
+                  
+                  return (
+                    <tr 
+                      key={orden.id} 
+                      className={`hover:bg-gray-50 ${esRetrasada ? 'bg-red-50' : ''}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {orden.numero_orden}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {orden.nombre_cliente}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                        {orden.concepto}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {orden.cantidad}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${etapaColor}`}>
+                          {etapa}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center gap-2">
+                          {esRetrasada && <FaExclamationTriangle className="text-red-600" />}
+                          {esHoy && <FaClock className="text-yellow-600" />}
+                          <span className={esRetrasada ? 'text-red-600 font-semibold' : esHoy ? 'text-yellow-600 font-semibold' : 'text-gray-900'}>
+                            {fechaEntrega.toLocaleDateString()}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {orden.vendedor || 'Sin asignar'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => navigate(`/ordendeTrabajo/ver/${orden.id}`)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Ver detalle"
+                          >
+                            <FaEye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/ordendeTrabajo/editar/${orden.id}`)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Editar orden"
+                          >
+                            <FaEdit className="h-4 w-4" />
+                          </button>
+                          {!orden.preprensa && (
+                            <button
+                              onClick={() => cambiarEstadoOrden(orden.id, 'en producción', true, false, false)}
+                              className="text-purple-600 hover:text-purple-900"
+                              title="Iniciar preprensa"
+                            >
+                              <FaPlay className="h-4 w-4" />
+                            </button>
+                          )}
+                          {orden.preprensa && !orden.prensa && (
+                            <button
+                              onClick={() => cambiarEstadoOrden(orden.id, 'en producción', true, true, false)}
+                              className="text-orange-600 hover:text-orange-900"
+                              title="Mover a prensa"
+                            >
+                              <FaPrint className="h-4 w-4" />
+                            </button>
+                          )}
+                          {orden.prensa && !orden.terminados && (
+                            <button
+                              onClick={() => cambiarEstadoOrden(orden.id, 'en producción', true, true, true)}
+                              className="text-teal-600 hover:text-teal-900"
+                              title="Mover a acabados"
+                            >
+                              <FaCut className="h-4 w-4" />
+                            </button>
+                          )}
+                          {orden.terminados && (
+                            <button
+                              onClick={() => cambiarEstadoOrden(orden.id, 'completado', true, true, true)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Marcar como completado"
+                            >
+                              <FaCheckCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

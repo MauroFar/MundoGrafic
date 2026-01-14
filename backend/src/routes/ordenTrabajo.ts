@@ -827,6 +827,250 @@ export default (client: any) => {
     }
   });
 
+  // ==================== ENDPOINTS DE PRODUCCIÓN ====================
+  
+  // Obtener todas las órdenes en producción con detalles
+  router.get("/produccion/ordenes", authRequired(), async (req: any, res: any) => {
+    try {
+      console.log('📊 Obteniendo órdenes en producción...');
+      
+      const result = await client.query(`
+        SELECT 
+          ot.id,
+          ot.numero_orden,
+          ot.nombre_cliente,
+          ot.contacto,
+          ot.email,
+          ot.telefono,
+          ot.cantidad,
+          ot.concepto,
+          ot.fecha_creacion,
+          ot.fecha_entrega,
+          ot.estado,
+          ot.notas_observaciones,
+          ot.vendedor,
+          ot.preprensa,
+          ot.prensa,
+          ot.terminados,
+          ot.facturado,
+          ot.id_cotizacion,
+          dot.material,
+          dot.corte_material,
+          dot.cantidad_pliegos_compra,
+          dot.exceso,
+          dot.total_pliegos,
+          dot.tamano,
+          dot.tamano_abierto_1,
+          dot.tamano_cerrado_1,
+          dot.impresion,
+          dot.instrucciones_impresion,
+          dot.instrucciones_acabados,
+          dot.instrucciones_empacado,
+          dot.observaciones,
+          dot.prensa_seleccionada,
+          ot.created_at,
+          ot.updated_at
+        FROM orden_trabajo ot
+        LEFT JOIN detalle_orden_trabajo dot ON ot.id = dot.orden_trabajo_id
+        WHERE ot.estado = 'en producción'
+        ORDER BY ot.fecha_entrega ASC, ot.created_at DESC
+      `);
+      
+      console.log(`✅ Se encontraron ${result.rows.length} órdenes en producción`);
+      res.json({ 
+        success: true, 
+        ordenes: result.rows,
+        total: result.rows.length 
+      });
+    } catch (error: any) {
+      console.error("❌ Error al obtener órdenes en producción:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al obtener órdenes en producción",
+        details: error.message 
+      });
+    }
+  });
+
+  // Obtener métricas del dashboard de producción
+  router.get("/produccion/metricas", authRequired(), async (req: any, res: any) => {
+    try {
+      console.log('📈 Calculando métricas de producción...');
+      
+      // Total de órdenes en producción
+      const totalEnProduccion = await client.query(`
+        SELECT COUNT(*) as total FROM orden_trabajo WHERE estado = 'en producción'
+      `);
+      
+      // Órdenes retrasadas (fecha de entrega pasada)
+      const retrasadas = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado = 'en producción' 
+        AND fecha_entrega < CURRENT_DATE
+      `);
+      
+      // Órdenes por entregar hoy
+      const hoy = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado = 'en producción' 
+        AND fecha_entrega = CURRENT_DATE
+      `);
+      
+      // Órdenes por entregar esta semana
+      const estaSemana = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado = 'en producción' 
+        AND fecha_entrega BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+      `);
+      
+      // Órdenes completadas hoy
+      const completadasHoy = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado IN ('terminado', 'entregado', 'completado')
+        AND DATE(updated_at) = CURRENT_DATE
+      `);
+      
+      // Distribución por etapa de producción
+      const distribucion = await client.query(`
+        SELECT 
+          CASE 
+            WHEN preprensa::text = 'true' AND prensa::text = 'false' AND terminados::text = 'false' THEN 'preprensa'
+            WHEN preprensa::text = 'true' AND prensa::text = 'true' AND terminados::text = 'false' THEN 'prensa'
+            WHEN preprensa::text = 'true' AND prensa::text = 'true' AND terminados::text = 'true' THEN 'acabados'
+            ELSE 'pendiente'
+          END as etapa,
+          COUNT(*) as cantidad
+        FROM orden_trabajo 
+        WHERE estado = 'en producción'
+        GROUP BY etapa
+      `);
+      
+      // Promedio de días en producción
+      const promedioTiempo = await client.query(`
+        SELECT 
+          AVG(EXTRACT(DAY FROM (CURRENT_TIMESTAMP - created_at))) as promedio_dias
+        FROM orden_trabajo 
+        WHERE estado = 'en producción'
+      `);
+
+      const metricas = {
+        totalEnProduccion: parseInt(totalEnProduccion.rows[0].total),
+        retrasadas: parseInt(retrasadas.rows[0].total),
+        porEntregarHoy: parseInt(hoy.rows[0].total),
+        porEntregarSemana: parseInt(estaSemana.rows[0].total),
+        completadasHoy: parseInt(completadasHoy.rows[0].total),
+        distribucionEtapas: distribucion.rows,
+        promedioDiasProduccion: parseFloat(promedioTiempo.rows[0].promedio_dias || 0).toFixed(1)
+      };
+      
+      console.log('✅ Métricas calculadas:', metricas);
+      res.json({ success: true, metricas });
+    } catch (error: any) {
+      console.error("❌ Error al calcular métricas:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al calcular métricas de producción",
+        details: error.message 
+      });
+    }
+  });
+
+  // Cambiar estado/etapa de producción de una orden
+  router.put("/produccion/:id/estado", authRequired(), async (req: any, res: any) => {
+    const { id } = req.params;
+    const { estado, preprensa, prensa, terminados } = req.body;
+    
+    try {
+      console.log(`🔄 Actualizando estado de orden ${id}:`, { estado, preprensa, prensa, terminados });
+      
+      let query = 'UPDATE orden_trabajo SET updated_at = CURRENT_TIMESTAMP';
+      const params: any[] = [];
+      let paramCounter = 1;
+      
+      if (estado !== undefined) {
+        query += `, estado = $${paramCounter}`;
+        params.push(estado);
+        paramCounter++;
+      }
+      if (preprensa !== undefined) {
+        query += `, preprensa = $${paramCounter}`;
+        params.push(preprensa);
+        paramCounter++;
+      }
+      if (prensa !== undefined) {
+        query += `, prensa = $${paramCounter}`;
+        params.push(prensa);
+        paramCounter++;
+      }
+      if (terminados !== undefined) {
+        query += `, terminados = $${paramCounter}`;
+        params.push(terminados);
+        paramCounter++;
+      }
+      
+      query += ` WHERE id = $${paramCounter} RETURNING *`;
+      params.push(id);
+      
+      const result = await client.query(query, params);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Orden no encontrada" });
+      }
+      
+      console.log('✅ Estado actualizado correctamente');
+      res.json({ success: true, orden: result.rows[0] });
+    } catch (error: any) {
+      console.error("❌ Error al actualizar estado:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al actualizar estado de producción",
+        details: error.message 
+      });
+    }
+  });
+
+  // Obtener historial/actividades recientes de producción
+  router.get("/produccion/actividades", authRequired(), async (req: any, res: any) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      console.log(`📜 Obteniendo últimas ${limit} actividades...`);
+      
+      const result = await client.query(`
+        SELECT 
+          ot.id,
+          ot.numero_orden,
+          ot.nombre_cliente,
+          ot.concepto,
+          ot.estado,
+          ot.updated_at,
+          ot.preprensa,
+          ot.prensa,
+          ot.terminados
+        FROM orden_trabajo ot
+        WHERE ot.estado IN ('en producción', 'terminado', 'entregado', 'completado')
+        ORDER BY ot.updated_at DESC
+        LIMIT $1
+      `, [limit]);
+      
+      console.log(`✅ ${result.rows.length} actividades encontradas`);
+      res.json({ success: true, actividades: result.rows });
+    } catch (error: any) {
+      console.error("❌ Error al obtener actividades:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Error al obtener actividades recientes",
+        details: error.message 
+      });
+    }
+  });
+
+  // ==================== FIN ENDPOINTS DE PRODUCCIÓN ====================
+
   // Endpoint de preview para generar PDF en base64 (igual que cotizaciones)
   router.get("/:id/preview", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
