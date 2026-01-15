@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
 import Logo from "../../components/Logo";
+import SelectorPrensa from '../../components/SelectorPrensa';
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -112,10 +113,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
    const [instruccionesEmpacado, setInstruccionesEmpacado] = useState<string>('');
    const [observaciones, setObservaciones] = useState<string>('');
    const [prensaSeleccionada, setPrensaSeleccionada] = useState<string>('');
-   const [mostrarDropdownPrensa, setMostrarDropdownPrensa] = useState<boolean>(false);
-
-  // Opciones de prensa
-  const opcionesPrensa = ['GTO 52', 'PM52', 'CD102'];
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -1173,45 +1170,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
             </h3>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="relative prensa-dropdown">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar Prensa</label>
-                <div className="relative">
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500 pr-8" 
-                    type="text" 
-                    value={prensaSeleccionada}
-                    onChange={e => setPrensaSeleccionada(e.target.value)}
-                    onFocus={() => setMostrarDropdownPrensa(true)}
-                    placeholder="Seleccionar o escribir prensa..."
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setMostrarDropdownPrensa(!mostrarDropdownPrensa)}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-                
-                {mostrarDropdownPrensa && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded shadow-lg z-10 mt-1">
-                    {opcionesPrensa.map((opcion, index) => (
-                      <div
-                        key={index}
-                        className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
-                        onClick={() => {
-                          setPrensaSeleccionada(opcion);
-                          setMostrarDropdownPrensa(false);
-                        }}
-                      >
-                        {opcion}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <SelectorPrensa
+                value={prensaSeleccionada}
+                onChange={setPrensaSeleccionada}
+                label="Seleccionar Prensa"
+                placeholder="Seleccionar o escribir prensa..."
+              />
 
               <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones Generales</label>

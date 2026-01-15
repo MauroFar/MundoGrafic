@@ -7,7 +7,7 @@ function GestionUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '', es_empleado_mundografic: true });
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
@@ -42,7 +42,8 @@ function GestionUsuarios() {
   };
 
   const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
 
   const handleSubmit = async e => {
@@ -61,7 +62,7 @@ function GestionUsuarios() {
     });
     if (res.ok) {
       fetchUsuarios();
-      setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' });
+      setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '', es_empleado_mundografic: true });
       setEditId(null);
     } else {
       alert("Error al guardar usuario");
@@ -77,7 +78,8 @@ function GestionUsuarios() {
       area_id: usuario.area_id || '',
       password: '',
       email_personal: usuario.email_personal || '',
-      celular: usuario.celular || ''
+      celular: usuario.celular || '',
+      es_empleado_mundografic: usuario.es_empleado_mundografic ?? true
     });
     setEditId(usuario.id);
   };
@@ -200,6 +202,24 @@ function GestionUsuarios() {
             </div>
           )}
           
+          {/* Campo Empleado MundoGrafic */}
+          <div className="md:col-span-2 flex items-center gap-3 bg-green-50 p-4 rounded-lg border border-green-200">
+            <input 
+              type="checkbox" 
+              name="es_empleado_mundografic" 
+              checked={form.es_empleado_mundografic}
+              onChange={handleChange}
+              className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer"
+              id="es_empleado_mundografic"
+            />
+            <label htmlFor="es_empleado_mundografic" className="flex-1 cursor-pointer">
+              <div className="font-semibold text-green-800">👥 Empleado de MundoGrafic</div>
+              <p className="text-xs text-green-600 mt-1">
+                Marque esta opción si el usuario es parte del equipo interno de MundoGrafic. Los empleados aparecerán en el selector de equipo al enviar cotizaciones.
+              </p>
+            </label>
+          </div>
+
           {/* Botón de configuración de firma para ejecutivos */}
           {form.rol === 'ejecutivo' && (
             <div className="md:col-span-2">
@@ -228,7 +248,7 @@ function GestionUsuarios() {
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold w-full text-lg shadow transition-all duration-200">
               {editId ? "Actualizar" : "Crear"} Usuario
             </button>
-                         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '' }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
+                         {editId && <button type="button" onClick={() => { setEditId(null); setForm({ email: '', nombre_usuario: '', nombre: '', rol: 'ejecutivo', area_id: '', password: '', email_personal: '', celular: '', es_empleado_mundografic: true }); }} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl w-full font-bold text-lg shadow transition-all duration-200">Cancelar</button>}
           </div>
         </form>
         <div className="overflow-x-auto rounded-2xl shadow-lg border border-blue-100 bg-white">
@@ -240,6 +260,7 @@ function GestionUsuarios() {
                 <th className="px-4 py-3 text-left font-bold text-blue-900">Nombre</th>
                 <th className="px-4 py-3 text-left font-bold text-blue-900">Rol</th>
                                  <th className="px-4 py-3 text-left font-bold text-blue-900">Área</th>
+                 <th className="px-4 py-3 text-center font-bold text-blue-900">Equipo MG</th>
                  <th className="px-4 py-3 text-center font-bold text-blue-900">Email Personal</th>
                  <th className="px-4 py-3 text-center font-bold text-blue-900">Firma</th>
                  <th className="px-4 py-3 text-center font-bold text-blue-900">Activo</th>
@@ -254,6 +275,17 @@ function GestionUsuarios() {
                   <td className="px-4 py-2 whitespace-nowrap">{u.nombre}</td>
                   <td className="px-4 py-2 whitespace-nowrap capitalize">{u.rol}</td>
                                      <td className="px-4 py-2 whitespace-nowrap">{areas.find(a => a.id === u.area_id)?.nombre || u.area_id}</td>
+                   <td className="px-4 py-2 text-center">
+                     {u.es_empleado_mundografic ? (
+                       <span className="inline-block px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded" title="Empleado de MundoGrafic">
+                         ✅ Sí
+                       </span>
+                     ) : (
+                       <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded" title="Usuario externo">
+                         ➖ No
+                       </span>
+                     )}
+                   </td>
                    <td className="px-4 py-2 text-center">
                      {u.rol === 'ejecutivo' ? (
                        u.email_personal ? (

@@ -4,6 +4,7 @@ import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck
 import { toast } from 'react-toastify';
 import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
 import { usePermisos } from '../../hooks/usePermisos';
+import ModalSeleccionCorreo from '../../components/ModalSeleccionCorreo';
 
 function CotizacionesVer() {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -41,10 +42,15 @@ function CotizacionesVer() {
   const [showBCCSection, setShowBCCSection] = useState(false);
   const [showClientesModal, setShowClientesModal] = useState(false);
   const [clientesSugeridos, setClientesSugeridos] = useState([]);
-  const [busquedaCliente, setBusquedaCliente] = useState("");
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [showSugerencias, setShowSugerencias] = useState(false);
   const [sugerenciaIndex, setSugerenciaIndex] = useState(-1);
+  
+  // Estados para modal de equipo MundoGrafic
+  const [showEquipoModal, setShowEquipoModal] = useState(false);
+  const [empleadosMundoGrafic, setEmpleadosMundoGrafic] = useState([]);
+  const [loadingEmpleados, setLoadingEmpleados] = useState(false);
+  
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [sugerenciasBusqueda, setSugerenciasBusqueda] = useState([]);
@@ -585,6 +591,44 @@ function CotizacionesVer() {
     setTipoDestinatarioActual(tipo);
     setShowClientesModal(true);
     cargarTodosLosClientes();
+  };
+  
+  // Función para abrir modal de equipo MundoGrafic
+  const abrirModalEquipoMundoGrafic = async (tipo) => {
+    setTipoDestinatarioActual(tipo);
+    setShowEquipoModal(true);
+    await cargarEmpleadosMundoGrafic();
+  };
+  
+  // Función para cargar empleados de MundoGrafic
+  const cargarEmpleadosMundoGrafic = async () => {
+    setLoadingEmpleados(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/usuarios/empleados-mundografic`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar empleados');
+      }
+      
+      const data = await response.json();
+      setEmpleadosMundoGrafic(data);
+    } catch (error) {
+      console.error('Error al cargar empleados:', error);
+      toast.error('Error al cargar el equipo de MundoGrafic');
+    } finally {
+      setLoadingEmpleados(false);
+    }
+  };
+  
+  // Función para seleccionar empleado del equipo
+  const seleccionarEmpleado = (empleado) => {
+    agregarDestinatarioPorTipo(tipoDestinatarioActual, empleado.email, empleado.nombre);
+    toast.success(`${empleado.nombre} agregado a ${tipoDestinatarioActual === 'to' ? 'Para' : tipoDestinatarioActual === 'cc' ? 'CC' : 'BCC'}`);
   };
 
 
@@ -1260,9 +1304,9 @@ function CotizacionesVer() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                      onClick={() => abrirModalEquipoMundoGrafic('to')}
                       className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                      title="Seleccionar miembros"
+                      title="Seleccionar miembros del equipo"
                     >
                       + Equipo MundoGrafic
                     </button>
@@ -1358,9 +1402,9 @@ function CotizacionesVer() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                          onClick={() => abrirModalEquipoMundoGrafic('cc')}
                           className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                          title="Seleccionar miembros"
+                          title="Seleccionar miembros del equipo"
                         >
                           + Equipo MundoGrafic
                   </button>
@@ -1458,9 +1502,9 @@ function CotizacionesVer() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => toast.info('Miembros MundoGrafic próximamente')}
+                          onClick={() => abrirModalEquipoMundoGrafic('bcc')}
                           className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                          title="Seleccionar miembros"
+                          title="Seleccionar miembros del equipo"
                         >
                           + Equipo MundoGrafic
                         </button>
@@ -1655,94 +1699,60 @@ function CotizacionesVer() {
       )}
 
       {/* ✅ Modal de Clientes */}
-      {showClientesModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Seleccionar Cliente</h2>
-              <button
-                onClick={() => setShowClientesModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            
-            {/* Buscador */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Buscar por nombre o correo..."
-                value={busquedaCliente}
-                onChange={(e) => setBusquedaCliente(e.target.value)}
-                className="w-full border border-gray-300 rounded-md p-2"
-              />
-            </div>
-            
-            {/* Lista de Clientes */}
-            <div className="overflow-y-auto max-h-96">
-              {loadingClientes ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="text-gray-500">Cargando clientes...</div>
+      <ModalSeleccionCorreo
+        isOpen={showClientesModal}
+        onClose={() => setShowClientesModal(false)}
+        titulo="Seleccionar Cliente"
+        items={clientesSugeridos}
+        loading={loadingClientes}
+        tipo="clientes"
+        buscarEn={['nombre_cliente', 'email_cliente', 'empresa', 'telefono']}
+        infoMessage="Haz clic en cualquier parte de la fila para seleccionar un cliente"
+        columnas={[
+          { key: 'nombre_cliente', label: 'Nombre', align: 'left' },
+          { key: 'empresa', label: 'Empresa', align: 'left' },
+          { key: 'email_cliente', label: 'Correo', align: 'left' },
+          { key: 'telefono', label: 'Teléfono', align: 'left' }
+        ]}
+        onSeleccionar={(cliente) => {
+          agregarDestinatarioPorTipo(tipoDestinatarioActual, cliente.email_cliente, cliente.nombre_cliente);
+          setShowClientesModal(false);
+          toast.success(`Cliente "${cliente.nombre_cliente}" agregado como destinatario ${tipoDestinatarioActual.toUpperCase()}`);
+        }}
+      />
+
+      {/* ✅ Modal de Equipo MundoGrafic */}
+      <ModalSeleccionCorreo
+        isOpen={showEquipoModal}
+        onClose={() => setShowEquipoModal(false)}
+        titulo="👥 Seleccionar del Equipo MundoGrafic"
+        items={empleadosMundoGrafic}
+        loading={loadingEmpleados}
+        tipo="empleados"
+        buscarEn={['nombre', 'email']}
+        infoMessage="Haz clic en cualquier parte de la fila para seleccionar un empleado"
+        columnas={[
+          { 
+            key: 'nombre', 
+            label: 'Nombre', 
+            align: 'left',
+            render: (empleado) => (
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                  <i className="fas fa-user text-green-600"></i>
                 </div>
-              ) : clientesSugeridos.length === 0 ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="text-gray-500">No se encontraron clientes</div>
-                </div>
-              ) : (
-                <table className="min-w-full border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left border-b">Nombre</th>
-                      <th className="px-4 py-2 text-left border-b">Empresa</th>
-                      <th className="px-4 py-2 text-left border-b">Correo</th>
-                      <th className="px-4 py-2 text-left border-b">Teléfono</th>
-                      <th className="px-4 py-2 text-center border-b">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clientesSugeridos
-                      .filter(cliente => 
-                        cliente.nombre_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
-                        cliente.email_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase())
-                      )
-                      .map((cliente) => (
-                        <tr key={cliente.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
-                          <td className="px-4 py-2 border-b">{cliente.empresa}</td>
-                          <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
-                          <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
-                          <td className="px-4 py-2 border-b text-center">
-                            <button
-                              onClick={() => {
-                                // Agregar al tipo de destinatario actual
-                                agregarDestinatarioPorTipo(tipoDestinatarioActual, cliente.email_cliente, cliente.nombre_cliente);
-                                setShowClientesModal(false);
-                                toast.success(`Cliente "${cliente.nombre_cliente}" agregado como destinatario ${tipoDestinatarioActual.toUpperCase()}`);
-                              }}
-                              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                            >
-                              Agregar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setShowClientesModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                {empleado.nombre}
+              </div>
+            )
+          },
+          { key: 'email', label: 'Correo', align: 'left' }
+        ]}
+        onSeleccionar={(empleado) => {
+          agregarDestinatarioPorTipo(tipoDestinatarioActual, empleado.email, empleado.nombre);
+          setShowEquipoModal(false);
+          toast.success(`${empleado.nombre} agregado como destinatario ${tipoDestinatarioActual.toUpperCase()}`);
+        }}
+      />
 
       {/* Modal de confirmación de eliminación */}
       {showDeleteModal && cotizacionToDelete && (

@@ -96,6 +96,10 @@ app.use('/api/usuarios', usuariosRoutes(client));
 // Rutas de áreas
 app.use('/api/areas', areasRoutes(client));
 
+// Rutas de prensas
+import prensasRoutes from './routes/prensas';
+app.use('/api/prensas', prensasRoutes(client));
+
 // Rutas de firmas
 import firmasRouter from './routes/firmas';
 app.use('/api/firmas', firmasRouter);

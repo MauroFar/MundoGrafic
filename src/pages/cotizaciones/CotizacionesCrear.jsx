@@ -70,6 +70,7 @@ function CotizacionesCrear() {
   const [usarCeluar, setUsarCeluar] = useState(false);
   const [celuar, setCeluar] = useState("");
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
+  const [formatoNegritaActivo, setFormatoNegritaActivo] = useState({}); // Estado para el formato de negrita por fila
   
   // Estados para modales de confirmación
   const [showConfirmGuardar, setShowConfirmGuardar] = useState(false);
@@ -1139,6 +1140,64 @@ function CotizacionesCrear() {
     }
   };
 
+  // Función para toggle del formato negrita
+  const toggleNegrita = (index) => {
+    setFormatoNegritaActivo(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  // Función para aplicar formato al texto seleccionado en contentEditable
+  const aplicarFormatoASeleccion = (index) => {
+    const editor = textareaRefs.current[index];
+    if (!editor) {
+      console.log('Editor no encontrado');
+      return;
+    }
+
+    // Forzar el foco en el editor
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount || selection.isCollapsed) {
+      console.log('No hay texto seleccionado');
+      alert('Por favor, selecciona el texto que deseas poner en negrita');
+      return;
+    }
+
+    try {
+      // Guardar la selección actual
+      const range = selection.getRangeAt(0);
+      
+      // Verificar si la selección está dentro del editor
+      if (!editor.contains(range.commonAncestorContainer)) {
+        console.log('La selección no está dentro del editor');
+        return;
+      }
+
+      // Aplicar el formato bold
+      const success = document.execCommand('bold', false, null);
+      console.log('execCommand bold resultado:', success);
+
+      // Pequeño delay para asegurar que el DOM se actualice
+      setTimeout(() => {
+        // Actualizar el estado con el nuevo contenido
+        const nuevasFilas = [...filas];
+        nuevasFilas[index].detalle = editor.innerHTML;
+        setFilas(nuevasFilas);
+        console.log('Contenido actualizado:', editor.innerHTML);
+        
+        // Restaurar el foco
+        editor.focus();
+      }, 10);
+      
+    } catch (error) {
+      console.error('Error al aplicar formato:', error);
+      alert('Hubo un error al aplicar el formato. Por favor intenta nuevamente.');
+    }
+  };
+
   const guardarCotizacionComoNueva = async (clienteId) => {
     try {
       const token = localStorage.getItem("token");
@@ -1298,8 +1357,36 @@ function CotizacionesCrear() {
     } catch (_) {}
   }, []);
 
+  // Sincronizar el contenido de los editores contentEditable cuando cambien las filas
+  useEffect(() => {
+    filas.forEach((fila, index) => {
+      const editor = textareaRefs.current[index];
+      if (editor && editor !== document.activeElement) {
+        // Solo actualizar si el editor no está siendo editado activamente
+        if (editor.innerHTML !== fila.detalle) {
+          editor.innerHTML = fila.detalle || '';
+        }
+      }
+    });
+  }, [filas]);
+
   return (
     <div className="container mx-auto px-4 py-8">
+      <style>{`
+        [contenteditable][data-placeholder]:empty:before {
+          content: attr(data-placeholder);
+          color: #9CA3AF;
+          pointer-events: none;
+        }
+        [contenteditable] {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        [contenteditable] strong {
+          font-weight: bold;
+          color: #000;
+        }
+      `}</style>
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -1537,15 +1624,60 @@ function CotizacionesCrear() {
                       />
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
-                      <textarea
-                        ref={(el) => (textareaRefs.current[index] = el)}
-                        value={fila.detalle}
-                        onChange={(e) => {
+                      {/* Barra de herramientas de formato */}
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => aplicarFormatoASeleccion(index)}
+                          className={`px-2 py-1 rounded border text-sm font-bold flex items-center gap-1 transition-colors ${
+                            formatoNegritaActivo[index] 
+                              ? 'bg-blue-500 text-white border-blue-600' 
+                              : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'
+                          }`}
+                          title="Negrita: Selecciona texto y haz clic para aplicar/quitar formato"
+                        >
+                          <i className="fas fa-bold"></i>
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          Selecciona texto y haz clic en <i className="fas fa-bold text-xs"></i> para formato negrita
+                        </span>
+                      </div>
+                      
+                      <div
+                        ref={(el) => {
+                          textareaRefs.current[index] = el;
+                          // Actualizar el contenido si el HTML cambió desde el estado
+                          if (el && el.innerHTML !== fila.detalle) {
+                            // Solo actualizar si realmente es diferente y no estamos editando
+                            const isEditing = el === document.activeElement;
+                            if (!isEditing) {
+                              el.innerHTML = fila.detalle || '';
+                            }
+                          }
+                        }}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={(e) => {
                           const nuevasFilas = [...filas];
-                          nuevasFilas[index].detalle = e.target.value;
+                          nuevasFilas[index].detalle = e.currentTarget.innerHTML;
                           setFilas(nuevasFilas);
                         }}
-                        className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
+                        onBlur={(e) => {
+                          // Guardar el contenido al perder el foco
+                          const nuevasFilas = [...filas];
+                          nuevasFilas[index].detalle = e.currentTarget.innerHTML;
+                          setFilas(nuevasFilas);
+                        }}
+                        onKeyDown={(e) => {
+                          // Ctrl+B para aplicar negrita con teclado
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                            e.preventDefault();
+                            aplicarFormatoASeleccion(index);
+                          }
+                        }}
+                        className="w-full border border-gray-300 rounded-md p-2 min-h-[60px] max-h-[400px] overflow-y-auto focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        style={{ whiteSpace: 'pre-wrap' }}
+                        data-placeholder="Escribe el detalle aquí. Selecciona texto y usa el botón de negrita para dar formato."
                       />
                       
                       {/* Mostrar imágenes existentes */}
