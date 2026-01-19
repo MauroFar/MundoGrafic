@@ -1667,6 +1667,7 @@ const CotizacionDatos = (client: any) => {
         host: "smtp.gmail.com",
         port: 587,
         secure: false,
+        family: 4, // Forzar IPv4 para evitar errores de conectividad IPv6
         auth: {
           user: emailUser,
           pass: emailPassword
