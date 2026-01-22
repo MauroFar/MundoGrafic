@@ -237,6 +237,8 @@ function SelectorPrensa({ value, onChange, className = '', label = 'Seleccionar 
                 disabled={guardando || !nuevaPrensa.nombre.trim()}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
+
+            
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>
               <button

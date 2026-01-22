@@ -62,7 +62,8 @@ function CotizacionesVer() {
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'prensa' (Offset) | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'offset' | 'digital'
+  const [productoSeleccionadoTemp, setProductoSeleccionadoTemp] = useState(null); // Producto temporal antes de elegir tipo
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cotizacionToDelete, setCotizacionToDelete] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -850,19 +851,12 @@ function CotizacionesVer() {
   };
 
   const generarOrdenTrabajo = async (cotizacionId) => {
-    // Paso 1: seleccionar tipo de orden primero
-    setCotizacionSeleccionada(cotizacionId);
-    setShowTipoOrdenModal(true);
-  };
-
-  // Continuar flujo después de elegir tipo de orden
-  const continuarGeneracionOrden = async (tipoSeleccionado) => {
+    // Paso 1: Cargar productos de la cotización PRIMERO
     try {
-      setTipoOrdenSeleccionado(tipoSeleccionado);
-      setShowTipoOrdenModal(false);
+      setCotizacionSeleccionada(cotizacionId);
       setLoading(true);
       const token = localStorage.getItem("token");
-      const response = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionSeleccionada}`, {
+      const response = await fetch(`${apiUrl}/api/cotizacionesDetalles/${cotizacionId}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -870,11 +864,15 @@ function CotizacionesVer() {
       });
       if (!response.ok) throw new Error("No se pudieron obtener los productos de la cotización");
       const detalles = await response.json();
+      
       if (Array.isArray(detalles) && detalles.length > 1) {
+        // Si hay múltiples productos, mostrar modal de selección
         setProductosCotizacion(detalles);
         setShowProductoModal(true);
       } else if (Array.isArray(detalles) && detalles.length === 1) {
-        navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto: detalles[0], tipoOrden: tipoSeleccionado } });
+        // Si hay un solo producto, mostrar modal de tipo directamente
+        setProductoSeleccionadoTemp(detalles[0]);
+        setShowTipoOrdenModal(true);
       } else {
         toast.error('La cotización no tiene productos para generar orden de trabajo.');
       }
@@ -888,8 +886,24 @@ function CotizacionesVer() {
   // Función para manejar la selección de producto en el modal
   const handleSeleccionarProducto = (producto) => {
     setShowProductoModal(false);
-    if (cotizacionSeleccionada && producto) {
-      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id, tipoOrden: tipoOrdenSeleccionado } });
+    setProductoSeleccionadoTemp(producto);
+    // Después de seleccionar producto, pedir tipo de orden
+    setShowTipoOrdenModal(true);
+  };
+
+  // Continuar flujo después de elegir tipo de orden
+  const continuarGeneracionOrden = async (tipoSeleccionado) => {
+    setTipoOrdenSeleccionado(tipoSeleccionado);
+    setShowTipoOrdenModal(false);
+    
+    if (cotizacionSeleccionada && productoSeleccionadoTemp) {
+      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { 
+        state: { 
+          producto: productoSeleccionadoTemp, 
+          id_detalle_cotizacion: productoSeleccionadoTemp.id, 
+          tipoOrden: tipoSeleccionado 
+        } 
+      });
     }
   };
 
@@ -1675,12 +1689,12 @@ function CotizacionesVer() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => continuarGeneracionOrden('prensa')}
+                onClick={() => continuarGeneracionOrden('offset')}
               >
                 Offset
               </button>
               <button
-                className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                className="px-4 py-3 bg-purple-600 text-white rounded hover:bg-purple-700"
                 onClick={() => continuarGeneracionOrden('digital')}
               >
                 Digital

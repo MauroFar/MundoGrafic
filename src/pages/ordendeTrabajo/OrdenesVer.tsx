@@ -12,6 +12,7 @@ interface OrdenTrabajo {
   fecha_creacion?: string;
   estado?: string;
   email_cliente?: string;
+  tipo_orden?: string;
   // Agrega más campos según tu modelo
 }
 
@@ -237,6 +238,16 @@ const OrdenesVer: React.FC = () => {
       }
 
       const data = await response.json();
+      
+      // Aplanar los campos de detalle al nivel principal para facilitar el acceso
+      if (data.detalle) {
+        Object.keys(data.detalle).forEach(key => {
+          if (!data[key]) { // Solo si no existe ya en el nivel principal
+            data[key] = data.detalle[key];
+          }
+        });
+      }
+      
       setOrdenDetalle(data);
       setShowDetalleModal(true);
     } catch (error: any) {
@@ -313,6 +324,7 @@ const OrdenesVer: React.FC = () => {
                 <th className="px-6 py-3 border-b text-left">N° Orden</th>
                 <th className="px-6 py-3 border-b text-left">Cliente</th>
                 <th className="px-6 py-3 border-b text-left">Concepto</th>
+                <th className="px-6 py-3 border-b text-left">Tipo</th>
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Acciones</th>
               </tr>
@@ -327,6 +339,15 @@ const OrdenesVer: React.FC = () => {
                   <td className="px-6 py-4 border-b">{orden.numero_orden}</td>
                   <td className="px-6 py-4 border-b">{orden.nombre_cliente}</td>
                   <td className="px-6 py-4 border-b">{orden.concepto}</td>
+                  <td className="px-6 py-4 border-b">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      orden.tipo_orden === 'digital' 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {orden.tipo_orden === 'digital' ? 'DIGITAL' : 'OFFSET'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 border-b">{orden.fecha_creacion?.slice(0,10)}</td>
                   <td className="px-6 py-4 border-b" onClick={(e) => e.stopPropagation()}>
                     <div className="flex space-x-2">
@@ -564,8 +585,270 @@ const OrdenesVer: React.FC = () => {
                     <label className="text-sm text-gray-500 block mb-1">Cantidad</label>
                     <p className="text-gray-900 font-medium text-2xl">{ordenDetalle.cantidad || 'N/A'}</p>
                   </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm text-gray-500 block mb-1">Tipo de Orden</label>
+                    <p className="text-gray-900 font-medium">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        ordenDetalle.tipo_orden === 'digital' 
+                          ? 'bg-purple-100 text-purple-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {ordenDetalle.tipo_orden === 'digital' ? 'DIGITAL' : 'OFFSET'}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              {/* Detalles Técnicos OFFSET */}
+              {ordenDetalle.tipo_orden === 'offset' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaTools className="mr-2 text-blue-600" />
+                    Especificaciones Técnicas - Impresión Offset
+                  </h3>
+                  <div className="space-y-4">
+                    {/* Material y Corte */}
+                    {(ordenDetalle.material || ordenDetalle.corte_material) && (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h4 className="font-semibold text-blue-800 mb-3">Material y Corte</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {ordenDetalle.material && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Material</label>
+                              <p className="text-gray-900">{ordenDetalle.material}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.corte_material && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Corte de Material</label>
+                              <p className="text-gray-900">{ordenDetalle.corte_material}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pliegos */}
+                    {(ordenDetalle.cantidad_pliegos_compra || ordenDetalle.exceso || ordenDetalle.total_pliegos) && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-3">Información de Pliegos</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {ordenDetalle.cantidad_pliegos_compra && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Pliegos a Comprar</label>
+                              <p className="text-gray-900 font-medium">{ordenDetalle.cantidad_pliegos_compra}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.exceso && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Exceso</label>
+                              <p className="text-gray-900 font-medium">{ordenDetalle.exceso}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.total_pliegos && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Total Pliegos</label>
+                              <p className="text-gray-900 font-medium text-lg">{ordenDetalle.total_pliegos}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tamaños */}
+                    {(ordenDetalle.tamano || ordenDetalle.tamano_abierto_1 || ordenDetalle.tamano_cerrado_1) && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-3">Tamaños</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {ordenDetalle.tamano && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Tamaño</label>
+                              <p className="text-gray-900">{ordenDetalle.tamano}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.tamano_abierto_1 && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Tamaño Abierto</label>
+                              <p className="text-gray-900">{ordenDetalle.tamano_abierto_1}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.tamano_cerrado_1 && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Tamaño Cerrado</label>
+                              <p className="text-gray-900">{ordenDetalle.tamano_cerrado_1}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Prensa e Impresión */}
+                    {(ordenDetalle.prensa_seleccionada || ordenDetalle.impresion) && (
+                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                        <h4 className="font-semibold text-orange-800 mb-3">Impresión</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {ordenDetalle.prensa_seleccionada && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Prensa Seleccionada</label>
+                              <p className="text-gray-900 font-medium">{ordenDetalle.prensa_seleccionada}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.impresion && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1">Tipo de Impresión</label>
+                              <p className="text-gray-900">{ordenDetalle.impresion}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Instrucciones */}
+                    {(ordenDetalle.instrucciones_impresion || ordenDetalle.instrucciones_acabados || ordenDetalle.instrucciones_empacado) && (
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <h4 className="font-semibold text-yellow-800 mb-3">Instrucciones</h4>
+                        <div className="space-y-3">
+                          {ordenDetalle.instrucciones_impresion && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1 font-semibold">Impresión</label>
+                              <p className="text-gray-900 whitespace-pre-wrap">{ordenDetalle.instrucciones_impresion}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.instrucciones_acabados && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1 font-semibold">Acabados</label>
+                              <p className="text-gray-900 whitespace-pre-wrap">{ordenDetalle.instrucciones_acabados}</p>
+                            </div>
+                          )}
+                          {ordenDetalle.instrucciones_empacado && (
+                            <div>
+                              <label className="text-sm text-gray-600 block mb-1 font-semibold">Empacado</label>
+                              <p className="text-gray-900 whitespace-pre-wrap">{ordenDetalle.instrucciones_empacado}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {ordenDetalle.observaciones && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <label className="text-sm text-gray-600 block mb-2 font-semibold">Observaciones Adicionales</label>
+                        <p className="text-gray-900 whitespace-pre-wrap">{ordenDetalle.observaciones}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detalles Técnicos DIGITAL */}
+              {ordenDetalle.tipo_orden === 'digital' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaTools className="mr-2 text-purple-600" />
+                    Especificaciones Técnicas - Impresión Digital
+                  </h3>
+                  <div className="space-y-4">
+                    {/* Productos Digital */}
+                    {ordenDetalle.productos_digital && (
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                        <h4 className="font-semibold text-purple-800 mb-3">Productos</h4>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white rounded-lg">
+                            <thead className="bg-purple-100">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Cantidad</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Cód. MG</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Cód. Cliente</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Producto</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Avance</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Medidas</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Cavidad</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Metros</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {JSON.parse(ordenDetalle.productos_digital).map((producto: any, index: number) => (
+                                <tr key={index} className="border-b hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-sm">{producto.cantidad}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.cod_mg}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.cod_cliente}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.producto}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.avance}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.medidas}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.cavidad}</td>
+                                  <td className="px-3 py-2 text-sm">{producto.metros}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Información Técnica Digital */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-800 mb-3">Información Técnica</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {ordenDetalle.adherencia && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Adherencia</label>
+                            <p className="text-gray-900">{ordenDetalle.adherencia}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.tipo_impresion && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Material/Tipo Impresión</label>
+                            <p className="text-gray-900">{ordenDetalle.tipo_impresion}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.troquel && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Troquel</label>
+                            <p className="text-gray-900">{ordenDetalle.troquel}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.codigo_troquel && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Código Troquel</label>
+                            <p className="text-gray-900">{ordenDetalle.codigo_troquel}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.lote_material && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Lote Material</label>
+                            <p className="text-gray-900 font-medium">{ordenDetalle.lote_material}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.lote_produccion && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Lote Producción</label>
+                            <p className="text-gray-900 font-medium">{ordenDetalle.lote_produccion}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.terminado_etiqueta && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Terminado Etiqueta</label>
+                            <p className="text-gray-900">{ordenDetalle.terminado_etiqueta}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.terminados_especiales && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Terminados Especiales</label>
+                            <p className="text-gray-900">{ordenDetalle.terminados_especiales}</p>
+                          </div>
+                        )}
+                        {ordenDetalle.cantidad_por_rollo && (
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-1">Cantidad por Rollo</label>
+                            <p className="text-gray-900 font-medium">{ordenDetalle.cantidad_por_rollo}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Responsables del Proceso */}
               {(ordenDetalle.vendedor || ordenDetalle.preprensa || ordenDetalle.prensa || ordenDetalle.terminados || ordenDetalle.facturado) && (
@@ -621,51 +904,6 @@ const OrdenesVer: React.FC = () => {
                   </div>
                 </div>
               )}
-              {/* Información de Auditoría */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
-                  <FaHistory className="mr-2 text-blue-600" />
-                  Auditoría
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <label className="text-sm text-gray-600 block mb-2 font-semibold">
-                      Creado por
-                    </label>
-                    <p className="text-gray-900 font-medium mb-1">
-                      {ordenDetalle.created_by_nombre || 'Sistema'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {ordenDetalle.created_at 
-                        ? new Date(ordenDetalle.created_at).toLocaleString('es-EC', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })
-                        : 'N/A'
-                      }
-                    </p>
-                  </div>
-                  {ordenDetalle.updated_by_nombre && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <label className="text-sm text-gray-600 block mb-2 font-semibold">
-                        Última modificación por
-                      </label>
-                      <p className="text-gray-900 font-medium mb-1">
-                        {ordenDetalle.updated_by_nombre}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {ordenDetalle.updated_at 
-                          ? new Date(ordenDetalle.updated_at).toLocaleString('es-EC', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short'
-                            })
-                          : 'N/A'
-                        }
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
               {/* Información de Auditoría */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">

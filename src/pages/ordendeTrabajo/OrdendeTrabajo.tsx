@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
 import Logo from "../../components/Logo";
 import SelectorPrensa from '../../components/SelectorPrensa';
+import FormularioOrdenOffset from '../../components/FormularioOrdenOffset';
+import FormularioOrdenDigital from '../../components/FormularioOrdenDigital';
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -131,7 +133,22 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'prensa' | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'offset' | 'digital'
+
+  // Estados específicos para formulario DIGITAL
+  const [productosDigital, setProductosDigital] = useState<any[]>([]);
+  const [adherencia, setAdherencia] = useState<string>('');
+  const [materialDigital, setMaterialDigital] = useState<string>('');
+  const [impresionDigital, setImpresionDigital] = useState<string>('');
+  const [tipoImpresion, setTipoImpresion] = useState<string>('');
+  const [troquel, setTroquel] = useState<string>('');
+  const [codigoTroquel, setCodigoTroquel] = useState<string>('');
+  const [loteMaterial, setLoteMaterial] = useState<string>('');
+  const [loteProduccion, setLoteProduccion] = useState<string>('');
+  const [terminadoEtiqueta, setTerminadoEtiqueta] = useState<string>('');
+  const [terminadosEspeciales, setTerminadosEspeciales] = useState<string>('');
+  const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
+  const [observacionesDigital, setObservacionesDigital] = useState<string>('');
 
   // Función para calcular el total de pliegos
   const calcularTotalPliegos = () => {
@@ -145,21 +162,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   useEffect(() => {
     calcularTotalPliegos();
   }, [cantidadPliegosCompra, exceso]);
-
-  // Efecto para cerrar el dropdown cuando se hace clic fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.prensa-dropdown')) {
-        setMostrarDropdownPrensa(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -393,6 +395,39 @@ const OrdendeTrabajoEditar: React.FC = () => {
     } else {
       setFechaEntrega('');
     }
+
+    // ⭐ IMPORTANTE: Establecer el tipo de orden cuando se carga una orden existente
+    if (ordenData.tipo_orden) {
+      console.log('🎯 Estableciendo tipo de orden:', ordenData.tipo_orden);
+      setTipoOrdenSeleccionado(ordenData.tipo_orden);
+      
+      // Si es orden DIGITAL, cargar campos específicos
+      if (ordenData.tipo_orden === 'digital' && ordenData.detalle) {
+        // Parsear productos_digital si existe
+        if (ordenData.detalle.productos_digital) {
+          try {
+            const productos = typeof ordenData.detalle.productos_digital === 'string'
+              ? JSON.parse(ordenData.detalle.productos_digital)
+              : ordenData.detalle.productos_digital;
+            setProductosDigital(productos);
+          } catch (e) {
+            console.error('Error al parsear productos_digital:', e);
+            setProductosDigital([]);
+          }
+        }
+        
+        // Cargar campos técnicos digitales
+        setAdherencia(ordenData.detalle.adherencia || '');
+        setTipoImpresion(ordenData.detalle.tipo_impresion || '');
+        setTroquel(ordenData.detalle.troquel || '');
+        setCodigoTroquel(ordenData.detalle.codigo_troquel || '');
+        setLoteMaterial(ordenData.detalle.lote_material || '');
+        setLoteProduccion(ordenData.detalle.lote_produccion || '');
+        setTerminadoEtiqueta(ordenData.detalle.terminado_etiqueta || '');
+        setTerminadosEspeciales(ordenData.detalle.terminados_especiales || '');
+        setCantidadPorRollo(ordenData.detalle.cantidad_por_rollo || '');
+      }
+    }
      }
  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ordenData, cotizacionId, ordenId, location.state]);
@@ -563,8 +598,25 @@ const OrdendeTrabajoEditar: React.FC = () => {
       facturado,
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
-      // Detalle técnico
-      detalle: {
+      tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
+      // Detalle técnico (depende del tipo de orden)
+      detalle: tipoOrdenSeleccionado === 'digital' ? {
+        // Datos específicos de digital
+        productos_digital: JSON.stringify(productosDigital),
+        adherencia,
+        material: materialDigital,
+        impresion: impresionDigital,
+        tipo_impresion: tipoImpresion,
+        troquel,
+        codigo_troquel: codigoTroquel,
+        lote_material: loteMaterial,
+        lote_produccion: loteProduccion,
+        terminado_etiqueta: terminadoEtiqueta,
+        terminados_especiales: terminadosEspeciales,
+        cantidad_por_rollo: cantidadPorRollo,
+        observaciones: observacionesDigital
+      } : {
+        // Datos específicos de offset
         material: material,
         corte_material: corteMaterial,
         cantidad_pliegos_compra: cantidadPliegosCompra,
@@ -669,8 +721,25 @@ const OrdendeTrabajoEditar: React.FC = () => {
           prensa,
           terminados,
           facturado,
-          // Detalle técnico
-          detalle: {
+          tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
+          // Detalle técnico (depende del tipo de orden)
+          detalle: tipoOrdenSeleccionado === 'digital' ? {
+            // Datos específicos de digital
+            productos_digital: JSON.stringify(productosDigital),
+            adherencia,
+            material: materialDigital,
+            impresion: impresionDigital,
+            tipo_impresion: tipoImpresion,
+            troquel,
+            codigo_troquel: codigoTroquel,
+            lote_material: loteMaterial,
+            lote_produccion: loteProduccion,
+            terminado_etiqueta: terminadoEtiqueta,
+            terminados_especiales: terminadosEspeciales,
+            cantidad_por_rollo: cantidadPorRollo,
+            observaciones: observacionesDigital
+          } : {
+            // Datos específicos de offset
             material: material,
             corte_material: corteMaterial,
             cantidad_pliegos_compra: cantidadPliegosCompra,
@@ -834,12 +903,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => { setTipoOrdenSeleccionado('prensa'); setShowTipoOrdenModal(false); }}
+                onClick={() => { setTipoOrdenSeleccionado('offset'); setShowTipoOrdenModal(false); }}
               >
-                Prensa
+                Offset
               </button>
               <button
-                className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                className="px-4 py-3 bg-purple-600 text-white rounded hover:bg-purple-700"
                 onClick={() => { setTipoOrdenSeleccionado('digital'); setShowTipoOrdenModal(false); }}
               >
                 Digital
@@ -857,9 +926,22 @@ const OrdendeTrabajoEditar: React.FC = () => {
               <div className="flex-shrink-0">
                 <Logo/>
               </div>
-              <h2 className="text-xl font-bold text-gray-800 flex-1 text-center">
-                Orden de Trabajo
-              </h2>
+              <div className="flex-1 text-center">
+                <h2 className="text-xl font-bold text-gray-800">
+                  Orden de Trabajo
+                </h2>
+                {tipoOrdenSeleccionado && (
+                  <div className="mt-1">
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      tipoOrdenSeleccionado === 'digital' 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {tipoOrdenSeleccionado === 'digital' ? '🖨️ DIGITAL' : '🖨️ OFFSET'}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Estado:</label>
@@ -988,218 +1070,71 @@ const OrdendeTrabajoEditar: React.FC = () => {
              </div>
           </div>
 
-                     {/* Información del Trabajo - Diseño compacto */}
-           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-             <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-               Información del Trabajo
-             </h3>
-             
-                                                                                                                                                                                                                               <div className="flex gap-4 items-start">
-                   <div className="flex flex-col">
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                     <input 
-                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                       type="text" 
-                       value={cantidad} 
-                       onChange={e => setCantidad(e.target.value)} 
-                     />
-                   </div>
-
-                   <div className="flex-1 flex flex-col">
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
-                     <textarea
-                       className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                       rows={2}
-                       value={concepto}
-                       onChange={(e) => setConcepto(e.target.value)}
-                       placeholder="Descripción del trabajo..."
-                     />
-                   </div>
-
-                   <div className="flex flex-col">
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Tamaño Abierto</label>
-                     <input 
-                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                       type="text" 
-                       placeholder="5x9"
-                       value={tamanoAbierto1}
-                       onChange={e => setTamanoAbierto1(e.target.value)}
-                     />
-                   </div>
-
-                   <div className="flex flex-col">
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Tamaño Cerrado</label>
-                     <input 
-                       className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                       type="text" 
-                       placeholder="5x9"
-                       value={tamanoCerrado1}
-                       onChange={e => setTamanoCerrado1(e.target.value)}
-                     />
-                   </div>
-                 </div>
-           </div>
-
-          {/* Material y Corte - Diseño horizontal */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-              Material y Corte
-            </h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
-                  rows={2}
-                  value={material}
-                  onChange={e => setMaterial(e.target.value)}
-                  placeholder="Especificaciones del material..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Corte de Material</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
-                  rows={2}
-                  value={corteMaterial}
-                  onChange={e => setCorteMaterial(e.target.value)}
-                  placeholder="Instrucciones de corte..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Cantidad de Pliegos - Diseño compacto */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-              Cantidad de Pliegos
-            </h3>
-            
-            <div className="flex gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pliegos de Compra</label>
-                <input 
-                  className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500" 
-                  type="number" 
-                  value={cantidadPliegosCompra}
-                  onChange={e => setCantidadPliegosCompra(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Exceso</label>
-                <input 
-                  className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500" 
-                  type="number" 
-                  value={exceso}
-                  onChange={e => setExceso(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
-                <input 
-                  className="w-24 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed" 
-                  type="text" 
-                  value={totalPliegos}
-                  readOnly
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Impresión y Acabados - Diseño horizontal */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-              Impresión y Acabados
-            </h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
-                  rows={2}
-                  value={impresion}
-                  onChange={e => setImpresion(e.target.value)}
-                  placeholder="Especificaciones de impresión..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Impresión</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
-                  rows={2}
-                  value={instruccionesImpresion}
-                  onChange={e => setInstruccionesImpresion(e.target.value)}
-                  placeholder="Instrucciones específicas..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Acabados</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-                  rows={2}
-                  value={instruccionesAcabados}
-                  onChange={e => setInstruccionesAcabados(e.target.value)}
-                  placeholder="Instrucciones de acabados..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones de Empacado</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-                  rows={2}
-                  value={instruccionesEmpacado}
-                  onChange={e => setInstruccionesEmpacado(e.target.value)}
-                  placeholder="Instrucciones de empacado..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Prensa y Observaciones - Diseño horizontal */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-              Prensa y Observaciones
-            </h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <SelectorPrensa
-                value={prensaSeleccionada}
-                onChange={setPrensaSeleccionada}
-                label="Seleccionar Prensa"
-                placeholder="Seleccionar o escribir prensa..."
-              />
-
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones Generales</label>
-                <textarea
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
-                  rows={2}
-                  value={observaciones}
-                  onChange={e => setObservaciones(e.target.value)}
-                  placeholder="Observaciones generales del trabajo..."
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas Adicionales</label>
-              <textarea 
-                className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none" 
-                rows={2}
-                placeholder="Añadir notas adicionales aquí..." 
-                value={notasObservaciones} 
-                onChange={e => setNotasObservaciones(e.target.value)}
-              />
-            </div>
-          </div>
+          {/* Renderizar formulario según tipo de orden */}
+          {tipoOrdenSeleccionado === 'digital' ? (
+            <FormularioOrdenDigital
+              productos={productosDigital}
+              setProductos={setProductosDigital}
+              adherencia={adherencia}
+              setAdherencia={setAdherencia}
+              material={materialDigital}
+              setMaterial={setMaterialDigital}
+              impresion={impresionDigital}
+              setImpresion={setImpresionDigital}
+              tipoImpresion={tipoImpresion}
+              setTipoImpresion={setTipoImpresion}
+              troquel={troquel}
+              setTroquel={setTroquel}
+              codigoTroquel={codigoTroquel}
+              setCodigoTroquel={setCodigoTroquel}
+              loteMaterial={loteMaterial}
+              setLoteMaterial={setLoteMaterial}
+              loteProduccion={loteProduccion}
+              setLoteProduccion={setLoteProduccion}
+              terminadoEtiqueta={terminadoEtiqueta}
+              setTerminadoEtiqueta={setTerminadoEtiqueta}
+              terminadosEspeciales={terminadosEspeciales}
+              setTerminadosEspeciales={setTerminadosEspeciales}
+              cantidadPorRollo={cantidadPorRollo}
+              setCantidadPorRollo={setCantidadPorRollo}
+              observaciones={observacionesDigital}
+              setObservaciones={setObservacionesDigital}
+            />
+          ) : (
+            <FormularioOrdenOffset
+              cantidad={cantidad}
+              setCantidad={setCantidad}
+              concepto={concepto}
+              setConcepto={setConcepto}
+              tamanoAbierto1={tamanoAbierto1}
+              setTamanoAbierto1={setTamanoAbierto1}
+              tamanoCerrado1={tamanoCerrado1}
+              setTamanoCerrado1={setTamanoCerrado1}
+              material={material}
+              setMaterial={setMaterial}
+              corteMaterial={corteMaterial}
+              setCorteMaterial={setCorteMaterial}
+              cantidadPliegosCompra={cantidadPliegosCompra}
+              setCantidadPliegosCompra={setCantidadPliegosCompra}
+              exceso={exceso}
+              setExceso={setExceso}
+              totalPliegos={totalPliegos}
+              impresion={impresion}
+              setImpresion={setImpresion}
+              instruccionesImpresion={instruccionesImpresion}
+              setInstruccionesImpresion={setInstruccionesImpresion}
+              instruccionesAcabados={instruccionesAcabados}
+              setInstruccionesAcabados={setInstruccionesAcabados}
+              instruccionesEmpacado={instruccionesEmpacado}
+              setInstruccionesEmpacado={setInstruccionesEmpacado}
+              prensaSeleccionada={prensaSeleccionada}
+              setPrensaSeleccionada={setPrensaSeleccionada}
+              observaciones={observaciones}
+              setObservaciones={setObservaciones}
+              notasObservaciones={notasObservaciones}
+              setNotasObservaciones={setNotasObservaciones}
+            />
+          )}
 
           {/* Responsables del Proceso - Diseño compacto */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">

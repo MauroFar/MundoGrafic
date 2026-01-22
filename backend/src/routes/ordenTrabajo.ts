@@ -55,6 +55,7 @@ export default (client: any) => {
       fecha_creacion, fecha_entrega, estado, notas_observaciones,
       vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
       id_detalle_cotizacion,
+      tipo_orden, // Nuevo campo para diferenciar offset/digital
       // Nuevos campos de trabajo - extraer del objeto detalle
       detalle
     } = req.body;
@@ -87,27 +88,30 @@ export default (client: any) => {
           nombre_cliente, contacto, email, telefono, cantidad, concepto,
           fecha_creacion, fecha_entrega, estado, notas_observaciones,
           vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-          id_detalle_cotizacion, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          id_detalle_cotizacion, tipo_orden, created_by
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
         RETURNING id, numero_orden
       `, [
         nombre_cliente, contacto, email, telefono, cantidad, concepto,
         fecha_creacion, fecha_entrega, estado, notas_observaciones,
         vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-        id_detalle_cotizacion, userId
+        id_detalle_cotizacion, tipo_orden || 'offset', userId
       ]);
       const ordenId = ordenResult.rows[0].id;
 
-      // 2. Insertar en detalle_orden_trabajo con los nuevos campos
+      // 2. Insertar en detalle_orden_trabajo con todos los campos (offset y digital)
       await client.query(`
         INSERT INTO detalle_orden_trabajo (
           orden_trabajo_id, 
           material, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
           tamano, tamano_abierto_1, tamano_cerrado_1, impresion, instrucciones_impresion,
-          instrucciones_acabados, instrucciones_empacado, observaciones, prensa_seleccionada
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          instrucciones_acabados, instrucciones_empacado, observaciones, prensa_seleccionada,
+          productos_digital, adherencia, tipo_impresion, troquel, codigo_troquel,
+          lote_material, lote_produccion, terminado_etiqueta, terminados_especiales, cantidad_por_rollo
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
       `, [
         ordenId,
+        // Campos offset
         material || null,
         corteMaterial || null,
         cantidadPliegosCompra || null,
@@ -121,7 +125,18 @@ export default (client: any) => {
         instruccionesAcabados || null,
         instruccionesEmpacado || null,
         observaciones || null,
-        prensaSeleccionada || null
+        prensaSeleccionada || null,
+        // Campos digital
+        detalle?.productos_digital || null,
+        detalle?.adherencia || null,
+        detalle?.tipo_impresion || null,
+        detalle?.troquel || null,
+        detalle?.codigo_troquel || null,
+        detalle?.lote_material || null,
+        detalle?.lote_produccion || null,
+        detalle?.terminado_etiqueta || null,
+        detalle?.terminados_especiales || null,
+        detalle?.cantidad_por_rollo || null
       ]);
 
       await client.query('COMMIT');
@@ -142,7 +157,7 @@ export default (client: any) => {
     try {
       const { busqueda, fechaDesde, fechaHasta, limite } = req.query;
       let query = `
-        SELECT id, numero_orden, nombre_cliente, concepto, fecha_creacion, estado
+        SELECT id, numero_orden, nombre_cliente, concepto, fecha_creacion, estado, tipo_orden
         FROM orden_trabajo
       `;
       let where: string[] = [];
@@ -300,6 +315,7 @@ export default (client: any) => {
       terminados,
       facturado,
       id_detalle_cotizacion,
+      tipo_orden, // Nuevo campo
       // Nuevos campos de trabajo - extraer del objeto detalle
       detalle
     } = req.body;
@@ -344,9 +360,10 @@ export default (client: any) => {
             terminados = $13,
             facturado = $14,
             id_detalle_cotizacion = $15,
-            updated_by = $16,
+            tipo_orden = $16,
+            updated_by = $17,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $17
+        WHERE id = $18
         RETURNING *`,
         [
           nombre_cliente,
@@ -364,6 +381,7 @@ export default (client: any) => {
           terminados,
           facturado,
           id_detalle_cotizacion,
+          tipo_orden,
           userId,
           id
         ]
@@ -373,7 +391,7 @@ export default (client: any) => {
         res.status(404).json({ error: "Orden no encontrada" });
         return;
       }
-      // Actualizar detalle técnico con los nuevos campos
+      // Actualizar detalle técnico con todos los campos (offset y digital)
       await client.query(
         `UPDATE detalle_orden_trabajo SET
           material = $1,
@@ -389,9 +407,20 @@ export default (client: any) => {
           instrucciones_acabados = $11,
           instrucciones_empacado = $12,
           observaciones = $13,
-          prensa_seleccionada = $14
-        WHERE orden_trabajo_id = $15`,
+          prensa_seleccionada = $14,
+          productos_digital = $15,
+          adherencia = $16,
+          tipo_impresion = $17,
+          troquel = $18,
+          codigo_troquel = $19,
+          lote_material = $20,
+          lote_produccion = $21,
+          terminado_etiqueta = $22,
+          terminados_especiales = $23,
+          cantidad_por_rollo = $24
+        WHERE orden_trabajo_id = $25`,
         [
+          // Campos offset
           material || null,
           corteMaterial || null,
           cantidadPliegosCompra || null,
@@ -406,6 +435,17 @@ export default (client: any) => {
           instruccionesEmpacado || null,
           observaciones || null,
           prensaSeleccionada || null,
+          // Campos digital
+          detalle?.productos_digital || null,
+          detalle?.adherencia || null,
+          detalle?.tipo_impresion || null,
+          detalle?.troquel || null,
+          detalle?.codigo_troquel || null,
+          detalle?.lote_material || null,
+          detalle?.lote_produccion || null,
+          detalle?.terminado_etiqueta || null,
+          detalle?.terminados_especiales || null,
+          detalle?.cantidad_por_rollo || null,
           id
         ]
       );
@@ -487,7 +527,57 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
-      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
+      // 4. Generar HTML según tipo de orden
+      const esDigital = orden.tipo_orden === 'digital';
+      
+      // Parsear productos digital si existe
+      let productosDigitalHTML = '';
+      if (esDigital && detalle.productos_digital) {
+        try {
+          const productos = typeof detalle.productos_digital === 'string' 
+            ? JSON.parse(detalle.productos_digital) 
+            : detalle.productos_digital;
+          
+          productosDigitalHTML = `
+            <div class="seccion">
+              <div class="seccion-titulo">🖨️ PRODUCTOS DIGITALES</div>
+              <div class="seccion-contenido">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                  <thead>
+                    <tr style="background: #e0e0e0;">
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cant.</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. MG</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. Cliente</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Producto</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Avance</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Medidas</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cavidad</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Metros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${productos.map((p: any) => `
+                      <tr>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cantidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_mg || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_cliente || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.producto || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.avance || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.medidas || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cavidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.metros || ''}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          console.error('Error al parsear productos_digital:', e);
+        }
+      }
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -742,28 +832,333 @@ export default (client: any) => {
       );
       const detalle = detalleResult.rows[0] || {};
 
-      // 3. Generar HTML (igual que en el endpoint de PDF)
+      // 3. Leer y convertir el logo a base64
+      const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
+      let logoBase64 = '';
+      try {
+        const logoBuffer = await fs.readFile(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      } catch (e: any) {
+        console.error('No se pudo leer el logo:', e);
+        logoBase64 = '';
+      }
+
+      const esDigital = orden.tipo_orden === 'digital';
+
+      // Parsear productos digital si existe
+      let productosDigitalHTML = '';
+      if (esDigital && detalle.productos_digital) {
+        try {
+          const productos = typeof detalle.productos_digital === 'string' 
+            ? JSON.parse(detalle.productos_digital) 
+            : detalle.productos_digital;
+          
+          productosDigitalHTML = `
+            <div class="seccion">
+              <div class="seccion-titulo">🖨️ PRODUCTOS DIGITALES</div>
+              <div class="seccion-contenido">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                  <thead>
+                    <tr style="background: #e0e0e0;">
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cant.</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. MG</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. Cliente</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Producto</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Avance</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Medidas</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cavidad</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Metros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${productos.map((p: any) => `
+                      <tr>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cantidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_mg || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_cliente || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.producto || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.avance || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.medidas || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cavidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.metros || ''}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          console.error('Error al parsear productos_digital:', e);
+        }
+      }
+
       const html = `
+        <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="UTF-8">
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { color: #2563eb; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background: #f3f4f6; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .logo-section img { height: 45px; }
+            .orden-info { text-align: right; font-size: 10px; }
+            .orden-numero { font-size: 18px; font-weight: bold; }
+            .tipo-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-top: 5px; }
+            .tipo-offset { background: #dbeafe; color: #1e40af; }
+            .tipo-digital { background: #f3e8ff; color: #7c3aed; }
+            .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+            .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
+            .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+            .seccion-contenido { padding: 10px; }
+            .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+            .campo { flex: 1; }
+            .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
+            .responsables { display: flex; gap: 6px; }
+            .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
+            .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
+            .responsable-nombre { font-size: 10px; font-weight: bold; }
           </style>
         </head>
         <body>
-          <h1>Orden de Trabajo #${orden.numero_orden}</h1>
-          <p><strong>Cliente:</strong> ${orden.nombre_cliente}</p>
-          <p><strong>Concepto:</strong> ${orden.concepto}</p>
-          <p><strong>Fecha de creación:</strong> ${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString() : ''}</p>
-          <h2>Detalle Técnico</h2>
-          <table>
-            <tr><th>Campo</th><th>Valor</th></tr>
-            ${Object.entries(detalle).map(([k, v]) => `<tr><td>${k}</td><td>${v ?? ''}</td></tr>`).join('')}
-          </table>
+          <div class="header">
+            <div class="logo-section">
+              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
+            </div>
+            <div class="orden-info">
+              <div class="orden-numero">Orden de Trabajo</div>
+              <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
+              <div class="tipo-badge ${esDigital ? 'tipo-digital' : 'tipo-offset'}">
+                ${esDigital ? '🖨️ DIGITAL' : '🖨️ OFFSET'}
+              </div>
+            </div>
+          </div>
+          
+          <div class="titulo">ORDEN DE TRABAJO</div>
+          
+          <div class="seccion">
+            <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">CLIENTE</div>
+                  <div class="campo-valor">${orden.nombre_cliente || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CONTACTO</div>
+                  <div class="campo-valor">${orden.contacto || ''}</div>
+                </div>
+              </div>
+              <div class="fila">
+                <div class="campo">
+                  <div class="campo-label">TELÉFONO</div>
+                  <div class="campo-valor">${orden.telefono || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">EMAIL</div>
+                  <div class="campo-valor">${orden.email || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="seccion">
+            <div class="seccion-titulo">Información del Trabajo</div>
+            <div class="seccion-contenido">
+              <div class="fila">
+                <div class="campo" style="flex: 2;">
+                  <div class="campo-label">CONCEPTO</div>
+                  <div class="campo-valor">${orden.concepto || ''}</div>
+                </div>
+                <div class="campo">
+                  <div class="campo-label">CANTIDAD</div>
+                  <div class="campo-valor">${orden.cantidad || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          ${esDigital ? `
+            ${productosDigitalHTML}
+            
+            <div class="seccion">
+              <div class="seccion-titulo">🔧 INFORMACIÓN TÉCNICA DIGITAL</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">ADHERENCIA</div>
+                    <div class="campo-valor">${detalle.adherencia || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">MATERIAL/TIPO IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.tipo_impresion || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TROQUEL</div>
+                    <div class="campo-valor">${detalle.troquel || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CÓDIGO TROQUEL</div>
+                    <div class="campo-valor">${detalle.codigo_troquel || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">LOTE MATERIAL</div>
+                    <div class="campo-valor">${detalle.lote_material || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">LOTE PRODUCCIÓN</div>
+                    <div class="campo-valor">${detalle.lote_produccion || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TERMINADO ETIQUETA</div>
+                    <div class="campo-valor">${detalle.terminado_etiqueta || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CANTIDAD POR ROLLO</div>
+                    <div class="campo-valor">${detalle.cantidad_por_rollo || ''}</div>
+                  </div>
+                </div>
+                ${detalle.terminados_especiales ? `
+                <div class="fila">
+                  <div class="campo" style="flex: 1;">
+                    <div class="campo-label">TERMINADOS ESPECIALES</div>
+                    <div class="campo-valor">${detalle.terminados_especiales}</div>
+                  </div>
+                </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : `
+            <div class="seccion">
+              <div class="seccion-titulo">📐 TAMAÑOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TAMAÑO ABIERTO</div>
+                    <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">TAMAÑO CERRADO</div>
+                    <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">📄 MATERIAL Y CORTE</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">MATERIAL</div>
+                    <div class="campo-valor">${detalle.material || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CORTE DE MATERIAL</div>
+                    <div class="campo-valor">${detalle.corte_material || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">📊 CANTIDAD DE PLIEGOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">PLIEGOS DE COMPRA</div>
+                    <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">EXCESO</div>
+                    <div class="campo-valor">${detalle.exceso || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">TOTAL</div>
+                    <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">🖨️ IMPRESIÓN Y ACABADOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.impresion || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
+                    <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
+                    <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">🔧 PRENSA Y OBSERVACIONES</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">SELECCIONAR PRENSA</div>
+                    <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+                  </div>
+                  <div class="campo" style="flex: 2;">
+                    <div class="campo-label">OBSERVACIONES GENERALES</div>
+                    <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `}
+
+          <div class="seccion">
+            <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
+            <div class="seccion-contenido">
+              <div class="responsables">
+                <div class="responsable">
+                  <div class="responsable-titulo">VENDEDOR</div>
+                  <div class="responsable-nombre">${orden.vendedor || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">PREPRENSA</div>
+                  <div class="responsable-nombre">${orden.preprensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">${esDigital ? 'DIGITAL' : 'OFFSET'}</div>
+                  <div class="responsable-nombre">${orden.prensa || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">TERMINADOS</div>
+                  <div class="responsable-nombre">${orden.terminados || ''}</div>
+                </div>
+                <div class="responsable">
+                  <div class="responsable-titulo">FACTURADO</div>
+                  <div class="responsable-nombre">${orden.facturado || ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </body>
         </html>
       `;
@@ -1104,7 +1499,57 @@ export default (client: any) => {
         console.error('No se pudo leer el logo:', e);
       }
 
-      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
+      // 4. Generar HTML según tipo de orden
+      const esDigital = orden.tipo_orden === 'digital';
+
+      // Parsear productos digital si existe
+      let productosDigitalHTML = '';
+      if (esDigital && detalle.productos_digital) {
+        try {
+          const productos = typeof detalle.productos_digital === 'string' 
+            ? JSON.parse(detalle.productos_digital) 
+            : detalle.productos_digital;
+          
+          productosDigitalHTML = `
+            <div class="seccion">
+              <div class="seccion-titulo">🖨️ PRODUCTOS DIGITALES</div>
+              <div class="seccion-contenido">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                  <thead>
+                    <tr style="background: #e0e0e0;">
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cant.</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. MG</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cód. Cliente</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Producto</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Avance</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Medidas</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Cavidad</th>
+                      <th style="border: 1px solid #ccc; padding: 4px;">Metros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${productos.map((p: any) => `
+                      <tr>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cantidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_mg || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.cod_cliente || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.producto || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.avance || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.medidas || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px; text-align: center;">${p.cavidad || ''}</td>
+                        <td style="border: 1px solid #ccc; padding: 4px;">${p.metros || ''}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          console.error('Error al parsear productos_digital:', e);
+        }
+      }
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -1117,6 +1562,9 @@ export default (client: any) => {
             .logo-section img { height: 45px; }
             .orden-info { text-align: right; font-size: 10px; }
             .orden-numero { font-size: 18px; font-weight: bold; }
+            .tipo-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-top: 5px; }
+            .tipo-offset { background: #dbeafe; color: #1e40af; }
+            .tipo-digital { background: #f3e8ff; color: #7c3aed; }
             .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
             .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
             .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
@@ -1139,7 +1587,9 @@ export default (client: any) => {
             <div class="orden-info">
               <div class="orden-numero">Orden de Trabajo</div>
               <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
-              <div>Contacto Nº: ${orden.contacto || ''}</div>
+              <div class="tipo-badge ${esDigital ? 'tipo-digital' : 'tipo-offset'}">
+                ${esDigital ? '🖨️ DIGITAL' : '🖨️ OFFSET'}
+              </div>
             </div>
           </div>
           
@@ -1184,99 +1634,163 @@ export default (client: any) => {
                   <div class="campo-valor">${orden.cantidad || ''}</div>
                 </div>
               </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO ABIERTO</div>
-                  <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO CERRADO</div>
-                  <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <div class="seccion">
-            <div class="seccion-titulo">Material y Corte</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">MATERIAL</div>
-                  <div class="campo-valor">${detalle.material || ''}</div>
+          ${esDigital ? `
+            ${productosDigitalHTML}
+            
+            <div class="seccion">
+              <div class="seccion-titulo">🔧 INFORMACIÓN TÉCNICA DIGITAL</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">ADHERENCIA</div>
+                    <div class="campo-valor">${detalle.adherencia || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">MATERIAL/TIPO IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.tipo_impresion || ''}</div>
+                  </div>
                 </div>
-                <div class="campo">
-                  <div class="campo-label">CORTE DE MATERIAL</div>
-                  <div class="campo-valor">${detalle.corte_material || ''}</div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TROQUEL</div>
+                    <div class="campo-valor">${detalle.troquel || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CÓDIGO TROQUEL</div>
+                    <div class="campo-valor">${detalle.codigo_troquel || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">LOTE MATERIAL</div>
+                    <div class="campo-valor">${detalle.lote_material || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">LOTE PRODUCCIÓN</div>
+                    <div class="campo-valor">${detalle.lote_produccion || ''}</div>
+                  </div>
+                </div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TERMINADO ETIQUETA</div>
+                    <div class="campo-valor">${detalle.terminado_etiqueta || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CANTIDAD POR ROLLO</div>
+                    <div class="campo-valor">${detalle.cantidad_por_rollo || ''}</div>
+                  </div>
+                </div>
+                ${detalle.terminados_especiales ? `
+                <div class="fila">
+                  <div class="campo" style="flex: 1;">
+                    <div class="campo-label">TERMINADOS ESPECIALES</div>
+                    <div class="campo-valor">${detalle.terminados_especiales}</div>
+                  </div>
+                </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : `
+            <div class="seccion">
+              <div class="seccion-titulo">📐 TAMAÑOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">TAMAÑO ABIERTO</div>
+                    <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">TAMAÑO CERRADO</div>
+                    <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="seccion">
-            <div class="seccion-titulo">Cantidad de Pliegos</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">PLIEGOS DE COMPRA</div>
-                  <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">EXCESO</div>
-                  <div class="campo-valor">${detalle.exceso || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TOTAL</div>
-                  <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+            <div class="seccion">
+              <div class="seccion-titulo">📄 MATERIAL Y CORTE</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">MATERIAL</div>
+                    <div class="campo-valor">${detalle.material || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">CORTE DE MATERIAL</div>
+                    <div class="campo-valor">${detalle.corte_material || ''}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="seccion">
-            <div class="seccion-titulo">Impresión y Acabados</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.impresion || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
-                  <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
-                  <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+            <div class="seccion">
+              <div class="seccion-titulo">📊 CANTIDAD DE PLIEGOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">PLIEGOS DE COMPRA</div>
+                    <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">EXCESO</div>
+                    <div class="campo-valor">${detalle.exceso || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">TOTAL</div>
+                    <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="seccion">
-            <div class="seccion-titulo">Prensa y Observaciones</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">SELECCIONAR PRENSA</div>
-                  <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+            <div class="seccion">
+              <div class="seccion-titulo">🖨️ IMPRESIÓN Y ACABADOS</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.impresion || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
+                    <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
+                  </div>
                 </div>
-                <div class="campo" style="flex: 2;">
-                  <div class="campo-label">OBSERVACIONES GENERALES</div>
-                  <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
+                    <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
+                  </div>
+                  <div class="campo">
+                    <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
+                    <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+
+            <div class="seccion">
+              <div class="seccion-titulo">🔧 PRENSA Y OBSERVACIONES</div>
+              <div class="seccion-contenido">
+                <div class="fila">
+                  <div class="campo">
+                    <div class="campo-label">SELECCIONAR PRENSA</div>
+                    <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+                  </div>
+                  <div class="campo" style="flex: 2;">
+                    <div class="campo-label">OBSERVACIONES GENERALES</div>
+                    <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `}
 
           <div class="seccion">
-            <div class="seccion-titulo">Responsables del Proceso</div>
+            <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
             <div class="seccion-contenido">
               <div class="responsables">
                 <div class="responsable">
@@ -1288,7 +1802,7 @@ export default (client: any) => {
                   <div class="responsable-nombre">${orden.preprensa || ''}</div>
                 </div>
                 <div class="responsable">
-                  <div class="responsable-titulo">OFFSET</div>
+                  <div class="responsable-titulo">${esDigital ? 'DIGITAL' : 'OFFSET'}</div>
                   <div class="responsable-nombre">${orden.prensa || ''}</div>
                 </div>
                 <div class="responsable">
