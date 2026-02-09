@@ -1,13 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUsers, FaCogs, FaBoxes, FaTags, FaChartBar, FaFileInvoice } from "react-icons/fa";
+import { FaUsers, FaCogs, FaBoxes, FaTags, FaUserTag, FaSitemap } from "react-icons/fa";
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
 const Administracion = () => {
   const navigate = useNavigate();
+  const [modulosDisponibles, setModulosDisponibles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const modulosAdmin = [
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch(`${API_URL}/api/permisos/modulos-disponibles`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setModulosDisponibles(data.modulos || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error cargando módulos:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const todosLosModulos = [
     {
-      id: 1,
+      id: 'usuarios',
       titulo: "Gestión de Usuarios",
       descripcion: "Administrar usuarios del sistema, roles y permisos",
       icono: <FaUsers />,
@@ -15,7 +35,23 @@ const Administracion = () => {
       color: "#3b82f6"
     },
     {
-      id: 2,
+      id: 'roles',
+      titulo: "Gestión de Roles",
+      descripcion: "Crear y administrar roles personalizados del sistema",
+      icono: <FaUserTag />,
+      ruta: "/admin/roles",
+      color: "#ec4899"
+    },
+    {
+      id: 'areas',
+      titulo: "Gestión de Áreas",
+      descripcion: "Administrar áreas y departamentos de la empresa",
+      icono: <FaSitemap />,
+      ruta: "/admin/areas",
+      color: "#06b6d4"
+    },
+    {
+      id: 'catalogo-procesos',
       titulo: "Catálogo de Procesos",
       descripcion: "Gestionar procesos de producción y precios",
       icono: <FaCogs />,
@@ -23,22 +59,38 @@ const Administracion = () => {
       color: "#8b5cf6"
     },
     {
-      id: 3,
+      id: 'tipos-trabajo',
       titulo: "Tipos de Trabajo",
       descripcion: "Administrar tipos de trabajos disponibles",
       icono: <FaTags />,
       ruta: "/admin/tipos-trabajo",
       color: "#f59e0b"
-    },
-    {
-      id: 4,
-      titulo: "Inventario",
-      descripcion: "Control de materiales y stock",
-      icono: <FaBoxes />,
-      ruta: "/inventario",
-      color: "#10b981"
     }
   ];
+
+  // Filtrar módulos según permisos
+  const modulosAdmin = todosLosModulos.filter(modulo => 
+    modulosDisponibles.includes(modulo.id)
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-xl text-gray-600">Cargando módulos...</div>
+      </div>
+    );
+  }
+
+  if (modulosAdmin.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Sin módulos administrativos</h2>
+          <p className="text-gray-600">No tienes permisos para acceder a módulos administrativos.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">

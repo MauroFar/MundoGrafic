@@ -1,10 +1,71 @@
 import express from "express";
 const router = express.Router();
 import authRequired from "../middleware/auth";
+import checkAdminRole from "../middleware/checkAdminRole";
 
 export default (client: any) => {
+  const router = express.Router();
+
+  // **NUEVO**: Obtener módulos administrativos disponibles para el usuario actual
+  router.get('/modulos-disponibles', authRequired(), async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id;
+      const userRol = req.user?.rol; // Obtener rol del JWT
+      
+      console.log(`🔍 [Permisos] Obteniendo módulos disponibles para usuario ID: ${userId}, rol: ${userRol}`);
+
+      // Verificar si es admin desde el JWT primero
+      if (userRol === 'admin') {
+        console.log(`✅ [Permisos] Usuario es admin (desde JWT) - Acceso a todos los módulos`);
+        return res.json({
+          esAdmin: true,
+          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo']
+        });
+      }
+
+      // Verificar si es admin desde la base de datos (usando rol_id o campo rol)
+      const adminCheck = await client.query(
+        `SELECT u.rol, r.es_sistema FROM usuarios u 
+         LEFT JOIN roles r ON u.rol_id = r.id 
+         WHERE u.id = $1 AND u.activo = true`,
+        [userId]
+      );
+
+      const esAdmin = adminCheck.rows.length > 0 && 
+        (adminCheck.rows[0].rol === 'admin' || adminCheck.rows[0].es_sistema === true);
+
+      if (esAdmin) {
+        console.log(`✅ [Permisos] Usuario es admin (desde DB) - Acceso a todos los módulos`);
+        // Admin ve todos los módulos administrativos
+        return res.json({
+          esAdmin: true,
+          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo']
+        });
+      }
+
+      // Usuario normal: obtener módulos con puede_leer = true
+      const permisosResult = await client.query(
+        `SELECT modulo FROM usuarios_permisos 
+         WHERE usuario_id = $1 AND puede_leer = true`,
+        [userId]
+      );
+
+      const modulos = permisosResult.rows.map((row: any) => row.modulo);
+      console.log(`📊 [Permisos] Módulos disponibles para usuario:`, modulos);
+
+      res.json({
+        esAdmin: false,
+        modulos
+      });
+
+    } catch (error: any) {
+      console.error('❌ [Permisos] Error obteniendo módulos:', error);
+      res.status(500).json({ error: 'Error obteniendo módulos disponibles' });
+    }
+  });
+
   // Obtener permisos de un usuario
-  router.get('/:usuarioId', authRequired(['admin']), async (req: any, res: any) => {
+  router.get('/:usuarioId', authRequired(), checkAdminRole(client), async (req: any, res: any) => {
     const { usuarioId } = req.params;
     
     try {
@@ -48,7 +109,7 @@ export default (client: any) => {
   });
 
   // Actualizar permisos de un usuario
-  router.put('/:usuarioId', authRequired(['admin']), async (req: any, res: any) => {
+  router.put('/:usuarioId', authRequired(), checkAdminRole(client), async (req: any, res: any) => {
     const { usuarioId } = req.params;
     const { permisos } = req.body; // Array de { modulo, puede_crear, puede_leer, puede_editar, puede_eliminar }
     

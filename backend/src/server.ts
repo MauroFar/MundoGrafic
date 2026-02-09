@@ -8,6 +8,7 @@ import apiRoutes from "./routes/api";
 import authRequired from "./middleware/auth";
 import usuariosRoutes from './routes/usuarios';
 import areasRoutes from './routes/areas';
+import rolesRoutes from './routes/roles';
 import cotizacionesRoutes from './routes/cotizaciones';
 import os from 'os';
 
@@ -96,13 +97,12 @@ app.use('/api/usuarios', usuariosRoutes(client));
 // Rutas de áreas
 app.use('/api/areas', areasRoutes(client));
 
-// Rutas de prensas
-import prensasRoutes from './routes/prensas';
-app.use('/api/prensas', prensasRoutes(client));
+// Rutas de roles
+app.use('/api/roles', rolesRoutes(client));
 
 // Rutas de firmas
 import firmasRouter from './routes/firmas';
-app.use('/api/firmas', firmasRouter);
+app.use('/api/firmas', firmasRouter(client));
 
 function getLocalIP() {
   const interfaces = os.networkInterfaces();

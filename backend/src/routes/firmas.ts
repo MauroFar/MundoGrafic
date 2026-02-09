@@ -1,11 +1,14 @@
 import express from "express";
 import authRequired from "../middleware/auth";
+import checkAdminRole from "../middleware/checkAdminRole";
 import path from "path";
 import fs from "fs/promises";
 import multer from "multer";
+import { Client } from "pg";
 // import sharp from "sharp"; // TEMPORALMENTE COMENTADO - CAUSA ERROR
 
-const router = express.Router();
+const firmasRoutes = (client: Client) => {
+  const router = express.Router();
 
 // Configurar multer para subir archivos de firma
 const storage = multer.diskStorage({
@@ -44,7 +47,7 @@ const upload = multer({
 });
 
 // Subir imagen de firma (VERSIÓN SIMPLIFICADA - SIN OPTIMIZACIÓN)
-router.post('/upload/:userId', authRequired(['admin']), upload.single('image'), async (req, res) => {
+router.post('/upload/:userId', authRequired(), upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se subió ningún archivo' });
@@ -92,7 +95,7 @@ router.get('/images/:userId/:filename', (req, res) => {
 });
 
 // Eliminar imagen de firma
-router.delete('/images/:userId/:filename', authRequired(['admin']), async (req, res) => {
+router.delete('/images/:userId/:filename', authRequired(), async (req, res) => {
   try {
     const { userId, filename } = req.params;
     const imagePath = path.join(__dirname, `../../storage/firmas/${userId}/${filename}`);
@@ -105,7 +108,7 @@ router.delete('/images/:userId/:filename', authRequired(['admin']), async (req, 
 });
 
 // Obtener lista de imágenes de un usuario
-router.get('/images/:userId', authRequired(['admin']), async (req, res) => {
+router.get('/images/:userId', authRequired(), async (req, res) => {
   try {
     const { userId } = req.params;
     const userPath = path.join(__dirname, `../../storage/firmas/${userId}`);
@@ -125,4 +128,7 @@ router.get('/images/:userId', authRequired(['admin']), async (req, res) => {
   }
 });
 
-export default router;
+  return router;
+};
+
+export default firmasRoutes;

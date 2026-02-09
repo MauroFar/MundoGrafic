@@ -25,28 +25,15 @@ const Sidebar = () => {
 
   // Menús según el rol
   const menus = {
-    admin: [
+    // Menú completo sin restricciones por rol
+    all: [
+      { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
       { path: "/administracion", label: "Administración" },
       { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
-    ],
-    ejecutivo: [
-      { path: "/cotizaciones", label: "Cotizaciones" },
-      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/produccion", label: "Producción" },
-      { path: "/inventario", label: "Inventario" },
-      { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
-    ],
-    impresion: [
-      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/produccion", label: "Producción" },
-      { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
-    ],
-    default: [
-      { path: "/inventario", label: "Inventario" },
     ],
     clientes: [
       { path: "/clientes/ver", label: "Ver Clientes" },
@@ -65,7 +52,7 @@ const Sidebar = () => {
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/produccion", label: "Trabajos en Producción" },
+      { path: "/produccion", label: "Dashboard Producción" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
       { path: "/produccion/preprensa", label: "Módulo Preprensa" },
       { path: "/produccion/prensa", label: "Módulo Prensa" },
@@ -79,6 +66,8 @@ const Sidebar = () => {
     // Submenú de Administración
     administracion: [
       { path: "/admin/usuarios", label: "Gestión de Usuarios" },
+      { path: "/admin/roles", label: "Gestión de Roles" },
+      { path: "/admin/areas", label: "Gestión de Áreas" },
       { path: "/admin/catalogo-procesos", label: "Catálogo de Procesos" },
       { path: "/admin/tipos-trabajo", label: "Tipos de Trabajo" },
       { path: "/inventario", label: "Inventario" },
@@ -116,21 +105,11 @@ const Sidebar = () => {
       location.pathname === "/productosTerminados" ||
       location.pathname === "/produccionDiaria"
     ) {
-      // Filtrar las opciones que el rol no debe ver
-      let items = [...menus.produccion];
-      if (rol !== 'admin' && rol !== 'ejecutivo') {
-        items = items.filter(i => i.path !== '/cotizaciones');
-      }
-      if (rol !== 'admin' && rol !== 'ejecutivo' && rol !== 'impresion') {
-        items = items.filter(i => i.path !== '/ordendeTrabajo');
-      }
-      return items;
+      // Mostrar todas las opciones de producción sin filtrar por rol
+      return menus.produccion;
     }
-    // Menú principal según el rol
-    if (rol === 'admin') return menus.admin;
-    if (rol === 'ejecutivo') return menus.ejecutivo;
-    if (rol === 'impresion') return menus.impresion;
-    return menus.default;
+    // Menú principal - mostrar todo sin filtrar por rol
+    return menus.all;
   };
 
   const menuItems = getMenuItems();

@@ -42,8 +42,11 @@ export const usePermisos = () => {
 
   const tienePermiso = (modulo, accion) => {
     // Admin tiene todos los permisos
+    const rol = localStorage.getItem('rol');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.rol === 'admin') {
+    
+    // Verificar si es admin desde localStorage.getItem('rol') o desde user.rol
+    if (rol === 'admin' || user.rol === 'admin') {
       return true;
     }
 

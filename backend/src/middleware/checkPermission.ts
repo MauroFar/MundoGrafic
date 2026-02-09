@@ -19,6 +19,7 @@ export const checkPermission = (client: any, modulo: string, accion: 'crear' | '
 
       // Admin tiene todos los permisos
       if (usuario.rol === 'admin') {
+        console.log(`✅ [checkPermission] Usuario es admin - Permiso concedido para ${accion} en ${modulo}`);
         return next();
       }
 

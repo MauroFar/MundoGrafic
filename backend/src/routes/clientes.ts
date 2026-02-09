@@ -1,7 +1,6 @@
 import express from "express";
 const router = express.Router();
 import authRequired from "../middleware/auth";
-import checkPermission from "../middleware/checkPermission";
 
 const createCliente = (client: any) => {
   // Agregar un middleware de logging
@@ -17,7 +16,7 @@ const createCliente = (client: any) => {
   });
 
   // ✅ Ruta para obtener todos los clientes
-  router.get("/", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
+  router.get("/", authRequired(), async (req: any, res: any) => {
     try {
       console.log('🔍 [Clientes API] Iniciando consulta de clientes...');
       const query = `
@@ -145,45 +144,27 @@ const createCliente = (client: any) => {
   // Ruta para buscar clientes
   router.get("/buscar", authRequired(), async (req: any, res: any) => {
     const { q } = req.query;
-    console.log('🔍 [Clientes API] Búsqueda de clientes con término:', q);
-    
-    // Validar: al menos 2 caracteres
-    if (!q || q.trim().length < 2) {
-      console.log('⚠️ [Clientes API] Término de búsqueda no válido');
+    // Validar: al menos 2 caracteres y al menos una letra
+    if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
       return res.json([]); // No sugerencias si no cumple
     }
-    
     try {
       const query = `
-        SELECT 
-          id, 
-          nombre_cliente, 
-          email_cliente,
-          telefono_cliente,
-          direccion_cliente,
-          ruc_cedula_cliente,
-          empresa_cliente
+        SELECT id, nombre_cliente, email_cliente
         FROM clientes
-        WHERE 
-          nombre_cliente ILIKE $1 
-          OR email_cliente ILIKE $1
-          OR empresa_cliente ILIKE $1
-          OR telefono_cliente ILIKE $1
-          OR ruc_cedula_cliente ILIKE $1
+        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1
         ORDER BY nombre_cliente ASC
-        LIMIT 20
+        LIMIT 10
       `;
       const result = await client.query(query, [`%${q}%`]);
-      console.log(`✅ [Clientes API] Búsqueda exitosa. Encontrados ${result.rows.length} clientes`);
       res.json(result.rows);
     } catch (error: any) {
-      console.error('❌ [Clientes API] Error al buscar clientes:', error);
       res.status(500).json({ error: 'Error al buscar clientes', details: error.message });
     }
   });
 
   // Ruta para crear un cliente
-  router.post("/", authRequired(), checkPermission(client, 'clientes', 'crear'), async (req: any, res: any) => {
+  router.post("/", authRequired(), async (req: any, res: any) => {
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
     
@@ -275,7 +256,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para actualizar un cliente
-  router.put("/:id", authRequired(), checkPermission(client, 'clientes', 'editar'), async (req: any, res: any) => {
+  router.put("/:id", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
@@ -355,7 +336,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para eliminar un cliente
-  router.delete("/:id", authRequired(), checkPermission(client, 'clientes', 'eliminar'), async (req: any, res: any) => {
+  router.delete("/:id", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     
     try {
@@ -365,23 +346,14 @@ const createCliente = (client: any) => {
       const checkQuery = `
         SELECT 
           (SELECT COUNT(*) FROM cotizaciones WHERE cliente_id = $1) as cotizaciones,
-          (SELECT COUNT(*) FROM orden_trabajo ot 
-           JOIN cotizaciones c ON ot.id_cotizacion = c.id 
-           WHERE c.cliente_id = $1) as ordenes
+          (SELECT COUNT(*) FROM ordenes_trabajo WHERE cliente_id = $1) as ordenes
       `;
       const checkResult = await client.query(checkQuery, [id]);
       
-      const cotizaciones = parseInt(checkResult.rows[0].cotizaciones) || 0;
-      const ordenes = parseInt(checkResult.rows[0].ordenes) || 0;
-      
-      if (cotizaciones > 0 || ordenes > 0) {
+      if (checkResult.rows[0].cotizaciones > 0 || checkResult.rows[0].ordenes > 0) {
         return res.status(409).json({ 
           error: 'No se puede eliminar el cliente',
-          message: 'El cliente tiene registros asociados',
-          detalles: {
-            cotizaciones,
-            ordenes
-          }
+          details: 'El cliente tiene cotizaciones u órdenes de trabajo asociadas'
         });
       }
       

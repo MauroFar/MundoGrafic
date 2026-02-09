@@ -174,12 +174,14 @@ const Header: React.FC = () => {
           </button>
           {settingsOpen && (
             <div className="user-dropdown">
-              <button
-                className="dropdown-item"
-                onClick={() => { setSettingsOpen(false); navigate('/admin/usuarios'); }}
-              >
-                Editar registros
-              </button>
+              {rol?.toLowerCase() === 'admin' && (
+                <button
+                  className="dropdown-item"
+                  onClick={() => { setSettingsOpen(false); navigate('/admin/usuarios'); }}
+                >
+                  Editar registros
+                </button>
+              )}
               <button className="dropdown-item" onClick={() => { setSettingsOpen(false); handleLogout(); }}>
                 Cerrar sesión
               </button>

@@ -16,20 +16,6 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
   // Establecer la URL base para las imágenes
   const baseUrl = process.env.API_URL || 'http://localhost:3000';
   
-  // Función para sanitizar y preparar HTML del detalle
-  const prepararHTMLDetalle = (html: string): string => {
-    if (!html) return '';
-    // El HTML ya viene con las etiquetas <strong> del contentEditable
-    // Solo necesitamos asegurarnos de que los saltos de línea se preserven
-    // Convertir <div> y <br> a saltos de línea apropiados
-    let resultado = html
-      .replace(/<div>/gi, '<br>')
-      .replace(/<\/div>/gi, '')
-      .replace(/&nbsp;/g, ' ');
-    
-    return resultado;
-  };
-  
   // Función para convertir imagen a base64
   const getBase64Image = async (imagePath) => {
     try {
@@ -648,12 +634,6 @@ body {
   word-break: break-word; /* evita desbordes si hay palabras largas */
 }
 
-/* Estilos para texto en negrita */
-.detalle-texto strong {
-  font-weight: bold;
-  color: #000;
-}
-
 .imagen-container {
   margin-top: 10px;
 }
@@ -800,7 +780,7 @@ body {
                     <td class="col-cant">${d.cantidad}</td>
                     <td class="col-detalle">
                       <div class="detalle-con-imagen">
-                        <div class="detalle-texto">${prepararHTMLDetalle(d.detalle)}</div>
+                        <div class="detalle-texto">${d.detalle}</div>
                         ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                           <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
                             ${d.imagenesBase64.map(img => `
@@ -1667,7 +1647,6 @@ const CotizacionDatos = (client: any) => {
         host: "smtp.gmail.com",
         port: 587,
         secure: false,
-        family: 4, // Forzar IPv4 para evitar errores de conectividad IPv6
         auth: {
           user: emailUser,
           pass: emailPassword

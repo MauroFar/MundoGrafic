@@ -133,7 +133,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'offset' | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'prensa' | 'digital'
 
   // Estados específicos para formulario DIGITAL
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
@@ -394,39 +394,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setFechaEntrega(ordenData.fecha_entrega.substring(0, 10));
     } else {
       setFechaEntrega('');
-    }
-
-    // ⭐ IMPORTANTE: Establecer el tipo de orden cuando se carga una orden existente
-    if (ordenData.tipo_orden) {
-      console.log('🎯 Estableciendo tipo de orden:', ordenData.tipo_orden);
-      setTipoOrdenSeleccionado(ordenData.tipo_orden);
-      
-      // Si es orden DIGITAL, cargar campos específicos
-      if (ordenData.tipo_orden === 'digital' && ordenData.detalle) {
-        // Parsear productos_digital si existe
-        if (ordenData.detalle.productos_digital) {
-          try {
-            const productos = typeof ordenData.detalle.productos_digital === 'string'
-              ? JSON.parse(ordenData.detalle.productos_digital)
-              : ordenData.detalle.productos_digital;
-            setProductosDigital(productos);
-          } catch (e) {
-            console.error('Error al parsear productos_digital:', e);
-            setProductosDigital([]);
-          }
-        }
-        
-        // Cargar campos técnicos digitales
-        setAdherencia(ordenData.detalle.adherencia || '');
-        setTipoImpresion(ordenData.detalle.tipo_impresion || '');
-        setTroquel(ordenData.detalle.troquel || '');
-        setCodigoTroquel(ordenData.detalle.codigo_troquel || '');
-        setLoteMaterial(ordenData.detalle.lote_material || '');
-        setLoteProduccion(ordenData.detalle.lote_produccion || '');
-        setTerminadoEtiqueta(ordenData.detalle.terminado_etiqueta || '');
-        setTerminadosEspeciales(ordenData.detalle.terminados_especiales || '');
-        setCantidadPorRollo(ordenData.detalle.cantidad_por_rollo || '');
-      }
     }
      }
  // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -903,12 +870,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => { setTipoOrdenSeleccionado('offset'); setShowTipoOrdenModal(false); }}
+                onClick={() => { setTipoOrdenSeleccionado('prensa'); setShowTipoOrdenModal(false); }}
               >
-                Offset
+                Prensa
               </button>
               <button
-                className="px-4 py-3 bg-purple-600 text-white rounded hover:bg-purple-700"
+                className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
                 onClick={() => { setTipoOrdenSeleccionado('digital'); setShowTipoOrdenModal(false); }}
               >
                 Digital
@@ -926,22 +893,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
               <div className="flex-shrink-0">
                 <Logo/>
               </div>
-              <div className="flex-1 text-center">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Orden de Trabajo
-                </h2>
-                {tipoOrdenSeleccionado && (
-                  <div className="mt-1">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      tipoOrdenSeleccionado === 'digital' 
-                        ? 'bg-purple-100 text-purple-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {tipoOrdenSeleccionado === 'digital' ? '🖨️ DIGITAL' : '🖨️ OFFSET'}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <h2 className="text-xl font-bold text-gray-800 flex-1 text-center">
+                Orden de Trabajo
+              </h2>
               <div className="flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Estado:</label>
