@@ -57,14 +57,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
   
   const [concepto, setConcepto] = useState<string>('');
   const [nombre_cliente, setNombre_cliente] = useState<string>('');
+  const [contacto, setContacto] = useState<string>(''); // Nombre de la persona de contacto
   const [numero_cotizacion, setNumero_cotizacion] = useState<string>('');
+  const [orden_compra, setOrden_compra] = useState<string>('');
   const [ordenData, setOrdenData] = useState<OrdenData | null>(null);
   const [fechaCreacion, setFechaCreacion] = useState<string>(() => {
     return new Date().toISOString().split("T")[0];
   });
   const [telefono_cliente, setTelefono_cliente] = useState<string>('');
   const [email_cliente, setEmail_cliente] = useState<string>('');
-  const [direccion_cliente, setDireccion_cliente] = useState<string>('');
+  const [direccion_cliente, setDireccion_cliente] = useState<string>(''); // Dirección física (no se muestra en formulario)
   const [cantidad, setCantidad] = useState<string>('');
   const [numero_orden, setNumero_orden] = useState<string>('');
 
@@ -99,6 +101,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [prensa, setPrensa] = useState<string>('');
   const [terminados, setTerminados] = useState<string>('');
   const [facturado, setFacturado] = useState<string>('');
+  
+  // Estados adicionales para responsables de orden DIGITAL
+  const [laminadoBarnizado, setLaminadoBarnizado] = useState<string>('');
+  const [troquelado, setTroquelado] = useState<string>('');
+  const [liberacionProducto, setLiberacionProducto] = useState<string>('');
 
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
@@ -149,6 +156,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [terminadosEspeciales, setTerminadosEspeciales] = useState<string>('');
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
+  const [numeroSalida, setNumeroSalida] = useState<string>('');
 
   // Función para calcular el total de pliegos
   const calcularTotalPliegos = () => {
@@ -178,7 +186,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setConcepto('');
       setCantidad('');
       setNombre_cliente('');
+      setContacto('');
       setNumero_cotizacion('');
+      setOrden_compra('');
       setTelefono_cliente('');
       setEmail_cliente('');
       setDireccion_cliente('');
@@ -235,46 +245,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       }
       return;
     }
-    // Si viene producto por state, inicializar con ese producto
-    if (!ordenId && location.state && location.state.producto) {
-      const producto = location.state.producto;
-      setConcepto(producto.detalle || '');
-      setCantidad(producto.cantidad ? String(producto.cantidad) : '');
-      if (location.state.id_detalle_cotizacion) {
-        setIdDetalleCotizacion(location.state.id_detalle_cotizacion);
-      }
-      // Cargar datos del cliente y cotización desde el backend
-      if (cotizacionId) {
-        fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
-          .then((response) => response.json())
-          .then((data) => {
-            console.log('📦 Datos de cotización recibidos:', data);
-            // Setear ordenData para que no se quede en "Cargando..."
-            setOrdenData(data);
-            // Setear TODOS los datos del cliente
-            setNombre_cliente(data.nombre_cliente || '');
-            setNumero_cotizacion(data.numero_cotizacion || '');
-            setTelefono_cliente(data.telefono_cliente || '');
-            setEmail_cliente(data.email_cliente || '');
-            setDireccion_cliente(data.direccion_cliente || '');
-            // Obtener el próximo número de orden
-            return fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`);
-          })
-          .then(res => res?.json())
-          .then(data => {
-            if (data) setNumero_orden(data.proximoNumero);
-          })
-          .catch((error) => {
-            console.error("Error fetching data:", error);
-            // En caso de error, setear un objeto vacío para que no se quede cargando
-            setOrdenData({});
-          });
-      } else {
-        // Si no hay cotizacionId pero hay producto, setear ordenData vacío
-        setOrdenData({});
-      }
-      return;
-    } else if(ordenId){
+    // MODO EDICIÓN: cargar datos de una orden existente
+    if (ordenId) {
       // Modo edición: cargar datos de una orden existente
       const token = localStorage.getItem('token');
       fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`, {
@@ -292,23 +264,102 @@ const OrdendeTrabajoEditar: React.FC = () => {
         .then((data) => {
           console.log('📦 Datos de orden cargados para edición:', data);
           setOrdenData(data);
+          // Establecer el tipo de orden cuando se carga para edición
+          if (data.tipo_orden) {
+            console.log('🔧 Estableciendo tipo de orden para edición:', data.tipo_orden);
+            setTipoOrdenSeleccionado(data.tipo_orden);
+          }
         })
         .catch((error) => {
           console.error("Error al cargar orden existente:", error);
           toast.error('Error al cargar la orden');
         });
     } else if (cotizacionId) {
-      // Si hay cotización, traemos datos del backend
-      fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`)
-        .then((response) => response.json())
-        .then((data) => setOrdenData(data))
-        .catch((error) => console.error("Error fetching data:", error));
+      // NUEVO: Si hay cotizacionId, cargar datos del cliente y cotización
+      console.log('🔍 Detectado cotizacionId, cargando datos...', cotizacionId);
+      
+      // Si viene producto por state, usarlo para inicializar concepto y cantidad
+      if (location.state?.producto) {
+        const producto = location.state.producto;
+        setConcepto(producto.detalle || '');
+        setCantidad(producto.cantidad ? String(producto.cantidad) : '');
+        if (location.state.id_detalle_cotizacion) {
+          setIdDetalleCotizacion(location.state.id_detalle_cotizacion);
+        }
+        
+        // Si es orden digital, inicializar el primer producto con datos de la cotización
+        // El usuario puede editarlo o agregar más productos
+        if (location.state?.tipoOrden === 'digital') {
+          console.log('🔧 Inicializando producto digital desde cotización:', producto);
+          setProductosDigital([{
+            cantidad: producto.cantidad ? String(producto.cantidad) : '',
+            cod_mg: '',
+            cod_cliente: '',
+            producto: producto.detalle || '',
+            avance: '',
+            medida_ancho: '',
+            medida_alto: '',
+            cavidad: '',
+            metros_impresos: ''
+          }]);
+        }
+      }
+      
+      // Cargar datos del cliente y cotización desde el backend
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/datosCotizacion/${cotizacionId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Error al cargar cotización: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log('📦 Datos de cotización recibidos:', data);
+          // Setear ordenData para que no se quede en "Cargando..."
+          setOrdenData(data);
+          // Setear TODOS los datos del cliente
+          // IMPORTANTE: Usar empresa_cliente para el campo nombre_cliente
+          setNombre_cliente(data.empresa_cliente || data.nombre_cliente || '');
+          setContacto(data.nombre_cliente || ''); // Nombre de la persona de contacto
+          setNumero_cotizacion(data.numero_cotizacion || '');
+          setTelefono_cliente(data.telefono_cliente || '');
+          setEmail_cliente(data.email_cliente || '');
+          setDireccion_cliente(data.direccion_cliente || '');
+          // Obtener el próximo número de orden
+          return fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        })
+        .then(res => res?.json())
+        .then(data => {
+          if (data) {
+            console.log('🔢 Próximo número de orden:', data.proximoNumero);
+            setNumero_orden(data.proximoNumero);
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Error al cargar datos de cotización:", error);
+          // En caso de error, setear un objeto vacío para que no se quede cargando
+          setOrdenData({});
+          toast.error('Error al cargar datos de la cotización');
+        });
     } else {
       // Si no hay cotización, inicializar estados vacíos para crear orden nueva
       setOrdenData(null);
       setConcepto('');
       setNombre_cliente('');
+      setContacto('');
       setNumero_cotizacion('');
+      setOrden_compra('');
     }
   }, [cotizacionId, ordenId, location.state]);
 
@@ -322,47 +373,106 @@ const OrdendeTrabajoEditar: React.FC = () => {
     if (!productoSeleccionado) {
       setConcepto(ordenData.concepto || '');
       setCantidad(ordenData.cantidad || '');
-      // Solo si no hay producto seleccionado, sincroniza los campos técnicos
-      if (ordenData.detalle) {
-        setTipoPapelProveedor(ordenData.detalle?.tipo_papel_proveedor || '');
-        setTipoPapelPrensa(ordenData.detalle?.tipo_papel_prensa || '');
-        setTipoPapelVelocidad(ordenData.detalle?.tipo_papel_velocidad || '');
-        setTipoPapelCalibre(ordenData.detalle?.tipo_papel_calibre || '');
-        setTipoPapelReferencia(ordenData.detalle?.tipo_papel_referencia || '');
-        setTipoPapelGramos(ordenData.detalle?.tipo_papel_gramos || '');
-        setTipoPapelTamano(ordenData.detalle?.tipo_papel_tamano || '');
-        setTipoPapelCantColores(ordenData.detalle?.tipo_papel_cant_colores || '');
-        setTipoPapelCantPliegos(ordenData.detalle?.tipo_papel_cant_pliegos || '');
-        setTipoPapelExceso(ordenData.detalle?.tipo_papel_exceso || '');
-        setGuillotinaPliegosCortar(ordenData.detalle?.guillotina_pliegos_cortar || '');
-        setGuillotinaTamanoCorte(ordenData.detalle?.guillotina_tamano_corte || '');
-        setGuillotinaCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || '');
-        setPrensasPliegosImprimir(ordenData.detalle?.prensas_pliegos_imprimir || '');
-        setPrensasCabidaImpresion(ordenData.detalle?.prensas_cabida_impresion || '');
-        setPrensasTotalImpresion(ordenData.detalle?.prensas_total_impresion || '');
-         
-         // Sincronizar nuevos campos
-                   setMaterial(ordenData.detalle?.material || '');
-          setCorteMaterial(ordenData.detalle?.corte_material || '');
-          setCantidadPliegosCompra(ordenData.detalle?.cantidad_pliegos_compra || '');
-          setExceso(ordenData.detalle?.exceso || '');
-          setTotalPliegos(ordenData.detalle?.total_pliegos || '');
-          setTamano(ordenData.detalle?.tamano || '');
-                     setTamanoAbierto1(ordenData.detalle?.tamano_abierto_1 || '');
-           setTamanoCerrado1(ordenData.detalle?.tamano_cerrado_1 || '');
-          setImpresion(ordenData.detalle?.impresion || '');
-          setInstruccionesImpresion(ordenData.detalle?.instrucciones_impresion || '');
-          setInstruccionesAcabados(ordenData.detalle?.instrucciones_acabados || '');
-          setInstruccionesEmpacado(ordenData.detalle?.instrucciones_empacado || '');
-          setObservaciones(ordenData.detalle?.observaciones || '');
-          setPrensaSeleccionada(ordenData.detalle?.prensa_seleccionada || '');
+    }
+    
+    // SIEMPRE sincronizar campos técnicos (sin importar si hay producto seleccionado)
+    if (ordenData.detalle) {
+      setTipoPapelProveedor(ordenData.detalle?.tipo_papel_proveedor || '');
+      setTipoPapelPrensa(ordenData.detalle?.tipo_papel_prensa || '');
+      setTipoPapelVelocidad(ordenData.detalle?.tipo_papel_velocidad || '');
+      setTipoPapelCalibre(ordenData.detalle?.tipo_papel_calibre || '');
+      setTipoPapelReferencia(ordenData.detalle?.tipo_papel_referencia || '');
+      setTipoPapelGramos(ordenData.detalle?.tipo_papel_gramos || '');
+      setTipoPapelTamano(ordenData.detalle?.tipo_papel_tamano || '');
+      setTipoPapelCantColores(ordenData.detalle?.tipo_papel_cant_colores || '');
+      setTipoPapelCantPliegos(ordenData.detalle?.tipo_papel_cant_pliegos || '');
+      setTipoPapelExceso(ordenData.detalle?.tipo_papel_exceso || '');
+      setGuillotinaPliegosCortar(ordenData.detalle?.guillotina_pliegos_cortar || '');
+      setGuillotinaTamanoCorte(ordenData.detalle?.guillotina_tamano_corte || '');
+      setGuillotinaCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || '');
+      setPrensasPliegosImprimir(ordenData.detalle?.prensas_pliegos_imprimir || '');
+      setPrensasCabidaImpresion(ordenData.detalle?.prensas_cabida_impresion || '');
+      setPrensasTotalImpresion(ordenData.detalle?.prensas_total_impresion || '');
+       
+      // Sincronizar campos comunes para ambos tipos
+      setPrensaSeleccionada(ordenData.detalle?.prensa_seleccionada || '');
+      setNumeroSalida(ordenData.detalle?.numero_salida || '');
+      
+      // Sincronizar campos específicos de OFFSET
+      if (ordenData.tipo_orden === 'offset' || !ordenData.tipo_orden) {
+        // Material, impresion, observaciones para offset
+        setMaterial(ordenData.detalle?.material || '');
+        setImpresion(ordenData.detalle?.impresion || '');
+        setObservaciones(ordenData.detalle?.observaciones || '');
+        
+        // Otros campos offset
+        setCorteMaterial(ordenData.detalle?.corte_material || '');
+        setCantidadPliegosCompra(ordenData.detalle?.cantidad_pliegos_compra || '');
+        setExceso(ordenData.detalle?.exceso || '');
+        setTotalPliegos(ordenData.detalle?.total_pliegos || '');
+        setTamano(ordenData.detalle?.tamano || '');
+        setTamanoAbierto1(ordenData.detalle?.tamano_abierto_1 || '');
+        setTamanoCerrado1(ordenData.detalle?.tamano_cerrado_1 || '');
+        setInstruccionesImpresion(ordenData.detalle?.instrucciones_impresion || '');
+        setInstruccionesAcabados(ordenData.detalle?.instrucciones_acabados || '');
+        setInstruccionesEmpacado(ordenData.detalle?.instrucciones_empacado || '');
+      }
+      
+      // Sincronizar campos específicos para órdenes digitales
+      if (ordenData.tipo_orden === 'digital') {
+        console.log('🔧 Sincronizando campos digitales del detalle:', ordenData.detalle);
+        console.log('🔍 productos_digital RAW:', ordenData.detalle?.productos_digital);
+        console.log('🔍 tipo de productos_digital:', typeof ordenData.detalle?.productos_digital);
+        
+        // Material, impresion, observaciones para digital (estados específicos)
+        setMaterialDigital(ordenData.detalle?.material || '');
+        setImpresionDigital(ordenData.detalle?.impresion || '');
+        setObservacionesDigital(ordenData.detalle?.observaciones || '');
+        
+        // Campos técnicos digitales
+        setAdherencia(ordenData.detalle?.adherencia || '');
+        setLoteMaterial(ordenData.detalle?.lote_material || '');
+        setLoteProduccion(ordenData.detalle?.lote_produccion || '');
+        setTipoImpresion(ordenData.detalle?.tipo_impresion || '');
+        setTroquel(ordenData.detalle?.troquel || '');
+        setCodigoTroquel(ordenData.detalle?.codigo_troquel || '');
+        setTerminadoEtiqueta(ordenData.detalle?.terminado_etiqueta || '');
+        setTerminadosEspeciales(ordenData.detalle?.terminados_especiales || '');
+        setCantidadPorRollo(ordenData.detalle?.cantidad_por_rollo || '');
+
+        
+        // Sincronizar productos digitales
+        if (ordenData.detalle?.productos_digital) {
+          try {
+            const productos = typeof ordenData.detalle.productos_digital === 'string' 
+              ? JSON.parse(ordenData.detalle.productos_digital)
+              : ordenData.detalle.productos_digital;
+            console.log('📦 Productos digitales parseados:', productos);
+            console.log('📦 Es array?:', Array.isArray(productos));
+            console.log('📦 Cantidad de productos:', Array.isArray(productos) ? productos.length : 'N/A');
+            // Asegurar que siempre sea un array
+            setProductosDigital(Array.isArray(productos) ? productos : []);
+          } catch (e) {
+            console.error('❌ Error al parsear productos digitales:', e);
+            console.error('❌ Valor que causó error:', ordenData.detalle?.productos_digital);
+            setProductosDigital([]);
+          }
+        } else {
+          // Si no hay productos, establecer array vacío
+          console.log('⚠️ No hay productos_digital en el detalle');
+          setProductosDigital([]);
+        }
       }
     }
-    setNombre_cliente(ordenData.nombre_cliente || '');
+    
+    // IMPORTANTE: Usar empresa_cliente para el campo nombre_cliente
+    setNombre_cliente(ordenData.empresa_cliente || ordenData.nombre_cliente || '');
+    setContacto(ordenData.contacto || ordenData.nombre_cliente || ''); // Nombre de la persona de contacto
     setNumero_cotizacion(ordenData.numero_cotizacion || '');
+    setOrden_compra(ordenData.orden_compra || '');
     setTelefono_cliente(ordenData.telefono_cliente || ordenData.telefono || '');
     setEmail_cliente(ordenData.email_cliente || ordenData.email || '');
-    setDireccion_cliente(ordenData.direccion_cliente || ordenData.contacto || '');
+    setDireccion_cliente(ordenData.direccion_cliente || '');
     
     // Solo sincronizar numero_orden si estamos editando una orden existente
     if (ordenId) {
@@ -375,7 +485,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
       preprensa: ordenData.preprensa,
       prensa: ordenData.prensa,
       terminados: ordenData.terminados,
-      facturado: ordenData.facturado
+      facturado: ordenData.facturado,
+      laminado_barnizado: ordenData.laminado_barnizado,
+      troquelado: ordenData.troquelado,
+      liberacion_producto: ordenData.liberacion_producto
     });
     
     setVendedor(ordenData.vendedor || '');
@@ -383,6 +496,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setPrensa(ordenData.prensa || '');
     setTerminados(ordenData.terminados || '');
     setFacturado(ordenData.facturado || '');
+    
+    // Sincronizar campos adicionales para orden digital
+    if (ordenData.tipo_orden === 'digital') {
+      setLaminadoBarnizado(ordenData.laminado_barnizado || '');
+      setTroquelado(ordenData.troquelado || '');
+      setLiberacionProducto(ordenData.liberacion_producto || '');
+    }
     
     // Sincronizar otros campos generales
     setEstado(ordenData.estado || 'pendiente');
@@ -549,7 +669,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
     const dataToSend = {
       // Datos generales
       nombre_cliente,
-      contacto: direccion_cliente,
+      orden_compra,
+      contacto: contacto,
       email: email_cliente,
       telefono: telefono_cliente,
       cantidad,
@@ -563,13 +684,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
       prensa,
       terminados,
       facturado,
+      // Campos adicionales para orden digital
+      ...(tipoOrdenSeleccionado === 'digital' && {
+        laminado_barnizado: laminadoBarnizado,
+        troquelado: troquelado,
+        liberacion_producto: liberacionProducto
+      }),
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
       tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
       // Detalle técnico (depende del tipo de orden)
       detalle: tipoOrdenSeleccionado === 'digital' ? {
         // Datos específicos de digital
-        productos_digital: JSON.stringify(productosDigital),
+        productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
         adherencia,
         material: materialDigital,
         impresion: impresionDigital,
@@ -581,6 +708,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         terminado_etiqueta: terminadoEtiqueta,
         terminados_especiales: terminadosEspeciales,
         cantidad_por_rollo: cantidadPorRollo,
+        numero_salida: numeroSalida,
         observaciones: observacionesDigital
       } : {
         // Datos específicos de offset
@@ -674,7 +802,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         body: JSON.stringify({
           // Datos generales
           nombre_cliente,
-          contacto: direccion_cliente,
+          orden_compra,
+          contacto: contacto,
           email: email_cliente,
           telefono: telefono_cliente,
           cantidad,
@@ -688,11 +817,17 @@ const OrdendeTrabajoEditar: React.FC = () => {
           prensa,
           terminados,
           facturado,
+          // Campos adicionales para orden digital
+          ...(tipoOrdenSeleccionado === 'digital' && {
+            laminado_barnizado: laminadoBarnizado,
+            troquelado: troquelado,
+            liberacion_producto: liberacionProducto
+          }),
           tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
           // Detalle técnico (depende del tipo de orden)
           detalle: tipoOrdenSeleccionado === 'digital' ? {
             // Datos específicos de digital
-            productos_digital: JSON.stringify(productosDigital),
+            productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
             adherencia,
             material: materialDigital,
             impresion: impresionDigital,
@@ -704,6 +839,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             terminado_etiqueta: terminadoEtiqueta,
             terminados_especiales: terminadosEspeciales,
             cantidad_por_rollo: cantidadPorRollo,
+            numero_salida: numeroSalida,
             observaciones: observacionesDigital
           } : {
             // Datos específicos de offset
@@ -785,7 +921,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       const dataToSend = {
         // Datos generales
         nombre_cliente,
-        contacto: direccion_cliente,
+        orden_compra,
+        contacto: contacto,
         email: email_cliente,
         telefono: telefono_cliente,
         cantidad,
@@ -799,6 +936,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
         prensa,
         terminados,
         facturado,
+        // Campos adicionales para orden digital
+        ...(tipoOrdenSeleccionado === 'digital' && {
+          laminado_barnizado: laminadoBarnizado,
+          troquelado: troquelado,
+          liberacion_producto: liberacionProducto
+        }),
         id_cotizacion: cotizacionId || null,
         id_detalle_cotizacion: idDetalleCotizacion,
         // Detalle técnico
@@ -920,7 +1063,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
             {/* Información General - Diseño compacto */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-              {/* Primera columna: Orden y Cotización */}
+              {/* Primera columna: Orden, Cotización y Orden de Compra */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Orden N°:</label>
@@ -938,6 +1081,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     type="text" 
                     value={String(numero_cotizacion).padStart(6, '0')}
                     onChange={(e) => setNumero_cotizacion(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Orden de Compra:</label>
+                  <input 
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-32" 
+                    type="text" 
+                    value={orden_compra}
+                    onChange={(e) => setOrden_compra(e.target.value)}
+                    placeholder="Nº O.C."
                   />
                 </div>
               </div>
@@ -994,8 +1147,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
                    <input 
                      className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
                      type="text" 
-                     value={direccion_cliente} 
-                     onChange={e => setDireccion_cliente(e.target.value)} 
+                     value={contacto} 
+                     onChange={e => setContacto(e.target.value)}
+                     placeholder="Nombre de la persona de contacto"
                    />
                  </div>
                </div>
@@ -1053,6 +1207,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setCantidadPorRollo={setCantidadPorRollo}
               observaciones={observacionesDigital}
               setObservaciones={setObservacionesDigital}
+              numeroSalida={numeroSalida}
+              setNumeroSalida={setNumeroSalida}
             />
           ) : (
             <FormularioOrdenOffset
@@ -1096,61 +1252,144 @@ const OrdendeTrabajoEditar: React.FC = () => {
               Responsables del Proceso
             </h3>
             
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
-                <input 
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                  type="text" 
-                  placeholder="Nombre" 
-                  value={vendedor} 
-                  onChange={e => setVendedor(e.target.value)} 
-                />
-              </div>
+            {tipoOrdenSeleccionado === 'digital' ? (
+              // Responsables para orden DIGITAL
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Nombre" 
+                    value={vendedor} 
+                    onChange={e => setVendedor(e.target.value)} 
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Preprensa</label>
-                <input 
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                  type="text" 
-                  placeholder="Responsable" 
-                  value={preprensa} 
-                  onChange={e => setPreprensa(e.target.value)} 
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Pre-prensa</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={preprensa} 
+                    onChange={e => setPreprensa(e.target.value)} 
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Prensa</label>
-                <input 
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                  type="text" 
-                  placeholder="Responsable" 
-                  value={prensa} 
-                  onChange={e => setPrensa(e.target.value)} 
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Impresión</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={prensa} 
+                    onChange={e => setPrensa(e.target.value)} 
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
-                <input 
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                  type="text" 
-                  placeholder="Responsable" 
-                  value={terminados} 
-                  onChange={e => setTerminados(e.target.value)} 
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Laminado/Barnizado</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={laminadoBarnizado} 
+                    onChange={e => setLaminadoBarnizado(e.target.value)} 
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Facturado</label>
-                <input 
-                  className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                  type="text" 
-                  value={facturado} 
-                  onChange={e => setFacturado(e.target.value)} 
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Troquelado</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={troquelado} 
+                    onChange={e => setTroquelado(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={terminados} 
+                    onChange={e => setTerminados(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Liberación Producto</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={liberacionProducto} 
+                    onChange={e => setLiberacionProducto(e.target.value)} 
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              // Responsables para orden OFFSET (mantener los campos originales)
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Nombre" 
+                    value={vendedor} 
+                    onChange={e => setVendedor(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Preprensa</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={preprensa} 
+                    onChange={e => setPreprensa(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Prensa</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={prensa} 
+                    onChange={e => setPrensa(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    placeholder="Responsable" 
+                    value={terminados} 
+                    onChange={e => setTerminados(e.target.value)} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Facturado</label>
+                  <input 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    type="text" 
+                    value={facturado} 
+                    onChange={e => setFacturado(e.target.value)} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
                      {/* Botones */}
@@ -1302,8 +1541,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
                             className="hover:bg-blue-50 cursor-pointer transition-colors"
                             onClick={() => {
                               // Seleccionar el cliente y cerrar el modal
-                              setNombre_cliente(cliente.empresa || cliente.nombre_cliente);
-                              setTelefono_cliente(cliente.telefono || '');
+                              setNombre_cliente(cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente);
+                              setContacto(cliente.nombre_cliente || '');
+                              setTelefono_cliente(cliente.telefono_cliente || cliente.telefono || '');
                               setEmail_cliente(cliente.email_cliente || '');
                               setDireccion_cliente(cliente.direccion_cliente || '');
                               setClienteIdSeleccionado(cliente.id);

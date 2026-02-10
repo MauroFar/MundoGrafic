@@ -960,7 +960,7 @@ function CotizacionesVer() {
                       <span className="text-xs text-gray-500">{cotizacion.codigo_cotizacion}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 border-b">{cotizacion.nombre_cliente}</td>
+                  <td className="px-6 py-4 border-b">{cotizacion.empresa_cliente || cotizacion.nombre_cliente}</td>
                   <td className="px-6 py-4 border-b">{cotizacion.primer_detalle || 'Sin descripción'}</td>
                   <td className="px-6 py-4 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
                   <td className="px-6 py-4 border-b">${formatearTotal(cotizacion.total)}</td>
@@ -1876,7 +1876,7 @@ function CotizacionesVer() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <label className="text-sm text-gray-500 block mb-1">Cliente</label>
-                    <p className="text-gray-900 font-medium">{cotizacionDetalle.nombre_cliente || 'N/A'}</p>
+                    <p className="text-gray-900 font-medium">{cotizacionDetalle.empresa_cliente || cotizacionDetalle.nombre_cliente || 'N/A'}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <label className="text-sm text-gray-500 block mb-1">Email</label>
@@ -2117,7 +2117,7 @@ function CotizacionesVer() {
                 ¿Aprobar Cotización?
               </h3>
               <p className="text-gray-600 text-center mb-4">
-                Estás por aprobar la cotización <span className="font-semibold">{cotizacionToApprove.codigo_cotizacion}</span> de <span className="font-semibold">{cotizacionToApprove.nombre_cliente}</span>.
+                Estás por aprobar la cotización <span className="font-semibold">{cotizacionToApprove.codigo_cotizacion}</span> de <span className="font-semibold">{cotizacionToApprove.empresa_cliente || cotizacionToApprove.nombre_cliente}</span>.
               </p>
               <p className="text-sm text-gray-500 text-center mb-6">
                 Una vez aprobada, se habilitará la opción de generar la orden de trabajo.

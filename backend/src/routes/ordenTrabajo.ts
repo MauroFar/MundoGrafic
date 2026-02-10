@@ -12,7 +12,7 @@ export default (client: any) => {
   const router = express.Router();
 
   // Obtener datos del cliente de una cotización
-  router.get("/datosCotizacion/:id", async (req, res): Promise<void> => {
+  router.get("/datosCotizacion/:id", authRequired(), async (req, res): Promise<void> => {
     const { id } = req.params;
 
     try {
@@ -21,11 +21,11 @@ export default (client: any) => {
       const result = await client.query(`
         SELECT 
           cl.nombre_cliente AS nombre_cliente,
+          cl.empresa_cliente AS empresa_cliente,
           cl.telefono_cliente AS telefono_cliente,
           cl.email_cliente AS email_cliente,
           cl.direccion_cliente AS direccion_cliente,
           c.codigo_cotizacion AS numero_cotizacion,
-          c.tipo_cotizacion AS tipo_cotizacion,
           c.id AS cotizacion_id
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
@@ -52,9 +52,11 @@ export default (client: any) => {
     console.log('🚀 CREAR ORDEN - Iniciando proceso de creación');
     
     const {
-      nombre_cliente, contacto, email, telefono, cantidad, concepto,
+      nombre_cliente, orden_compra, contacto, email, telefono, cantidad, concepto,
       fecha_creacion, fecha_entrega, estado, notas_observaciones,
-      vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
+      vendedor, preprensa, prensa, terminados, facturado,
+      laminado_barnizado, troquelado, liberacion_producto, // Campos adicionales para digital
+      id_cotizacion,
       id_detalle_cotizacion,
       tipo_orden, // Nuevo campo para diferenciar offset/digital
       // Nuevos campos de trabajo - extraer del objeto detalle
@@ -80,51 +82,125 @@ export default (client: any) => {
     const instruccionesEmpacado = detalle?.instrucciones_empacado;
     const observaciones = detalle?.observaciones;
     const prensaSeleccionada = detalle?.prensa_seleccionada;
+    const numeroSalida = detalle?.numero_salida;
+    
+    // Campos específicos para órdenes digitales
+    const adherencia = detalle?.adherencia;
+    const loteMaterial = detalle?.lote_material;
+    const loteProduccion = detalle?.lote_produccion;
+    const tipoImpresion = detalle?.tipo_impresion;
+    const troquel = detalle?.troquel;
+    const codigoTroquel = detalle?.codigo_troquel;
+    const terminadoEtiqueta = detalle?.terminado_etiqueta;
+    const terminadosEspeciales = detalle?.terminados_especiales;
+    const cantidadPorRollo = detalle?.cantidad_por_rollo;
+    const productosDigital = detalle?.productos_digital;
+    
+    console.log('📦 CREAR ORDEN - Datos del detalle recibidos:', {
+      tipo_orden,
+      productos_digital: productosDigital ? `Array con ${productosDigital.length} productos` : 'null',
+      adherencia,
+      material,
+      lote_material: loteMaterial,
+      numero_salida: numeroSalida
+    });
 
     try {
       await client.query('BEGIN');
       // 1. Insertar en orden_trabajo
       const ordenResult = await client.query(`
         INSERT INTO orden_trabajo (
-          nombre_cliente, contacto, email, telefono, cantidad, concepto,
+          nombre_cliente, orden_compra, contacto, email, telefono, cantidad, concepto,
           fecha_creacion, fecha_entrega, estado, notas_observaciones,
-          vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-          id_detalle_cotizacion, tipo_orden, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+          vendedor, preprensa, prensa, terminados, facturado,
+          laminado_barnizado, troquelado, liberacion_producto,
+          id_cotizacion, id_detalle_cotizacion, tipo_orden, created_by
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
         RETURNING id, numero_orden
       `, [
-        nombre_cliente, contacto, email, telefono, cantidad, concepto,
+        nombre_cliente, orden_compra, contacto, email, telefono, cantidad, concepto,
         fecha_creacion, fecha_entrega, estado, notas_observaciones,
-        vendedor, preprensa, prensa, terminados, facturado, id_cotizacion,
-        id_detalle_cotizacion, tipo_orden || 'offset', userId
+        vendedor, preprensa, prensa, terminados, facturado,
+        laminado_barnizado || null, troquelado || null, liberacion_producto || null,
+        id_cotizacion, id_detalle_cotizacion, tipo_orden || 'offset', userId
       ]);
       const ordenId = ordenResult.rows[0].id;
 
-      // 2. Insertar en detalle_orden_trabajo con los nuevos campos
+      // 2. Insertar detalle común
       await client.query(`
         INSERT INTO detalle_orden_trabajo (
-          orden_trabajo_id, 
-          material, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
-          tamano, tamano_abierto_1, tamano_cerrado_1, impresion, instrucciones_impresion,
-          instrucciones_acabados, instrucciones_empacado, observaciones, prensa_seleccionada
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-      `, [
-        ordenId,
-        material || null,
-        corteMaterial || null,
-        cantidadPliegosCompra || null,
-        exceso || null,
-        totalPliegos || null,
-        tamano || null,
-        tamanoAbierto1 || null,
-        tamanoCerrado1 || null,
-        impresion || null,
-        instruccionesImpresion || null,
-        instruccionesAcabados || null,
-        instruccionesEmpacado || null,
-        observaciones || null,
-        prensaSeleccionada || null
-      ]);
+          orden_trabajo_id, material, impresion, observaciones, prensa_seleccionada, numero_salida
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+      `, [ordenId, material || null, impresion || null, observaciones || null, prensaSeleccionada || null, numeroSalida || null]);
+
+      // 3. Insertar detalle específico según tipo de orden
+      if (tipo_orden === 'digital') {
+        // 3a. Insertar detalle digital
+        await client.query(`
+          INSERT INTO detalle_orden_trabajo_digital (
+            orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
+            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `, [
+          ordenId,
+          adherencia || null,
+          loteMaterial || null,
+          loteProduccion || null,
+          tipoImpresion || null,
+          troquel || null,
+          codigoTroquel || null,
+          terminadoEtiqueta || null,
+          terminadosEspeciales || null,
+          cantidadPorRollo || null
+        ]);
+
+        // 3b. Insertar productos digitales en tabla relacional
+        if (productosDigital && Array.isArray(productosDigital) && productosDigital.length > 0) {
+          for (let i = 0; i < productosDigital.length; i++) {
+            const producto = productosDigital[i];
+            await client.query(`
+              INSERT INTO productos_orden_digital (
+                orden_trabajo_id, cantidad, cod_mg, cod_cliente, producto,
+                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `, [
+              ordenId,
+              producto.cantidad || null,
+              producto.cod_mg || null,
+              producto.cod_cliente || null,
+              producto.producto || null,
+              producto.avance || null,
+              producto.medida_ancho || null,
+              producto.medida_alto || null,
+              producto.cavidad || null,
+              producto.metros_impresos || null,
+              i + 1  // orden
+            ]);
+          }
+          console.log(`📦 ${productosDigital.length} productos digitales insertados`);
+        }
+      } else {
+        // 3c. Insertar detalle offset
+        await client.query(`
+          INSERT INTO detalle_orden_trabajo_offset (
+            orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
+            tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
+            instrucciones_acabados, instrucciones_empacado
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `, [
+          ordenId,
+          corteMaterial || null,
+          cantidadPliegosCompra || null,
+          exceso || null,
+          totalPliegos || null,
+          tamano || null,
+          tamanoAbierto1 || null,
+          tamanoCerrado1 || null,
+          instruccionesImpresion || null,
+          instruccionesAcabados || null,
+          instruccionesEmpacado || null
+        ]);
+      }
 
       await client.query('COMMIT');
       console.log('✅ ORDEN CREADA EXITOSAMENTE - Número:', ordenResult.rows[0].numero_orden);
@@ -260,12 +336,42 @@ export default (client: any) => {
         return;
       }
       const orden = result.rows[0];
-      // Obtener detalle técnico
+      
+      // Obtener detalle común
       const detalleResult = await client.query(
         `SELECT * FROM detalle_orden_trabajo WHERE orden_trabajo_id = $1`,
         [id]
       );
       orden.detalle = detalleResult.rows[0] || {};
+      
+      // Obtener detalle específico según tipo de orden
+      if (orden.tipo_orden === 'digital') {
+        // Obtener detalle digital
+        const detalleDigitalResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_digital WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleDigitalResult.rows[0]) {
+          orden.detalle = { ...orden.detalle, ...detalleDigitalResult.rows[0] };
+        }
+        
+        // Obtener productos digitales
+        const productosResult = await client.query(
+          `SELECT * FROM productos_orden_digital WHERE orden_trabajo_id = $1 ORDER BY orden ASC`,
+          [id]
+        );
+        orden.detalle.productos_digital = productosResult.rows;
+      } else {
+        // Obtener detalle offset
+        const detalleOffsetResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_offset WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleOffsetResult.rows[0]) {
+          orden.detalle = { ...orden.detalle, ...detalleOffsetResult.rows[0] };
+        }
+      }
+      
       // Priorizar los datos de la orden de trabajo, pero incluir info de cotización/cliente si no existen en la orden
       orden.telefono = orden.telefono || orden.telefono_cliente || null;
       orden.email = orden.email || orden.email_cliente || null;
@@ -288,6 +394,7 @@ export default (client: any) => {
     const { id } = req.params;
     const {
       nombre_cliente,
+      orden_compra,
       concepto,
       fecha_creacion,
       fecha_entrega,
@@ -301,6 +408,9 @@ export default (client: any) => {
       prensa,
       terminados,
       facturado,
+      laminado_barnizado,
+      troquelado,
+      liberacion_producto,
       id_detalle_cotizacion,
       tipo_orden, // Nuevo campo
       // Nuevos campos de trabajo - extraer del objeto detalle
@@ -326,6 +436,19 @@ export default (client: any) => {
     const instruccionesEmpacado = detalle?.instrucciones_empacado;
     const observaciones = detalle?.observaciones;
     const prensaSeleccionada = detalle?.prensa_seleccionada;
+    const numeroSalida = detalle?.numero_salida;
+    
+    // Campos específicos para órdenes digitales
+    const adherencia = detalle?.adherencia;
+    const loteMaterial = detalle?.lote_material;
+    const loteProduccion = detalle?.lote_produccion;
+    const tipoImpresion = detalle?.tipo_impresion;
+    const troquel = detalle?.troquel;
+    const codigoTroquel = detalle?.codigo_troquel;
+    const terminadoEtiqueta = detalle?.terminado_etiqueta;
+    const terminadosEspeciales = detalle?.terminados_especiales;
+    const cantidadPorRollo = detalle?.cantidad_por_rollo;
+    const productosDigital = detalle?.productos_digital;
 
     try {
       await client.query('BEGIN');
@@ -333,27 +456,32 @@ export default (client: any) => {
       const result = await client.query(
         `UPDATE orden_trabajo
         SET nombre_cliente = $1,
-            concepto = $2,
-            fecha_creacion = $3,
-            fecha_entrega = $4,
-            telefono = $5,
-            email = $6,
-            contacto = $7,
-            cantidad = $8,
-            notas_observaciones = $9,
-            vendedor = $10,
-            preprensa = $11,
-            prensa = $12,
-            terminados = $13,
-            facturado = $14,
-            id_detalle_cotizacion = $15,
-            tipo_orden = $16,
-            updated_by = $17,
+            orden_compra = $2,
+            concepto = $3,
+            fecha_creacion = $4,
+            fecha_entrega = $5,
+            telefono = $6,
+            email = $7,
+            contacto = $8,
+            cantidad = $9,
+            notas_observaciones = $10,
+            vendedor = $11,
+            preprensa = $12,
+            prensa = $13,
+            terminados = $14,
+            facturado = $15,
+            laminado_barnizado = $16,
+            troquelado = $17,
+            liberacion_producto = $18,
+            id_detalle_cotizacion = $19,
+            tipo_orden = $20,
+            updated_by = $21,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $18
+        WHERE id = $22
         RETURNING *`,
         [
           nombre_cliente,
+          orden_compra,
           concepto,
           fecha_creacion,
           fecha_entrega,
@@ -367,6 +495,9 @@ export default (client: any) => {
           prensa,
           terminados,
           facturado,
+          laminado_barnizado || null,
+          troquelado || null,
+          liberacion_producto || null,
           id_detalle_cotizacion,
           tipo_orden,
           userId,
@@ -378,26 +509,99 @@ export default (client: any) => {
         res.status(404).json({ error: "Orden no encontrada" });
         return;
       }
-      // Actualizar detalle técnico con los nuevos campos
+      
+      // Actualizar detalle común
       await client.query(
         `UPDATE detalle_orden_trabajo SET
           material = $1,
-          corte_material = $2,
-          cantidad_pliegos_compra = $3,
-          exceso = $4,
-          total_pliegos = $5,
-          tamano = $6,
-          tamano_abierto_1 = $7,
-          tamano_cerrado_1 = $8,
-          impresion = $9,
-          instrucciones_impresion = $10,
-          instrucciones_acabados = $11,
-          instrucciones_empacado = $12,
-          observaciones = $13,
-          prensa_seleccionada = $14
-        WHERE orden_trabajo_id = $15`,
-        [
-          material || null,
+          impresion = $2,
+          observaciones = $3,
+          prensa_seleccionada = $4,
+          numero_salida = $5
+        WHERE orden_trabajo_id = $6`,
+        [material || null, impresion || null, observaciones || null, prensaSeleccionada || null, numeroSalida || null, id]
+      );
+      
+      // Actualizar detalle específico según tipo de orden
+      if (tipo_orden === 'digital') {
+        // Actualizar detalle digital (INSERT or UPDATE)
+        await client.query(`
+          INSERT INTO detalle_orden_trabajo_digital (
+            orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
+            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ON CONFLICT (orden_trabajo_id) DO UPDATE SET
+            adherencia = $2,
+            lote_material = $3,
+            lote_produccion = $4,
+            tipo_impresion = $5,
+            troquel = $6,
+            codigo_troquel = $7,
+            terminado_etiqueta = $8,
+            terminados_especiales = $9,
+            cantidad_por_rollo = $10,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          id,
+          adherencia || null,
+          loteMaterial || null,
+          loteProduccion || null,
+          tipoImpresion || null,
+          troquel || null,
+          codigoTroquel || null,
+          terminadoEtiqueta || null,
+          terminadosEspeciales || null,
+          cantidadPorRollo || null
+        ]);
+        
+        // Actualizar productos digitales: eliminar existentes y crear nuevos
+        await client.query(`DELETE FROM productos_orden_digital WHERE orden_trabajo_id = $1`, [id]);
+        
+        if (productosDigital && Array.isArray(productosDigital) && productosDigital.length > 0) {
+          for (let i = 0; i < productosDigital.length; i++) {
+            const producto = productosDigital[i];
+            await client.query(`
+              INSERT INTO productos_orden_digital (
+                orden_trabajo_id, cantidad, cod_mg, cod_cliente, producto,
+                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `, [
+              id,
+              producto.cantidad || null,
+              producto.cod_mg || null,
+              producto.cod_cliente || null,
+              producto.producto || null,
+              producto.avance || null,
+              producto.medida_ancho || null,
+              producto.medida_alto || null,
+              producto.cavidad || null,
+              producto.metros_impresos || null,
+              i + 1
+            ]);
+          }
+        }
+      } else {
+        // Actualizar detalle offset (INSERT or UPDATE)
+        await client.query(`
+          INSERT INTO detalle_orden_trabajo_offset (
+            orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
+            tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
+            instrucciones_acabados, instrucciones_empacado
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (orden_trabajo_id) DO UPDATE SET
+            corte_material = $2,
+            cantidad_pliegos_compra = $3,
+            exceso = $4,
+            total_pliegos = $5,
+            tamano = $6,
+            tamano_abierto_1 = $7,
+            tamano_cerrado_1 = $8,
+            instrucciones_impresion = $9,
+            instrucciones_acabados = $10,
+            instrucciones_empacado = $11,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          id,
           corteMaterial || null,
           cantidadPliegosCompra || null,
           exceso || null,
@@ -405,15 +609,12 @@ export default (client: any) => {
           tamano || null,
           tamanoAbierto1 || null,
           tamanoCerrado1 || null,
-          impresion || null,
           instruccionesImpresion || null,
           instruccionesAcabados || null,
-          instruccionesEmpacado || null,
-          observaciones || null,
-          prensaSeleccionada || null,
-          id
-        ]
-      );
+          instruccionesEmpacado || null
+        ]);
+      }
+      
       await client.query('COMMIT');
       res.json({ message: "Orden actualizada correctamente", orden: result.rows[0] });
     } catch (error: unknown) {
@@ -460,13 +661,490 @@ export default (client: any) => {
     }
   });
 
+  // ============================================
+  // FUNCIONES AUXILIARES PARA GENERAR PDFs
+  // ============================================
+
+  /**
+   * Genera HTML para PDF de orden OFFSET
+   */
+  function generarHTMLOrdenOffset(orden: any, detalle: any, logoBase64: string, salidaImagenBase64: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+          .logo-section img { height: 45px; }
+          .orden-info { text-align: right; font-size: 10px; }
+          .orden-numero { font-size: 18px; font-weight: bold; }
+          .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+          .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
+          .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+          .seccion-contenido { padding: 10px; }
+          .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+          .campo { flex: 1; }
+          .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
+          .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
+          .responsables { display: flex; gap: 6px; }
+          .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
+          .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
+          .responsable-nombre { font-size: 10px; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-section">
+            ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
+          </div>
+          <div class="orden-info">
+            <div class="orden-numero">Orden de Trabajo OFFSET</div>
+            <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
+            <div>Orden de Compra: ${orden.orden_compra || ''}</div>
+            <div>Cotización Nº: ${orden.numero_cotizacion || ''}</div>
+          </div>
+        </div>
+        
+        <div class="titulo">ORDEN DE TRABAJO - OFFSET</div>
+        
+        <div class="seccion">
+          <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">CLIENTE</div>
+                <div class="campo-valor">${orden.nombre_cliente || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CONTACTO</div>
+                <div class="campo-valor">${orden.contacto || ''}</div>
+              </div>
+            </div>
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">TELÉFONO</div>
+                <div class="campo-valor">${orden.telefono || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">EMAIL</div>
+                <div class="campo-valor">${orden.email || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Información del Trabajo</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo" style="flex: 2;">
+                <div class="campo-label">CONCEPTO</div>
+                <div class="campo-valor">${orden.concepto || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CANTIDAD</div>
+                <div class="campo-valor">${orden.cantidad || ''}</div>
+              </div>
+            </div>
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">TAMAÑO ABIERTO</div>
+                <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TAMAÑO CERRADO</div>
+                <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Material y Corte</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">MATERIAL</div>
+                <div class="campo-valor">${detalle.material || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CORTE DE MATERIAL</div>
+                <div class="campo-valor">${detalle.corte_material || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Cantidad de Pliegos</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">PLIEGOS DE COMPRA</div>
+                <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">EXCESO</div>
+                <div class="campo-valor">${detalle.exceso || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TOTAL</div>
+                <div class="campo-valor">${detalle.total_pliegos || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Impresión y Acabados</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">IMPRESIÓN</div>
+                <div class="campo-valor">${detalle.impresion || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
+                <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
+              </div>
+            </div>
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
+                <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
+                <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Prensa y Observaciones</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">SELECCIONAR PRENSA</div>
+                <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
+              </div>
+              <div class="campo" style="flex: 2;">
+                <div class="campo-label">OBSERVACIONES GENERALES</div>
+                <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">📍 Referencia de Número de Salida</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo" style="flex: 1;">
+                <div class="campo-label">NÚMERO DE SALIDA SELECCIONADO</div>
+                <div class="campo-valor" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px;">${detalle.numero_salida || 'No especificado'}</div>
+              </div>
+              ${salidaImagenBase64 ? `
+              <div class="campo" style="flex: 2; text-align: center;">
+                <div class="campo-label">IMAGEN DE REFERENCIA</div>
+                <img src="${salidaImagenBase64}" alt="Referencia de Salidas" style="max-width: 100%; height: auto; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;" />
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">Responsables del Proceso</div>
+          <div class="seccion-contenido">
+            <div class="responsables">
+              <div class="responsable">
+                <div class="responsable-titulo">VENDEDOR</div>
+                <div class="responsable-nombre">${orden.vendedor || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">PREPRENSA</div>
+                <div class="responsable-nombre">${orden.preprensa || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">OFFSET</div>
+                <div class="responsable-nombre">${orden.prensa || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">TERMINADOS</div>
+                <div class="responsable-nombre">${orden.terminados || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">FACTURADO</div>
+                <div class="responsable-nombre">${orden.facturado || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Genera HTML para PDF de orden DIGITAL
+   */
+  function generarHTMLOrdenDigital(orden: any, detalle: any, logoBase64: string, salidaImagenBase64: string): string {
+    // Parsear productos digitales si existen
+    let productos: any[] = [];
+    try {
+      if (detalle.productos_digital) {
+        productos = typeof detalle.productos_digital === 'string' 
+          ? JSON.parse(detalle.productos_digital) 
+          : detalle.productos_digital;
+      }
+    } catch (e) {
+      console.error('Error al parsear productos digitales:', e);
+      productos = [];
+    }
+
+    // Generar filas de productos
+    const filasProductos = productos.map((producto: any, index: number) => `
+      <tr>
+        <td class="tabla-celda">${index + 1}</td>
+        <td class="tabla-celda">${producto.cantidad || ''}</td>
+        <td class="tabla-celda">${producto.cod_mg || ''}</td>
+        <td class="tabla-celda">${producto.cod_cliente || ''}</td>
+        <td class="tabla-celda">${producto.producto || ''}</td>
+        <td class="tabla-celda">${producto.avance || ''}</td>
+        <td class="tabla-celda">${producto.medida_ancho || ''}</td>
+        <td class="tabla-celda">${producto.medida_alto || ''}</td>
+        <td class="tabla-celda">${producto.cavidad || ''}</td>
+        <td class="tabla-celda">${producto.metros_impresos || ''}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+          .logo-section img { height: 45px; }
+          .orden-info { text-align: right; font-size: 10px; }
+          .orden-numero { font-size: 18px; font-weight: bold; }
+          .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+          .seccion { margin-bottom: 12px; border: 1px solid #ddd; page-break-inside: avoid; }
+          .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+          .seccion-contenido { padding: 10px; }
+          .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+          .campo { flex: 1; }
+          .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
+          .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; word-wrap: break-word; }
+          .tabla-productos { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          .tabla-header { background: #f5f5f5; font-size: 9px; font-weight: bold; text-align: center; }
+          .tabla-celda { border: 1px solid #ddd; padding: 4px 6px; font-size: 9px; text-align: center; word-wrap: break-word; }
+          .responsables { display: flex; gap: 6px; flex-wrap: wrap; }
+          .responsable { flex: 1; min-width: 80px; text-align: center; border: 1px solid #ddd; padding: 6px; }
+          .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
+          .responsable-nombre { font-size: 10px; font-weight: bold; }
+          .grid-tecnico { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-section">
+            ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
+          </div>
+          <div class="orden-info">
+            <div class="orden-numero">Orden de Trabajo DIGITAL</div>
+            <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
+            <div>Orden de Compra: ${orden.orden_compra || ''}</div>
+            <div>Cotización Nº: ${orden.numero_cotizacion || ''}</div>
+          </div>
+        </div>
+        
+        <div class="titulo">ORDEN DE TRABAJO - DIGITAL</div>
+        
+        <div class="seccion">
+          <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">CLIENTE</div>
+                <div class="campo-valor">${orden.nombre_cliente || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CONTACTO</div>
+                <div class="campo-valor">${orden.contacto || ''}</div>
+              </div>
+            </div>
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">TELÉFONO</div>
+                <div class="campo-valor">${orden.telefono || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">EMAIL</div>
+                <div class="campo-valor">${orden.email || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">📦 INFORMACIÓN DEL TRABAJO - PRODUCTOS</div>
+          <div class="seccion-contenido">
+            <table class="tabla-productos">
+              <thead>
+                <tr class="tabla-header">
+                  <th class="tabla-celda">#</th>
+                  <th class="tabla-celda">Cantidad</th>
+                  <th class="tabla-celda">Cod MG</th>
+                  <th class="tabla-celda">Cod Cliente</th>
+                  <th class="tabla-celda">Producto</th>
+                  <th class="tabla-celda">Avance (mm)</th>
+                  <th class="tabla-celda">Ancho (mm)</th>
+                  <th class="tabla-celda">Alto (mm)</th>
+                  <th class="tabla-celda">Cavidad</th>
+                  <th class="tabla-celda">Metros Imp.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasProductos || '<tr><td colspan="10" class="tabla-celda">No hay productos registrados</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">⚙️ INFORMACIÓN TÉCNICA</div>
+          <div class="seccion-contenido">
+            <div class="grid-tecnico">
+              <div class="campo">
+                <div class="campo-label">ADHERENCIA</div>
+                <div class="campo-valor">${detalle.adherencia || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">MATERIAL</div>
+                <div class="campo-valor">${detalle.material || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">LOTE MATERIAL</div>
+                <div class="campo-valor">${detalle.lote_material || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">LOTE PRODUCCIÓN</div>
+                <div class="campo-valor">${detalle.lote_produccion || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">IMPRESIÓN</div>
+                <div class="campo-valor">${detalle.impresion || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TIPO IMPRESIÓN</div>
+                <div class="campo-valor">${detalle.tipo_impresion || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TROQUEL</div>
+                <div class="campo-valor">${detalle.troquel || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CÓDIGO TROQUEL</div>
+                <div class="campo-valor">${detalle.codigo_troquel || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TERMINADO ETIQUETA</div>
+                <div class="campo-valor">${detalle.terminado_etiqueta || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TERMINADOS ESPECIALES</div>
+                <div class="campo-valor">${detalle.terminados_especiales || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">CANTIDAD POR ROLLO</div>
+                <div class="campo-valor">${detalle.cantidad_por_rollo || ''}</div>
+              </div>
+            </div>
+            <div class="fila" style="margin-top: 10px;">
+              <div class="campo">
+                <div class="campo-label">OBSERVACIONES</div>
+                <div class="campo-valor">${detalle.observaciones || orden.notas_observaciones || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">📍 Referencia de Número de Salida</div>
+          <div class="seccion-contenido">
+            <div class="fila">
+              <div class="campo" style="flex: 1;">
+                <div class="campo-label">NÚMERO DE SALIDA SELECCIONADO</div>
+                <div class="campo-valor" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px;">${detalle.numero_salida || 'No especificado'}</div>
+              </div>
+              ${salidaImagenBase64 ? `
+              <div class="campo" style="flex: 2; text-align: center;">
+                <div class="campo-label">IMAGEN DE REFERENCIA</div>
+                <img src="${salidaImagenBase64}" alt="Referencia de Salidas" style="max-width: 100%; height: auto; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;" />
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
+          <div class="seccion-contenido">
+            <div class="responsables">
+              <div class="responsable">
+                <div class="responsable-titulo">VENDEDOR</div>
+                <div class="responsable-nombre">${orden.vendedor || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">PRE-PRENSA</div>
+                <div class="responsable-nombre">${orden.preprensa || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">IMPRESIÓN</div>
+                <div class="responsable-nombre">${orden.prensa || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">LAMINADO/BARNIZADO</div>
+                <div class="responsable-nombre">${orden.laminado_barnizado || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">TROQUELADO</div>
+                <div class="responsable-nombre">${orden.troquelado || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">TERMINADOS</div>
+                <div class="responsable-nombre">${orden.terminados || ''}</div>
+              </div>
+              <div class="responsable">
+                <div class="responsable-titulo">LIBERACIÓN PRODUCTO</div>
+                <div class="responsable-nombre">${orden.liberacion_producto || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Generar y descargar PDF de una orden de trabajo
   router.get("/:id/pdf", authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
     try {
-      // 1. Obtener los datos de la orden de trabajo
+      // 1. Obtener los datos de la orden de trabajo con número de cotización
       const result = await client.query(
-        `SELECT * FROM orden_trabajo WHERE id = $1`,
+        `SELECT ot.*, c.codigo_cotizacion as numero_cotizacion
+         FROM orden_trabajo ot
+         LEFT JOIN cotizaciones c ON ot.id_cotizacion = c.id
+         WHERE ot.id = $1`,
         [id]
       );
       if (result.rows.length === 0) {
@@ -474,12 +1152,41 @@ export default (client: any) => {
       }
       const orden = result.rows[0];
 
-      // 2. Obtener el detalle técnico
+      // 2. Obtener el detalle común
       const detalleResult = await client.query(
         `SELECT * FROM detalle_orden_trabajo WHERE orden_trabajo_id = $1`,
         [id]
       );
-      const detalle = detalleResult.rows[0] || {};
+      let detalle = detalleResult.rows[0] || {};
+      
+      // 2b. Obtener detalle específico según tipo de orden
+      const tipoOrden = orden.tipo_orden || 'offset';
+      if (tipoOrden === 'digital') {
+        // Obtener detalle digital
+        const detalleDigitalResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_digital WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleDigitalResult.rows[0]) {
+          detalle = { ...detalle, ...detalleDigitalResult.rows[0] };
+        }
+        
+        // Obtener productos digitales
+        const productosResult = await client.query(
+          `SELECT * FROM productos_orden_digital WHERE orden_trabajo_id = $1 ORDER BY orden ASC`,
+          [id]
+        );
+        detalle.productos_digital = productosResult.rows;
+      } else {
+        // Obtener detalle offset
+        const detalleOffsetResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_offset WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleOffsetResult.rows[0]) {
+          detalle = { ...detalle, ...detalleOffsetResult.rows[0] };
+        }
+      }
 
       // 3. Leer y convertir el logo a base64
       const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
@@ -492,207 +1199,21 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
-      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-            .logo-section img { height: 45px; }
-            .orden-info { text-align: right; font-size: 10px; }
-            .orden-numero { font-size: 18px; font-weight: bold; }
-            .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
-            .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
-            .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
-            .seccion-contenido { padding: 10px; }
-            .fila { display: flex; gap: 10px; margin-bottom: 6px; }
-            .campo { flex: 1; }
-            .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
-            .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
-            .responsables { display: flex; gap: 6px; }
-            .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
-            .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
-            .responsable-nombre { font-size: 10px; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo-section">
-              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
-            </div>
-            <div class="orden-info">
-              <div class="orden-numero">Orden de Trabajo</div>
-              <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
-              <div>Contacto Nº: ${orden.contacto || ''}</div>
-            </div>
-          </div>
-          
-          <div class="titulo">ORDEN DE TRABAJO</div>
-          
-          <div class="seccion">
-            <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">CLIENTE</div>
-                  <div class="campo-valor">${orden.nombre_cliente || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CONTACTO</div>
-                  <div class="campo-valor">${orden.contacto || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">TELÉFONO</div>
-                  <div class="campo-valor">${orden.telefono || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">EMAIL</div>
-                  <div class="campo-valor">${orden.email || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+      // 3b. Leer y convertir la imagen de salidas a base64
+      const salidaImagenPath = path.join(__dirname, '../../../src/assets/img/salidas.png');
+      let salidaImagenBase64 = '';
+      try {
+        const salidaBuffer = await fs.readFile(salidaImagenPath);
+        salidaImagenBase64 = `data:image/png;base64,${salidaBuffer.toString('base64')}`;
+      } catch (e: any) {
+        console.error('No se pudo leer la imagen de salidas:', e);
+        salidaImagenBase64 = '';
+      }
 
-          <div class="seccion">
-            <div class="seccion-titulo">Información del Trabajo</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo" style="flex: 2;">
-                  <div class="campo-label">CONCEPTO</div>
-                  <div class="campo-valor">${orden.concepto || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CANTIDAD</div>
-                  <div class="campo-valor">${orden.cantidad || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO ABIERTO</div>
-                  <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO CERRADO</div>
-                  <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Material y Corte</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">MATERIAL</div>
-                  <div class="campo-valor">${detalle.material || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CORTE DE MATERIAL</div>
-                  <div class="campo-valor">${detalle.corte_material || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Cantidad de Pliegos</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">PLIEGOS DE COMPRA</div>
-                  <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">EXCESO</div>
-                  <div class="campo-valor">${detalle.exceso || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TOTAL</div>
-                  <div class="campo-valor">${detalle.total_pliegos || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Impresión y Acabados</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.impresion || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
-                  <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
-                  <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Prensa y Observaciones</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">SELECCIONAR PRENSA</div>
-                  <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
-                </div>
-                <div class="campo" style="flex: 2;">
-                  <div class="campo-label">OBSERVACIONES GENERALES</div>
-                  <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Responsables del Proceso</div>
-            <div class="seccion-contenido">
-              <div class="responsables">
-                <div class="responsable">
-                  <div class="responsable-titulo">VENDEDOR</div>
-                  <div class="responsable-nombre">${orden.vendedor || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">PREPRENSA</div>
-                  <div class="responsable-nombre">${orden.preprensa || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">OFFSET</div>
-                  <div class="responsable-nombre">${orden.prensa || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">TERMINADOS</div>
-                  <div class="responsable-nombre">${orden.terminados || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">FACTURADO</div>
-                  <div class="responsable-nombre">${orden.facturado || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+      // 4. Generar HTML según el tipo de orden (digital u offset)
+      const html = tipoOrden === 'digital' 
+        ? generarHTMLOrdenDigital(orden, detalle, logoBase64, salidaImagenBase64)
+        : generarHTMLOrdenOffset(orden, detalle, logoBase64, salidaImagenBase64);
 
       // 5. Generar PDF usando Puppeteer
       const browser = await puppeteer.launch({ headless: "new" });
@@ -1082,9 +1603,12 @@ export default (client: any) => {
     try {
       console.log('📋 Generando preview de orden de trabajo:', id);
       
-      // 1. Obtener los datos de la orden de trabajo
+      // 1. Obtener los datos de la orden de trabajo con número de cotización
       const result = await client.query(
-        `SELECT * FROM orden_trabajo WHERE id = $1`,
+        `SELECT ot.*, c.codigo_cotizacion as numero_cotizacion
+         FROM orden_trabajo ot
+         LEFT JOIN cotizaciones c ON ot.id_cotizacion = c.id
+         WHERE ot.id = $1`,
         [id]
       );
       if (result.rows.length === 0) {
@@ -1092,12 +1616,41 @@ export default (client: any) => {
       }
       const orden = result.rows[0];
 
-      // 2. Obtener el detalle técnico
+      // 2. Obtener el detalle común
       const detalleResult = await client.query(
         `SELECT * FROM detalle_orden_trabajo WHERE orden_trabajo_id = $1`,
         [id]
       );
-      const detalle = detalleResult.rows[0] || {};
+      let detalle = detalleResult.rows[0] || {};
+      
+      // 2b. Obtener detalle específico según tipo de orden
+      const tipoOrden = orden.tipo_orden || 'offset';
+      if (tipoOrden === 'digital') {
+        // Obtener detalle digital
+        const detalleDigitalResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_digital WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleDigitalResult.rows[0]) {
+          detalle = { ...detalle, ...detalleDigitalResult.rows[0] };
+        }
+        
+        // Obtener productos digitales
+        const productosResult = await client.query(
+          `SELECT * FROM productos_orden_digital WHERE orden_trabajo_id = $1 ORDER BY orden ASC`,
+          [id]
+        );
+        detalle.productos_digital = productosResult.rows;
+      } else {
+        // Obtener detalle offset
+        const detalleOffsetResult = await client.query(
+          `SELECT * FROM detalle_orden_trabajo_offset WHERE orden_trabajo_id = $1`,
+          [id]
+        );
+        if (detalleOffsetResult.rows[0]) {
+          detalle = { ...detalle, ...detalleOffsetResult.rows[0] };
+        }
+      }
 
       // 3. Leer y convertir el logo a base64
       const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
@@ -1109,207 +1662,21 @@ export default (client: any) => {
         console.error('No se pudo leer el logo:', e);
       }
 
-      // 4. Generar HTML (diseño simple y compacto pero con mejor distribución vertical)
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-            .logo-section img { height: 45px; }
-            .orden-info { text-align: right; font-size: 10px; }
-            .orden-numero { font-size: 18px; font-weight: bold; }
-            .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
-            .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
-            .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
-            .seccion-contenido { padding: 10px; }
-            .fila { display: flex; gap: 10px; margin-bottom: 6px; }
-            .campo { flex: 1; }
-            .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
-            .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
-            .responsables { display: flex; gap: 6px; }
-            .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
-            .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
-            .responsable-nombre { font-size: 10px; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo-section">
-              ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<strong>MUNDOGRAFIC</strong>'}
-            </div>
-            <div class="orden-info">
-              <div class="orden-numero">Orden de Trabajo</div>
-              <div>Orden Nº: <strong>${orden.numero_orden || ''}</strong></div>
-              <div>Contacto Nº: ${orden.contacto || ''}</div>
-            </div>
-          </div>
-          
-          <div class="titulo">ORDEN DE TRABAJO</div>
-          
-          <div class="seccion">
-            <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">CLIENTE</div>
-                  <div class="campo-valor">${orden.nombre_cliente || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CONTACTO</div>
-                  <div class="campo-valor">${orden.contacto || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">TELÉFONO</div>
-                  <div class="campo-valor">${orden.telefono || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">EMAIL</div>
-                  <div class="campo-valor">${orden.email || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+      // 3b. Leer y convertir la imagen de salidas a base64
+      const salidaImagenPath = path.join(__dirname, '../../../src/assets/img/salidas.png');
+      let salidaImagenBase64 = '';
+      try {
+        const salidaBuffer = await fs.readFile(salidaImagenPath);
+        salidaImagenBase64 = `data:image/png;base64,${salidaBuffer.toString('base64')}`;
+      } catch (e: any) {
+        console.error('No se pudo leer la imagen de salidas:', e);
+        salidaImagenBase64 = '';
+      }
 
-          <div class="seccion">
-            <div class="seccion-titulo">Información del Trabajo</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo" style="flex: 2;">
-                  <div class="campo-label">CONCEPTO</div>
-                  <div class="campo-valor">${orden.concepto || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CANTIDAD</div>
-                  <div class="campo-valor">${orden.cantidad || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO ABIERTO</div>
-                  <div class="campo-valor">${detalle.tamano_abierto_1 || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TAMAÑO CERRADO</div>
-                  <div class="campo-valor">${detalle.tamano_cerrado_1 || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Material y Corte</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">MATERIAL</div>
-                  <div class="campo-valor">${detalle.material || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">CORTE DE MATERIAL</div>
-                  <div class="campo-valor">${detalle.corte_material || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Cantidad de Pliegos</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">PLIEGOS DE COMPRA</div>
-                  <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">EXCESO</div>
-                  <div class="campo-valor">${detalle.exceso || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">TOTAL</div>
-                  <div class="campo-valor">${detalle.total_pliegos || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Impresión y Acabados</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.impresion || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
-                  <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
-                </div>
-              </div>
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE ACABADOS</div>
-                  <div class="campo-valor">${detalle.instrucciones_acabados || ''}</div>
-                </div>
-                <div class="campo">
-                  <div class="campo-label">INSTRUCCIONES DE EMPACADO</div>
-                  <div class="campo-valor">${detalle.instrucciones_empacado || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Prensa y Observaciones</div>
-            <div class="seccion-contenido">
-              <div class="fila">
-                <div class="campo">
-                  <div class="campo-label">SELECCIONAR PRENSA</div>
-                  <div class="campo-valor">${detalle.prensa_seleccionada || ''}</div>
-                </div>
-                <div class="campo" style="flex: 2;">
-                  <div class="campo-label">OBSERVACIONES GENERALES</div>
-                  <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <div class="seccion-titulo">Responsables del Proceso</div>
-            <div class="seccion-contenido">
-              <div class="responsables">
-                <div class="responsable">
-                  <div class="responsable-titulo">VENDEDOR</div>
-                  <div class="responsable-nombre">${orden.vendedor || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">PREPRENSA</div>
-                  <div class="responsable-nombre">${orden.preprensa || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">OFFSET</div>
-                  <div class="responsable-nombre">${orden.prensa || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">TERMINADOS</div>
-                  <div class="responsable-nombre">${orden.terminados || ''}</div>
-                </div>
-                <div class="responsable">
-                  <div class="responsable-titulo">FACTURADO</div>
-                  <div class="responsable-nombre">${orden.facturado || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+      // 4. Generar HTML según el tipo de orden (digital u offset)
+      const html = tipoOrden === 'digital' 
+        ? generarHTMLOrdenDigital(orden, detalle, logoBase64, salidaImagenBase64)
+        : generarHTMLOrdenOffset(orden, detalle, logoBase64, salidaImagenBase64);
 
       // 5. Generar PDF usando Puppeteer (compacto para una página)
       const browser = await puppeteer.launch({ 

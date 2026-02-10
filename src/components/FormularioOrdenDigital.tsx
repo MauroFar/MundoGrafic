@@ -43,6 +43,8 @@ interface FormularioOrdenDigitalProps {
   setCantidadPorRollo: (value: string) => void;
   observaciones: string;
   setObservaciones: (value: string) => void;
+  numeroSalida: string;
+  setNumeroSalida: (value: string) => void;
 }
 
 const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
@@ -72,11 +74,15 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setCantidadPorRollo,
   observaciones,
   setObservaciones,
+  numeroSalida,
+  setNumeroSalida,
 }) => {
+  // Asegurar que productos siempre sea un array
+  const productosArray = Array.isArray(productos) ? productos : [];
   
   const agregarProducto = () => {
     setProductos([
-      ...productos,
+      ...productosArray,
       {
         cantidad: '',
         cod_mg: '',
@@ -92,11 +98,11 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   };
 
   const eliminarProducto = (index: number) => {
-    setProductos(productos.filter((_, i) => i !== index));
+    setProductos(productosArray.filter((_, i) => i !== index));
   };
 
   const actualizarProducto = (index: number, campo: keyof ProductoDigital, valor: string) => {
-    const nuevosProductos = [...productos];
+    const nuevosProductos = [...productosArray];
     nuevosProductos[index] = { ...nuevosProductos[index], [campo]: valor };
     setProductos(nuevosProductos);
   };
@@ -135,14 +141,14 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               </tr>
             </thead>
             <tbody>
-              {productos.length === 0 ? (
+              {productosArray.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-2 py-4 text-center text-gray-500 border border-gray-300">
                     No hay productos agregados. Haz clic en "Agregar Producto" para comenzar.
                   </td>
                 </tr>
               ) : (
-                productos.map((producto, index) => (
+                productosArray.map((producto, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-2 py-2 border border-gray-300">
                       <input
@@ -244,17 +250,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           {/* Adherencia */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Adherencia</label>
-            <select
+            <input
+              type="text"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={adherencia}
               onChange={(e) => setAdherencia(e.target.value)}
-            >
-              <option value="">Seleccionar...</option>
-              <option value="MULTIPROPÓSITO">MULTIPROPÓSITO</option>
-              <option value="PERMANENTE">PERMANENTE</option>
-              <option value="REMOVIBLE">REMOVIBLE</option>
-              <option value="ULTRAREMOVIBLE">ULTRAREMOVIBLE</option>
-            </select>
+              placeholder="Ej: MULTIPROPÓSITO, PERMANENTE, REMOVIBLE"
+            />
           </div>
 
           {/* Material */}
@@ -296,15 +298,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           {/* Impresión */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
-            <select
+            <input
+              type="text"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={impresion}
               onChange={(e) => setImpresion(e.target.value)}
-            >
-              <option value="">Seleccionar...</option>
-              <option value="NUEVO">NUEVO</option>
-              <option value="REIMPRESIÓN">REIMPRESIÓN</option>
-            </select>
+              placeholder="Ej: NUEVO, REIMPRESIÓN"
+            />
           </div>
 
           {/* Tipo de Impresión */}
@@ -322,17 +322,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           {/* Troquel */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Troquel</label>
-            <select
+            <input
+              type="text"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={troquel}
               onChange={(e) => setTroquel(e.target.value)}
-            >
-              <option value="">Seleccionar...</option>
-              <option value="FLEXIBLE">FLEXIBLE</option>
-              <option value="ROTATIVO">ROTATIVO</option>
-              <option value="PLANO">PLANO</option>
-              <option value="NINGUNO">NINGUNO</option>
-            </select>
+              placeholder="Ej: FLEXIBLE, ROTATIVO, PLANO, NINGUNO"
+            />
           </div>
 
           {/* Código Troquel */}
@@ -349,17 +345,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           {/* Terminado de Etiqueta */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Terminado de Etiqueta</label>
-            <select
+            <input
+              type="text"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={terminadoEtiqueta}
               onChange={(e) => setTerminadoEtiqueta(e.target.value)}
-            >
-              <option value="">Seleccionar...</option>
-              <option value="NINGUNO">NINGUNO</option>
-              <option value="BARNIZ UV">BARNIZ UV</option>
-              <option value="LAMINADO">LAMINADO</option>
-              <option value="HOT STAMPING">HOT STAMPING</option>
-            </select>
+              placeholder="Ej: BARNIZ UV, LAMINADO, HOT STAMPING, NINGUNO"
+            />
           </div>
 
           {/* Terminados Especiales */}
@@ -383,6 +375,33 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               onChange={(e) => setCantidadPorRollo(e.target.value)}
             />
           </div>
+
+          {/* Número de Salida */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Número de Salida</label>
+            <input
+              type="text"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={numeroSalida}
+              onChange={(e) => setNumeroSalida(e.target.value)}
+              placeholder="1, 2, 3 o 4"
+              maxLength={1}
+            />
+          </div>
+        </div>
+
+        {/* Imagen de referencia de Salidas */}
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-2 text-center">Referencia de Salidas</label>
+          <div className="flex justify-center">
+            <img 
+              src="/src/assets/img/salidas.png" 
+              alt="Referencia de salidas" 
+              className="max-w-full h-auto rounded shadow-sm"
+              style={{ maxHeight: '120px' }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 text-center mt-2">Ingrese el número de salida (1, 2, 3 o 4) según la imagen</p>
         </div>
 
         {/* Observaciones */}

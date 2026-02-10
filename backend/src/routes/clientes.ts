@@ -150,10 +150,10 @@ const createCliente = (client: any) => {
     }
     try {
       const query = `
-        SELECT id, nombre_cliente, email_cliente
+        SELECT id, nombre_cliente, empresa_cliente, email_cliente
         FROM clientes
-        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1
-        ORDER BY nombre_cliente ASC
+        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1 OR empresa_cliente ILIKE $1
+        ORDER BY empresa_cliente ASC, nombre_cliente ASC
         LIMIT 10
       `;
       const result = await client.query(query, [`%${q}%`]);

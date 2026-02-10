@@ -724,7 +724,7 @@ body {
               <div class="datos-izquierda">
                 <div class="campo-datos">
                   <label>Cliente:</label>
-                  <span>${cotizacion.nombre_cliente}</span>
+                  <span>${cotizacion.empresa_cliente || cotizacion.nombre_cliente}</span>
                 </div>
                 ${cotizacion.contacto ? `
                 <div class="campo-datos">
@@ -1043,6 +1043,7 @@ const CotizacionDatos = (client: any) => {
           c.id,
           c.codigo_cotizacion,
           cl.nombre_cliente,
+          cl.empresa_cliente,
           cl.email_cliente,
           c.fecha,
           c.estado,
@@ -1073,6 +1074,7 @@ const CotizacionDatos = (client: any) => {
         query += ` AND (
           CAST(c.codigo_cotizacion AS TEXT) ILIKE $${paramCount} 
           OR cl.nombre_cliente ILIKE $${paramCount}
+          OR cl.empresa_cliente ILIKE $${paramCount}
           OR u.nombre ILIKE $${paramCount}
         )`;
         params.push(`%${busqueda}%`);
@@ -1145,6 +1147,7 @@ const CotizacionDatos = (client: any) => {
         SELECT 
           c.*,
           cl.nombre_cliente,
+          cl.empresa_cliente,
           cl.email_cliente,
           r.ruc,
           r.descripcion as ruc_descripcion,
@@ -1338,6 +1341,7 @@ const CotizacionDatos = (client: any) => {
           c.descuento,
           c.total,
           cl.nombre_cliente,
+          cl.empresa_cliente,
           u.nombre AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,
@@ -1460,6 +1464,7 @@ const CotizacionDatos = (client: any) => {
           c.total,
           c.usuario_id,
           cl.nombre_cliente,
+          cl.empresa_cliente,
           u.nombre AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,

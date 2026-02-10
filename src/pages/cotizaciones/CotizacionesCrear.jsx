@@ -43,12 +43,15 @@ function CotizacionesCrear() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
   const [imageFitMode, setImageFitMode] = useState('contain'); // 'contain', 'cover', 'fill'
+  const [showConfirmacionClienteModal, setShowConfirmacionClienteModal] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
     nombre: '',
+    empresa: '',
     direccion: '',
     telefono: '',
-    email: ''
+    email: '',
+    ruc_cedula: ''
   });
   const [onNuevoClienteConfirm, setOnNuevoClienteConfirm] = useState(null); // callback para continuar flujo
   const [selectedClienteId, setSelectedClienteId] = useState(null);
@@ -216,10 +219,8 @@ function CotizacionesCrear() {
       setFormaPago(cotizacionData.forma_pago || "50% anticipo, 50% contra entrega");
       setValidezProforma(cotizacionData.validez_proforma || "15 días");
       setObservaciones(cotizacionData.observaciones || "");
-      setContacto(cotizacionData.contacto || "");
-      setUsarContacto(!!cotizacionData.contacto);
-      setCeluar(cotizacionData.celuar || "");
-      setUsarCeluar(!!cotizacionData.celuar);
+      
+      // Configurar el ejecutivo
       setNombreEjecutivo(cotizacionData.nombre_ejecutivo || localStorage.getItem('nombre') || "");
       
       // Asegurarse de que el RUC se establezca correctamente
@@ -233,10 +234,34 @@ function CotizacionesCrear() {
         setSelectedRuc(rucData);
       }
 
-      // Establecer el nombre y el id del cliente
-      if (cotizacionData.nombre_cliente && cotizacionData.cliente_id) {
-        setNombreCliente(cotizacionData.nombre_cliente);
+      // Establecer el nombre de la empresa y el contacto
+      if (cotizacionData.cliente_id) {
+        // Poner la empresa en el campo Cliente
+        setNombreCliente(cotizacionData.empresa_cliente || cotizacionData.nombre_cliente || "");
         setSelectedClienteId(cotizacionData.cliente_id);
+        
+        // Configurar el contacto
+        if (cotizacionData.contacto) {
+          // Si la cotización tiene un contacto guardado, usar ese
+          setContacto(cotizacionData.contacto);
+          setUsarContacto(true);
+        } else if (cotizacionData.nombre_cliente) {
+          // Si no tiene contacto guardado, usar el nombre_cliente del cliente como sugerencia
+          setContacto(cotizacionData.nombre_cliente);
+          setUsarContacto(true);
+        } else {
+          setContacto("");
+          setUsarContacto(false);
+        }
+      }
+      
+      // Configurar celular
+      if (cotizacionData.celuar) {
+        setCeluar(cotizacionData.celuar);
+        setUsarCeluar(true);
+      } else {
+        setCeluar("");
+        setUsarCeluar(false);
       }
 
       // Establecer los detalles de la cotización y calcular totales
@@ -352,7 +377,13 @@ function CotizacionesCrear() {
   };
 
   const handleSeleccionarCliente = (cliente) => {
-    setNombreCliente(cliente.nombre_cliente);
+    // Poner la empresa en el campo Cliente
+    setNombreCliente(cliente.empresa || cliente.empresa_cliente || cliente.nombre_cliente);
+    // Poner el nombre del contacto en el campo Contacto
+    if (cliente.nombre_cliente || cliente.nombre) {
+      setContacto(cliente.nombre_cliente || cliente.nombre);
+      setUsarContacto(true);
+    }
     setSelectedClienteId(cliente.id); // Guardar el id del cliente seleccionado
     setSugerencias([]);
     setClienteIndex(-1);
@@ -464,30 +495,42 @@ function CotizacionesCrear() {
         return;
       }
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
-      const buscarClienteResponse = await fetch(
-        `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
-      );
-      if (!buscarClienteResponse.ok) {
-        throw new Error("Error al buscar cliente");
+      try {
+        const buscarClienteResponse = await fetch(
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+        );
+        
+        let clientesEncontrados = [];
+        if (buscarClienteResponse.ok) {
+          clientesEncontrados = await buscarClienteResponse.json();
+        }
+        
+        if (clientesEncontrados.length > 0) {
+          // Cliente existente
+          const clienteId = clientesEncontrados[0].id;
+          setSelectedClienteId(clienteId);
+          await continuarGuardadoCotizacion(clienteId);
+          return;
+        }
+      } catch (error) {
+        console.log('No se pudo buscar cliente en BD, continuando con creación:', error);
       }
-      const clientesEncontrados = await buscarClienteResponse.json();
-      let clienteId;
-      if (clientesEncontrados.length > 0) {
-        // Cliente existente
-        clienteId = clientesEncontrados[0].id;
-        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await continuarGuardadoCotizacion(clienteId);
-        return;
-      } else {
-        // Mostrar modal para ingresar datos del nuevo cliente
-        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
-        setShowNuevoClienteModal(true);
-        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
-          setSelectedClienteId(nuevoClienteId);
-          await continuarGuardadoCotizacion(nuevoClienteId);
-        });
-        return; // Detener flujo hasta que se confirme el modal
-      }
+      
+      // Cliente no encontrado - Mostrar modal de confirmación primero
+      setNuevoClienteDatos({ 
+        nombre: nombreCliente, 
+        empresa: '',
+        direccion: '', 
+        telefono: '', 
+        email: '',
+        ruc_cedula: ''
+      });
+      setShowConfirmacionClienteModal(true);
+      setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+        setSelectedClienteId(nuevoClienteId);
+        await continuarGuardadoCotizacion(nuevoClienteId);
+      });
+      return; // Detener flujo hasta que se confirme
     } catch (error) {
       console.error("Error al procesar la cotización:", error);
       alert("Error al procesar la cotización: " + error.message);
@@ -680,29 +723,42 @@ function CotizacionesCrear() {
       }
 
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
-      const buscarClienteResponse = await fetch(
-        `${apiUrl}/api/clientes/buscar?nombre=${encodeURIComponent(nombreCliente)}`
-      );
-      if (!buscarClienteResponse.ok) {
-        throw new Error("Error al buscar cliente");
+      try {
+        const buscarClienteResponse = await fetch(
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+        );
+        
+        let clientesEncontrados = [];
+        if (buscarClienteResponse.ok) {
+          clientesEncontrados = await buscarClienteResponse.json();
+        }
+        
+        if (clientesEncontrados.length > 0) {
+          // Cliente existente
+          const clienteId = clientesEncontrados[0].id;
+          setSelectedClienteId(clienteId);
+          await guardarCotizacionComoNueva(clienteId);
+          return;
+        }
+      } catch (error) {
+        console.log('No se pudo buscar cliente en BD, continuando con creación:', error);
       }
-      const clientesEncontrados = await buscarClienteResponse.json();
-      let clienteId;
-      if (clientesEncontrados.length > 0) {
-        // Cliente existente
-        clienteId = clientesEncontrados[0].id;
-        setSelectedClienteId(clienteId); // Guardar el id para futuras acciones
-        await guardarCotizacionComoNueva(clienteId);
-      } else {
-        // Mostrar modal para ingresar datos del nuevo cliente
-        setNuevoClienteDatos({ nombre: nombreCliente, direccion: '', telefono: '', email: '' });
-        setShowNuevoClienteModal(true);
-        setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
-          setSelectedClienteId(nuevoClienteId);
-          await guardarCotizacionComoNueva(nuevoClienteId);
-        });
-        return; // Detener flujo hasta que se confirme el modal
-      }
+      
+      // Cliente no encontrado - Mostrar modal de confirmación primero
+      setNuevoClienteDatos({ 
+        nombre: nombreCliente, 
+        empresa: '',
+        direccion: '', 
+        telefono: '', 
+        email: '',
+        ruc_cedula: ''
+      });
+      setShowConfirmacionClienteModal(true);
+      setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
+        setSelectedClienteId(nuevoClienteId);
+        await guardarCotizacionComoNueva(nuevoClienteId);
+      });
+      return; // Detener flujo hasta que se confirme
     } catch (error) {
       console.error("Error al guardar la nueva cotización:", error);
       alert("Error al guardar la nueva cotización: " + error.message);
@@ -1242,11 +1298,21 @@ function CotizacionesCrear() {
   const handleNuevoClienteKeyDown = async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      // Validar campos mínimos
-      if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-        alert('Por favor complete todos los campos.');
+      // Validar campos obligatorios
+      if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa || 
+          !nuevoClienteDatos.ruc_cedula || !nuevoClienteDatos.direccion || 
+          !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
+        alert('Por favor complete todos los campos obligatorios (*).');
         return;
       }
+      
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nuevoClienteDatos.email)) {
+        alert('Por favor ingrese un email válido.');
+        return;
+      }
+      
       // Guardar cliente en la BBDD
       try {
         const token = localStorage.getItem("token");
@@ -1258,20 +1324,36 @@ function CotizacionesCrear() {
           },
           body: JSON.stringify({
             nombre: nuevoClienteDatos.nombre,
+            empresa: nuevoClienteDatos.empresa,
+            ruc_cedula: nuevoClienteDatos.ruc_cedula,
             direccion: nuevoClienteDatos.direccion,
             telefono: nuevoClienteDatos.telefono,
-            email: nuevoClienteDatos.email
+            email: nuevoClienteDatos.email,
+            estado: 'activo',
+            notas: `Cliente creado desde cotización el ${new Date().toLocaleDateString()}`
           })
         });
+        
         if (!crearClienteResponse.ok) {
-          throw new Error("Error al crear cliente");
+          const errorData = await crearClienteResponse.json();
+          throw new Error(errorData.details || errorData.error || "Error al crear cliente");
         }
+        
         const clienteCreado = await crearClienteResponse.json();
+        console.log('✅ Cliente creado:', clienteCreado);
+        
+        // Actualizar el campo Cliente con la empresa y Contacto con el nombre
+        setNombreCliente(nuevoClienteDatos.empresa);
+        setContacto(nuevoClienteDatos.nombre);
+        setUsarContacto(true);
         setShowNuevoClienteModal(false);
+        
+        // Continuar con el guardado de la cotización
         if (onNuevoClienteConfirm) {
-          await onNuevoClienteConfirm(clienteCreado.clienteId);
+          await onNuevoClienteConfirm(clienteCreado.cliente.id);
         }
       } catch (error) {
+        console.error('Error al crear cliente:', error);
         alert('Error al guardar el cliente: ' + error.message);
       }
     }
@@ -1379,14 +1461,14 @@ function CotizacionesCrear() {
         <div className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative flex flex-col">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cliente:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa Cliente:</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={nombreCliente}
                   onChange={handleInputChange}
                   onKeyDown={handleClienteKeyDown}
-                  placeholder="Ingrese el nombre del cliente..."
+                  placeholder="Ingrese el nombre de la empresa..."
                   className="flex-1 border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   autoComplete="off"
                 />
@@ -1411,7 +1493,10 @@ function CotizacionesCrear() {
                       className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${clienteIndex === idx ? 'bg-blue-100' : ''}`}
                       onMouseDown={() => handleSeleccionarCliente(s)}
                     >
-                      {s.nombre_cliente} {s.email_cliente ? <span className="text-xs text-gray-500 ml-2">({s.email_cliente})</span> : null}
+                      <div className="flex flex-col">
+                        <span className="font-medium">{s.empresa || s.empresa_cliente || s.nombre_cliente}</span>
+                        <span className="text-xs text-gray-500">Contacto: {s.nombre_cliente || s.nombre}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -1975,59 +2060,158 @@ function CotizacionesCrear() {
           </div>
         )}
 
-        {/* Modal para nuevo cliente */}
+        {/* Modal de confirmación - Cliente no encontrado */}
+        {showConfirmacionClienteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex items-center mb-4">
+                <div className="bg-yellow-100 rounded-full p-3 mr-3">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold">Cliente no encontrado</h3>
+              </div>
+              <p className="mb-4 text-gray-700">
+                La empresa <span className="font-semibold">"{nuevoClienteDatos.nombre}"</span> no existe en la base de datos.
+              </p>
+              <p className="mb-6 text-gray-700">
+                ¿Desea crear este cliente?      </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowConfirmacionClienteModal(false);
+                    setIsSaving(false);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmacionClienteModal(false);
+                    setShowNuevoClienteModal(true);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Sí, crear cliente
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para crear nuevo cliente */}
         {showNuevoClienteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
-              className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+              className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
               onKeyDown={handleNuevoClienteKeyDown}
               tabIndex={0}
             >
-              <h3 className="text-lg font-bold mb-4">Nuevo cliente</h3>
-              <p className="mb-2">El cliente <span className="font-semibold">{nuevoClienteDatos.nombre}</span> no existe. Se creará un nuevo cliente. Por favor, complete los datos:</p>
-              <div className="space-y-3">
+              <h3 className="text-xl font-bold mb-2">Crear Nuevo Cliente</h3>
+              <p className="text-sm text-gray-600 mb-4">Complete los datos del cliente para poder continuar con la cotización</p>
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre de la Empresa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.empresa}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, empresa: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Empresa XYZ S.A."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre del Contacto <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.nombre}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Juan Pérez"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    RUC/Cédula <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nuevoClienteDatos.ruc_cedula}
+                    onChange={e => setNuevoClienteDatos(prev => ({ ...prev, ruc_cedula: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: 1234567890001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Dirección <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={nuevoClienteDatos.direccion}
                     onChange={e => setNuevoClienteDatos(prev => ({ ...prev, direccion: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: Av. Principal 123 y Calle Secundaria"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={nuevoClienteDatos.telefono}
                     onChange={e => setNuevoClienteDatos(prev => ({ ...prev, telefono: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: 0987654321"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     value={nuevoClienteDatos.email}
                     onChange={e => setNuevoClienteDatos(prev => ({ ...prev, email: e.target.value }))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ej: cliente@email.com"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-6">
+              <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
                 <button
-                  onClick={() => setShowNuevoClienteModal(false)}
+                  onClick={() => {
+                    setShowNuevoClienteModal(false);
+                    setIsSaving(false);
+                  }}
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={async () => {
-                    // Validar campos mínimos
-                    if (!nuevoClienteDatos.direccion || !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-                      alert('Por favor complete todos los campos.');
+                    // Validar campos obligatorios
+                    if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa || 
+                        !nuevoClienteDatos.ruc_cedula || !nuevoClienteDatos.direccion || 
+                        !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
+                      alert('Por favor complete todos los campos obligatorios (*).');
                       return;
                     }
+                    
+                    // Validar formato de email
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(nuevoClienteDatos.email)) {
+                      alert('Por favor ingrese un email válido.');
+                      return;
+                    }
+                    
                     // Guardar cliente en la BBDD
                     try {
                       const token = localStorage.getItem("token");
@@ -2039,26 +2223,43 @@ function CotizacionesCrear() {
                         },
                         body: JSON.stringify({
                           nombre: nuevoClienteDatos.nombre,
+                          empresa: nuevoClienteDatos.empresa,
+                          ruc_cedula: nuevoClienteDatos.ruc_cedula,
                           direccion: nuevoClienteDatos.direccion,
                           telefono: nuevoClienteDatos.telefono,
-                          email: nuevoClienteDatos.email
+                          email: nuevoClienteDatos.email,
+                          estado: 'activo',
+                          notas: `Cliente creado desde cotización el ${new Date().toLocaleDateString()}`
                         })
                       });
+                      
                       if (!crearClienteResponse.ok) {
-                        throw new Error("Error al crear cliente");
+                        const errorData = await crearClienteResponse.json();
+                        throw new Error(errorData.details || errorData.error || "Error al crear cliente");
                       }
+                      
                       const clienteCreado = await crearClienteResponse.json();
+                      console.log('✅ Cliente creado:', clienteCreado);
+                      
+                      // Actualizar el campo Cliente con la empresa y Contacto con el nombre
+                      setNombreCliente(nuevoClienteDatos.empresa);
+                      setContacto(nuevoClienteDatos.nombre);
+                      setUsarContacto(true);
                       setShowNuevoClienteModal(false);
+                      
+                      // Continuar con el guardado de la cotización
                       if (onNuevoClienteConfirm) {
-                        await onNuevoClienteConfirm(clienteCreado.clienteId);
+                        await onNuevoClienteConfirm(clienteCreado.cliente.id);
                       }
                     } catch (error) {
+                      console.error('Error al crear cliente:', error);
                       alert('Error al guardar el cliente: ' + error.message);
                     }
                   }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
                 >
-                  Guardar cliente
+                  <FaSave />
+                  Guardar y Continuar
                 </button>
               </div>
             </div>
@@ -2115,19 +2316,25 @@ function CotizacionesCrear() {
                       {clientesSugeridos
                         .filter(cliente => 
                           cliente.nombre_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+                          cliente.empresa?.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
                           cliente.email_cliente?.toLowerCase().includes(busquedaCliente.toLowerCase())
                         )
                         .map((cliente) => (
                           <tr key={cliente.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 border-b">{cliente.nombre_cliente}</td>
-                            <td className="px-4 py-2 border-b">{cliente.empresa}</td>
-                            <td className="px-4 py-2 border-b">{cliente.email_cliente}</td>
+                            <td className="px-4 py-2 border-b">{cliente.nombre_cliente || cliente.nombre}</td>
+                            <td className="px-4 py-2 border-b">{cliente.empresa || cliente.empresa_cliente}</td>
+                            <td className="px-4 py-2 border-b">{cliente.email_cliente || cliente.email}</td>
                             <td className="px-4 py-2 border-b">{cliente.telefono || '-'}</td>
                             <td className="px-4 py-2 border-b text-center">
                               <button
                                 onClick={() => {
-                                  // Seleccionar el cliente y cerrar el modal
-                                  setNombreCliente(cliente.nombre_cliente);
+                                  // Seleccionar la empresa en el campo Cliente
+                                  setNombreCliente(cliente.empresa || cliente.empresa_cliente || cliente.nombre_cliente);
+                                  // Poner el nombre del contacto en el campo Contacto
+                                  if (cliente.nombre_cliente || cliente.nombre) {
+                                    setContacto(cliente.nombre_cliente || cliente.nombre);
+                                    setUsarContacto(true);
+                                  }
                                   setSelectedClienteId(cliente.id);
                                   setShowClientesModal(false);
                                   setBusquedaCliente("");

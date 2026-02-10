@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaPrint } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -197,6 +197,38 @@ const OrdenesVer: React.FC = () => {
     }
   };
 
+  const imprimirPDF = async (id: number) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al obtener el PDF');
+      const pdfBlob = await response.blob();
+      if (pdfBlob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
+      
+      // Crear URL del blob y abrirlo en nueva ventana para impresión
+      const url = window.URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      } else {
+        toast.error('No se pudo abrir la ventana de impresión. Por favor, permite ventanas emergentes.');
+      }
+      
+      // Limpiar URL después de un tiempo
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+      
+      toast.success('✅ Abriendo vista de impresión');
+    } catch (error: any) {
+      toast.error('Error al imprimir el PDF: ' + error.message);
+    }
+  };
+
   const cerrarPreview = () => {
     setShowPreview(false);
     setPreviewUrl(null);
@@ -304,6 +336,14 @@ const OrdenesVer: React.FC = () => {
                       >
                         <FaEye />
                         <span className="text-xs mt-1 text-gray-600">Ver PDF</span>
+                      </button>
+                      <button
+                        className="p-2 text-gray-700 hover:bg-gray-100 rounded flex flex-col items-center"
+                        onClick={() => imprimirPDF(orden.id)}
+                        title="Imprimir"
+                      >
+                        <FaPrint />
+                        <span className="text-xs mt-1 text-gray-600">Imprimir</span>
                       </button>
                       {puedeEditar('ordenes_trabajo') && (
                         <button
