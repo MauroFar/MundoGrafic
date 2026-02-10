@@ -107,6 +107,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [troquelado, setTroquelado] = useState<string>('');
   const [liberacionProducto, setLiberacionProducto] = useState<string>('');
 
+  // Estados para cantidad final de cada responsable
+  const [vendedorCantidadFinal, setVendedorCantidadFinal] = useState<string>('');
+  const [preprensaCantidadFinal, setPreprensaCantidadFinal] = useState<string>('');
+  const [prensaCantidadFinal, setPrensaCantidadFinal] = useState<string>('');
+  const [laminadoBarnizadoCantidadFinal, setLaminadoBarnizadoCantidadFinal] = useState<string>('');
+  const [troqueladoCantidadFinal, setTroqueladoCantidadFinal] = useState<string>('');
+  const [terminadosCantidadFinal, setTerminadosCantidadFinal] = useState<string>('');
+  const [liberacionProductoCantidadFinal, setLiberacionProductoCantidadFinal] = useState<string>('');
+
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
@@ -217,6 +226,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setPrensa('');
       setTerminados('');
       setFacturado('');
+      // Limpiar campos adicionales responsables digital
+      setLaminadoBarnizado('');
+      setTroquelado('');
+      setLiberacionProducto('');
+      // Limpiar cantidades finales
+      setVendedorCantidadFinal('');
+      setPreprensaCantidadFinal('');
+      setPrensaCantidadFinal('');
+      setLaminadoBarnizadoCantidadFinal('');
+      setTroqueladoCantidadFinal('');
+      setTerminadosCantidadFinal('');
+      setLiberacionProductoCantidadFinal('');
        // Limpiar nuevos campos
                setMaterial('');
         setCorteMaterial('');
@@ -497,6 +518,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setTerminados(ordenData.terminados || '');
     setFacturado(ordenData.facturado || '');
     
+    // Sincronizar cantidades finales de cada responsable
+    setVendedorCantidadFinal(ordenData.vendedor_cantidad_final || '');
+    setPreprensaCantidadFinal(ordenData.preprensa_cantidad_final || '');
+    setPrensaCantidadFinal(ordenData.prensa_cantidad_final || '');
+    setLaminadoBarnizadoCantidadFinal(ordenData.laminado_barnizado_cantidad_final || '');
+    setTroqueladoCantidadFinal(ordenData.troquelado_cantidad_final || '');
+    setTerminadosCantidadFinal(ordenData.terminados_cantidad_final || '');
+    setLiberacionProductoCantidadFinal(ordenData.liberacion_producto_cantidad_final || '');
+    
     // Sincronizar campos adicionales para orden digital
     if (ordenData.tipo_orden === 'digital') {
       setLaminadoBarnizado(ordenData.laminado_barnizado || '');
@@ -688,7 +718,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
       ...(tipoOrdenSeleccionado === 'digital' && {
         laminado_barnizado: laminadoBarnizado,
         troquelado: troquelado,
-        liberacion_producto: liberacionProducto
+        liberacion_producto: liberacionProducto,
+        // Cantidades finales para responsables
+        vendedor_cantidad_final: vendedorCantidadFinal,
+        preprensa_cantidad_final: preprensaCantidadFinal,
+        prensa_cantidad_final: prensaCantidadFinal,
+        laminado_barnizado_cantidad_final: laminadoBarnizadoCantidadFinal,
+        troquelado_cantidad_final: troqueladoCantidadFinal,
+        terminados_cantidad_final: terminadosCantidadFinal,
+        liberacion_producto_cantidad_final: liberacionProductoCantidadFinal
       }),
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
@@ -821,7 +859,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
           ...(tipoOrdenSeleccionado === 'digital' && {
             laminado_barnizado: laminadoBarnizado,
             troquelado: troquelado,
-            liberacion_producto: liberacionProducto
+            liberacion_producto: liberacionProducto,
+            // Cantidades finales para responsables
+            vendedor_cantidad_final: vendedorCantidadFinal,
+            preprensa_cantidad_final: preprensaCantidadFinal,
+            prensa_cantidad_final: prensaCantidadFinal,
+            laminado_barnizado_cantidad_final: laminadoBarnizadoCantidadFinal,
+            troquelado_cantidad_final: troqueladoCantidadFinal,
+            terminados_cantidad_final: terminadosCantidadFinal,
+            liberacion_producto_cantidad_final: liberacionProductoCantidadFinal
           }),
           tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
           // Detalle técnico (depende del tipo de orden)
@@ -1253,82 +1299,131 @@ const OrdendeTrabajoEditar: React.FC = () => {
             </h3>
             
             {tipoOrdenSeleccionado === 'digital' ? (
-              // Responsables para orden DIGITAL
+              // Responsables para orden DIGITAL con cantidad final
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Nombre" 
                     value={vendedor} 
                     onChange={e => setVendedor(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={vendedorCantidadFinal} 
+                    onChange={e => setVendedorCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Pre-prensa</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={preprensa} 
                     onChange={e => setPreprensa(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={preprensaCantidadFinal} 
+                    onChange={e => setPreprensaCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Impresión</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={prensa} 
                     onChange={e => setPrensa(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={prensaCantidadFinal} 
+                    onChange={e => setPrensaCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Laminado/Barnizado</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={laminadoBarnizado} 
                     onChange={e => setLaminadoBarnizado(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={laminadoBarnizadoCantidadFinal} 
+                    onChange={e => setLaminadoBarnizadoCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Troquelado</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={troquelado} 
                     onChange={e => setTroquelado(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={troqueladoCantidadFinal} 
+                    onChange={e => setTroqueladoCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={terminados} 
                     onChange={e => setTerminados(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={terminadosCantidadFinal} 
+                    onChange={e => setTerminadosCantidadFinal(e.target.value)} 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Liberación Producto</label>
                   <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
                     type="text" 
                     placeholder="Responsable" 
                     value={liberacionProducto} 
                     onChange={e => setLiberacionProducto(e.target.value)} 
+                  />
+                  <input 
+                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
+                    type="text" 
+                    placeholder="Cant. Final" 
+                    value={liberacionProductoCantidadFinal} 
+                    onChange={e => setLiberacionProductoCantidadFinal(e.target.value)} 
                   />
                 </div>
               </div>

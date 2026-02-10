@@ -56,6 +56,10 @@ export default (client: any) => {
       fecha_creacion, fecha_entrega, estado, notas_observaciones,
       vendedor, preprensa, prensa, terminados, facturado,
       laminado_barnizado, troquelado, liberacion_producto, // Campos adicionales para digital
+      // Campos de cantidad final para cada responsable
+      vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
+      laminado_barnizado_cantidad_final, troquelado_cantidad_final,
+      terminados_cantidad_final, liberacion_producto_cantidad_final,
       id_cotizacion,
       id_detalle_cotizacion,
       tipo_orden, // Nuevo campo para diferenciar offset/digital
@@ -114,14 +118,20 @@ export default (client: any) => {
           fecha_creacion, fecha_entrega, estado, notas_observaciones,
           vendedor, preprensa, prensa, terminados, facturado,
           laminado_barnizado, troquelado, liberacion_producto,
+          vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
+          laminado_barnizado_cantidad_final, troquelado_cantidad_final,
+          terminados_cantidad_final, liberacion_producto_cantidad_final,
           id_cotizacion, id_detalle_cotizacion, tipo_orden, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
         RETURNING id, numero_orden
       `, [
         nombre_cliente, orden_compra, contacto, email, telefono, cantidad, concepto,
         fecha_creacion, fecha_entrega, estado, notas_observaciones,
         vendedor, preprensa, prensa, terminados, facturado,
         laminado_barnizado || null, troquelado || null, liberacion_producto || null,
+        vendedor_cantidad_final || null, preprensa_cantidad_final || null, prensa_cantidad_final || null,
+        laminado_barnizado_cantidad_final || null, troquelado_cantidad_final || null,
+        terminados_cantidad_final || null, liberacion_producto_cantidad_final || null,
         id_cotizacion, id_detalle_cotizacion, tipo_orden || 'offset', userId
       ]);
       const ordenId = ordenResult.rows[0].id;
@@ -411,6 +421,10 @@ export default (client: any) => {
       laminado_barnizado,
       troquelado,
       liberacion_producto,
+      // Campos de cantidad final para cada responsable
+      vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
+      laminado_barnizado_cantidad_final, troquelado_cantidad_final,
+      terminados_cantidad_final, liberacion_producto_cantidad_final,
       id_detalle_cotizacion,
       tipo_orden, // Nuevo campo
       // Nuevos campos de trabajo - extraer del objeto detalle
@@ -473,11 +487,18 @@ export default (client: any) => {
             laminado_barnizado = $16,
             troquelado = $17,
             liberacion_producto = $18,
-            id_detalle_cotizacion = $19,
-            tipo_orden = $20,
-            updated_by = $21,
+            vendedor_cantidad_final = $19,
+            preprensa_cantidad_final = $20,
+            prensa_cantidad_final = $21,
+            laminado_barnizado_cantidad_final = $22,
+            troquelado_cantidad_final = $23,
+            terminados_cantidad_final = $24,
+            liberacion_producto_cantidad_final = $25,
+            id_detalle_cotizacion = $26,
+            tipo_orden = $27,
+            updated_by = $28,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $22
+        WHERE id = $29
         RETURNING *`,
         [
           nombre_cliente,
@@ -498,6 +519,13 @@ export default (client: any) => {
           laminado_barnizado || null,
           troquelado || null,
           liberacion_producto || null,
+          vendedor_cantidad_final || null,
+          preprensa_cantidad_final || null,
+          prensa_cantidad_final || null,
+          laminado_barnizado_cantidad_final || null,
+          troquelado_cantidad_final || null,
+          terminados_cantidad_final || null,
+          liberacion_producto_cantidad_final || null,
           id_detalle_cotizacion,
           tipo_orden,
           userId,
@@ -949,7 +977,8 @@ export default (client: any) => {
           .responsables { display: flex; gap: 6px; flex-wrap: wrap; }
           .responsable { flex: 1; min-width: 80px; text-align: center; border: 1px solid #ddd; padding: 6px; }
           .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
-          .responsable-nombre { font-size: 10px; font-weight: bold; }
+          .responsable-nombre { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+          .responsable-cantidad { font-size: 9px; color: #333; font-weight: bold; border-top: 1px dashed #ddd; padding-top: 4px; margin-top: 4px; }
           .grid-tecnico { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         </style>
       </head>
@@ -1102,30 +1131,37 @@ export default (client: any) => {
               <div class="responsable">
                 <div class="responsable-titulo">VENDEDOR</div>
                 <div class="responsable-nombre">${orden.vendedor || ''}</div>
+                ${orden.vendedor_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.vendedor_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">PRE-PRENSA</div>
                 <div class="responsable-nombre">${orden.preprensa || ''}</div>
+                ${orden.preprensa_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.preprensa_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">IMPRESIÓN</div>
                 <div class="responsable-nombre">${orden.prensa || ''}</div>
+                ${orden.prensa_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.prensa_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">LAMINADO/BARNIZADO</div>
                 <div class="responsable-nombre">${orden.laminado_barnizado || ''}</div>
+                ${orden.laminado_barnizado_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.laminado_barnizado_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">TROQUELADO</div>
                 <div class="responsable-nombre">${orden.troquelado || ''}</div>
+                ${orden.troquelado_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.troquelado_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">TERMINADOS</div>
                 <div class="responsable-nombre">${orden.terminados || ''}</div>
+                ${orden.terminados_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.terminados_cantidad_final}</div>` : ''}
               </div>
               <div class="responsable">
                 <div class="responsable-titulo">LIBERACIÓN PRODUCTO</div>
                 <div class="responsable-nombre">${orden.liberacion_producto || ''}</div>
+                ${orden.liberacion_producto_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${orden.liberacion_producto_cantidad_final}</div>` : ''}
               </div>
             </div>
           </div>
