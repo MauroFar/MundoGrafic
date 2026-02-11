@@ -58,75 +58,63 @@ const DashboardProduccion = () => {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      // Simular carga de datos con datos ficticios
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = localStorage.getItem("token");
       
-      // Datos ficticios para métricas
-      const dataMetricas = {
-        totalOrdenes: 45,
-        pendientes: 12,
-        enProceso: 18,
-        retrasadas: 3,
-        completadasHoy: 7
-      };
-      setMetricas(dataMetricas);
+      // Cargar métricas reales desde el backend
+      const responseMetricas = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/metricas`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      // Datos ficticios para órdenes recientes
-      const dataOrdenes = [
-        {
-          id: 1,
-          numero_orden: 'OT-2024-001',
-          nombre_cliente: 'Empresa ABC S.A.',
-          concepto: 'Tarjetas de presentación corporativas',
-          estado: 'en_preprensa',
-          fecha_entrega: '2024-01-15',
-          responsable_actual: 'Juan Pérez'
+      if (!responseMetricas.ok) {
+        throw new Error('Error al cargar métricas de producción');
+      }
+
+      const dataMetricas = await responseMetricas.json();
+      console.log('📊 Métricas recibidas:', dataMetricas);
+
+      // Actualizar las métricas con datos reales
+      if (dataMetricas.success && dataMetricas.metricas) {
+        setMetricas({
+          totalOrdenes: dataMetricas.metricas.totalOrdenes || 0,
+          pendientes: dataMetricas.metricas.pendientes || 0,
+          enProceso: dataMetricas.metricas.enProceso || 0,
+          retrasadas: dataMetricas.metricas.retrasadas || 0,
+          completadasHoy: dataMetricas.metricas.completadasHoy || 0
+        });
+      }
+
+      // Cargar órdenes recientes
+      const responseOrdenes = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/ordenes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: 2,
-          numero_orden: 'OT-2024-002',
-          nombre_cliente: 'Tienda XYZ',
-          concepto: 'Volantes promocionales',
-          estado: 'en_prensa',
-          fecha_entrega: '2024-01-12',
-          responsable_actual: 'María García'
-        },
-        {
-          id: 3,
-          numero_orden: 'OT-2024-003',
-          nombre_cliente: 'Restaurante El Buen Sabor',
-          concepto: 'Menús del restaurante',
-          estado: 'en_acabados',
-          fecha_entrega: '2024-01-10',
-          responsable_actual: 'Carlos López'
-        },
-        {
-          id: 4,
-          numero_orden: 'OT-2024-004',
-          nombre_cliente: 'Clínica San José',
-          concepto: 'Folleto médico',
-          estado: 'en_control_calidad',
-          fecha_entrega: '2024-01-08',
-          responsable_actual: 'Ana Martínez'
-        },
-        {
-          id: 5,
-          numero_orden: 'OT-2024-005',
-          nombre_cliente: 'Gym Fitness Plus',
-          concepto: 'Posters promocionales',
-          estado: 'entregado',
-          fecha_entrega: '2024-01-05',
-          responsable_actual: 'Roberto Silva'
+      });
+
+      if (responseOrdenes.ok) {
+        const dataOrdenes = await responseOrdenes.json();
+        if (dataOrdenes.success && dataOrdenes.ordenes) {
+          // Tomar solo las 5 más recientes
+          setOrdenesRecientes(dataOrdenes.ordenes.slice(0, 5));
         }
-      ];
-      setOrdenesRecientes(dataOrdenes);
+      }
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error('❌ Error al cargar datos:', error);
+      // Mantener métricas en 0 en caso de error
+      setMetricas({
+        totalOrdenes: 0,
+        pendientes: 0,
+        enProceso: 0,
+        retrasadas: 0,
+        completadasHoy: 0
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  /* NOTA: Esta función está deshabilitada. Los cambios de estado se realizarán desde las interfaces específicas de cada área
   const cambiarEstadoOrden = async (ordenId, nuevoEstado) => {
     try {
       // Simular cambio de estado con datos ficticios
@@ -154,6 +142,7 @@ const DashboardProduccion = () => {
       console.error('Error al cambiar estado:', error);
     }
   };
+  */
 
   const getEstadoColor = (estado) => {
     const colores = {
@@ -463,37 +452,18 @@ const DashboardProduccion = () => {
                       <button
                         onClick={() => navigate(`/ordendeTrabajo/editar/${orden.id}`)}
                         className="text-green-600 hover:text-green-900"
-                        title="Editar orden"
+                        title="Ver/Editar orden"
                       >
                         <FaEdit className="h-4 w-4" />
                       </button>
-                      {orden.estado === 'pendiente' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_preprensa')}
-                          className="text-purple-600 hover:text-purple-900"
-                          title="Iniciar preprensa"
-                        >
-                          <FaPlay className="h-4 w-4" />
-                        </button>
-                      )}
-                      {orden.estado === 'en_preprensa' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_prensa')}
-                          className="text-orange-600 hover:text-orange-900"
-                          title="Mover a prensa"
-                        >
-                          <FaPrint className="h-4 w-4" />
-                        </button>
-                      )}
-                      {orden.estado === 'en_prensa' && (
-                        <button
-                          onClick={() => cambiarEstadoOrden(orden.id, 'en_acabados')}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Mover a acabados"
-                        >
-                          <FaCut className="h-4 w-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => navigate(`/produccion/kanban`)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Ver en Kanban"
+                      >
+                        <FaEye className="h-4 w-4" />
+                      </button>
+                      {/* NOTA: Los cambios de estado se realizarán desde las interfaces específicas de cada área */}
                     </div>
                   </td>
                 </tr>

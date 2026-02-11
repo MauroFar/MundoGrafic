@@ -1404,6 +1404,7 @@ export default (client: any) => {
           ot.terminados,
           ot.facturado,
           ot.id_cotizacion,
+          ot.tipo_orden,
           dot.material,
           dot.corte_material,
           dot.cantidad_pliegos_compra,
@@ -1422,7 +1423,24 @@ export default (client: any) => {
           ot.updated_at
         FROM orden_trabajo ot
         LEFT JOIN detalle_orden_trabajo dot ON ot.id = dot.orden_trabajo_id
-        WHERE ot.estado = 'en producción'
+        WHERE ot.estado IN (
+          'en producción', 
+          'En Proceso',
+          'en preprensa',
+          'En Preprensa',
+          'en prensa',
+          'En Prensa',
+          'En Impresión',
+          'en impresión',
+          'en acabados',
+          'En Acabados',
+          'en control de calidad',
+          'En Control de Calidad',
+          'en empacado',
+          'En Empacado',
+          'entregado',
+          'Entregado'
+        )
         ORDER BY ot.fecha_entrega ASC, ot.created_at DESC
       `);
       
@@ -1447,24 +1465,59 @@ export default (client: any) => {
     try {
       console.log('📈 Calculando métricas de producción...');
       
-      // Total de órdenes en producción
+      // Total de órdenes en producción (todos los estados de producción)
       const totalEnProduccion = await client.query(`
-        SELECT COUNT(*) as total FROM orden_trabajo WHERE estado = 'en producción'
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado IN (
+          'en producción', 'En Proceso', 'En Preprensa', 'en preprensa',
+          'En Prensa', 'en prensa', 'En Impresión', 'en impresión',
+          'En Acabados', 'en acabados', 'En Empacado', 'en empacado',
+          'en control de calidad', 'En Control de Calidad',
+          'Listo para Entrega', 'listo para entrega'
+        )
       `);
       
-      // Órdenes retrasadas (fecha de entrega pasada)
+      // Órdenes pendientes (En Proceso o en producción sin avanzar)
+      const pendientes = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado IN ('en producción', 'En Proceso', 'pendiente', 'Pendiente')
+      `);
+      
+      // Órdenes en proceso activo (en alguna etapa específica)
+      const enProceso = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado IN (
+          'En Preprensa', 'en preprensa', 'En Prensa', 'en prensa',
+          'En Impresión', 'en impresión', 'En Acabados', 'en acabados',
+          'En Empacado', 'en empacado', 'en control de calidad',
+          'En Control de Calidad'
+        )
+      `);
+      
+      // Órdenes retrasadas (fecha de entrega pasada y no entregadas)
       const retrasadas = await client.query(`
         SELECT COUNT(*) as total 
         FROM orden_trabajo 
-        WHERE estado = 'en producción' 
+        WHERE estado NOT IN ('Entregado', 'entregado', 'Facturado', 'facturado', 'Cancelado', 'cancelado')
         AND fecha_entrega < CURRENT_DATE
+      `);
+      
+      // Órdenes completadas hoy
+      const completadasHoy = await client.query(`
+        SELECT COUNT(*) as total 
+        FROM orden_trabajo 
+        WHERE estado IN ('Entregado', 'entregado', 'Facturado', 'facturado')
+        AND DATE(updated_at) = CURRENT_DATE
       `);
       
       // Órdenes por entregar hoy
       const hoy = await client.query(`
         SELECT COUNT(*) as total 
         FROM orden_trabajo 
-        WHERE estado = 'en producción' 
+        WHERE estado NOT IN ('Entregado', 'entregado', 'Facturado', 'facturado', 'Cancelado', 'cancelado')
         AND fecha_entrega = CURRENT_DATE
       `);
       
@@ -1472,31 +1525,19 @@ export default (client: any) => {
       const estaSemana = await client.query(`
         SELECT COUNT(*) as total 
         FROM orden_trabajo 
-        WHERE estado = 'en producción' 
+        WHERE estado NOT IN ('Entregado', 'entregado', 'Facturado', 'facturado', 'Cancelado', 'cancelado')
         AND fecha_entrega BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
       `);
       
-      // Órdenes completadas hoy
-      const completadasHoy = await client.query(`
-        SELECT COUNT(*) as total 
-        FROM orden_trabajo 
-        WHERE estado IN ('terminado', 'entregado', 'completado')
-        AND DATE(updated_at) = CURRENT_DATE
-      `);
-      
-      // Distribución por etapa de producción
+      // Distribución por estado
       const distribucion = await client.query(`
         SELECT 
-          CASE 
-            WHEN preprensa::text = 'true' AND prensa::text = 'false' AND terminados::text = 'false' THEN 'preprensa'
-            WHEN preprensa::text = 'true' AND prensa::text = 'true' AND terminados::text = 'false' THEN 'prensa'
-            WHEN preprensa::text = 'true' AND prensa::text = 'true' AND terminados::text = 'true' THEN 'acabados'
-            ELSE 'pendiente'
-          END as etapa,
+          estado,
           COUNT(*) as cantidad
         FROM orden_trabajo 
-        WHERE estado = 'en producción'
-        GROUP BY etapa
+        WHERE estado NOT IN ('Cancelado', 'cancelado')
+        GROUP BY estado
+        ORDER BY cantidad DESC
       `);
       
       // Promedio de días en producción
@@ -1504,16 +1545,22 @@ export default (client: any) => {
         SELECT 
           AVG(EXTRACT(DAY FROM (CURRENT_TIMESTAMP - created_at))) as promedio_dias
         FROM orden_trabajo 
-        WHERE estado = 'en producción'
+        WHERE estado IN (
+          'en producción', 'En Proceso', 'En Preprensa', 'en preprensa',
+          'En Prensa', 'en prensa', 'En Impresión', 'en impresión',
+          'En Acabados', 'en acabados', 'En Empacado', 'en empacado'
+        )
       `);
 
       const metricas = {
-        totalEnProduccion: parseInt(totalEnProduccion.rows[0].total),
+        totalOrdenes: parseInt(totalEnProduccion.rows[0].total),
+        pendientes: parseInt(pendientes.rows[0].total),
+        enProceso: parseInt(enProceso.rows[0].total),
         retrasadas: parseInt(retrasadas.rows[0].total),
+        completadasHoy: parseInt(completadasHoy.rows[0].total),
         porEntregarHoy: parseInt(hoy.rows[0].total),
         porEntregarSemana: parseInt(estaSemana.rows[0].total),
-        completadasHoy: parseInt(completadasHoy.rows[0].total),
-        distribucionEtapas: distribucion.rows,
+        distribucionEstados: distribucion.rows,
         promedioDiasProduccion: parseFloat(promedioTiempo.rows[0].promedio_dias || 0).toFixed(1)
       };
       

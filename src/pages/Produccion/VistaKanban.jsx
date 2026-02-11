@@ -10,7 +10,8 @@ import {
   FaCalendarAlt,
   FaArrowRight,
   FaFilter,
-  FaSync
+  FaSync,
+  FaTimes
 } from 'react-icons/fa';
 
 const VistaKanban = () => {
@@ -29,116 +30,116 @@ const VistaKanban = () => {
   const [loading, setLoading] = useState(true);
   const [draggedItem, setDraggedItem] = useState(null);
   const [filtroResponsable, setFiltroResponsable] = useState('todos');
+  const [busquedaNumero, setBusquedaNumero] = useState('');
+  const [busquedaActiva, setBusquedaActiva] = useState('');
 
   const columnas = [
-    { id: 'pendiente', titulo: 'Pendientes', color: 'yellow', icono: FaClock },
+    { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', icono: FaClock },
     { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', icono: FaPlay },
-    { id: 'en_prensa', titulo: 'Prensa', color: 'purple', icono: FaPlay },
-    { id: 'en_acabados', titulo: 'Acabados', color: 'orange', icono: FaPlay },
-    { id: 'en_control_calidad', titulo: 'Control', color: 'indigo', icono: FaEye },
+    { id: 'en_prensa', titulo: 'Impresión', color: 'purple', icono: FaPlay },
+    { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay },
+    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle },
     { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle }
   ];
 
   useEffect(() => {
     cargarOrdenes();
-  }, [filtroResponsable]);
+  }, [filtroResponsable, busquedaActiva]);
 
   const cargarOrdenes = async () => {
     setLoading(true);
     try {
-      // Simular carga de datos con datos ficticios
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Datos ficticios para el Kanban
-      const data = {
-        pendiente: [
-          {
-            id: 1,
-            numero_orden: 'OT-2024-001',
-            nombre_cliente: 'Empresa ABC S.A.',
-            concepto: 'Tarjetas de presentación corporativas',
-            estado: 'pendiente',
-            fecha_entrega: '2024-01-15',
-            responsable_actual: 'Juan Pérez'
-          },
-          {
-            id: 6,
-            numero_orden: 'OT-2024-006',
-            nombre_cliente: 'Hotel Plaza',
-            concepto: 'Folletos turísticos',
-            estado: 'pendiente',
-            fecha_entrega: '2024-01-20',
-            responsable_actual: 'Sin asignar'
-          }
-        ],
-        en_preprensa: [
-          {
-            id: 2,
-            numero_orden: 'OT-2024-002',
-            nombre_cliente: 'Tienda XYZ',
-            concepto: 'Volantes promocionales',
-            estado: 'en_preprensa',
-            fecha_entrega: '2024-01-12',
-            responsable_actual: 'María García'
-          },
-          {
-            id: 7,
-            numero_orden: 'OT-2024-007',
-            nombre_cliente: 'Farmacia Central',
-            concepto: 'Catálogo de productos',
-            estado: 'en_preprensa',
-            fecha_entrega: '2024-01-18',
-            responsable_actual: 'Luis Rodríguez'
-          }
-        ],
-        en_prensa: [
-          {
-            id: 3,
-            numero_orden: 'OT-2024-003',
-            nombre_cliente: 'Restaurante El Buen Sabor',
-            concepto: 'Menús del restaurante',
-            estado: 'en_prensa',
-            fecha_entrega: '2024-01-10',
-            responsable_actual: 'Carlos López'
-          }
-        ],
-        en_acabados: [
-          {
-            id: 4,
-            numero_orden: 'OT-2024-004',
-            nombre_cliente: 'Clínica San José',
-            concepto: 'Folleto médico',
-            estado: 'en_acabados',
-            fecha_entrega: '2024-01-08',
-            responsable_actual: 'Ana Martínez'
-          }
-        ],
-        en_control_calidad: [
-          {
-            id: 8,
-            numero_orden: 'OT-2024-008',
-            nombre_cliente: 'Escuela Primaria',
-            concepto: 'Material educativo',
-            estado: 'en_control_calidad',
-            fecha_entrega: '2024-01-06',
-            responsable_actual: 'Pedro González'
-          }
-        ],
-        entregado: [
-          {
-            id: 5,
-            numero_orden: 'OT-2024-005',
-            nombre_cliente: 'Gym Fitness Plus',
-            concepto: 'Posters promocionales',
-            estado: 'entregado',
-            fecha_entrega: '2024-01-05',
-            responsable_actual: 'Roberto Silva'
-          }
-        ]
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/ordenes`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cargar órdenes de producción');
+      }
+
+      const data = await response.json();
+      console.log('📦 Órdenes recibidas del backend:', data);
+
+      // Inicializar las columnas vacías
+      const ordenesAgrupadas = {
+        pendiente: [],
+        en_preprensa: [],
+        en_prensa: [],
+        en_acabados: [],
+        en_control_calidad: [],
+        entregado: []
       };
-      setOrdenes(data);
+
+      // Filtrar por número de orden si hay búsqueda activa
+      let ordenesFiltradas = data.ordenes || [];
+      if (busquedaActiva && busquedaActiva.trim() !== '') {
+        const busqueda = busquedaActiva.toLowerCase().trim();
+        ordenesFiltradas = ordenesFiltradas.filter(orden => 
+          orden.numero_orden?.toLowerCase().includes(busqueda)
+        );
+      }
+
+      // Agrupar las órdenes por estado
+      if (ordenesFiltradas && Array.isArray(ordenesFiltradas)) {
+        ordenesFiltradas.forEach(orden => {
+          // Normalizar el estado para que coincida con las columnas del Kanban
+          let estadoNormalizado = orden.estado?.trim();
+          
+          // Mapear estados del backend a estados del Kanban
+          if (estadoNormalizado === 'en producción' || estadoNormalizado === 'En producción' || 
+              estadoNormalizado === 'pendiente' || estadoNormalizado === 'Pendiente' ||
+              estadoNormalizado === 'En Proceso') {
+            estadoNormalizado = 'pendiente';
+          } else if (estadoNormalizado === 'en preprensa' || estadoNormalizado === 'En Preprensa' ||
+                     estadoNormalizado === 'En Pre-prensa') {
+            estadoNormalizado = 'en_preprensa';
+          } else if (estadoNormalizado === 'en prensa' || estadoNormalizado === 'En Prensa' || 
+                     estadoNormalizado === 'En Impresión' || estadoNormalizado === 'en impresión') {
+            estadoNormalizado = 'en_prensa';
+          } else if (estadoNormalizado === 'en acabados' || estadoNormalizado === 'En Acabados' ||
+                     estadoNormalizado === 'En Empacado' || estadoNormalizado === 'en empacado') {
+            estadoNormalizado = 'en_acabados';
+          } else if (estadoNormalizado === 'en control de calidad' || estadoNormalizado === 'En Control de Calidad' ||
+                     estadoNormalizado === 'Listo para Entrega' || estadoNormalizado === 'listo para entrega') {
+            estadoNormalizado = 'en_control_calidad';
+          } else if (estadoNormalizado === 'entregado' || estadoNormalizado === 'Entregado' || 
+                     estadoNormalizado === 'completado' || estadoNormalizado === 'Completado' ||
+                     estadoNormalizado === 'Facturado' || estadoNormalizado === 'facturado') {
+            estadoNormalizado = 'entregado';
+          }
+
+          // Agregar la orden a la columna correspondiente
+          if (ordenesAgrupadas[estadoNormalizado]) {
+            ordenesAgrupadas[estadoNormalizado].push({
+              ...orden,
+              responsable_actual: orden.vendedor || orden.preprensa || orden.prensa || orden.terminados || 'Sin asignar'
+            });
+          } else {
+            // Si el estado no coincide con ninguna columna, ponerlo en pendiente
+            ordenesAgrupadas.pendiente.push({
+              ...orden,
+              responsable_actual: orden.vendedor || 'Sin asignar'
+            });
+          }
+        });
+      }
+
+      console.log('✅ Órdenes agrupadas:', ordenesAgrupadas);
+      setOrdenes(ordenesAgrupadas);
     } catch (error) {
-      console.error('Error al cargar órdenes:', error);
+      console.error('❌ Error al cargar órdenes:', error);
+      // Mantener las columnas vacías en caso de error
+      setOrdenes({
+        pendiente: [],
+        en_preprensa: [],
+        en_prensa: [],
+        en_acabados: [],
+        en_control_calidad: [],
+        entregado: []
+      });
     } finally {
       setLoading(false);
     }
@@ -162,9 +163,26 @@ const VistaKanban = () => {
       return;
     }
 
+    // NOTA: Esta funcionalidad está deshabilitada temporalmente
+    // Más adelante, cada área reportará el cambio de estado desde su propia interfaz
+    alert('⚠️ La actualización de estados se realizará desde las interfaces específicas de cada área (Preprensa, Prensa, Acabados, etc.)');
+    setDraggedItem(null);
+    
+    /* CÓDIGO COMENTADO PARA FUTURA IMPLEMENTACIÓN
     try {
-      // Simular cambio de estado con datos ficticios
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${draggedItem.id}/estado`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ estado: nuevoEstado })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el estado');
+      }
 
       // Actualizar el estado local
       const ordenActualizada = { ...draggedItem, estado: nuevoEstado };
@@ -184,10 +202,30 @@ const VistaKanban = () => {
           fecha: new Date().toLocaleString()
         }
       }));
+      
+      // Recargar las órdenes
+      cargarOrdenes();
     } catch (error) {
       console.error('Error al cambiar estado:', error);
+      alert('Error al actualizar el estado de la orden');
     } finally {
       setDraggedItem(null);
+    }
+    */
+  };
+
+  const ejecutarBusqueda = () => {
+    setBusquedaActiva(busquedaNumero);
+  };
+
+  const limpiarBusqueda = () => {
+    setBusquedaNumero('');
+    setBusquedaActiva('');
+  };
+
+  const handleKeyPressBusqueda = (e) => {
+    if (e.key === 'Enter') {
+      ejecutarBusqueda();
     }
   };
 
@@ -231,25 +269,39 @@ const VistaKanban = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vista Kanban</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Vista Kanban - Producción</h1>
             <p className="text-gray-600">Seguimiento visual del flujo de producción</p>
           </div>
           
           {/* Filtros */}
           <div className="flex gap-4 items-center">
             <div className="flex items-center gap-2">
-              <FaFilter className="text-gray-500" />
-              <select
-                value={filtroResponsable}
-                onChange={(e) => setFiltroResponsable(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <input
+                type="text"
+                placeholder="Buscar por número de orden..."
+                value={busquedaNumero}
+                onChange={(e) => setBusquedaNumero(e.target.value)}
+                onKeyPress={handleKeyPressBusqueda}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+              />
+              <button
+                onClick={ejecutarBusqueda}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                title="Buscar orden"
               >
-                <option value="todos">Todos los responsables</option>
-                <option value="preprensa">Preprensa</option>
-                <option value="prensa">Prensa</option>
-                <option value="acabados">Acabados</option>
-                <option value="calidad">Control de Calidad</option>
-              </select>
+                <FaFilter className="h-4 w-4" />
+                Buscar
+              </button>
+              {busquedaActiva && (
+                <button
+                  onClick={limpiarBusqueda}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                  title="Limpiar búsqueda"
+                >
+                  <FaTimes className="h-4 w-4" />
+                  Limpiar
+                </button>
+              )}
             </div>
             
             <button
@@ -259,6 +311,23 @@ const VistaKanban = () => {
               <FaSync className="h-4 w-4" />
               Actualizar
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mensaje informativo */}
+      <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-blue-700">
+              <strong>Vista de solo visualización:</strong> Este tablero muestra todas las órdenes en producción. 
+              Los cambios de estado se realizarán desde las interfaces específicas de cada área (Preprensa, Prensa, Acabados, etc.).
+            </p>
           </div>
         </div>
       </div>

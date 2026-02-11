@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -42,6 +42,23 @@ const OrdenesVer: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [ordenToDelete, setOrdenToDelete] = useState<OrdenTrabajo | null>(null);
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
+
+  // Función para verificar si el estado es de producción
+  const esEstadoProduccion = (estado: string | undefined): boolean => {
+    if (!estado) return false;
+    const estadosProduccion = [
+      'en producción',
+      'en proceso',
+      'en preprensa',
+      'en prensa',
+      'en impresión',
+      'en acabados',
+      'en control de calidad',
+      'en empacado',
+      'listo para entrega'
+    ];
+    return estadosProduccion.includes(estado.toLowerCase());
+  };
 
   useEffect(() => {
     setPagina(1);
@@ -442,7 +459,7 @@ const OrdenesVer: React.FC = () => {
                           <span className="text-xs mt-1 text-gray-600">Editar</span>
                         </button>
                       )}
-                      {puedeEliminar('ordenes_trabajo') && !(orden.estado && orden.estado.toLowerCase() === "en producción") && (
+                      {puedeEliminar('ordenes_trabajo') && !esEstadoProduccion(orden.estado) && (
                         <button
                           className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                           onClick={() => eliminarOrden(orden.id)}
@@ -460,13 +477,14 @@ const OrdenesVer: React.FC = () => {
                         <FaDownload />
                         <span className="text-xs mt-1 text-gray-600">Descargar</span>
                       </button>
-                      {orden.estado && orden.estado.toLowerCase() === "en producción" ? (
+                      {esEstadoProduccion(orden.estado) ? (
                         <button
-                          className="p-2 text-gray-400 bg-gray-200 rounded cursor-not-allowed flex flex-col items-center"
-                          disabled
-                          title="En Producción"
+                          className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
+                          onClick={() => navigate('/produccion/kanban')}
+                          title="Ver estado en producción"
                         >
-                          <span className="font-bold text-xs">En Producción</span>
+                          <FaTasks />
+                          <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
                         </button>
                       ) : (
                         <button
