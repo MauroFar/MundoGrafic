@@ -108,7 +108,7 @@ function App() {
           {/* Producción y órdenes de trabajo: admin, ejecutivo, impresion */}
           <Route path="/produccion" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <DashboardProduccion />
+              <VistaKanban />
             </PrivateRoute>
           } />
           <Route path="/produccion/dashboard" element={

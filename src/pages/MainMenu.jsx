@@ -26,7 +26,7 @@ const MainMenu = () => {
   }, []);
 
   const allItems = [
-    { key: 'produccion', label: 'Producción', onClick: () => navigate('/produccion'), color: 'bg-blue-600' },
+    { key: 'produccion', label: 'Producción', onClick: () => navigate('/produccion/kanban'), color: 'bg-blue-600' },
     { key: 'gestion-ti', label: 'Gestión TI', onClick: () => window.open('https://registrosmantenimientos.onrender.com/', '_blank'), color: 'bg-green-600' },
     { key: 'inventario', label: 'Inventario', onClick: () => navigate('/inventario'), color: 'bg-yellow-600' },
     { key: 'reportes', label: 'Reportes', onClick: () => navigate('/reportesTrabajoDiario'), color: 'bg-purple-600' },

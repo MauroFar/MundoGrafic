@@ -143,7 +143,7 @@ const ClientesCrear = () => {
   };
 
   const handleCancel = () => {
-    navigate("/produccion");
+    navigate("/produccion/kanban");
   };
 
   return (

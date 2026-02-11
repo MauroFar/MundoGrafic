@@ -60,6 +60,66 @@ const OrdenesVer: React.FC = () => {
     return estadosProduccion.includes(estado.toLowerCase());
   };
 
+  // Función para obtener el estilo del badge según el estado
+  const getEstadoStyle = (estado: string | undefined): { classes: string; text: string } => {
+    if (!estado) {
+      return { 
+        classes: 'bg-gray-100 text-gray-800', 
+        text: 'Pendiente' 
+      };
+    }
+
+    const estadoLower = estado.toLowerCase();
+    
+    // Estados en producción (verde)
+    if (estadoLower === 'en producción' || estadoLower === 'en proceso') {
+      return { 
+        classes: 'bg-green-100 text-green-800', 
+        text: estado 
+      };
+    }
+    
+    // Estados de proceso (azul)
+    if (estadoLower === 'en preprensa' || estadoLower === 'en prensa' || 
+        estadoLower === 'en impresión' || estadoLower === 'en acabados') {
+      return { 
+        classes: 'bg-blue-100 text-blue-800', 
+        text: estado 
+      };
+    }
+    
+    // Estados de control/empacado (amarillo)
+    if (estadoLower === 'en control de calidad' || estadoLower === 'en empacado' || 
+        estadoLower === 'listo para entrega') {
+      return { 
+        classes: 'bg-yellow-100 text-yellow-800', 
+        text: estado 
+      };
+    }
+    
+    // Estado entregado (verde oscuro)
+    if (estadoLower === 'entregado' || estadoLower === 'completado' || estadoLower === 'facturado') {
+      return { 
+        classes: 'bg-emerald-100 text-emerald-800', 
+        text: estado 
+      };
+    }
+    
+    // Estado cancelado (rojo)
+    if (estadoLower === 'cancelado') {
+      return { 
+        classes: 'bg-red-100 text-red-800', 
+        text: estado 
+      };
+    }
+    
+    // Por defecto (gris)
+    return { 
+      classes: 'bg-gray-100 text-gray-800', 
+      text: estado 
+    };
+  };
+
   useEffect(() => {
     setPagina(1);
     cargarOrdenes(true);
@@ -275,17 +335,38 @@ const OrdenesVer: React.FC = () => {
   const enviarAProduccion = async (id: number) => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/enviar-produccion`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" }
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
       });
       if (!response.ok) throw new Error("Error al enviar a producción");
+      
+      const data = await response.json();
+      
       // Actualizar el estado de la orden localmente para reflejar el cambio inmediato
       setOrdenes(prev => prev.map(orden => orden.id === id ? { ...orden, estado: "en producción" } : orden));
       setProduccionEnviada(prev => ({ ...prev, [id]: true }));
       setModalProduccionId(null);
+      
+      // Mostrar mensaje de éxito con opción de ir a Vista Kanban
+      toast.success(
+        <div>
+          <div className="font-semibold">✅ {data.message || 'Orden enviada a producción'}</div>
+          <button
+            onClick={() => navigate('/produccion/kanban')}
+            className="mt-2 text-sm underline text-blue-600 hover:text-blue-800"
+          >
+            Ver en Vista Kanban →
+          </button>
+        </div>,
+        { autoClose: 5000 }
+      );
     } catch (error: any) {
-      alert(error.message || "Ocurrió un error al enviar a producción");
+      toast.error(error.message || "Ocurrió un error al enviar a producción");
     } finally {
       setLoading(false);
     }
@@ -416,6 +497,7 @@ const OrdenesVer: React.FC = () => {
                 <th className="px-6 py-3 border-b text-left">Concepto</th>
                 <th className="px-6 py-3 border-b text-left">Tipo</th>
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
+                <th className="px-6 py-3 border-b text-left">Estado</th>
                 <th className="px-6 py-3 border-b text-left">Acciones</th>
               </tr>
             </thead>
@@ -439,6 +521,13 @@ const OrdenesVer: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 border-b">{orden.fecha_creacion?.slice(0,10)}</td>
+                  <td className="px-6 py-4 border-b">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      getEstadoStyle(orden.estado).classes
+                    }`}>
+                      {getEstadoStyle(orden.estado).text}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                       <button

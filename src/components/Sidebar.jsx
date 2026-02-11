@@ -30,7 +30,7 @@ const Sidebar = () => {
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
-      { path: "/produccion", label: "Producción" },
+      { path: "/produccion/kanban", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
       { path: "/administracion", label: "Administración" },
       { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
@@ -58,7 +58,7 @@ const Sidebar = () => {
       { path: "/produccion/acabados", label: "Módulo Acabados" },
       { path: "/produccion/calidad", label: "Control de Calidad" },
       { path: "/produccion/entrega", label: "Empacado y Entrega" },
-      { path: "/produccion", label: "Dashboard Producción" },
+      { path: "/produccion/dashboard", label: "Dashboard Producción" },
       { path: "/dashboardGeneral", label: "Dashboard General" },
       { path: "/produccionDiaria", label: "Producción Diaria" },
       { path: "/productosTerminados", label: "Productos Terminados" },
@@ -151,7 +151,7 @@ const Sidebar = () => {
               if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
                 navigate('/welcome');
               } else {
-                navigate('/produccion');
+                navigate('/produccion/kanban');
               }
             }}
             title="Regresar al menú principal"

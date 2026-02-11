@@ -1360,17 +1360,23 @@ export default (client: any) => {
   });
 
   // Cambiar estado a "en producción"
-  router.put("/:id/enviar-produccion", async (req: any, res: any) => {
+  router.put("/:id/enviar-produccion", authRequired(), checkPermission(client, 'ordenes_trabajo', 'editar'), async (req: any, res: any) => {
     const { id } = req.params;
     try {
+      console.log(`📤 Enviando orden ${id} a producción...`);
       const result = await client.query(
-        `UPDATE orden_trabajo SET estado = 'en producción' WHERE id = $1 RETURNING *`,
+        `UPDATE orden_trabajo SET estado = 'en producción', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
         [id]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Orden no encontrada" });
       }
-      res.json({ success: true, orden: result.rows[0] });
+      console.log(`✅ Orden ${id} enviada a producción exitosamente`);
+      res.json({ 
+        success: true, 
+        orden: result.rows[0],
+        message: `Orden #${result.rows[0].numero_orden} enviada a producción correctamente`
+      });
     } catch (error: any) {
       console.error("Error al enviar a producción:", error);
       res.status(500).json({ error: "Error al enviar a producción" });
