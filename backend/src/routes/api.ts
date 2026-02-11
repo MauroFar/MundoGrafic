@@ -11,6 +11,7 @@ import puppeteer from "puppeteer";
 import uploadRoutes from "./upload-simple";
 import chatRoutes from "./chat";
 import permisosRoutes from "./permisos";
+import prensasRoutes from "./prensas";
 
 export default (client: any) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
@@ -31,6 +32,8 @@ export default (client: any) => {
   router.use("/upload", uploadRoutes); // /api/upload
   router.use("/chat", chatRoutes(client)); // /api/chat
   router.use("/permisos", permisosRoutes(client)); // /api/permisos
+  router.use("/prensas", prensasRoutes(client)); // /api/prensas
+  console.log('✅ [API Routes] Ruta /prensas registrada');
 
   // Ruta de prueba simple
   router.get("/test", (req, res) => {
@@ -49,6 +52,7 @@ export default (client: any) => {
   console.log('   - /api/upload');
   console.log('   - /api/chat');
   console.log('   - /api/permisos');
+  console.log('   - /api/prensas');
   console.log('   - /api/test');
 
   return router; // Devolvemos el router que agrupa todas las rutas

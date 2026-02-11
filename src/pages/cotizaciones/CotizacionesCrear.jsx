@@ -518,8 +518,8 @@ function CotizacionesCrear() {
       
       // Cliente no encontrado - Mostrar modal de confirmación primero
       setNuevoClienteDatos({ 
-        nombre: nombreCliente, 
-        empresa: '',
+        nombre: '', 
+        empresa: nombreCliente,
         direccion: '', 
         telefono: '', 
         email: '',
@@ -746,8 +746,8 @@ function CotizacionesCrear() {
       
       // Cliente no encontrado - Mostrar modal de confirmación primero
       setNuevoClienteDatos({ 
-        nombre: nombreCliente, 
-        empresa: '',
+        nombre: '', 
+        empresa: nombreCliente,
         direccion: '', 
         telefono: '', 
         email: '',
@@ -1254,9 +1254,8 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
-          imagen_ruta: fila.imagen_ruta,
-          imagen_width: fila.imagen_width,
-          imagen_height: fila.imagen_height
+          alineacion_imagenes: fila.alineacion_imagenes,
+          imagenes: fila.imagenes
         };
 
         const responseDetalle = await fetch(`${apiUrl}/api/cotizacionesDetalles`, {
@@ -2073,7 +2072,7 @@ function CotizacionesCrear() {
                 <h3 className="text-lg font-bold">Cliente no encontrado</h3>
               </div>
               <p className="mb-4 text-gray-700">
-                La empresa <span className="font-semibold">"{nuevoClienteDatos.nombre}"</span> no existe en la base de datos.
+                La empresa <span className="font-semibold">"{nuevoClienteDatos.empresa}"</span> no existe en la base de datos.
               </p>
               <p className="mb-6 text-gray-700">
                 ¿Desea crear este cliente?      </p>

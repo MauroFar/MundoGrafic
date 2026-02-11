@@ -149,7 +149,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'prensa' | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'offset' | 'digital'
 
   // Estados específicos para formulario DIGITAL
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
@@ -982,6 +982,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         prensa,
         terminados,
         facturado,
+        tipo_orden: tipoOrdenSeleccionado,
         // Campos adicionales para orden digital
         ...(tipoOrdenSeleccionado === 'digital' && {
           laminado_barnizado: laminadoBarnizado,
@@ -990,8 +991,26 @@ const OrdendeTrabajoEditar: React.FC = () => {
         }),
         id_cotizacion: cotizacionId || null,
         id_detalle_cotizacion: idDetalleCotizacion,
-        // Detalle técnico
-        detalle: {
+        // Detalle técnico según tipo de orden
+        detalle: tipoOrdenSeleccionado === 'digital' ? {
+          // Detalle digital
+          material: materialDigital,
+          impresion: impresionDigital,
+          observaciones: observacionesDigital,
+          prensa_seleccionada: prensaSeleccionada,
+          numero_salida: numeroSalida,
+          adherencia: adherencia,
+          lote_material: loteMaterial,
+          lote_produccion: loteProduccion,
+          tipo_impresion: tipoImpresion,
+          troquel: troquel,
+          codigo_troquel: codigoTroquel,
+          terminado_etiqueta: terminadoEtiqueta,
+          terminados_especiales: terminadosEspeciales,
+          cantidad_por_rollo: cantidadPorRollo,
+          productos_digital: productosDigital
+        } : {
+          // Detalle offset
           material: material,
           corte_material: corteMaterial,
           cantidad_pliegos_compra: cantidadPliegosCompra,
@@ -1059,9 +1078,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => { setTipoOrdenSeleccionado('prensa'); setShowTipoOrdenModal(false); }}
+                onClick={() => { setTipoOrdenSeleccionado('offset'); setShowTipoOrdenModal(false); }}
               >
-                Prensa
+                Offset
               </button>
               <button
                 className="px-4 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"

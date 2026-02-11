@@ -230,7 +230,7 @@ export default (client: any) => {
     try {
       const { busqueda, fechaDesde, fechaHasta, limite } = req.query;
       let query = `
-        SELECT id, numero_orden, nombre_cliente, concepto, fecha_creacion, estado, tipo_orden
+        SELECT id, numero_orden, nombre_cliente, concepto, fecha_creacion, estado, tipo_orden, id_cotizacion
         FROM orden_trabajo
       `;
       let where: string[] = [];
@@ -704,23 +704,23 @@ export default (client: any) => {
         <meta charset="UTF-8">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; font-size: 11px; color: #333; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-          .logo-section img { height: 45px; }
-          .orden-info { text-align: right; font-size: 10px; }
-          .orden-numero { font-size: 18px; font-weight: bold; }
-          .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
-          .seccion { margin-bottom: 12px; border: 1px solid #ddd; }
-          .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
-          .seccion-contenido { padding: 10px; }
-          .fila { display: flex; gap: 10px; margin-bottom: 6px; }
+          body { font-family: Arial, sans-serif; padding: 12px; font-size: 9px; color: #333; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
+          .logo-section img { height: 35px; }
+          .orden-info { text-align: right; font-size: 8px; }
+          .orden-numero { font-size: 14px; font-weight: bold; }
+          .titulo { text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+          .seccion { margin-bottom: 6px; border: 1px solid #ddd; }
+          .seccion-titulo { background: #f0f0f0; padding: 3px 6px; font-weight: bold; font-size: 9px; border-bottom: 1px solid #ddd; }
+          .seccion-contenido { padding: 5px; }
+          .fila { display: flex; gap: 6px; margin-bottom: 3px; }
           .campo { flex: 1; }
-          .campo-label { font-size: 9px; color: #666; margin-bottom: 3px; font-weight: bold; }
-          .campo-valor { border: 1px solid #ddd; padding: 5px 8px; font-size: 10px; background: white; min-height: 28px; }
-          .responsables { display: flex; gap: 6px; }
-          .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 6px; }
-          .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
-          .responsable-nombre { font-size: 10px; font-weight: bold; }
+          .campo-label { font-size: 7px; color: #666; margin-bottom: 1px; font-weight: bold; }
+          .campo-valor { border: 1px solid #ddd; padding: 3px 5px; font-size: 8px; background: white; min-height: 20px; }
+          .responsables { display: flex; gap: 4px; }
+          .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 3px; }
+          .responsable-titulo { font-size: 7px; color: #666; margin-bottom: 1px; font-weight: bold; }
+          .responsable-nombre { font-size: 8px; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -742,7 +742,7 @@ export default (client: any) => {
           <div class="seccion-titulo">📋 INFORMACIÓN DEL CLIENTE</div>
           <div class="seccion-contenido">
             <div class="fila">
-              <div class="campo">
+              <div class="campo" style="flex: 2;">
                 <div class="campo-label">CLIENTE</div>
                 <div class="campo-valor">${orden.nombre_cliente || ''}</div>
               </div>
@@ -750,13 +750,11 @@ export default (client: any) => {
                 <div class="campo-label">CONTACTO</div>
                 <div class="campo-valor">${orden.contacto || ''}</div>
               </div>
-            </div>
-            <div class="fila">
               <div class="campo">
                 <div class="campo-label">TELÉFONO</div>
                 <div class="campo-valor">${orden.telefono || ''}</div>
               </div>
-              <div class="campo">
+              <div class="campo" style="flex: 1.5;">
                 <div class="campo-label">EMAIL</div>
                 <div class="campo-valor">${orden.email || ''}</div>
               </div>
@@ -776,6 +774,14 @@ export default (client: any) => {
                 <div class="campo-label">CANTIDAD</div>
                 <div class="campo-valor">${orden.cantidad || ''}</div>
               </div>
+              <div class="campo">
+                <div class="campo-label">FECHA CREACIÓN</div>
+                <div class="campo-valor">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' }) : ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">FECHA ENTREGA</div>
+                <div class="campo-valor">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' }) : ''}</div>
+              </div>
             </div>
             <div class="fila">
               <div class="campo">
@@ -791,10 +797,10 @@ export default (client: any) => {
         </div>
 
         <div class="seccion">
-          <div class="seccion-titulo">Material y Corte</div>
+          <div class="seccion-titulo">Material, Corte y Cantidad de Pliegos</div>
           <div class="seccion-contenido">
             <div class="fila">
-              <div class="campo">
+              <div class="campo" style="flex: 2;">
                 <div class="campo-label">MATERIAL</div>
                 <div class="campo-valor">${detalle.material || ''}</div>
               </div>
@@ -802,14 +808,6 @@ export default (client: any) => {
                 <div class="campo-label">CORTE DE MATERIAL</div>
                 <div class="campo-valor">${detalle.corte_material || ''}</div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="seccion">
-          <div class="seccion-titulo">Cantidad de Pliegos</div>
-          <div class="seccion-contenido">
-            <div class="fila">
               <div class="campo">
                 <div class="campo-label">PLIEGOS DE COMPRA</div>
                 <div class="campo-valor">${detalle.cantidad_pliegos_compra || ''}</div>
@@ -834,7 +832,7 @@ export default (client: any) => {
                 <div class="campo-label">IMPRESIÓN</div>
                 <div class="campo-valor">${detalle.impresion || ''}</div>
               </div>
-              <div class="campo">
+              <div class="campo" style="flex: 2;">
                 <div class="campo-label">INSTRUCCIONES DE IMPRESIÓN</div>
                 <div class="campo-valor">${detalle.instrucciones_impresion || ''}</div>
               </div>
@@ -862,27 +860,17 @@ export default (client: any) => {
               </div>
               <div class="campo" style="flex: 2;">
                 <div class="campo-label">OBSERVACIONES GENERALES</div>
-                <div class="campo-valor">${orden.notas_observaciones || detalle.observaciones || ''}</div>
+                <div class="campo-valor">${detalle.observaciones || ''}</div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div class="seccion">
-          <div class="seccion-titulo">📍 Referencia de Número de Salida</div>
-          <div class="seccion-contenido">
+            ${orden.notas_observaciones ? `
             <div class="fila">
-              <div class="campo" style="flex: 1;">
-                <div class="campo-label">NÚMERO DE SALIDA SELECCIONADO</div>
-                <div class="campo-valor" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px;">${detalle.numero_salida || 'No especificado'}</div>
+              <div class="campo">
+                <div class="campo-label">NOTAS ADICIONALES</div>
+                <div class="campo-valor">${orden.notas_observaciones}</div>
               </div>
-              ${salidaImagenBase64 ? `
-              <div class="campo" style="flex: 2; text-align: center;">
-                <div class="campo-label">IMAGEN DE REFERENCIA</div>
-                <img src="${salidaImagenBase64}" alt="Referencia de Salidas" style="max-width: 100%; height: auto; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;" />
-              </div>
-              ` : ''}
             </div>
+            ` : ''}
           </div>
         </div>
 

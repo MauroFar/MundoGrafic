@@ -56,7 +56,7 @@ function CotizacionesVer() {
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState(false);
-  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'prensa' (Offset) | 'digital'
+  const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'offset' | 'digital'
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cotizacionToDelete, setCotizacionToDelete] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -1631,7 +1631,7 @@ function CotizacionesVer() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 className="px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => continuarGeneracionOrden('prensa')}
+                onClick={() => continuarGeneracionOrden('offset')}
               >
                 Offset
               </button>
