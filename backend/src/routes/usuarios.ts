@@ -42,13 +42,25 @@ export default (client: any) => {
       
       const rol_id = rolResult.rows.length > 0 ? rolResult.rows[0].id : null;
       
-      // Generar email_config automáticamente para ejecutivos
-      let email_config = 'main'; // Por defecto
-      if (rol === 'ejecutivo' && email_personal) {
-        // Extraer el nombre del email personal (ej: henry@gmail.com -> henry)
+      // Generar email_config automáticamente basado en el nombre del usuario
+      let email_config = 'MAIN'; // Fallback por defecto
+      
+      if (nombre) {
+        // Tomar el primer nombre o la primera parte antes del espacio
+        const primerNombre = nombre.trim().split(' ')[0];
+        // Convertir a mayúsculas y remover caracteres especiales
+        email_config = primerNombre
+          .toUpperCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+          .replace(/[^A-Z0-9]/g, '_'); // Reemplazar caracteres no alfanuméricos con _
+      } else if (email_personal) {
+        // Si no hay nombre, usar el email personal
         const emailName = email_personal.split('@')[0];
-        email_config = emailName.toLowerCase();
+        email_config = emailName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
       }
+      
+      console.log(`📧 Generando email_config para '${nombre}': ${email_config}`);
       
       const result = await client.query(
         'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, rol, rol_id, area_id, email_personal, email_config, celular) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, nombre_usuario, nombre, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular',
@@ -87,13 +99,25 @@ export default (client: any) => {
       
       const rol_id = rolResult.rows.length > 0 ? rolResult.rows[0].id : null;
       
-      // Generar email_config automáticamente para ejecutivos
-      let email_config = 'main'; // Por defecto
-      if (rol === 'ejecutivo' && email_personal) {
-        // Extraer el nombre del email personal (ej: henry@gmail.com -> henry)
+      // Generar email_config automáticamente basado en el nombre del usuario
+      let email_config = 'MAIN'; // Fallback por defecto
+      
+      if (nombre) {
+        // Tomar el primer nombre o la primera parte antes del espacio
+        const primerNombre = nombre.trim().split(' ')[0];
+        // Convertir a mayúsculas y remover caracteres especiales
+        email_config = primerNombre
+          .toUpperCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+          .replace(/[^A-Z0-9]/g, '_'); // Reemplazar caracteres no alfanuméricos con _
+      } else if (email_personal) {
+        // Si no hay nombre, usar el email personal
         const emailName = email_personal.split('@')[0];
-        email_config = emailName.toLowerCase();
+        email_config = emailName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
       }
+      
+      console.log(`📧 Actualizando email_config para '${nombre}': ${email_config}`);
       
       let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, rol_id = $5, area_id = $6, activo = $7, email_personal = $8, email_config = $9, celular = $10';
       let params = [email, nombre_usuario, nombre, rol, rol_id, area_id, activo, email_personal, email_config, celular || null, id];

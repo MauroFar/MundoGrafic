@@ -244,6 +244,27 @@ function GestionUsuarios() {
             <input id="celular" name="celular" value={form.celular} onChange={handleChange} placeholder="Ej: 3001234567" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           
+          {/* Campo de email personal (visible para todos los roles) */}
+          <div className="md:col-span-2">
+            <label htmlFor="email_personal" className="block text-sm font-bold text-blue-900 mb-2">
+              Email Personal {form.rol === 'ejecutivo' && '(Requerido para envío de cotizaciones)'}
+            </label>
+            <input 
+              id="email_personal"
+              name="email_personal" 
+              value={form.email_personal || ''} 
+              onChange={handleChange} 
+              placeholder="ejemplo@gmail.com" 
+              className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {form.rol === 'ejecutivo' 
+                ? '📧 Este email se usará para enviar cotizaciones desde la cuenta del ejecutivo' 
+                : 'Email personal de contacto (opcional)'
+              }
+            </p>
+          </div>
+          
           {/* Estado activo del usuario */}
           <div className="md:col-span-2 flex items-center gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
             <input 
@@ -261,24 +282,6 @@ function GestionUsuarios() {
               </span>
             </label>
           </div>
-          
-          {/* Campo de email personal para ejecutivos */}
-          {form.rol === 'ejecutivo' && (
-            <div className="md:col-span-2">
-              <label htmlFor="email_personal" className="block text-sm font-bold text-blue-900 mb-2">Email Personal del Ejecutivo</label>
-              <input 
-                id="email_personal"
-                name="email_personal" 
-                value={form.email_personal || ''} 
-                onChange={handleChange} 
-                placeholder="ejemplo@gmail.com" 
-                className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Este email se usará para enviar cotizaciones desde la cuenta del ejecutivo
-              </p>
-            </div>
-          )}
           
           {/* Botón de configuración de firma para ejecutivos */}
           {form.rol === 'ejecutivo' && (
