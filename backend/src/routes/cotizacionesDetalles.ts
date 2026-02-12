@@ -55,8 +55,9 @@ const createCotizacionDetalles = (client: any) => {
     console.log("Recibiendo datos para crear detalle:", req.body);
     const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita } = req.body;
 
-    if (!cotizacion_id || !cantidad || !detalle || !valor_unitario || !valor_total) {
-      return res.status(400).json({ error: "Faltan datos requeridos" });
+    if (!cotizacion_id || cantidad === undefined || cantidad === null || !detalle || valor_unitario === undefined || valor_unitario === null || valor_total === undefined || valor_total === null) {
+      console.error("Validación fallida:", { cotizacion_id, cantidad, detalle, valor_unitario, valor_total });
+      return res.status(400).json({ error: "Faltan datos requeridos o son inválidos" });
     }
 
     try {

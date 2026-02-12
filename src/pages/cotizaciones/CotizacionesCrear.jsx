@@ -1273,7 +1273,10 @@ function CotizacionesCrear() {
       const nuevaCotizacion = await responseCotizacion.json();
 
       // 4. Guardar los detalles de la nueva cotización
-      for (const fila of filasData) {
+      for (let i = 0; i < filasData.length; i++) {
+        const fila = filasData[i];
+        console.log(`Guardando detalle ${i + 1}/${filasData.length}:`, fila);
+        
         const detalleData = {
           cotizacion_id: nuevaCotizacion.id,
           cantidad: fila.cantidad,
@@ -1296,7 +1299,9 @@ function CotizacionesCrear() {
         });
 
         if (!responseDetalle.ok) {
-          throw new Error("Error al guardar los detalles de la nueva cotización");
+          const errorData = await responseDetalle.json().catch(() => ({}));
+          console.error(`Error en detalle ${i + 1}:`, errorData);
+          throw new Error(`Error al guardar detalle ${i + 1}: ${errorData.error || 'Error desconocido'}`);
         }
       }
 
