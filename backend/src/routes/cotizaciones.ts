@@ -1417,7 +1417,24 @@ const CotizacionDatos = (client: any) => {
     }
   });
 
-  // Ruta para enviar correo con PDF adjunto
+  /**
+   * ============================================================
+   * ENVIAR COTIZACIÓN POR CORREO ELECTRÓNICO
+   * ============================================================
+   * 
+   * Esta ruta envía una cotización por correo electrónico.
+   * 
+   * LÓGICA: Usa el usuario con SESIÓN ACTIVA para TODO
+   * ✅ FIRMA: Del usuario que envía (sesión activa)
+   * ✅ CREDENCIALES EMAIL: Del usuario que envía (sesión activa)
+   * 
+   * Esto permite que cualquier ejecutivo pueda enviar cualquier cotización
+   * usando su propia identidad (correo + firma), independientemente de
+   * quién creó la cotización originalmente.
+   * 
+   * @route POST /:id/enviar-correo
+   * @auth Requiere autenticación (authRequired)
+   */
   router.post('/:id/enviar-correo', authRequired(), async (req: any, res: any) => {
     try {
       const { id } = req.params;
@@ -1527,128 +1544,135 @@ const CotizacionDatos = (client: any) => {
       // Guardar el PDF
       await fs.writeFile(pdfPath, pdfBuffer);
 
-                    // Obtener la firma del ejecutivo que creó la cotización
-        let signatureHtml = '';
-        let signatureAttachments: any[] = [];
-        let userResult: any = { rows: [] }; // Inicializar userResult
+                    // ============================================================
+      // PASO 1: Obtener la firma del usuario con SESIÓN ACTIVA
+      // ============================================================
+      let signatureHtml = '';
+      let signatureAttachments: any[] = [];
+      
+      try {
+        console.log('📝 [FIRMA] Obteniendo firma del usuario con sesión activa (ID:', req.user?.id, ')');
+        const senderFirmaQuery = `
+          SELECT id, nombre, firma_html, firma_activa
+          FROM usuarios 
+          WHERE id = $1
+        `;
+        const senderFirmaResult = await client.query(senderFirmaQuery, [req.user.id]);
         
-        try {
-          // Obtener datos del usuario que creó la cotización
-          console.log('🔍 Buscando usuario con ID:', cotizacion.usuario_id);
-          const userQuery = `
-            SELECT id, nombre, firma_html, firma_activa, email_config, email_personal
-            FROM usuarios 
-            WHERE id = $1
-          `;
-          userResult = await client.query(userQuery, [cotizacion.usuario_id]);
+        if (senderFirmaResult.rows.length > 0) {
+          const sender = senderFirmaResult.rows[0];
+          console.log('✅ [FIRMA] Usuario encontrado:', sender.nombre);
+          console.log('   [FIRMA] Firma activa:', sender.firma_activa);
+          console.log('   [FIRMA] Tiene firma HTML:', !!sender.firma_html);
           
-          if (userResult.rows.length > 0) {
-            const usuario = userResult.rows[0];
-            console.log('🔍 Usuario encontrado:', usuario.nombre);
-            console.log('🔍 ID del usuario:', usuario.id);
-            console.log('🔍 Email personal:', usuario.email_personal);
-            console.log('🔍 Email config:', usuario.email_config);
-            console.log('🔍 Firma activa:', usuario.firma_activa);
-            console.log('🔍 Tiene firma HTML:', !!usuario.firma_html);
-            
-            if (usuario.firma_activa && usuario.firma_html) {
-              // Usar firma personalizada del ejecutivo
-              signatureHtml = usuario.firma_html;
-              signatureAttachments = [];
-              console.log('✅ Usando firma personalizada de:', usuario.nombre);
-            } else {
-              console.log('⚠️  Usuario no tiene firma personalizada activa');
-            }
+          if (sender.firma_activa && sender.firma_html) {
+            signatureHtml = sender.firma_html;
+            signatureAttachments = [];
+            console.log('✅ [FIRMA] Usando firma personalizada de:', sender.nombre);
+          } else {
+            console.log('⚠️  [FIRMA] Usuario no tiene firma personalizada activa');
           }
+        }
+      } catch (error) {
+        console.warn('⚠️  [FIRMA] Error al obtener firma personalizada, usando firma por defecto:', error);
+      }
+       
+      // Si no hay firma personalizada, usar la firma por defecto
+      if (!signatureHtml) {
+        console.log('📝 [FIRMA] Usando firma por defecto del sistema');
+        try {
+          const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
+          signatureHtml = await fs.readFile(signaturePath, 'utf8');
+
+          // Lista de imágenes de la firma por defecto
+          const signatureImages = [
+            'image001.jpg',
+            'image002.png',
+            'image003.png',
+            'image004.png',
+            'image005.png'
+          ];
+
+          // Adjuntos inline para Nodemailer
+          signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
+            const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
+            return {
+              filename: img,
+              path: imgPath,
+              cid: img // Debe coincidir con el src="cid:..." en el HTML
+            };
+          }));
         } catch (error) {
-          console.warn('Error al obtener firma personalizada, usando firma por defecto:', error);
+          console.error('❌ [FIRMA] Error al cargar firma por defecto:', error);
+          signatureHtml = '<p>Saludos cordiales,<br>Equipo MUNDOGRAFIC</p>';
         }
-       
-       // Si no hay firma personalizada, usar la firma por defecto
-       if (!signatureHtml) {
-         console.log('📝 Usando firma por defecto del sistema');
-         try {
-      const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
-           signatureHtml = await fs.readFile(signaturePath, 'utf8');
+      }
 
-           // Lista de imágenes de la firma por defecto
-      const signatureImages = [
-        'image001.jpg',
-        'image002.png',
-        'image003.png',
-        'image004.png',
-        'image005.png'
-      ];
-
-      // Adjuntos inline para Nodemailer
-           signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
-        const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
-        return {
-          filename: img,
-          path: imgPath,
-          cid: img // Debe coincidir con el src="cid:..." en el HTML
-        };
-      }));
-         } catch (error) {
-           console.error('❌ Error al cargar firma por defecto:', error);
-           signatureHtml = '<p>Saludos cordiales,<br>Equipo MUNDOGRAFIC</p>';
-         }
-       }
-
-             // Configurar el correo con credenciales del ejecutivo
-       let emailUser = '';
-       let emailPassword = '';
-       
-       console.log('🔑 Sistema de emails personalizados por ejecutivo');
-       
-       // Si el ejecutivo tiene configuración personalizada, usar esas credenciales
-       if (userResult.rows.length > 0 && userResult.rows[0].email_config) {
-         const usuario = userResult.rows[0];
-         const emailConfig = usuario.email_config;
-         
-         console.log('🔍 Buscando credenciales para ejecutivo:', emailConfig);
-         console.log('🔍 email_config del usuario:', emailConfig);
-         
-         // Buscar credenciales específicas del ejecutivo
-         const specificEmailUser = process.env[`EMAIL_USER_${emailConfig.toUpperCase()}`];
-         const specificEmailPassword = process.env[`EMAIL_PASSWORD_${emailConfig.toUpperCase()}`];
-         
-         console.log(`🔑 EMAIL_USER_${emailConfig.toUpperCase()}:`, specificEmailUser ? '✅ Configurado' : '❌ No configurado');
-         console.log(`🔑 EMAIL_PASSWORD_${emailConfig.toUpperCase()}:`, specificEmailPassword ? '✅ Configurado' : '❌ No configurado');
-         
-         if (specificEmailUser && specificEmailPassword) {
-           emailUser = specificEmailUser;
-           emailPassword = specificEmailPassword;
-           console.log(`✅ Usando credenciales de ${emailConfig}: ${emailUser}`);
-         } else {
-           console.log(`⚠️  No se encontraron credenciales para ${emailConfig}`);
-           throw new Error(`No se encontraron credenciales de email para el ejecutivo ${emailConfig}`);
-         }
-               } else {
-          console.log('⚠️  Usuario no tiene email_config configurado');
-          throw new Error('El ejecutivo debe tener configurado su email personal para enviar correos');
+      // ============================================================
+      // PASO 2: Obtener credenciales del usuario que ENVÍA el correo (sesión activa)
+      // ============================================================
+      let emailUser = '';
+      let emailPassword = '';
+      
+      console.log('🔑 [EMAIL] Sistema de emails personalizados por ejecutivo');
+      console.log('🔑 [EMAIL] Usuario con sesión activa (ID:', req.user?.id, ')');
+      
+      try {
+        // Obtener datos del usuario que está enviando el correo (sesión activa)
+        const senderQuery = `
+          SELECT id, nombre, email_config, email_personal
+          FROM usuarios 
+          WHERE id = $1
+        `;
+        const senderResult = await client.query(senderQuery, [req.user.id]);
+        
+        if (senderResult.rows.length === 0) {
+          throw new Error('No se encontró el usuario con sesión activa');
         }
+        
+        const sender = senderResult.rows[0];
+        console.log('✅ [EMAIL] Remitente encontrado:', sender.nombre);
+        console.log('   [EMAIL] Email personal:', sender.email_personal);
+        console.log('   [EMAIL] Email config:', sender.email_config);
+        
+        if (!sender.email_config) {
+          throw new Error(`El usuario ${sender.nombre} no tiene configurado su email_config. Por favor contacte al administrador.`);
+        }
+        
+        const emailConfig = sender.email_config.toUpperCase();
+        
+        // Buscar credenciales específicas del ejecutivo
+        const specificEmailUser = process.env[`EMAIL_USER_${emailConfig}`];
+        const specificEmailPassword = process.env[`EMAIL_PASSWORD_${emailConfig}`];
+        
+        console.log(`🔍 [EMAIL] Buscando: EMAIL_USER_${emailConfig}:`, specificEmailUser ? '✅ Configurado' : '❌ No configurado');
+        console.log(`🔍 [EMAIL] Buscando: EMAIL_PASSWORD_${emailConfig}:`, specificEmailPassword ? '✅ Configurado' : '❌ No configurado');
+        
+        if (!specificEmailUser || !specificEmailPassword) {
+          throw new Error(`No se encontraron credenciales de email para ${sender.nombre} (${emailConfig}). Por favor contacte al administrador.`);
+        }
+        
+        emailUser = specificEmailUser;
+        emailPassword = specificEmailPassword;
+        
+        console.log(`✅ [EMAIL] Usando credenciales de ${sender.nombre}: ${emailUser}`);
+        console.log(`✅ [EMAIL] El correo se enviará DESDE: ${emailUser}`);
+        
+      } catch (error: any) {
+        console.error('❌ [EMAIL] Error al obtener credenciales:', error.message);
+        throw new Error(`Error al configurar el email: ${error.message}`);
+      }
+
+      // ============================================================
+      // PASO 3: Crear transporter con las credenciales del remitente
+      // ============================================================
+      console.log('📧 [SMTP] Creando transporter dinámico');
+      console.log('   [SMTP] Host: smtp.gmail.com');
+      console.log('   [SMTP] Puerto: 587');
+      console.log('   [SMTP] Usuario:', emailUser);
+      console.log('   [SMTP] Contraseña:', emailPassword ? '✅ Configurada' : '❌ No configurada');
       
-             // Validar que tengamos credenciales válidas
-       if (!emailUser || !emailPassword) {
-         console.error('❌ Credenciales inválidas:');
-         console.error('❌ emailUser:', emailUser);
-         console.error('❌ emailPassword:', emailPassword ? 'Configurada' : 'No configurada');
-         throw new Error('No se pudieron obtener credenciales de email válidas');
-       }
-       
-       console.log('🔑 Credenciales finales seleccionadas:');
-       console.log('🔑 Usuario:', emailUser);
-       console.log('🔑 Contraseña:', emailPassword ? '✅ Configurada' : '❌ No configurada');
-      
-             // Crear transporter dinámico para este envío
-       console.log('📧 Creando transporter con configuración:');
-       console.log('📧 Host: smtp.gmail.com');
-       console.log('📧 Puerto: 587');
-       console.log('📧 Usuario:', emailUser);
-       console.log('📧 Contraseña:', emailPassword ? '✅ Configurada' : '❌ No configurada');
-       
-       const dynamicTransporter = nodemailer.createTransport({
+      const dynamicTransporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
         port: 587,
         secure: false,
@@ -1661,17 +1685,20 @@ const CotizacionDatos = (client: any) => {
       // Verificar la conexión del transporter
       try {
         await dynamicTransporter.verify();
-        console.log('✅ Transporter verificado correctamente');
-      } catch (verifyError) {
-        console.error('❌ Error al verificar transporter:', verifyError);
+        console.log('✅ [SMTP] Transporter verificado correctamente');
+      } catch (verifyError: any) {
+        console.error('❌ [SMTP] Error al verificar transporter:', verifyError);
         throw new Error(`Error de configuración del transporter: ${verifyError.message}`);
       }
+
+      // ============================================================
+      // RESUMEN DE CONFIGURACIÓN
+      // ============================================================
+      console.log('\n📋 [RESUMEN] Configuración del email:');
+      console.log('   ✉️  Remitente (FROM):', emailUser);
+      console.log('   📝 Firma:', signatureHtml ? `Personalizada (${signatureHtml.length} caracteres)` : 'Por defecto del sistema');
+      console.log('   📎 Adjuntos de firma:', signatureAttachments.length);
       
-             // Log para verificar qué firma se está usando
-       console.log('📧 Configurando email con firma:');
-       console.log('📧 Firma HTML seleccionada:', signatureHtml ? '✅ Personalizada' : '❌ Por defecto');
-       console.log('📧 Longitud de la firma:', signatureHtml ? signatureHtml.length : 0);
-       
       // 6. Preparar destinatarios por tipo
       let toEmails = [];
       let ccEmails = [];
