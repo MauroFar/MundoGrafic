@@ -1574,38 +1574,14 @@ const CotizacionDatos = (client: any) => {
           }
         }
       } catch (error) {
-        console.warn('⚠️  [FIRMA] Error al obtener firma personalizada, usando firma por defecto:', error);
+        console.warn('⚠️  [FIRMA] Error al obtener firma personalizada:', error);
       }
        
-      // Si no hay firma personalizada, usar la firma por defecto
+      // Si no hay firma personalizada, enviar sin firma (solo texto simple)
       if (!signatureHtml) {
-        console.log('📝 [FIRMA] Usando firma por defecto del sistema');
-        try {
-          const signaturePath = path.join(__dirname, '../../public/email-signature/signature.html');
-          signatureHtml = await fs.readFile(signaturePath, 'utf8');
-
-          // Lista de imágenes de la firma por defecto
-          const signatureImages = [
-            'image001.jpg',
-            'image002.png',
-            'image003.png',
-            'image004.png',
-            'image005.png'
-          ];
-
-          // Adjuntos inline para Nodemailer
-          signatureAttachments = await Promise.all(signatureImages.map(async (img) => {
-            const imgPath = path.join(__dirname, '../../public/email-signature/mg_archivos', img);
-            return {
-              filename: img,
-              path: imgPath,
-              cid: img // Debe coincidir con el src="cid:..." en el HTML
-            };
-          }));
-        } catch (error) {
-          console.error('❌ [FIRMA] Error al cargar firma por defecto:', error);
-          signatureHtml = '<p>Saludos cordiales,<br>Equipo MUNDOGRAFIC</p>';
-        }
+        console.log('⚠️  [FIRMA] Usuario sin firma configurada - enviando sin firma personalizada');
+        signatureHtml = '<p style="margin-top: 20px;">Saludos cordiales</p>';
+        signatureAttachments = [];
       }
 
       // ============================================================
