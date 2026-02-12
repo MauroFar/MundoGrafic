@@ -97,12 +97,19 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
       const imagenesValidas = imagenesBase64.filter(img => img !== null);
       
       return { 
-        ...d, 
+        ...d,
+        posicion_imagen: d.posicion_imagen || 'abajo',
+        alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
         imagenesBase64: imagenesValidas
       };
     } else {
       console.log('📝 Detalle sin imágenes:', d.detalle);
-      return { ...d, imagenesBase64: [] };
+      return { 
+        ...d, 
+        posicion_imagen: d.posicion_imagen || 'abajo',
+        alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
+        imagenesBase64: [] 
+      };
     }
   }));
 
@@ -433,6 +440,45 @@ body {
 .tabla-cotizacion td.col-total {
   text-align: center;
   padding-right: 15px;
+}
+
+/* Estilos para posicionamiento de imágenes */
+.detalle-con-imagen.layout-derecha {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.texto-izquierda {
+  flex: 1;
+  min-width: 0;
+  padding-right: 10px;
+  white-space: pre-line; /* respeta \n como saltos de línea en HTML/PDF */
+  word-break: break-word; /* evita desbordes si hay palabras largas */
+}
+
+.imagenes-derecha {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 40%;
+}
+
+.detalle-con-imagen.layout-abajo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.detalle-con-imagen.layout-abajo .detalle-texto {
+  align-self: flex-start;
+  width: 100%;
+}
+
+.detalle-con-imagen.layout-abajo .imagenes-container {
+  align-self: center;
 }
 
 /* Footer */
@@ -779,10 +825,11 @@ body {
                   <tr>
                     <td class="col-cant">${d.cantidad}</td>
                     <td class="col-detalle">
-                      <div class="detalle-con-imagen">
-                        <div class="detalle-texto">${d.detalle}</div>
-                        ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
-                          <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
+                      <div class="detalle-con-imagen ${d.posicion_imagen === 'derecha' ? 'layout-derecha' : 'layout-abajo'}">
+                        ${d.posicion_imagen === 'derecha' && d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
+                          <!-- Layout: Texto a la izquierda, imagen a la derecha -->
+                          <div class="texto-izquierda">${d.detalle}</div>
+                          <div class="imagenes-derecha">
                             ${d.imagenesBase64.map(img => `
                               <img 
                                 src="${img.base64}" 
@@ -792,7 +839,22 @@ body {
                               />
                             `).join('')}
                           </div>
-                        ` : ''}
+                        ` : `
+                          <!-- Layout: Texto arriba, imagen(es) debajo -->
+                          <div class="detalle-texto">${d.detalle}</div>
+                          ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
+                            <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
+                              ${d.imagenesBase64.map(img => `
+                                <img 
+                                  src="${img.base64}" 
+                                  alt="Imagen del producto" 
+                                  class="imagen-producto"
+                                  style="width: ${img.width}px; height: ${img.height}px; display: block;"
+                                />
+                              `).join('')}
+                            </div>
+                          ` : ''}
+                        `}
                       </div>
                     </td>
                     <td class="col-unitario">
@@ -1374,7 +1436,9 @@ const CotizacionDatos = (client: any) => {
           d.detalle, 
           d.valor_unitario, 
           d.valor_total,
-          d.alineacion_imagenes
+          d.alineacion_imagenes,
+          d.posicion_imagen,
+          d.texto_negrita
         FROM detalle_cotizacion d
         WHERE d.cotizacion_id = $1
         ORDER BY d.id ASC
@@ -1509,22 +1573,40 @@ const CotizacionDatos = (client: any) => {
 
       const cotizacion = cotizacionResult.rows[0];
 
-      // Obtener los detalles de la cotización
+      // Obtener los detalles de la cotización con sus imágenes
       const detallesQuery = `
         SELECT 
-          cantidad, 
-          detalle, 
-          valor_unitario, 
-          valor_total, 
-          imagen_ruta,
-          imagen_width,
-          imagen_height
-        FROM detalle_cotizacion
-        WHERE cotizacion_id = $1
-        ORDER BY id ASC
+          d.id,
+          d.cantidad, 
+          d.detalle, 
+          d.valor_unitario, 
+          d.valor_total,
+          d.alineacion_imagenes,
+          d.posicion_imagen,
+          d.texto_negrita
+        FROM detalle_cotizacion d
+        WHERE d.cotizacion_id = $1
+        ORDER BY d.id ASC
       `;
       const detallesResult = await client.query(detallesQuery, [id]);
-      const detalles = detallesResult.rows;
+      
+      // Para cada detalle, obtener sus imágenes
+      const detalles = await Promise.all(
+        detallesResult.rows.map(async (detalle) => {
+          const imagenesQuery = `
+            SELECT imagen_ruta, orden, imagen_width, imagen_height
+            FROM detalle_cotizacion_imagenes
+            WHERE detalle_cotizacion_id = $1
+            ORDER BY orden ASC
+          `;
+          const imagenesResult = await client.query(imagenesQuery, [detalle.id]);
+          
+          return {
+            ...detalle,
+            imagenes: imagenesResult.rows
+          };
+        })
+      );
 
       // Crear directorio para PDFs si no existe
       const pdfDir = path.join(__dirname, '../../storage/pdfs');

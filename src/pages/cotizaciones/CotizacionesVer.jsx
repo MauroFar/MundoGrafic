@@ -961,7 +961,12 @@ function CotizacionesVer() {
                     </div>
                   </td>
                   <td className="px-6 py-4 border-b">{cotizacion.empresa_cliente || cotizacion.nombre_cliente}</td>
-                  <td className="px-6 py-4 border-b">{cotizacion.primer_detalle || 'Sin descripción'}</td>
+                  <td className="px-6 py-4 border-b">
+                    <div 
+                      className="line-clamp-2" 
+                      dangerouslySetInnerHTML={{ __html: cotizacion.primer_detalle || 'Sin descripción' }}
+                    />
+                  </td>
                   <td className="px-6 py-4 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
                   <td className="px-6 py-4 border-b">${formatearTotal(cotizacion.total)}</td>
                   <td className="px-6 py-4 border-b">
@@ -1969,7 +1974,10 @@ function CotizacionesVer() {
                                 <span className="font-semibold text-gray-900">{detalle.cantidad}</span>
                               </td>
                               <td className="px-4 py-3 border-b">
-                                <p className="text-gray-900 whitespace-pre-wrap">{detalle.detalle}</p>
+                                <div 
+                                  className="text-gray-900 whitespace-pre-wrap" 
+                                  dangerouslySetInnerHTML={{ __html: detalle.detalle }}
+                                />
                               </td>
                               <td className="px-4 py-3 border-b text-right text-gray-900">
                                 ${formatearTotal(detalle.precio_unitario)}

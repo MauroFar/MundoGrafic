@@ -37,6 +37,7 @@ function CotizacionesCrear() {
   const [observaciones, setObservaciones] = useState("");
   const [numeroCotizacion, setNumeroCotizacion] = useState("Nueva cotización");
   const textareaRefs = useRef([]);
+  const filaRefs = useRef([]); // Refs para hacer scroll automático a nuevas filas
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -67,6 +68,7 @@ function CotizacionesCrear() {
   const [usarContacto, setUsarContacto] = useState(false);
   const [contacto, setContacto] = useState("");
   const [usarCeluar, setUsarCeluar] = useState(false);
+  const [boldStates, setBoldStates] = useState([]); // Estado para rastrear si el cursor está en texto en negrita
   const [celuar, setCeluar] = useState("");
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   const [vendedores, setVendedores] = useState([]);
@@ -278,8 +280,8 @@ function CotizacionesCrear() {
                 imagen: `${apiUrl}${img.imagen_ruta}`,
                 imagen_ruta: img.imagen_ruta,
                 imagen_ruta_jpeg: img.imagen_ruta.replace('.webp', '.jpeg'),
-                width: img.imagen_width || 200,
-                height: img.imagen_height || 150,
+                imagen_width: img.imagen_width || 200,
+                imagen_height: img.imagen_height || 150,
                 id: img.id
               }))
             : [];
@@ -292,7 +294,9 @@ function CotizacionesCrear() {
             valor_unitario: valorUnitario,
             valor_total: valorTotal,
             imagenes: imagenes,
-            alineacion_imagenes: detalle.alineacion_imagenes || 'horizontal'
+            alineacion_imagenes: detalle.alineacion_imagenes || 'horizontal',
+            posicion_imagen: detalle.posicion_imagen || 'abajo',
+            texto_negrita: detalle.texto_negrita || false
           };
         });
 
@@ -550,11 +554,12 @@ function CotizacionesCrear() {
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        posicion_imagen: fila.posicion_imagen || 'abajo',
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
-              imagen_width: img.width || 200,
-              imagen_height: img.height || 150
+              imagen_width: img.imagen_width || 200,
+              imagen_height: img.imagen_height || 150
             }))
           : []
       }));
@@ -601,7 +606,10 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
-          imagenes: fila.imagenes
+          imagenes: fila.imagenes,
+          posicion_imagen: fila.posicion_imagen,
+          texto_negrita: fila.texto_negrita,
+          alineacion_imagenes: fila.alineacion_imagenes
         }));
 
         const detallesResponse = await fetch(`${apiUrl}/api/cotizacionesDetalles/${id}`, {
@@ -769,7 +777,7 @@ function CotizacionesCrear() {
 
   // Función para agregar una nueva fila
   const agregarFila = () => {
-    setFilas([
+    const nuevasFilas = [
       ...filas,
       {
         cantidad: 1,
@@ -777,9 +785,23 @@ function CotizacionesCrear() {
         valor_unitario: 0,
         valor_total: 0,
         imagenes: [],  // Array vacío para múltiples imágenes
-        alineacion_imagenes: 'horizontal'  // Alineación por defecto
+        alineacion_imagenes: 'horizontal',  // Alineación por defecto (horizontal/vertical)
+        posicion_imagen: 'abajo',  // Posición por defecto (abajo/derecha)
+        texto_negrita: false  // Si el texto debe mostrarse en negrita
       }
-    ]);
+    ];
+    setFilas(nuevasFilas);
+    
+    // Hacer scroll al nuevo producto después de que se renderice
+    setTimeout(() => {
+      const nuevoIndex = nuevasFilas.length - 1;
+      if (filaRefs.current[nuevoIndex]) {
+        filaRefs.current[nuevoIndex].scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 100);
   };
 
   // Función para eliminar una fila
@@ -846,8 +868,8 @@ function CotizacionesCrear() {
         const imagenesActuales = nuevasFilas[index].imagenes || [];
         
         // Si ya hay imágenes, tomar el tamaño de la primera; si no, usar valores por defecto
-        const width = imagenesActuales.length > 0 ? imagenesActuales[0].width : 200;
-        const height = imagenesActuales.length > 0 ? imagenesActuales[0].height : 150;
+        const width = imagenesActuales.length > 0 ? imagenesActuales[0].imagen_width : 200;
+        const height = imagenesActuales.length > 0 ? imagenesActuales[0].imagen_height : 150;
         
         nuevasFilas[index] = {
           ...nuevasFilas[index],
@@ -857,8 +879,8 @@ function CotizacionesCrear() {
               imagen: `${apiUrl}${data.imagenRuta}`,
               imagen_ruta: data.imagenRuta,
               imagen_ruta_jpeg: data.imagenRutaJpeg,
-              width: width,
-              height: height,
+              imagen_width: width,
+              imagen_height: height,
               thumbnail: data.thumbnail,
               metadata: data.metadata
             }
@@ -1123,12 +1145,14 @@ function CotizacionesCrear() {
         valor_unitario: fila.valor_unitario,
         valor_total: fila.valor_total,
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        posicion_imagen: fila.posicion_imagen || 'abajo',
+        texto_negrita: fila.texto_negrita || false,
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
               orden: 0,
-              imagen_width: img.width || 200,
-              imagen_height: img.height || 150
+              imagen_width: img.imagen_width || 200,
+              imagen_height: img.imagen_height || 150
             }))
           : []
       }));
@@ -1158,8 +1182,8 @@ function CotizacionesCrear() {
     setSelectedImageIndices({ row: rowIndex, img: imgIndex });
     const imagen = filas[rowIndex].imagenes[imgIndex];
     setImageDimensions({
-      width: imagen.width || 200,
-      height: imagen.height || 150
+      width: imagen.imagen_width || 200,
+      height: imagen.imagen_height || 150
     });
     setImageFitMode('contain'); // Siempre contain para PDF
   };
@@ -1180,8 +1204,8 @@ function CotizacionesCrear() {
       const imagenesActuales = [...newFilas[selectedImageIndices.row].imagenes];
       imagenesActuales[selectedImageIndices.img] = {
         ...imagenesActuales[selectedImageIndices.img],
-        width: constrainedWidth,
-        height: constrainedHeight
+        imagen_width: constrainedWidth,
+        imagen_height: constrainedHeight
       };
       newFilas[selectedImageIndices.row] = {
         ...newFilas[selectedImageIndices.row],
@@ -1202,11 +1226,13 @@ function CotizacionesCrear() {
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
+        posicion_imagen: fila.posicion_imagen || 'abajo',
+        texto_negrita: fila.texto_negrita || false,
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
-              imagen_width: img.width || 200,
-              imagen_height: img.height || 150
+              imagen_width: img.imagen_width || 200,
+              imagen_height: img.imagen_height || 150
             }))
           : []
       }));
@@ -1255,6 +1281,8 @@ function CotizacionesCrear() {
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
           alineacion_imagenes: fila.alineacion_imagenes,
+          posicion_imagen: fila.posicion_imagen || 'abajo',
+          texto_negrita: fila.texto_negrita || false,
           imagenes: fila.imagenes
         };
 
@@ -1626,7 +1654,7 @@ function CotizacionesCrear() {
             <tbody>
               {filas.map((fila, index) => (
                 <React.Fragment key={index}>
-                  <tr>
+                  <tr ref={(el) => (filaRefs.current[index] = el)}>
                     <td className="border border-gray-300 px-2 py-2 text-center align-top">
                       <button
                         onClick={() => abrirModalProcesos(index)}
@@ -1648,56 +1676,165 @@ function CotizacionesCrear() {
                       />
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
-                      <textarea
-                        ref={(el) => (textareaRefs.current[index] = el)}
-                        value={fila.detalle}
-                        onChange={(e) => {
+                      {/* Botón de negrita */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevenir que pierda el foco
+                            const editorElement = textareaRefs.current[index];
+                            if (editorElement) {
+                              editorElement.focus();
+                              document.execCommand('bold', false, null);
+                              
+                              // Actualizar el contenido inmediatamente
+                              const nuevasFilas = [...filas];
+                              nuevasFilas[index].detalle = editorElement.innerHTML;
+                              setFilas(nuevasFilas);
+                              
+                              // Actualizar el estado de negrita
+                              setTimeout(() => {
+                                const isBold = document.queryCommandState('bold');
+                                const newBoldStates = [...boldStates];
+                                newBoldStates[index] = isBold;
+                                setBoldStates(newBoldStates);
+                              }, 10);
+                            }
+                          }}
+                          className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
+                            boldStates[index] 
+                              ? 'bg-blue-600 text-white shadow-md' 
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                          title="Selecciona texto y haz click para aplicar negrita"
+                        >
+                          <i className="fas fa-bold"></i>
+                          <strong>B</strong>
+                        </button>
+                        <span className="text-xs text-gray-600 font-bold">Negrita</span>
+                      </div>
+                      
+                      <div
+                        ref={(el) => {
+                          textareaRefs.current[index] = el;
+                          // Solo setear el contenido inicial si está vacío
+                          if (el && !el.innerHTML && fila.detalle) {
+                            el.innerHTML = fila.detalle;
+                          }
+                        }}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={(e) => {
                           const nuevasFilas = [...filas];
-                          nuevasFilas[index].detalle = e.target.value;
+                          nuevasFilas[index].detalle = e.currentTarget.innerHTML;
                           setFilas(nuevasFilas);
                         }}
-                        className="w-full border border-gray-300 rounded-md p-2 resize-none overflow-hidden"
+                        onKeyUp={() => {
+                          // Detectar si el cursor está en texto en negrita
+                          const isBold = document.queryCommandState('bold');
+                          const newBoldStates = [...boldStates];
+                          newBoldStates[index] = isBold;
+                          setBoldStates(newBoldStates);
+                        }}
+                        onMouseUp={() => {
+                          // Detectar si la selección está en texto en negrita
+                          const isBold = document.queryCommandState('bold');
+                          const newBoldStates = [...boldStates];
+                          newBoldStates[index] = isBold;
+                          setBoldStates(newBoldStates);
+                        }}
+                        onClick={() => {
+                          // Detectar si el click está en texto en negrita
+                          const isBold = document.queryCommandState('bold');
+                          const newBoldStates = [...boldStates];
+                          newBoldStates[index] = isBold;
+                          setBoldStates(newBoldStates);
+                        }}
+                        className="w-full border border-gray-300 rounded-md p-2 overflow-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}
                       />
                       
                       {/* Mostrar imágenes existentes */}
                       {fila.imagenes && fila.imagenes.length > 0 && (
                         <>
-                          {/* Botones de alineación */}
-                          <div className="flex gap-2 mt-2 mb-2 justify-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nuevasFilas = [...filas];
-                                nuevasFilas[index].alineacion_imagenes = 'horizontal';
-                                setFilas(nuevasFilas);
-                              }}
-                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
-                                fila.alineacion_imagenes === 'horizontal' 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                              }`}
-                              title="Alinear horizontalmente"
-                            >
-                              <i className="fas fa-arrows-alt-h"></i>
-                              Horizontal
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nuevasFilas = [...filas];
-                                nuevasFilas[index].alineacion_imagenes = 'vertical';
-                                setFilas(nuevasFilas);
-                              }}
-                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
-                                fila.alineacion_imagenes === 'vertical' 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                              }`}
-                              title="Alinear verticalmente"
-                            >
-                              <i className="fas fa-arrows-alt-v"></i>
-                              Vertical
-                            </button>
+                          {/* Botones de posición de imagen */}
+                          <div className="flex flex-col gap-2 mt-2 mb-2">
+                            <div className="flex gap-2 justify-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nuevasFilas = [...filas];
+                                  nuevasFilas[index].posicion_imagen = 'abajo';
+                                  setFilas(nuevasFilas);
+                                }}
+                                className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                  fila.posicion_imagen === 'abajo' 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                                title="Imagen debajo del texto"
+                              >
+                                <i className="fas fa-arrow-down"></i>
+                                Debajo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nuevasFilas = [...filas];
+                                  nuevasFilas[index].posicion_imagen = 'derecha';
+                                  setFilas(nuevasFilas);
+                                }}
+                                className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                  fila.posicion_imagen === 'derecha' 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                                title="Imagen a la derecha del texto"
+                              >
+                                <i className="fas fa-arrow-right"></i>
+                                Derecha
+                              </button>
+                            </div>
+                            
+                            {/* Botones de alineación (solo visible cuando posicion es 'abajo') */}
+                            {fila.posicion_imagen === 'abajo' && (
+                              <div className="flex gap-2 justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nuevasFilas = [...filas];
+                                    nuevasFilas[index].alineacion_imagenes = 'horizontal';
+                                    setFilas(nuevasFilas);
+                                  }}
+                                  className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                    fila.alineacion_imagenes === 'horizontal' 
+                                      ? 'bg-blue-500 text-white' 
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                  title="Alinear horizontalmente"
+                                >
+                                  <i className="fas fa-arrows-alt-h"></i>
+                                  Horizontal
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nuevasFilas = [...filas];
+                                    nuevasFilas[index].alineacion_imagenes = 'vertical';
+                                    setFilas(nuevasFilas);
+                                  }}
+                                  className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                                    fila.alineacion_imagenes === 'vertical' 
+                                      ? 'bg-blue-500 text-white' 
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                  title="Alinear verticalmente"
+                                >
+                                  <i className="fas fa-arrows-alt-v"></i>
+                                  Vertical
+                                </button>
+                              </div>
+                            )}
                           </div>
                           
                           {/* Contenedor de imágenes con alineación dinámica */}

@@ -77,6 +77,8 @@ export const generarVistaPreviaPDF = async (cotizacionId, cotizacionData, detall
         valor_unitario: d.valor_unitario,
         valor_total: d.valor_total,
         alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
+        posicion_imagen: d.posicion_imagen || 'abajo',
+        texto_negrita: d.texto_negrita || false,
         imagenes: (d.imagenes && Array.isArray(d.imagenes)) 
           ? d.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
