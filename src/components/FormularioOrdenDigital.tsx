@@ -395,7 +395,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-2 text-center">Referencia de Salidas</label>
           <div className="flex justify-center">
             <img 
-              src="/src/assets/img/salidas.png" 
+              src="/img/salidas.png" 
               alt="Referencia de salidas" 
               className="max-w-full h-auto rounded shadow-sm"
               style={{ maxHeight: '120px' }}

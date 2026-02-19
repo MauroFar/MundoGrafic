@@ -11,6 +11,19 @@ import { usePermisos } from '../../hooks/usePermisos';
 
 // Tipos para los datos de la orden
 interface OrdenData {
+    tipo_orden?: string;
+    empresa_cliente?: string;
+    orden_compra?: string;
+    laminado_barnizado?: string;
+    troquelado?: string;
+    liberacion_producto?: string;
+    vendedor_cantidad_final?: string;
+    preprensa_cantidad_final?: string;
+    prensa_cantidad_final?: string;
+    laminado_barnizado_cantidad_final?: string;
+    troquelado_cantidad_final?: string;
+    terminados_cantidad_final?: string;
+    liberacion_producto_cantidad_final?: string;
   concepto?: string;
   nombre_cliente?: string;
   numero_cotizacion?: string;

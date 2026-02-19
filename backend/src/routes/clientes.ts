@@ -168,11 +168,11 @@ const createCliente = (client: any) => {
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
     
-    // Validaciones
-    if (!nombre || !empresa || !email || !telefono || !direccion || !ruc_cedula) {
+    // Validaciones: solo nombre y empresa obligatorios
+    if (!nombre || !empresa) {
       return res.status(400).json({ 
         error: 'Faltan campos requeridos',
-        details: 'Nombre, empresa, email, teléfono, dirección y RUC/Cédula son obligatorios'
+        details: 'Nombre y empresa son obligatorios'
       });
     }
 

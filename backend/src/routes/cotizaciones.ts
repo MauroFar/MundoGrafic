@@ -118,15 +118,26 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
     console.log(`  ${index + 1}. ${d.detalle} - Imágenes: ${d.imagenesBase64?.length || 0}`);
   });
 
-  // Leer y convertir el logo a base64
-  const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
+  // Selección dinámica de logo según RUC
+  // Asignar logo por id exacto del RUC
   let logoBase64 = '';
-  try {
-    const logoBuffer = await fs.readFile(logoPath);
-    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-  } catch (e: any) {
-    console.error('No se pudo leer el logo:', e);
-    // Si falla, dejar el src vacío
+  let logoFile = '';
+  if (cotizacion.ruc === '1710047984001') {
+    logoFile = 'logo_jcp.png';
+  } else if (cotizacion.ruc === '1792668026001') {
+    logoFile = 'logo_cia.png';
+  }
+  if (logoFile) {
+    const logoPath = path.join(__dirname, '../../public/images/icons', logoFile);
+    try {
+      const logoBuffer = await fs.readFile(logoPath);
+      logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+    } catch (e: any) {
+      console.error('No se pudo leer el logo:', e);
+      logoBase64 = '';
+    }
+  } else {
+    console.warn('No se encontró logo para el RUC:', cotizacion.ruc);
     logoBase64 = '';
   }
 

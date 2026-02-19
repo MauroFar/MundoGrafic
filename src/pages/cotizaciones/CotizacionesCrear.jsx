@@ -777,11 +777,14 @@ function CotizacionesCrear() {
 
   // Función para agregar una nueva fila
   const agregarFila = () => {
+    // Texto HTML inicial para el detalle, con títulos en negrita y salto de línea
+    const detalleInicial = `
+<b>IMPRESIÓN :</b> \n<b>MATERIAL :</b> \n<b>TERMINADO :</b> \n<b>TAMAÑO :</b> `;
     const nuevasFilas = [
       ...filas,
       {
         cantidad: 1,
-        detalle: "",
+        detalle: detalleInicial,
         valor_unitario: 0,
         valor_total: 0,
         imagenes: [],  // Array vacío para múltiples imágenes
@@ -1454,7 +1457,7 @@ function CotizacionesCrear() {
             <div className="flex-shrink-0">
               <Logo/>
               <p className="text-sm text-gray-600 mt-2">
-                CORPORACION MUNDO GRAFIC MUNDOGRAFIC CIA. LTDA.
+         
               </p>
             </div>
 
@@ -2279,7 +2282,7 @@ function CotizacionesCrear() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    RUC/Cédula <span className="text-red-500">*</span>
+                    RUC/Cédula
                   </label>
                   <input
                     type="text"
@@ -2291,7 +2294,7 @@ function CotizacionesCrear() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección <span className="text-red-500">*</span>
+                    Dirección
                   </label>
                   <input
                     type="text"
@@ -2303,7 +2306,7 @@ function CotizacionesCrear() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Teléfono <span className="text-red-500">*</span>
+                    Teléfono
                   </label>
                   <input
                     type="text"
@@ -2315,7 +2318,7 @@ function CotizacionesCrear() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email <span className="text-red-500">*</span>
+                    Email
                   </label>
                   <input
                     type="email"
@@ -2338,21 +2341,11 @@ function CotizacionesCrear() {
                 </button>
                 <button
                   onClick={async () => {
-                    // Validar campos obligatorios
-                    if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa || 
-                        !nuevoClienteDatos.ruc_cedula || !nuevoClienteDatos.direccion || 
-                        !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-                      alert('Por favor complete todos los campos obligatorios (*).');
+                    // Validar solo empresa y nombre como obligatorios
+                    if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa) {
+                      alert('Por favor complete los campos obligatorios: Empresa y Nombre del Contacto.');
                       return;
                     }
-                    
-                    // Validar formato de email
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(nuevoClienteDatos.email)) {
-                      alert('Por favor ingrese un email válido.');
-                      return;
-                    }
-                    
                     // Guardar cliente en la BBDD
                     try {
                       const token = localStorage.getItem("token");
