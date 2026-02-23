@@ -204,6 +204,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   const apiUrl = import.meta.env.VITE_API_URL;
 
+  // Helper: extrae la primera línea de un texto y elimina etiquetas HTML
+  const extractFirstLine = (text: any) => {
+    if (!text && text !== 0) return '';
+    try {
+      const str = String(text);
+      const first = str.split(/\r?\n|<br\s*\/?>/i)[0] || str;
+      return first.replace(/<[^>]*>/g, '').trim();
+    } catch (e) {
+      return String(text);
+    }
+  };
+
   // Detectar si hay cotizacionId o no para saber qué hacer
   useEffect(() => {
     // Si venimos navegando con tipoOrden, guardarlo
@@ -313,10 +325,31 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // NUEVO: Si hay cotizacionId, cargar datos del cliente y cotización
       console.log('🔍 Detectado cotizacionId, cargando datos...', cotizacionId);
       
-      // Si viene producto por state, usarlo para inicializar concepto y cantidad
-      if (location.state?.producto) {
+      // Si viene producto(s) por state, usarlo(s) para inicializar concepto, cantidad y productosDigital
+      if (location.state?.productos && Array.isArray(location.state.productos) && location.state.productos.length > 0) {
+        const productosState = location.state.productos;
+        // Usar la primera línea (sin HTML) como concepto inicial
+        setConcepto(extractFirstLine(productosState[0].detalle) || '');
+        setCantidad(productosState[0].cantidad ? String(productosState[0].cantidad) : '');
+        // Inicializar productosDigital con todos los productos seleccionados
+        if (location.state?.tipoOrden === 'digital') {
+          console.log('🔧 Inicializando varios productos digitales desde cotización:', productosState.length);
+          const iniciales = productosState.map((producto: any) => ({
+            cantidad: producto.cantidad ? String(producto.cantidad) : '',
+            cod_mg: '',
+            cod_cliente: '',
+            producto: extractFirstLine(producto.detalle) || '',
+            avance: '',
+            medida_ancho: '',
+            medida_alto: '',
+            cavidad: '',
+            metros_impresos: ''
+          }));
+          setProductosDigital(iniciales);
+        }
+      } else if (location.state?.producto) {
         const producto = location.state.producto;
-        setConcepto(producto.detalle || '');
+        setConcepto(extractFirstLine(producto.detalle) || '');
         setCantidad(producto.cantidad ? String(producto.cantidad) : '');
         if (location.state.id_detalle_cotizacion) {
           setIdDetalleCotizacion(location.state.id_detalle_cotizacion);
@@ -330,7 +363,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             cantidad: producto.cantidad ? String(producto.cantidad) : '',
             cod_mg: '',
             cod_cliente: '',
-            producto: producto.detalle || '',
+            producto: extractFirstLine(producto.detalle) || '',
             avance: '',
             medida_ancho: '',
             medida_alto: '',

@@ -54,6 +54,7 @@ function CotizacionesVer() {
   const LIMITE_POR_PAGINA = 15;
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productosCotizacion, setProductosCotizacion] = useState([]);
+  const [selectedProductos, setSelectedProductos] = useState([]);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState(false);
   const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState(null); // 'offset' | 'digital'
@@ -828,6 +829,7 @@ function CotizacionesVer() {
       const detalles = await response.json();
       if (Array.isArray(detalles) && detalles.length > 1) {
         setProductosCotizacion(detalles);
+        setSelectedProductos([]);
         setShowProductoModal(true);
       } else if (Array.isArray(detalles) && detalles.length === 1) {
         navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto: detalles[0], tipoOrden: tipoSeleccionado } });
@@ -843,10 +845,26 @@ function CotizacionesVer() {
 
   // Función para manejar la selección de producto en el modal
   const handleSeleccionarProducto = (producto) => {
+    // Selección individual: navegar inmediatamente (comportamiento previo)
     setShowProductoModal(false);
     if (cotizacionSeleccionada && producto) {
       navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id, tipoOrden: tipoOrdenSeleccionado } });
     }
+  };
+
+  const toggleSeleccionProducto = (producto) => {
+    setSelectedProductos(prev => {
+      const exists = prev.find(p => p.id === producto.id);
+      if (exists) return prev.filter(p => p.id !== producto.id);
+      return [...prev, producto];
+    });
+  };
+
+  const handleAgregarSeleccionados = () => {
+    if (!cotizacionSeleccionada || selectedProductos.length === 0) return;
+    setShowProductoModal(false);
+    // Navegar con array de productos en el state
+    navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { productos: selectedProductos, tipoOrden: tipoOrdenSeleccionado } });
   };
 
   return (
@@ -1598,33 +1616,52 @@ function CotizacionesVer() {
       {/* Modal de selección de producto */}
       {showProductoModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">Selecciona el producto para la Orden de Trabajo</h2>
-            <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
-              {productosCotizacion.map((producto, idx) => (
-                <li key={idx} className="py-3 flex items-center justify-between">
+              <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                <h2 className="text-xl font-bold mb-4">Selecciona el producto para la Orden de Trabajo</h2>
+                <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+                  {productosCotizacion.map((producto, idx) => {
+                    // Mostrar solo la primera línea (sin etiquetas HTML)
+                    const primeraLinea = producto.detalle ? producto.detalle.split(/\r?\n|<br\s*\/?>(?!\S)/i)[0].replace(/<[^>]*>/g, '') : '';
+                    const estaSeleccionado = selectedProductos.find(p => p.id === producto.id);
+                    return (
+                      <li key={idx} className="py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" checked={!!estaSeleccionado} onChange={() => toggleSeleccionProducto(producto)} />
+                          <div>
+                            <div className="font-semibold">{primeraLinea || producto.detalle}</div>
+                            <div className="text-sm text-gray-500">Cantidad: {producto.cantidad} | Valor unitario: ${parseFloat(producto.valor_unitario).toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            onClick={() => handleSeleccionarProducto(producto)}
+                          >
+                            Seleccionar
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="flex justify-between mt-4">
                   <div>
-                    <div className="font-semibold">{producto.detalle}</div>
-                    <div className="text-sm text-gray-500">Cantidad: {producto.cantidad} | Valor unitario: ${parseFloat(producto.valor_unitario).toFixed(2)}</div>
+                    <button
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 mr-2"
+                      onClick={() => setShowProductoModal(false)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className={`px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ${selectedProductos.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={handleAgregarSeleccionados}
+                      disabled={selectedProductos.length === 0}
+                    >
+                      Agregar seleccionados ({selectedProductos.length})
+                    </button>
                   </div>
-                  <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    onClick={() => handleSeleccionarProducto(producto)}
-                  >
-                    Seleccionar
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="flex justify-end mt-4">
-              <button
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                onClick={() => setShowProductoModal(false)}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+                </div>
+              </div>
         </div>
       )}
 
