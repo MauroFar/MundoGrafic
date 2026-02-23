@@ -617,13 +617,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.log('❌ FRONTEND - Cliente vacío');
       errores.push('El campo Cliente es obligatorio.');
     }
-    if (!conceptoSrt.trim()) {
-      console.log('❌ FRONTEND - Concepto vacío');
-      errores.push('El campo Concepto es obligatorio.');
-    }
-    if (!cantidadStr.trim() || isNaN(Number(cantidadStr))) {
-      console.log('❌ FRONTEND - Cantidad inválida:', cantidadStr);
-      errores.push('La Cantidad debe ser un número.');
+
+    // Validaciones específicas según el tipo de orden
+    if (tipoOrdenSeleccionado !== 'digital') {
+      // Estas reglas aplican solo para ORDEN OFFSET
+      if (!conceptoSrt.trim()) {
+        console.log('❌ FRONTEND - Concepto vacío');
+        errores.push('El campo Concepto es obligatorio.');
+      }
+      if (!cantidadStr.trim() || isNaN(Number(cantidadStr))) {
+        console.log('❌ FRONTEND - Cantidad inválida:', cantidadStr);
+        errores.push('La Cantidad debe ser un número.');
+      }
     }
     
     // Validar formato de email solo si se proporciona
@@ -702,6 +707,20 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
     
     console.log('✅ FRONTEND - Validación pasada, enviando datos...');
+
+    // Para órdenes DIGITALES, si no hay concepto/cantidad en la cabecera,
+    // tomamos valores por defecto desde el primer producto digital
+    const cantidadParaBackend =
+      tipoOrdenSeleccionado === 'digital'
+        ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
+          ? productosDigital[0].cantidad
+          : '0')
+        : cantidad;
+
+    const conceptoParaBackend =
+      tipoOrdenSeleccionado === 'digital'
+        ? (productosDigital[0]?.producto || 'Orden Digital')
+        : concepto;
     
     const dataToSend = {
       // Datos generales
@@ -710,8 +729,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       contacto: contacto,
       email: email_cliente,
       telefono: telefono_cliente,
-      cantidad,
-      concepto,
+      cantidad: cantidadParaBackend,
+      concepto: conceptoParaBackend,
       fecha_creacion: fechaCreacion || null,
       fecha_entrega: fechaEntrega || null,
       estado,
@@ -831,6 +850,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
     try {
       const token = localStorage.getItem("token");
+      // Reusar misma lógica de cantidad/concepto que en la creación
+      const cantidadParaBackend =
+        tipoOrdenSeleccionado === 'digital'
+          ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
+            ? productosDigital[0].cantidad
+            : '0')
+          : cantidad;
+
+      const conceptoParaBackend =
+        tipoOrdenSeleccionado === 'digital'
+          ? (productosDigital[0]?.producto || 'Orden Digital')
+          : concepto;
+
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/editarOrden/${ordenId}`, {
         method: "PUT",
         headers: {
@@ -844,8 +876,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
           contacto: contacto,
           email: email_cliente,
           telefono: telefono_cliente,
-          cantidad,
-          concepto,
+          cantidad: cantidadParaBackend,
+          concepto: conceptoParaBackend,
           fecha_creacion: fechaCreacion || null,
           fecha_entrega: fechaEntrega || null,
           estado,
@@ -957,6 +989,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
       
       console.log('✅ FRONTEND - Próximo número obtenido:', nuevoNumeroOrden);
       
+      // Reusar misma lógica de cantidad/concepto que en la creación
+      const cantidadParaBackend =
+        tipoOrdenSeleccionado === 'digital'
+          ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
+            ? productosDigital[0].cantidad
+            : '0')
+          : cantidad;
+
+      const conceptoParaBackend =
+        tipoOrdenSeleccionado === 'digital'
+          ? (productosDigital[0]?.producto || 'Orden Digital')
+          : concepto;
+
       const dataToSend = {
         // Datos generales
         nombre_cliente,
@@ -964,8 +1009,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         contacto: contacto,
         email: email_cliente,
         telefono: telefono_cliente,
-        cantidad,
-        concepto,
+        cantidad: cantidadParaBackend,
+        concepto: conceptoParaBackend,
         fecha_creacion: fechaCreacion || null,
         fecha_entrega: fechaEntrega || null,
         estado: 'pendiente', // Nueva orden siempre pendiente
