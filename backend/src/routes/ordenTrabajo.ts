@@ -100,6 +100,7 @@ export default (client: any) => {
     const cantidadPorRollo = detalle?.cantidad_por_rollo;
     const proveedorMaterial = detalle?.proveedor_material;
     const productosDigital = detalle?.productos_digital;
+    const espesor = detalle?.espesor;
     
     console.log('📦 CREAR ORDEN - Datos del detalle recibidos:', {
       tipo_orden,
@@ -151,8 +152,8 @@ export default (client: any) => {
           INSERT INTO detalle_orden_trabajo_digital (
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
-            proveedor_material
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            proveedor_material, espesor
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `, [
           ordenId,
           adherencia || null,
@@ -164,7 +165,8 @@ export default (client: any) => {
           terminadoEtiqueta || null,
           terminadosEspeciales || null,
           cantidadPorRollo || null,
-          proveedorMaterial || null
+            proveedorMaterial || null,
+            espesor || null
         ]);
 
         // 3b. Insertar productos digitales en tabla relacional
@@ -565,8 +567,8 @@ export default (client: any) => {
           INSERT INTO detalle_orden_trabajo_digital (
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
-            proveedor_material
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            proveedor_material, espesor
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             adherencia = $2,
             lote_material = $3,
@@ -578,6 +580,7 @@ export default (client: any) => {
             terminados_especiales = $9,
             cantidad_por_rollo = $10,
             proveedor_material = $11,
+            espesor = $12,
             updated_at = CURRENT_TIMESTAMP
         `, [
           id,
@@ -590,7 +593,8 @@ export default (client: any) => {
           terminadoEtiqueta || null,
           terminadosEspeciales || null,
           cantidadPorRollo || null,
-          detalle?.proveedor_material || null
+          detalle?.proveedor_material || null,
+          detalle?.espesor || null
         ]);
         
         // Actualizar productos digitales: eliminar existentes y crear nuevos
@@ -1100,6 +1104,10 @@ export default (client: any) => {
               <div class="campo">
                 <div class="campo-label">PROVEEDOR MATERIAL</div>
                 <div class="campo-valor">${detalle.proveedor_material || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">ESPESOR (Micras)</div>
+                <div class="campo-valor">${detalle.espesor || ''}</div>
               </div>
               <div class="campo">
                 <div class="campo-label">LOTE MATERIAL</div>

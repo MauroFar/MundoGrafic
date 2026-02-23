@@ -171,6 +171,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
   const [numeroSalida, setNumeroSalida] = useState<string>('');
+  const [espesorDigital, setEspesorDigital] = useState<string>('');
 
   // Función para calcular el total de pliegos
   const calcularTotalPliegos = () => {
@@ -203,6 +204,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
+  const [vendedoresList, setVendedoresList] = useState<any[]>([]);
+
+  // Lista fija para los demás responsables
+  const RESPONSABLES_FIJOS = ['GEOVANY','ROBINSON','FERNANDO','WILLIAM','DAVID','CRISTIAN'];
+
+  useEffect(() => {
+    // cargar vendedores para el select de vendedor
+    const token = localStorage.getItem('token');
+    fetch(`${apiUrl}/api/usuarios/vendedores`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => setVendedoresList(Array.isArray(data) ? data : []))
+      .catch(err => { console.error('Error cargando vendedores:', err); setVendedoresList([]); });
+  }, [apiUrl]);
 
   // Helper: extrae la primera línea de un texto y elimina etiquetas HTML
   const extractFirstLine = (text: any) => {
@@ -279,6 +293,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setInstruccionesEmpacado('');
         setObservaciones('');
         setPrensaSeleccionada('');
+        setEspesorDigital('');
       setOrdenData(null);
       setIdDetalleCotizacion(null);
       // Obtener el próximo número de orden
@@ -508,6 +523,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setTerminadoEtiqueta(ordenData.detalle?.terminado_etiqueta || '');
         setTerminadosEspeciales(ordenData.detalle?.terminados_especiales || '');
         setCantidadPorRollo(ordenData.detalle?.cantidad_por_rollo || '');
+        setEspesorDigital(ordenData.detalle?.espesor || '');
 
         
         // Sincronizar productos digitales
@@ -802,6 +818,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         cantidad_por_rollo: cantidadPorRollo,
         numero_salida: numeroSalida,
         observaciones: observacionesDigital
+        ,
+        espesor: espesorDigital
       } : {
         // Datos específicos de offset
         material: material,
@@ -864,7 +882,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const confirmarActualizacion = () => {
     setShowConfirmUpdateModal(true);
   };
-
   // Función para ejecutar la actualización después de confirmar
   const ejecutarActualizacion = async () => {
     setShowConfirmUpdateModal(false);
@@ -1084,6 +1101,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
           terminados_especiales: terminadosEspeciales,
           cantidad_por_rollo: cantidadPorRollo,
           productos_digital: productosDigital
+          ,
+          espesor: espesorDigital
         } : {
           // Detalle offset
           material: material,
@@ -1351,6 +1370,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setObservaciones={setObservacionesDigital}
               numeroSalida={numeroSalida}
               setNumeroSalida={setNumeroSalida}
+              espesor={espesorDigital}
+              setEspesor={setEspesorDigital}
             />
           ) : (
             <FormularioOrdenOffset
@@ -1399,79 +1420,88 @@ const OrdendeTrabajoEditar: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Nombre" 
-                    value={vendedor} 
-                    onChange={e => setVendedor(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={vendedor}
+                    onChange={e => setVendedor(e.target.value)}
+                  >
+                    <option value="">-- Seleccione vendedor --</option>
+                    {vendedoresList.map(v => (
+                      <option key={v.id} value={v.nombre}>{v.nombre}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Pre-prensa</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={preprensa} 
-                    onChange={e => setPreprensa(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={preprensa}
+                    onChange={e => setPreprensa(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Impresión</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={prensa} 
-                    onChange={e => setPrensa(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={prensa}
+                    onChange={e => setPrensa(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Laminado/Barnizado</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={laminadoBarnizado} 
-                    onChange={e => setLaminadoBarnizado(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={laminadoBarnizado}
+                    onChange={e => setLaminadoBarnizado(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Troquelado</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={troquelado} 
-                    onChange={e => setTroquelado(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={troquelado}
+                    onChange={e => setTroquelado(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={terminados} 
-                    onChange={e => setTerminados(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={terminados}
+                    onChange={e => setTerminados(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Liberación Producto</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={liberacionProducto} 
-                    onChange={e => setLiberacionProducto(e.target.value)} 
-                  />
+                  <select
+                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                    value={liberacionProducto}
+                    onChange={e => setLiberacionProducto(e.target.value)}
+                  >
+                    <option value="">-- Seleccione --</option>
+                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
               </div>
             ) : (

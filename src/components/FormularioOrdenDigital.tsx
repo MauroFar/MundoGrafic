@@ -13,6 +13,7 @@ interface ProductoDigital {
   medida_alto: string;
   cavidad: string;
   metros_impresos: string;
+  metros_impresos_auto?: boolean;
   tamano_papel_ancho: string;
   tamano_papel_largo: string;
 }
@@ -51,6 +52,8 @@ interface FormularioOrdenDigitalProps {
   setObservaciones: (value: string) => void;
   numeroSalida: string;
   setNumeroSalida: (value: string) => void;
+  espesor: string;
+  setEspesor: (value: string) => void;
 }
 
 const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
@@ -84,6 +87,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setObservaciones,
   numeroSalida,
   setNumeroSalida,
+  espesor,
+  setEspesor,
 }) => {
   // Asegurar que productos siempre sea un array
   const productosArray = Array.isArray(productos) ? productos : [];
@@ -136,11 +141,24 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
       const piezasAlto = Math.floor(tamanoPapelLargoVal / (gapV + alto));
       const cavidad = piezasAncho * piezasAlto;
 
+      // calcular metros impresos automáticamente salvo que el usuario lo haya editado
+      const cantidadNum = parseFloat(producto.cantidad) || 0;
+      let metrosImpresosCalc = '';
+      if (cavidad > 0 && cantidadNum > 0) {
+        const calc = Math.ceil(cantidadNum / cavidad) + 20; // dividir cantidad por cavidad y sumar 20
+        metrosImpresosCalc = String(calc);
+      }
+
       return {
         ...producto,
         cavidad: cavidad.toString(),
         tamano_papel_ancho: tamanoPapelAnchoVal.toString(),
         tamano_papel_largo: tamanoPapelLargoVal.toString(),
+        // asignar metros_impresos sólo si no se marcó como editado manualmente
+        metros_impresos: (producto.metros_impresos_auto === false)
+          ? (producto.metros_impresos || '')
+          : (metrosImpresosCalc || producto.metros_impresos || ''),
+        metros_impresos_auto: (producto.metros_impresos_auto === undefined) ? true : producto.metros_impresos_auto,
       };
     }
 
@@ -182,6 +200,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
         medida_alto: '',
         cavidad: '',
         metros_impresos: '',
+        metros_impresos_auto: true,
         tamano_papel_ancho: tamanoPapelAncho,
         tamano_papel_largo: tamanoPapelLargo,
       },
@@ -194,12 +213,18 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
   const actualizarProducto = (index: number, campo: keyof ProductoDigital, valor: string) => {
     const nuevosProductos = [...productosArray];
-    const productoActualizado: ProductoDigital = {
-      ...nuevosProductos[index],
+    const productoPrev: any = nuevosProductos[index];
+    const productoActualizado: any = {
+      ...productoPrev,
       [campo]: valor,
       tamano_papel_ancho: tamanoPapelAncho,
       tamano_papel_largo: tamanoPapelLargo,
     };
+
+    // Si el usuario edita manualmente metros_impresos, marcar como manual
+    if (campo === 'metros_impresos') {
+      productoActualizado.metros_impresos_auto = false;
+    }
 
     nuevosProductos[index] = recalcularCavidadObj(productoActualizado);
     setProductos(nuevosProductos);
@@ -417,6 +442,18 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={proveedorMaterial}
               onChange={(e) => setProveedorMaterial(e.target.value)}
+            />
+          </div>
+
+          {/* Espesor */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Espesor</label>
+            <input
+              type="text"
+              placeholder="Micras"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={espesor}
+              onChange={(e) => setEspesor(e.target.value)}
             />
           </div>
 
