@@ -461,6 +461,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         
         // Material, impresion, observaciones para digital (estados específicos)
         setMaterialDigital(ordenData.detalle?.material || '');
+        setProveedorMaterial(ordenData.detalle?.proveedor_material || '');
         setImpresionDigital(ordenData.detalle?.impresion || '');
         setObservacionesDigital(ordenData.detalle?.observaciones || '');
         
@@ -756,6 +757,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
         adherencia,
         material: materialDigital,
+        proveedor_material: proveedorMaterial,
         impresion: impresionDigital,
         tipo_impresion: tipoImpresion,
         troquel,
@@ -901,6 +903,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
             adherencia,
             material: materialDigital,
+            proveedor_material: proveedorMaterial,
             impresion: impresionDigital,
             tipo_impresion: tipoImpresion,
             troquel,
@@ -1033,6 +1036,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         detalle: tipoOrdenSeleccionado === 'digital' ? {
           // Detalle digital
           material: materialDigital,
+          proveedor_material: proveedorMaterial,
           impresion: impresionDigital,
           observaciones: observacionesDigital,
           prensa_seleccionada: prensaSeleccionada,

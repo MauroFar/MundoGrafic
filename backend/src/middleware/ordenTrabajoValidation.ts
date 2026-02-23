@@ -240,14 +240,14 @@ export const validateOrdenTrabajoUpdate = (req: Request, res: Response, next: Ne
     errors.push({ field: 'cantidad', message: 'La Cantidad debe ser un número válido' });
   }
 
-  if (telefono !== undefined && !telefonoStr.trim()) {
-    errors.push({ field: 'telefono', message: 'El campo Teléfono no puede estar vacío' });
+  // Teléfono y email son OPCIONALES en la actualización.
+  // Solo se valida el formato si vienen con algún valor no vacío.
+  if (telefono !== undefined && telefonoStr.trim() && !/^[0-9+\-\s()]+$/.test(telefonoStr)) {
+    errors.push({ field: 'telefono', message: 'El Teléfono no es válido' });
   }
 
-  if (email !== undefined) {
-    if (!emailStr.trim()) {
-      errors.push({ field: 'email', message: 'El campo Email no puede estar vacío' });
-    } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailStr)) {
+  if (email !== undefined && emailStr.trim()) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailStr)) {
       errors.push({ field: 'email', message: 'El Email no es válido' });
     }
   }

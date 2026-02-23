@@ -98,6 +98,7 @@ export default (client: any) => {
     const terminadoEtiqueta = detalle?.terminado_etiqueta;
     const terminadosEspeciales = detalle?.terminados_especiales;
     const cantidadPorRollo = detalle?.cantidad_por_rollo;
+    const proveedorMaterial = detalle?.proveedor_material;
     const productosDigital = detalle?.productos_digital;
     
     console.log('📦 CREAR ORDEN - Datos del detalle recibidos:', {
@@ -149,8 +150,9 @@ export default (client: any) => {
         await client.query(`
           INSERT INTO detalle_orden_trabajo_digital (
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
-            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
+            proveedor_material
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `, [
           ordenId,
           adherencia || null,
@@ -161,7 +163,8 @@ export default (client: any) => {
           codigoTroquel || null,
           terminadoEtiqueta || null,
           terminadosEspeciales || null,
-          cantidadPorRollo || null
+          cantidadPorRollo || null,
+          proveedorMaterial || null
         ]);
 
         // 3b. Insertar productos digitales en tabla relacional
@@ -171,8 +174,9 @@ export default (client: any) => {
             await client.query(`
               INSERT INTO productos_orden_digital (
                 orden_trabajo_id, cantidad, cod_mg, cod_cliente, producto,
-                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden,
+                gap_horizontal, gap_vertical, tamano_papel_ancho, tamano_papel_largo
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             `, [
               ordenId,
               producto.cantidad || null,
@@ -184,7 +188,11 @@ export default (client: any) => {
               producto.medida_alto || null,
               producto.cavidad || null,
               producto.metros_impresos || null,
-              i + 1  // orden
+              i + 1,  // orden
+              producto.gap_horizontal || null,
+              producto.gap_vertical || null,
+              producto.tamano_papel_ancho || null,
+              producto.tamano_papel_largo || null
             ]);
           }
           console.log(`📦 ${productosDigital.length} productos digitales insertados`);
@@ -556,8 +564,9 @@ export default (client: any) => {
         await client.query(`
           INSERT INTO detalle_orden_trabajo_digital (
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
-            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
+            proveedor_material
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             adherencia = $2,
             lote_material = $3,
@@ -568,6 +577,7 @@ export default (client: any) => {
             terminado_etiqueta = $8,
             terminados_especiales = $9,
             cantidad_por_rollo = $10,
+            proveedor_material = $11,
             updated_at = CURRENT_TIMESTAMP
         `, [
           id,
@@ -579,7 +589,8 @@ export default (client: any) => {
           codigoTroquel || null,
           terminadoEtiqueta || null,
           terminadosEspeciales || null,
-          cantidadPorRollo || null
+          cantidadPorRollo || null,
+          detalle?.proveedor_material || null
         ]);
         
         // Actualizar productos digitales: eliminar existentes y crear nuevos
@@ -591,8 +602,9 @@ export default (client: any) => {
             await client.query(`
               INSERT INTO productos_orden_digital (
                 orden_trabajo_id, cantidad, cod_mg, cod_cliente, producto,
-                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                avance, medida_ancho, medida_alto, cavidad, metros_impresos, orden,
+                gap_horizontal, gap_vertical, tamano_papel_ancho, tamano_papel_largo
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             `, [
               id,
               producto.cantidad || null,
@@ -604,7 +616,11 @@ export default (client: any) => {
               producto.medida_alto || null,
               producto.cavidad || null,
               producto.metros_impresos || null,
-              i + 1
+              i + 1,
+              producto.gap_horizontal || null,
+              producto.gap_vertical || null,
+              producto.tamano_papel_ancho || null,
+              producto.tamano_papel_largo || null
             ]);
           }
         }
@@ -923,7 +939,7 @@ export default (client: any) => {
       productos = [];
     }
 
-    // Generar filas de productos
+    // Generar filas de productos (incluyendo gaps)
     const filasProductos = productos.map((producto: any, index: number) => `
       <tr>
         <td class="tabla-celda">${index + 1}</td>
@@ -932,7 +948,9 @@ export default (client: any) => {
         <td class="tabla-celda">${producto.cod_cliente || ''}</td>
         <td class="tabla-celda">${producto.producto || ''}</td>
         <td class="tabla-celda">${producto.avance || ''}</td>
+        <td class="tabla-celda">${producto.gap_horizontal || ''}</td>
         <td class="tabla-celda">${producto.medida_ancho || ''}</td>
+        <td class="tabla-celda">${producto.gap_vertical || ''}</td>
         <td class="tabla-celda">${producto.medida_alto || ''}</td>
         <td class="tabla-celda">${producto.cavidad || ''}</td>
         <td class="tabla-celda">${producto.metros_impresos || ''}</td>
@@ -1023,14 +1041,16 @@ export default (client: any) => {
                   <th class="tabla-celda">Cod Cliente</th>
                   <th class="tabla-celda">Producto</th>
                   <th class="tabla-celda">Avance (mm)</th>
+                  <th class="tabla-celda">Gap H (mm)</th>
                   <th class="tabla-celda">Ancho (mm)</th>
+                  <th class="tabla-celda">Gap V (mm)</th>
                   <th class="tabla-celda">Alto (mm)</th>
                   <th class="tabla-celda">Cavidad</th>
                   <th class="tabla-celda">Metros Imp.</th>
                 </tr>
               </thead>
               <tbody>
-                ${filasProductos || '<tr><td colspan="10" class="tabla-celda">No hay productos registrados</td></tr>'}
+                ${filasProductos || '<tr><td colspan="12" class="tabla-celda">No hay productos registrados</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -1047,6 +1067,10 @@ export default (client: any) => {
               <div class="campo">
                 <div class="campo-label">MATERIAL</div>
                 <div class="campo-valor">${detalle.material || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">PROVEEDOR MATERIAL</div>
+                <div class="campo-valor">${detalle.proveedor_material || ''}</div>
               </div>
               <div class="campo">
                 <div class="campo-label">LOTE MATERIAL</div>
@@ -1083,6 +1107,14 @@ export default (client: any) => {
               <div class="campo">
                 <div class="campo-label">CANTIDAD POR ROLLO</div>
                 <div class="campo-valor">${detalle.cantidad_por_rollo || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TAMAÑO PAPEL (ANCHO)</div>
+                <div class="campo-valor">${productos[0]?.tamano_papel_ancho || ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">TAMAÑO PAPEL (LARGO)</div>
+                <div class="campo-valor">${productos[0]?.tamano_papel_largo || ''}</div>
               </div>
             </div>
             <div class="fila" style="margin-top: 10px;">
@@ -1223,8 +1255,8 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
-      // 3b. Leer y convertir la imagen de salidas a base64
-      const salidaImagenPath = path.join(__dirname, '../../../src/assets/img/salidas.png');
+      // 3b. Leer y convertir la imagen de salidas a base64 (desde carpeta raíz /public/img)
+      const salidaImagenPath = path.join(__dirname, '../../public/img/salidas.png');
       let salidaImagenBase64 = '';
       try {
         const salidaBuffer = await fs.readFile(salidaImagenPath);
@@ -1739,8 +1771,8 @@ export default (client: any) => {
         console.error('No se pudo leer el logo:', e);
       }
 
-      // 3b. Leer y convertir la imagen de salidas a base64
-      const salidaImagenPath = path.join(__dirname, '../../../src/assets/img/salidas.png');
+      // 3b. Leer y convertir la imagen de salidas a base64 (desde carpeta raíz /public/img)
+      const salidaImagenPath = path.join(__dirname, '../../public/img/salidas.png');
       let salidaImagenBase64 = '';
       try {
         const salidaBuffer = await fs.readFile(salidaImagenPath);

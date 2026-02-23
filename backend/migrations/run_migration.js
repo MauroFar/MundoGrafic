@@ -18,8 +18,8 @@ async function runMigration() {
     await client.connect();
     console.log('✅ Conectado exitosamente');
 
-    // Leer el archivo SQL
-    const sqlPath = path.join(__dirname, 'add_posicion_imagen_texto_negrita.sql');
+    // Leer el archivo SQL (actualmente: campos extra para orden digital)
+    const sqlPath = path.join(__dirname, 'add_digital_fields.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
     console.log('📝 Ejecutando migración...');

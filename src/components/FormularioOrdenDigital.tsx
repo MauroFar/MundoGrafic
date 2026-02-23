@@ -88,9 +88,29 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   // Asegurar que productos siempre sea un array
   const productosArray = Array.isArray(productos) ? productos : [];
 
-  // Tamaño de papel global para todos los productos
-  const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('');
-  const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('');
+  // Tamaño de papel global para todos los productos (valores por defecto editables)
+  const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
+  const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('1000');
+
+  // Solo sincronizar una vez desde los productos (para órdenes existentes),
+  // para no interferir mientras el usuario edita manualmente.
+  const haSincronizadoDesdeProductos = React.useRef(false);
+
+  React.useEffect(() => {
+    if (haSincronizadoDesdeProductos.current) return;
+    if (!Array.isArray(productosArray) || productosArray.length === 0) return;
+
+    const primero = productosArray[0] as any;
+
+    if (primero?.tamano_papel_ancho) {
+      setTamanoPapelAncho(String(primero.tamano_papel_ancho));
+    }
+    if (primero?.tamano_papel_largo) {
+      setTamanoPapelLargo(String(primero.tamano_papel_largo));
+    }
+
+    haSincronizadoDesdeProductos.current = true;
+  }, [productosArray]);
 
   // Calcula cavidad a partir de gap, medidas y tamaño de papel
   const recalcularCavidadObj = (producto: any) => {
