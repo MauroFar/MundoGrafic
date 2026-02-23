@@ -315,38 +315,23 @@ const VistaKanban = () => {
         </div>
       </div>
 
-      {/* Mensaje informativo */}
-      <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <p className="text-sm text-blue-700">
-              <strong>Vista de solo visualización:</strong> Este tablero muestra todas las órdenes en producción. 
-              Los cambios de estado se realizarán desde las interfaces específicas de cada área (Preprensa, Prensa, Acabados, etc.).
-            </p>
-          </div>
-        </div>
-      </div>
+  
 
       {/* Kanban Board */}
-      <div className="flex gap-6 overflow-x-auto pb-6">
+      <div className="pb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
         {columnas.map((columna) => {
           const IconoColumna = columna.icono;
           const ordenesColumna = ordenes[columna.id] || [];
-          
           return (
             <div
               key={columna.id}
-              className={`flex-shrink-0 w-80 bg-${columna.color}-50 rounded-lg p-4`}
+              className={`bg-${columna.color}-50 rounded-lg p-3`}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, columna.id)}
             >
               {/* Header de la columna */}
-              <div className={`flex items-center gap-2 mb-4 pb-2 border-b border-${columna.color}-200`}>
+              <div className={`flex items-center gap-2 mb-3 pb-2 border-b border-${columna.color}-200`}>
                 <IconoColumna className={`h-5 w-5 text-${columna.color}-600`} />
                 <h3 className={`font-semibold text-${columna.color}-800`}>
                   {columna.titulo}
@@ -357,16 +342,17 @@ const VistaKanban = () => {
               </div>
 
               {/* Tarjetas de órdenes */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {ordenesColumna.map((orden) => (
                   <div
                     key={orden.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, orden)}
-                    className={`bg-white rounded-lg shadow-sm border-2 ${getUrgenciaColor(orden.fecha_entrega)} p-4 cursor-move hover:shadow-md transition-shadow`}
+                    className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-3 cursor-move hover:shadow-md transition-shadow text-sm`}
+                    style={{ lineHeight: '1.1' }}
                   >
                     {/* Header de la tarjeta */}
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-900">#{orden.numero_orden}</span>
                         {orden.fecha_entrega && (
@@ -382,21 +368,21 @@ const VistaKanban = () => {
                       </div>
                       <button
                         onClick={() => navigate(`/produccion/seguimiento/${orden.id}`)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 text-xs"
                       >
                         <FaEye className="h-4 w-4" />
                       </button>
                     </div>
 
                     {/* Cliente */}
-                    <div className="mb-2">
+                    <div className="mb-1">
                       <p className="text-sm font-medium text-gray-900 truncate">
                         {orden.nombre_cliente}
                       </p>
                     </div>
 
                     {/* Concepto */}
-                    <div className="mb-3">
+                    <div className="mb-2">
                       <p className="text-xs text-gray-600 line-clamp-2">
                         {orden.concepto}
                       </p>
@@ -419,7 +405,7 @@ const VistaKanban = () => {
                     </div>
 
                     {/* Acciones */}
-                    <div className="mt-3 pt-2 border-t border-gray-100">
+                    <div className="mt-2 pt-2 border-t border-gray-100">
                       <div className="flex gap-2">
                         <button
                           onClick={() => navigate(`/ordendeTrabajo/editar/${orden.id}`)}
@@ -440,7 +426,7 @@ const VistaKanban = () => {
                 
                 {/* Mensaje cuando no hay órdenes */}
                 {ordenesColumna.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="text-center py-6 text-gray-400">
                     <p className="text-sm">No hay órdenes en esta etapa</p>
                   </div>
                 )}
@@ -448,30 +434,10 @@ const VistaKanban = () => {
             </div>
           );
         })}
-      </div>
-
-      {/* Leyenda */}
-      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Leyenda de Colores</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-100 border-2 border-red-400 rounded"></div>
-            <span className="text-sm text-gray-700">Vencida</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-orange-100 border-2 border-orange-400 rounded"></div>
-            <span className="text-sm text-gray-700">Entrega hoy</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-100 border-2 border-yellow-400 rounded"></div>
-            <span className="text-sm text-gray-700">Próxima entrega</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-100 border-2 border-gray-200 rounded"></div>
-            <span className="text-sm text-gray-700">Normal</span>
-          </div>
         </div>
       </div>
+
+     
     </div>
   );
 };
