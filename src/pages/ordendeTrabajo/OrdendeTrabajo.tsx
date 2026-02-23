@@ -120,15 +120,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [troquelado, setTroquelado] = useState<string>('');
   const [liberacionProducto, setLiberacionProducto] = useState<string>('');
 
-  // Estados para cantidad final de cada responsable
-  const [vendedorCantidadFinal, setVendedorCantidadFinal] = useState<string>('');
-  const [preprensaCantidadFinal, setPreprensaCantidadFinal] = useState<string>('');
-  const [prensaCantidadFinal, setPrensaCantidadFinal] = useState<string>('');
-  const [laminadoBarnizadoCantidadFinal, setLaminadoBarnizadoCantidadFinal] = useState<string>('');
-  const [troqueladoCantidadFinal, setTroqueladoCantidadFinal] = useState<string>('');
-  const [terminadosCantidadFinal, setTerminadosCantidadFinal] = useState<string>('');
-  const [liberacionProductoCantidadFinal, setLiberacionProductoCantidadFinal] = useState<string>('');
-
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
@@ -168,6 +159,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
   const [adherencia, setAdherencia] = useState<string>('');
   const [materialDigital, setMaterialDigital] = useState<string>('');
+  const [proveedorMaterial, setProveedorMaterial] = useState<string>('');
   const [impresionDigital, setImpresionDigital] = useState<string>('');
   const [tipoImpresion, setTipoImpresion] = useState<string>('');
   const [troquel, setTroquel] = useState<string>('');
@@ -192,6 +184,22 @@ const OrdendeTrabajoEditar: React.FC = () => {
   useEffect(() => {
     calcularTotalPliegos();
   }, [cantidadPliegosCompra, exceso]);
+
+  // Generar lote de producción automáticamente a partir de la fecha de entrega (MGANOMESDIA)
+  useEffect(() => {
+    if (!fechaEntrega) {
+      setLoteProduccion('');
+      return;
+    }
+
+    // fechaEntrega viene como 'YYYY-MM-DD'
+    const [anio, mes, dia] = fechaEntrega.split('-');
+    if (anio && mes && dia) {
+      setLoteProduccion(`MG${anio}${mes}${dia}`);
+    } else {
+      setLoteProduccion('');
+    }
+  }, [fechaEntrega]);
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -244,13 +252,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTroquelado('');
       setLiberacionProducto('');
       // Limpiar cantidades finales
-      setVendedorCantidadFinal('');
-      setPreprensaCantidadFinal('');
-      setPrensaCantidadFinal('');
-      setLaminadoBarnizadoCantidadFinal('');
-      setTroqueladoCantidadFinal('');
-      setTerminadosCantidadFinal('');
-      setLiberacionProductoCantidadFinal('');
        // Limpiar nuevos campos
                setMaterial('');
         setCorteMaterial('');
@@ -532,13 +533,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setFacturado(ordenData.facturado || '');
     
     // Sincronizar cantidades finales de cada responsable
-    setVendedorCantidadFinal(ordenData.vendedor_cantidad_final || '');
-    setPreprensaCantidadFinal(ordenData.preprensa_cantidad_final || '');
-    setPrensaCantidadFinal(ordenData.prensa_cantidad_final || '');
-    setLaminadoBarnizadoCantidadFinal(ordenData.laminado_barnizado_cantidad_final || '');
-    setTroqueladoCantidadFinal(ordenData.troquelado_cantidad_final || '');
-    setTerminadosCantidadFinal(ordenData.terminados_cantidad_final || '');
-    setLiberacionProductoCantidadFinal(ordenData.liberacion_producto_cantidad_final || '');
     
     // Sincronizar campos adicionales para orden digital
     if (ordenData.tipo_orden === 'digital') {
@@ -733,13 +727,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         troquelado: troquelado,
         liberacion_producto: liberacionProducto,
         // Cantidades finales para responsables
-        vendedor_cantidad_final: vendedorCantidadFinal,
-        preprensa_cantidad_final: preprensaCantidadFinal,
-        prensa_cantidad_final: prensaCantidadFinal,
-        laminado_barnizado_cantidad_final: laminadoBarnizadoCantidadFinal,
-        troquelado_cantidad_final: troqueladoCantidadFinal,
-        terminados_cantidad_final: terminadosCantidadFinal,
-        liberacion_producto_cantidad_final: liberacionProductoCantidadFinal
       }),
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
@@ -874,13 +861,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
             troquelado: troquelado,
             liberacion_producto: liberacionProducto,
             // Cantidades finales para responsables
-            vendedor_cantidad_final: vendedorCantidadFinal,
-            preprensa_cantidad_final: preprensaCantidadFinal,
-            prensa_cantidad_final: prensaCantidadFinal,
-            laminado_barnizado_cantidad_final: laminadoBarnizadoCantidadFinal,
-            troquelado_cantidad_final: troqueladoCantidadFinal,
-            terminados_cantidad_final: terminadosCantidadFinal,
-            liberacion_producto_cantidad_final: liberacionProductoCantidadFinal
           }),
           tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
           // Detalle técnico (depende del tipo de orden)
@@ -1265,6 +1245,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setAdherencia={setAdherencia}
               material={materialDigital}
               setMaterial={setMaterialDigital}
+              proveedorMaterial={proveedorMaterial}
+              setProveedorMaterial={setProveedorMaterial}
               impresion={impresionDigital}
               setImpresion={setImpresionDigital}
               tipoImpresion={tipoImpresion}
@@ -1331,7 +1313,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             </h3>
             
             {tipoOrdenSeleccionado === 'digital' ? (
-              // Responsables para orden DIGITAL con cantidad final
+              // Responsables para orden DIGITAL sin cantidad final
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
@@ -1341,13 +1323,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     placeholder="Nombre" 
                     value={vendedor} 
                     onChange={e => setVendedor(e.target.value)} 
-                  />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={vendedorCantidadFinal} 
-                    onChange={e => setVendedorCantidadFinal(e.target.value)} 
                   />
                 </div>
 
@@ -1360,13 +1335,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     value={preprensa} 
                     onChange={e => setPreprensa(e.target.value)} 
                   />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={preprensaCantidadFinal} 
-                    onChange={e => setPreprensaCantidadFinal(e.target.value)} 
-                  />
                 </div>
 
                 <div>
@@ -1377,13 +1345,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     placeholder="Responsable" 
                     value={prensa} 
                     onChange={e => setPrensa(e.target.value)} 
-                  />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={prensaCantidadFinal} 
-                    onChange={e => setPrensaCantidadFinal(e.target.value)} 
                   />
                 </div>
 
@@ -1396,13 +1357,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     value={laminadoBarnizado} 
                     onChange={e => setLaminadoBarnizado(e.target.value)} 
                   />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={laminadoBarnizadoCantidadFinal} 
-                    onChange={e => setLaminadoBarnizadoCantidadFinal(e.target.value)} 
-                  />
                 </div>
 
                 <div>
@@ -1413,13 +1367,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     placeholder="Responsable" 
                     value={troquelado} 
                     onChange={e => setTroquelado(e.target.value)} 
-                  />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={troqueladoCantidadFinal} 
-                    onChange={e => setTroqueladoCantidadFinal(e.target.value)} 
                   />
                 </div>
 
@@ -1432,13 +1379,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     value={terminados} 
                     onChange={e => setTerminados(e.target.value)} 
                   />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={terminadosCantidadFinal} 
-                    onChange={e => setTerminadosCantidadFinal(e.target.value)} 
-                  />
                 </div>
 
                 <div>
@@ -1449,13 +1389,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     placeholder="Responsable" 
                     value={liberacionProducto} 
                     onChange={e => setLiberacionProducto(e.target.value)} 
-                  />
-                  <input 
-                    className="w-full px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-center text-sm" 
-                    type="text" 
-                    placeholder="Cant. Final" 
-                    value={liberacionProductoCantidadFinal} 
-                    onChange={e => setLiberacionProductoCantidadFinal(e.target.value)} 
                   />
                 </div>
               </div>
