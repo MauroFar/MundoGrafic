@@ -1535,6 +1535,39 @@ export default (client: any) => {
     }
   });
 
+  // Obtener workflow/stages para la vista Kanban según tipo (offset|digital)
+  router.get('/produccion/workflow', authRequired(), async (req: any, res: any) => {
+    try {
+      const tipo = (req.query.tipo || 'offset').toString().toLowerCase();
+
+      const workflows: any = {
+        offset: [
+          { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', aliases: ['en producción','en proceso','pendiente','pendiente'] },
+          { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', aliases: ['en preprensa','en pre-prensa','preprensa'] },
+          { id: 'en_prensa', titulo: 'Prensa / Impresión', color: 'purple', aliases: ['en prensa','en impresión','en impresion','en prensa'] },
+          { id: 'en_acabados', titulo: 'Acabados / Empacado', color: 'orange', aliases: ['en acabados','en empacado','acabados','empacado'] },
+          { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', aliases: ['en control de calidad','listo para entrega','listo para entrega'] },
+          { id: 'entregado', titulo: 'Entregado', color: 'green', aliases: ['entregado','completado','facturado'] }
+        ],
+        digital: [
+          { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', aliases: ['en preprensa','en pre-prensa','preprensa'] },
+          { id: 'en_prensa', titulo: 'Prensa / Impresión', color: 'purple', aliases: ['en prensa','en impresión','en impresion'] },
+          { id: 'laminado', titulo: 'Laminado / Barnizado', color: 'orange', aliases: ['laminado','barnizado','laminado/barnizado'] },
+          { id: 'troquelado', titulo: 'Troquelado', color: 'teal', aliases: ['troquelado','troquel'] },
+          { id: 'terminado', titulo: 'Terminado', color: 'yellow', aliases: ['terminado','terminados'] },
+          { id: 'liberado', titulo: 'Producto Liberado', color: 'gray', aliases: ['liberado','liberación producto','producto liberado'] },
+          { id: 'entregado', titulo: 'Entregado', color: 'green', aliases: ['entregado','completado','facturado'] }
+        ]
+      };
+
+      const workflow = workflows[tipo] || workflows.offset;
+      res.json({ success: true, workflow });
+    } catch (error: any) {
+      console.error('Error al obtener workflow:', error);
+      res.status(500).json({ success: false, error: 'Error al obtener workflow' });
+    }
+  });
+
   // Obtener métricas del dashboard de producción
   router.get("/produccion/metricas", authRequired(), async (req: any, res: any) => {
     try {

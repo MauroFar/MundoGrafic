@@ -33,18 +33,48 @@ const VistaKanban = () => {
   const [busquedaNumero, setBusquedaNumero] = useState('');
   const [busquedaActiva, setBusquedaActiva] = useState('');
 
-  const columnas = [
-    { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', icono: FaClock },
-    { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', icono: FaPlay },
-    { id: 'en_prensa', titulo: 'Impresión', color: 'purple', icono: FaPlay },
-    { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay },
-    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle },
-    { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle }
-  ];
+  const [columnas, setColumnas] = useState([
+    { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', icono: FaClock, aliases: ['en producción','en proceso','pendiente'] },
+    { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', icono: FaPlay, aliases: ['en preprensa','en pre-prensa','preprensa'] },
+    { id: 'en_prensa', titulo: 'Impresión', color: 'purple', icono: FaPlay, aliases: ['en prensa','en impresión'] },
+    { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay, aliases: ['en acabados','en empacado'] },
+    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] },
+    { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle, aliases: ['entregado','completado','facturado'] }
+  ]);
+  const [workflowType, setWorkflowType] = useState('offset');
 
   useEffect(() => {
     cargarOrdenes();
+    // load workflow definitions for the current type
+    cargarWorkflow(workflowType);
+    // eslint-disable-next-line
   }, [filtroResponsable, busquedaActiva]);
+
+  useEffect(() => {
+    // when switching workflow type, reload columns and orders
+    cargarWorkflow(workflowType);
+    cargarOrdenes();
+    // eslint-disable-next-line
+  }, [workflowType]);
+
+  const cargarWorkflow = async (tipo) => {
+    try {
+      const token = localStorage.getItem('token');
+      const resp = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/workflow?tipo=${tipo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) return;
+      const json = await resp.json();
+      if (json && json.workflow) {
+        // choose icons based on color mapping
+        const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
+        const cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
+        setColumnas(cols);
+      }
+    } catch (err) {
+      console.error('Error cargando workflow', err);
+    }
+  };
 
   const cargarOrdenes = async () => {
     setLoading(true);
@@ -63,18 +93,17 @@ const VistaKanban = () => {
       const data = await response.json();
       console.log('📦 Órdenes recibidas del backend:', data);
 
-      // Inicializar las columnas vacías
-      const ordenesAgrupadas = {
-        pendiente: [],
-        en_preprensa: [],
-        en_prensa: [],
-        en_acabados: [],
-        en_control_calidad: [],
-        entregado: []
-      };
+      // Inicializar las columnas vacías dinámicamente
+      const ordenesAgrupadas = {};
+      columnas.forEach(c => { ordenesAgrupadas[c.id] = []; });
+
+      // Filtrar por tipo de orden (offset|digital)
+      let ordenesFiltradas = (data.ordenes || []).filter(o => {
+        const tipoOrden = (o.tipo_orden || 'offset').toString().toLowerCase();
+        return tipoOrden === workflowType;
+      });
 
       // Filtrar por número de orden si hay búsqueda activa
-      let ordenesFiltradas = data.ordenes || [];
       if (busquedaActiva && busquedaActiva.trim() !== '') {
         const busqueda = busquedaActiva.toLowerCase().trim();
         ordenesFiltradas = ordenesFiltradas.filter(orden => 
@@ -82,47 +111,24 @@ const VistaKanban = () => {
         );
       }
 
-      // Agrupar las órdenes por estado
+      // Agrupar las órdenes por estado utilizando aliases definidos en columnas
       if (ordenesFiltradas && Array.isArray(ordenesFiltradas)) {
         ordenesFiltradas.forEach(orden => {
-          // Normalizar el estado para que coincida con las columnas del Kanban
-          let estadoNormalizado = orden.estado?.trim();
-          
-          // Mapear estados del backend a estados del Kanban
-          if (estadoNormalizado === 'en producción' || estadoNormalizado === 'En producción' || 
-              estadoNormalizado === 'pendiente' || estadoNormalizado === 'Pendiente' ||
-              estadoNormalizado === 'En Proceso') {
-            estadoNormalizado = 'pendiente';
-          } else if (estadoNormalizado === 'en preprensa' || estadoNormalizado === 'En Preprensa' ||
-                     estadoNormalizado === 'En Pre-prensa') {
-            estadoNormalizado = 'en_preprensa';
-          } else if (estadoNormalizado === 'en prensa' || estadoNormalizado === 'En Prensa' || 
-                     estadoNormalizado === 'En Impresión' || estadoNormalizado === 'en impresión') {
-            estadoNormalizado = 'en_prensa';
-          } else if (estadoNormalizado === 'en acabados' || estadoNormalizado === 'En Acabados' ||
-                     estadoNormalizado === 'En Empacado' || estadoNormalizado === 'en empacado') {
-            estadoNormalizado = 'en_acabados';
-          } else if (estadoNormalizado === 'en control de calidad' || estadoNormalizado === 'En Control de Calidad' ||
-                     estadoNormalizado === 'Listo para Entrega' || estadoNormalizado === 'listo para entrega') {
-            estadoNormalizado = 'en_control_calidad';
-          } else if (estadoNormalizado === 'entregado' || estadoNormalizado === 'Entregado' || 
-                     estadoNormalizado === 'completado' || estadoNormalizado === 'Completado' ||
-                     estadoNormalizado === 'Facturado' || estadoNormalizado === 'facturado') {
-            estadoNormalizado = 'entregado';
+          const estadoRaw = (orden.estado || '').toString().toLowerCase().trim();
+          let matched = false;
+          for (let i = 0; i < columnas.length; i++) {
+            const col = columnas[i];
+            const aliases = (col.aliases || []).map(a => a.toString().toLowerCase().trim());
+            if (aliases.includes(estadoRaw)) {
+              ordenesAgrupadas[col.id].push({ ...orden, responsable_actual: orden.vendedor || orden.preprensa || orden.prensa || orden.terminados || 'Sin asignar' });
+              matched = true;
+              break;
+            }
           }
-
-          // Agregar la orden a la columna correspondiente
-          if (ordenesAgrupadas[estadoNormalizado]) {
-            ordenesAgrupadas[estadoNormalizado].push({
-              ...orden,
-              responsable_actual: orden.vendedor || orden.preprensa || orden.prensa || orden.terminados || 'Sin asignar'
-            });
-          } else {
-            // Si el estado no coincide con ninguna columna, ponerlo en pendiente
-            ordenesAgrupadas.pendiente.push({
-              ...orden,
-              responsable_actual: orden.vendedor || 'Sin asignar'
-            });
+          if (!matched) {
+            // if not matched, put into first column
+            const firstCol = columnas[0];
+            ordenesAgrupadas[firstCol.id].push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
           }
         });
       }
@@ -132,14 +138,9 @@ const VistaKanban = () => {
     } catch (error) {
       console.error('❌ Error al cargar órdenes:', error);
       // Mantener las columnas vacías en caso de error
-      setOrdenes({
-        pendiente: [],
-        en_preprensa: [],
-        en_prensa: [],
-        en_acabados: [],
-        en_control_calidad: [],
-        entregado: []
-      });
+      const empty = {};
+      columnas.forEach(c => { empty[c.id] = []; });
+      setOrdenes(empty);
     } finally {
       setLoading(false);
     }
@@ -304,13 +305,27 @@ const VistaKanban = () => {
               )}
             </div>
             
-            <button
-              onClick={cargarOrdenes}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              <FaSync className="h-4 w-4" />
-              Actualizar
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setWorkflowType('offset')}
+                className={`px-3 py-2 rounded-md text-sm ${workflowType==='offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+              >
+                Offset
+              </button>
+              <button
+                onClick={() => setWorkflowType('digital')}
+                className={`px-3 py-2 rounded-md text-sm ${workflowType==='digital' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+              >
+                Digital
+              </button>
+              <button
+                onClick={cargarOrdenes}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <FaSync className="h-4 w-4" />
+                Actualizar
+              </button>
+            </div>
           </div>
         </div>
       </div>
