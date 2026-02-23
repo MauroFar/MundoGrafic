@@ -985,6 +985,35 @@ export default (client: any) => {
           .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
           .responsable-nombre { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
           .responsable-cantidad { font-size: 9px; color: #333; font-weight: bold; border-top: 1px dashed #ddd; padding-top: 4px; margin-top: 4px; }
+          /* Estilos compactos para la sección de referencia de número de salida */
+          /* Variables para ajustar fácilmente la altura/espaciado de la sección de referencia
+             - Cambia las variables abajo para hacer la sección más ancha (altura) o más angosta. */
+          :root{
+            --ref-padding: 4mm;           /* padding vertical de la sección (usar mm para impresión) */
+            --ref-title-padding: 2mm;     /* padding del título */
+            --ref-font-size: 18px;        /* tamaño de fuente del número de salida */
+            --ref-inner-padding: 3mm;     /* padding interno del recuadro del número */
+            --ref-min-height: 8mm;        /* altura mínima del recuadro */
+            --ref-img-max-height: 15mm;   /* altura máxima de la imagen de referencia */
+            --ref-fixed-height: 20mm;     /* altura fija del contenedor de referencia (reduce/ aumenta para hacerlo más angosto/ancho) */
+          }
+          /* Hacer el contenedor más "angosto" verticalmente: usamos una altura fija y ocultamos overflow.
+             Ajusta --ref-fixed-height para reducir/aumentar la altura total del bloque. */
+          .seccion-referencia .seccion-contenido { padding: var(--ref-padding) 6px; height: var(--ref-fixed-height); overflow: hidden; }
+          .seccion-referencia .seccion-titulo { padding: var(--ref-title-padding) 6px; }
+          .referencia-campo-valor {
+            font-size: var(--ref-font-size);
+            font-weight: bold;
+            text-align: center;
+            padding: var(--ref-inner-padding);
+            min-height: var(--ref-min-height);
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          }
+          .referencia-imagen { max-width: 100%; height: auto; max-height: var(--ref-img-max-height); border: 1px solid #ddd; border-radius: 4px; margin-top: 4px; }
           .grid-tecnico { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         </style>
       </head>
@@ -1126,18 +1155,18 @@ export default (client: any) => {
           </div>
         </div>
 
-        <div class="seccion">
-          <div class="seccion-titulo">📍 Referencia de Número de Salida</div>
+        <div class="seccion seccion-referencia">
+          <div class="seccion-titulo">📍 Rebobinado (Salida)</div>
           <div class="seccion-contenido">
             <div class="fila">
               <div class="campo" style="flex: 1;">
                 <div class="campo-label">NÚMERO DE SALIDA SELECCIONADO</div>
-                <div class="campo-valor" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px;">${detalle.numero_salida || 'No especificado'}</div>
+                <div class="campo-valor referencia-campo-valor">${detalle.numero_salida || 'No especificado'}</div>
               </div>
               ${salidaImagenBase64 ? `
               <div class="campo" style="flex: 2; text-align: center;">
-                <div class="campo-label">IMAGEN DE REFERENCIA</div>
-                <img src="${salidaImagenBase64}" alt="Referencia de Salidas" style="max-width: 100%; height: auto; max-height: 150px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;" />
+        
+                <img src="${salidaImagenBase64}" alt="Referencia de Salidas" class="referencia-imagen" />
               </div>
               ` : ''}
             </div>
