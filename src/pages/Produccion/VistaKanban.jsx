@@ -34,28 +34,22 @@ const VistaKanban = () => {
   const [busquedaActiva, setBusquedaActiva] = useState('');
 
   const [columnas, setColumnas] = useState([
+    { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle, aliases: ['entregado','completado','facturado'] },
     { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', icono: FaClock, aliases: ['en producción','en proceso','pendiente'] },
     { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', icono: FaPlay, aliases: ['en preprensa','en pre-prensa','preprensa'] },
     { id: 'en_prensa', titulo: 'Impresión', color: 'purple', icono: FaPlay, aliases: ['en prensa','en impresión'] },
     { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay, aliases: ['en acabados','en empacado'] },
-    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] },
-    { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle, aliases: ['entregado','completado','facturado'] }
+    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] }
   ]);
   const [workflowType, setWorkflowType] = useState('offset');
 
   useEffect(() => {
-    cargarOrdenes();
-    // load workflow definitions for the current type
-    cargarWorkflow(workflowType);
+    (async () => {
+      const cols = await cargarWorkflow(workflowType);
+      await cargarOrdenes(cols);
+    })();
     // eslint-disable-next-line
-  }, [filtroResponsable, busquedaActiva]);
-
-  useEffect(() => {
-    // when switching workflow type, reload columns and orders
-    cargarWorkflow(workflowType);
-    cargarOrdenes();
-    // eslint-disable-next-line
-  }, [workflowType]);
+  }, [filtroResponsable, busquedaActiva, workflowType]);
 
   const cargarWorkflow = async (tipo) => {
     try {
@@ -68,15 +62,30 @@ const VistaKanban = () => {
       if (json && json.workflow) {
         // choose icons based on color mapping
         const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
-        const cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
+        let cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
+        // For digital workflows enforce the desired stage order:
+        // preprensa, impresion, laminado, troquelado, terminado, producto liberado, entregado
+        if ((tipo || '').toString().toLowerCase() === 'digital') {
+          const desiredOrder = ['en_preprensa','en_prensa','laminado','troquelado','terminado','liberado','entregado'];
+          cols = desiredOrder.map(id => cols.find(c => c.id === id)).filter(Boolean);
+        } else {
+          // For non-digital (offset) keep the backend order but ensure 'entregado' is visible first
+          const idx = cols.findIndex(c => c.id === 'entregado');
+          if (idx > -1) {
+            const [entregadoCol] = cols.splice(idx, 1);
+            cols.unshift(entregadoCol);
+          }
+        }
         setColumnas(cols);
+        return cols;
       }
+      return null;
     } catch (err) {
       console.error('Error cargando workflow', err);
     }
   };
 
-  const cargarOrdenes = async () => {
+  const cargarOrdenes = async (colsParam) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -94,8 +103,9 @@ const VistaKanban = () => {
       console.log('📦 Órdenes recibidas del backend:', data);
 
       // Inicializar las columnas vacías dinámicamente
+      const colsToUse = colsParam || columnas;
       const ordenesAgrupadas = {};
-      columnas.forEach(c => { ordenesAgrupadas[c.id] = []; });
+      colsToUse.forEach(c => { ordenesAgrupadas[c.id] = []; });
 
       // Filtrar por tipo de orden (offset|digital)
       let ordenesFiltradas = (data.ordenes || []).filter(o => {
@@ -116,8 +126,8 @@ const VistaKanban = () => {
         ordenesFiltradas.forEach(orden => {
           const estadoRaw = (orden.estado || '').toString().toLowerCase().trim();
           let matched = false;
-          for (let i = 0; i < columnas.length; i++) {
-            const col = columnas[i];
+          for (let i = 0; i < colsToUse.length; i++) {
+            const col = colsToUse[i];
             const aliases = (col.aliases || []).map(a => a.toString().toLowerCase().trim());
             if (aliases.includes(estadoRaw)) {
               ordenesAgrupadas[col.id].push({ ...orden, responsable_actual: orden.vendedor || orden.preprensa || orden.prensa || orden.terminados || 'Sin asignar' });
@@ -127,7 +137,7 @@ const VistaKanban = () => {
           }
           if (!matched) {
             // if not matched, put into first column
-            const firstCol = columnas[0];
+            const firstCol = colsToUse[0];
             ordenesAgrupadas[firstCol.id].push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
           }
         });
@@ -138,8 +148,9 @@ const VistaKanban = () => {
     } catch (error) {
       console.error('❌ Error al cargar órdenes:', error);
       // Mantener las columnas vacías en caso de error
+      const colsToUse = colsParam || columnas;
       const empty = {};
-      columnas.forEach(c => { empty[c.id] = []; });
+      colsToUse.forEach(c => { empty[c.id] = []; });
       setOrdenes(empty);
     } finally {
       setLoading(false);
@@ -334,14 +345,15 @@ const VistaKanban = () => {
 
       {/* Kanban Board */}
       <div className="pb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+        <div className="flex gap-6 overflow-x-auto pb-2">
         {columnas.map((columna) => {
           const IconoColumna = columna.icono;
           const ordenesColumna = ordenes[columna.id] || [];
           return (
             <div
               key={columna.id}
-              className={`bg-${columna.color}-50 rounded-lg p-3`}
+              className={`bg-${columna.color}-50 rounded-lg p-3 flex-shrink-0`}
+              style={{ minWidth: '280px' }}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, columna.id)}
             >
