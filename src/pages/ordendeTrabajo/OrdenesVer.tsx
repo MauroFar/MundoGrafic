@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks, FaSync } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -32,6 +32,9 @@ const OrdenesVer: React.FC = () => {
   const LIMITE_POR_PAGINA = 15;
   const [modalProduccionId, setModalProduccionId] = useState<number | null>(null);
   const [produccionEnviada, setProduccionEnviada] = useState<{ [id: number]: boolean }>({});
+  const [modalActualizarEstadoId, setModalActualizarEstadoId] = useState<number | null>(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('');
+  const [actualizandoEstado, setActualizandoEstado] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -567,14 +570,24 @@ const OrdenesVer: React.FC = () => {
                         <span className="text-xs mt-1 text-gray-600">Descargar</span>
                       </button>
                       {esEstadoProduccion(orden.estado) ? (
-                        <button
-                          className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
-                          onClick={() => navigate('/produccion/kanban')}
-                          title="Ver estado en producción"
-                        >
-                          <FaTasks />
-                          <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
-                        </button>
+                        <>
+                          <button
+                            className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
+                            onClick={() => navigate('/produccion/kanban')}
+                            title="Ver estado en producción"
+                          >
+                            <FaTasks />
+                            <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
+                          </button>
+                          <button
+                            className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
+                            onClick={() => { setModalActualizarEstadoId(orden.id); setEstadoSeleccionado(orden.estado || ''); }}
+                            title="Actualizar Estado"
+                          >
+                            <FaSync />
+                            <span className="text-xs mt-1 text-gray-600">Actualizar Estado</span>
+                          </button>
+                        </>
                       ) : (
                         <button
                           className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
@@ -609,6 +622,80 @@ const OrdenesVer: React.FC = () => {
         >
           Cargar más
         </button>
+      )}
+
+      {modalActualizarEstadoId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <h3 className="text-lg font-semibold mb-2 text-yellow-700">Actualizar Estado de la orden</h3>
+            <p className="text-sm text-gray-600">Seleccione el nuevo estado para la orden</p>
+            <div className="mt-4">
+              <select
+                className="w-full border p-2 rounded"
+                value={estadoSeleccionado}
+                onChange={(e) => setEstadoSeleccionado(e.target.value)}
+              >
+                <option value="">-- Seleccionar estado --</option>
+                <option value="en preprensa">Preprensa</option>
+                <option value="en prensa">Prensa / Impresión</option>
+                <option value="en acabados">Acabados / Empacado</option>
+                <option value="en control de calidad">Listo p/Entrega</option>
+                <option value="entregado">Entregado</option>
+              </select>
+            </div>
+            <div className="flex justify-center gap-4 mt-4">
+              <button
+                className="bg-yellow-600 text-white px-4 py-2 rounded"
+                onClick={async () => {
+                  if (!estadoSeleccionado) return;
+                  setActualizandoEstado(true);
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${modalActualizarEstadoId}/estado`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ estado: estadoSeleccionado })
+                    });
+                    if (!response.ok) throw new Error('Error al actualizar estado');
+                    const data = await response.json();
+                    // Actualizar lista localmente
+                    setOrdenes(prev => prev.map(o => o.id === (modalActualizarEstadoId as number) ? { ...o, estado: data.orden?.estado || estadoSeleccionado } : o));
+                    setModalActualizarEstadoId(null);
+                    setEstadoSeleccionado('');
+                    // Notificar y ofrecer ir a Kanban
+                    toast.success(
+                      <div>
+                        <div className="font-semibold">✅ Estado actualizado</div>
+                        <button
+                          onClick={() => navigate('/produccion/kanban')}
+                          className="mt-2 text-sm underline text-blue-600 hover:text-blue-800"
+                        >
+                          Ver en Vista Kanban →
+                        </button>
+                      </div>,
+                      { autoClose: 4000 }
+                    );
+                  } catch (error: any) {
+                    toast.error(error.message || 'Ocurrió un error al actualizar el estado');
+                  } finally {
+                    setActualizandoEstado(false);
+                  }
+                }}
+              >
+                {actualizandoEstado ? 'Actualizando...' : 'Confirmar'}
+              </button>
+              <button
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+                onClick={() => { setModalActualizarEstadoId(null); setEstadoSeleccionado(''); }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {modalProduccionId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
