@@ -25,6 +25,8 @@ import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProduccionDiaria from "./pages/Produccion/ProduccionDiaria";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
 import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
+import Certificados from "./pages/certificados/Certificados";
+import CertificadoForm from "./pages/certificados/CertificadoForm";
 import Inventario from "./pages/Inventario/Inventario";
 import PageNotFound from "./pages/PageNotFound";
 import GestionUsuarios from "./pages/admin/GestionUsuarios";
@@ -186,6 +188,28 @@ function App() {
           <Route path="/ordendeTrabajo/ver" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <OrdenesVer />
+            </PrivateRoute>
+          } />
+
+          {/* Certificados de Calidad */}
+          <Route path="/certificados" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <Certificados />
+            </PrivateRoute>
+          } />
+          <Route path="/certificados/crear" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <CertificadoForm />
+            </PrivateRoute>
+          } />
+          <Route path="/certificados/editar/:id" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <CertificadoForm />
+            </PrivateRoute>
+          } />
+          <Route path="/certificados/ver/:id" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <CertificadoForm />
             </PrivateRoute>
           } />
           {/* Inventario: todos los roles */}

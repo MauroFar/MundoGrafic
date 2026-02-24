@@ -46,6 +46,7 @@ const Sidebar = () => {
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
       { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
+      { path: "/certificados", label: "Certificados Calidad" },
     ],
     // Submenú de Producción: ahora incluye enlaces a Clientes, Cotizaciones y Ordenes de Trabajo
     produccion: [
