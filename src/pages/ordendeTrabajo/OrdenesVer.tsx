@@ -49,78 +49,75 @@ const OrdenesVer: React.FC = () => {
   // Función para verificar si el estado es de producción
   const esEstadoProduccion = (estado: string | undefined): boolean => {
     if (!estado) return false;
+    const key = estado.toString().toLowerCase().replace(/\s+/g, '_');
     const estadosProduccion = [
-      'en producción',
-      'en proceso',
-      'en preprensa',
-      'en prensa',
-      'en impresión',
-      'en acabados',
-      'en control de calidad',
-      'en empacado',
-      'listo para entrega'
+      'en_produccion',
+      'en_proceso',
+      'en_preprensa',
+      'en_prensa',
+      'en_impresion',
+      'en_acabados',
+      'en_control_de_calidad',
+      'en_control_calidad',
+      'en_empacado',
+      'listo_para_entrega',
+      'laminado',
+      'troquelado',
+      'terminados',
+      'liberado'
     ];
-    return estadosProduccion.includes(estado.toLowerCase());
+    return estadosProduccion.includes(key);
   };
 
   // Función para obtener el estilo del badge según el estado
   const getEstadoStyle = (estado: string | undefined): { classes: string; text: string } => {
-    if (!estado) {
-      return { 
-        classes: 'bg-gray-100 text-gray-800', 
-        text: 'Pendiente' 
-      };
-    }
+    const key = (estado || '').toString().toLowerCase().replace(/\s+/g, '_');
 
-    const estadoLower = estado.toLowerCase();
-    
-    // Estados en producción (verde)
-    if (estadoLower === 'en producción' || estadoLower === 'en proceso') {
-      return { 
-        classes: 'bg-green-100 text-green-800', 
-        text: estado 
-      };
-    }
-    
-    // Estados de proceso (azul)
-    if (estadoLower === 'en preprensa' || estadoLower === 'en prensa' || 
-        estadoLower === 'en impresión' || estadoLower === 'en acabados') {
-      return { 
-        classes: 'bg-blue-100 text-blue-800', 
-        text: estado 
-      };
-    }
-    
-    // Estados de control/empacado (amarillo)
-    if (estadoLower === 'en control de calidad' || estadoLower === 'en empacado' || 
-        estadoLower === 'listo para entrega') {
-      return { 
-        classes: 'bg-yellow-100 text-yellow-800', 
-        text: estado 
-      };
-    }
-    
-    // Estado entregado (verde oscuro)
-    if (estadoLower === 'entregado' || estadoLower === 'completado' || estadoLower === 'facturado') {
-      return { 
-        classes: 'bg-emerald-100 text-emerald-800', 
-        text: estado 
-      };
-    }
-    
-    // Estado cancelado (rojo)
-    if (estadoLower === 'cancelado') {
-      return { 
-        classes: 'bg-red-100 text-red-800', 
-        text: estado 
-      };
-    }
-    
-    // Por defecto (gris)
-    return { 
-      classes: 'bg-gray-100 text-gray-800', 
-      text: estado 
+    const displayMap: { [k: string]: string } = {
+      pendiente: 'Pendiente',
+      en_produccion: 'En Producción',
+      en_proceso: 'En Proceso',
+      en_preprensa: 'Preprensa',
+      en_prensa: 'Prensa / Impresión',
+      en_impresion: 'Prensa / Impresión',
+      laminado: 'Laminado/Barnizado',
+      troquelado: 'Troquelado',
+      terminados: 'Terminados',
+      liberado: 'Producto Liberado',
+      en_acabados: 'Acabados / Empacado',
+      en_control_de_calidad: 'Listo p/Entrega',
+      en_control_calidad: 'Listo p/Entrega',
+      en_empacado: 'En Empacado',
+      listo_para_entrega: 'Listo p/Entrega',
+      entregado: 'Entregado',
+      completado: 'Completado',
+      facturado: 'Facturado',
+      cancelado: 'Cancelado'
     };
+
+    const colorMap: { [k: string]: string } = {
+      pendiente: 'bg-gray-100 text-gray-800',
+      en_produccion: 'bg-green-100 text-green-800',
+      en_proceso: 'bg-green-100 text-green-800',
+      en_preprensa: 'bg-blue-100 text-blue-800',
+      en_prensa: 'bg-blue-100 text-blue-800',
+      en_impresion: 'bg-blue-100 text-blue-800',
+      laminado: 'bg-blue-100 text-blue-800',
+      troquelado: 'bg-blue-100 text-blue-800',
+      terminados: 'bg-blue-100 text-blue-800',
+      en_acabados: 'bg-yellow-100 text-yellow-800',
+      en_empacado: 'bg-yellow-100 text-yellow-800',
+      en_control_de_calidad: 'bg-yellow-100 text-yellow-800',
+      listo_para_entrega: 'bg-yellow-100 text-yellow-800',
+      entregado: 'bg-emerald-100 text-emerald-800',
+      facturado: 'bg-emerald-100 text-emerald-800',
+      cancelado: 'bg-red-100 text-red-800'
+    };
+
+    const text = displayMap[key] || (estado ? estado.toString().replace(/_/g, ' ') : 'Pendiente');
+    const classes = colorMap[key] || 'bg-gray-100 text-gray-800';
+
+    return { classes, text };
   };
 
   useEffect(() => {
@@ -581,7 +578,12 @@ const OrdenesVer: React.FC = () => {
                           </button>
                           <button
                             className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
-                            onClick={() => { setModalActualizarEstadoId(orden.id); setEstadoSeleccionado(orden.estado || ''); }}
+                            onClick={() => {
+                              const raw = orden.estado || '';
+                              const normalized = raw.toString().toLowerCase().replace(/\s+/g, '_');
+                              setModalActualizarEstadoId(orden.id);
+                              setEstadoSeleccionado(normalized);
+                            }}
                             title="Actualizar Estado"
                           >
                             <FaSync />
@@ -636,11 +638,33 @@ const OrdenesVer: React.FC = () => {
                 onChange={(e) => setEstadoSeleccionado(e.target.value)}
               >
                 <option value="">-- Seleccionar estado --</option>
-                <option value="en preprensa">Preprensa</option>
-                <option value="en prensa">Prensa / Impresión</option>
-                <option value="en acabados">Acabados / Empacado</option>
-                <option value="en control de calidad">Listo p/Entrega</option>
-                <option value="entregado">Entregado</option>
+                {(() => {
+                  const ordenModal = ordenes.find(o => o.id === modalActualizarEstadoId);
+                  const tipo = (ordenModal?.tipo_orden || '').toString().toLowerCase();
+                  if (tipo === 'digital') {
+                    return (
+                      <>
+                        <option value="en_preprensa">Preprensa</option>
+                        <option value="en_prensa">Impresión</option>
+                        <option value="laminado">Laminado/Barnizado</option>
+                        <option value="troquelado">Troquelado</option>
+                        <option value="terminados">Terminados</option>
+                        <option value="liberado">Producto Liberado</option>
+                        <option value="entregado">Producto Entregado</option>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <option value="en_preprensa">Preprensa</option>
+                      <option value="en_prensa">Prensa / Impresión</option>
+                      <option value="en_acabados">Acabados / Empacado</option>
+                      <option value="en_control_de_calidad">Listo p/Entrega</option>
+                      <option value="entregado">Entregado</option>
+                    </>
+                  );
+                })()}
               </select>
             </div>
             <div className="flex justify-center gap-4 mt-4">

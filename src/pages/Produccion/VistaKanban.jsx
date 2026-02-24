@@ -44,10 +44,25 @@ const VistaKanban = () => {
   const [workflowType, setWorkflowType] = useState('offset');
 
   useEffect(() => {
-    (async () => {
+    const doLoad = async () => {
       const cols = await cargarWorkflow(workflowType);
       await cargarOrdenes(cols);
-    })();
+    };
+
+    // Cargar al montar / cuando cambian filtros/workflow
+    doLoad();
+
+    // Volver a cargar cuando la ventana gana foco o la pestaña se hace visible
+    const onFocus = () => { doLoad(); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') doLoad(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // cleanup
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
     // eslint-disable-next-line
   }, [filtroResponsable, busquedaActiva, workflowType]);
 
@@ -283,9 +298,7 @@ const VistaKanban = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Vista Kanban - Producción</h1>
             <p className="text-gray-600">Seguimiento visual del flujo de producción</p>
-          </div>
-          
-          {/* Filtros */}
+                 {/* Filtros */}
           <div className="flex gap-4 items-center">
             <div className="flex items-center gap-2">
               <input
@@ -338,6 +351,9 @@ const VistaKanban = () => {
               </button>
             </div>
           </div>
+          </div>
+          
+     
         </div>
       </div>
 

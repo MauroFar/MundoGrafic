@@ -1200,23 +1200,39 @@ const OrdendeTrabajoEditar: React.FC = () => {
               </h2>
               <div className="flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-semibold text-gray-700">Estado:</label>
-                                     <select 
-                     className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
-                     value={estado}
-                     onChange={(e) => setEstado(e.target.value)}
-                   >
-                     <option value="pendiente">Pendiente</option>
-                     <option value="En Proceso">En Proceso</option>
-                     <option value="En Impresión">En Impresión</option>
-                     <option value="En Acabados">En Acabados</option>
-                     <option value="En Empacado">En Empacado</option>
-                     <option value="Listo para Entrega">Listo para Entrega</option>
-                     <option value="Entregado">Entregado</option>
-                     <option value="Facturado">Facturado</option>
-                     <option value="Cancelado">Cancelado</option>
-                   </select>
-                </div>
+                    <label className="text-sm font-semibold text-gray-700">Estado:</label>
+                    {((tipoOrdenSeleccionado === 'digital') || (ordenData && (ordenData.tipo_orden || '').toString().toLowerCase() === 'digital')) ? (
+                      <select
+                        className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
+                        value={estado}
+                        onChange={(e) => setEstado(e.target.value)}
+                      >
+                        <option value="en_preprensa">Pre Prensa</option>
+                        <option value="en_prensa">Impresión</option>
+                        <option value="laminado">Laminado/Barnizado</option>
+                        <option value="troquelado">Troquelado</option>
+                        <option value="terminados">Terminados</option>
+                        <option value="liberado">Producto Liberado</option>
+                        <option value="entregado">Producto Entregado</option>
+                      </select>
+                    ) : (
+                      <select 
+                        className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
+                        value={estado}
+                        onChange={(e) => setEstado(e.target.value)}
+                      >
+                        <option value="pendiente">Pendiente</option>
+                        <option value="en_proceso">En Proceso</option>
+                        <option value="en_impresion">En Impresión</option>
+                        <option value="en_acabados">En Acabados</option>
+                        <option value="en_empacado">En Empacado</option>
+                        <option value="listo_para_entrega">Listo para Entrega</option>
+                        <option value="entregado">Entregado</option>
+                        <option value="facturado">Facturado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    )}
+                  </div>
               </div>
             </div>
 
