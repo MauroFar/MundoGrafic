@@ -12,6 +12,7 @@ import uploadRoutes from "./upload-simple";
 import chatRoutes from "./chat";
 import permisosRoutes from "./permisos";
 import prensasRoutes from "./prensas";
+import certificadosRoutes from "./certificados";
 
 export default (client: any) => {
   const router = express.Router(); // Creamos un router para manejar todas las rutas
@@ -34,6 +35,8 @@ export default (client: any) => {
   router.use("/permisos", permisosRoutes(client)); // /api/permisos
   router.use("/prensas", prensasRoutes(client)); // /api/prensas
   console.log('✅ [API Routes] Ruta /prensas registrada');
+  router.use('/certificados', certificadosRoutes(client)); // /api/certificados
+  console.log('✅ [API Routes] Ruta /certificados registrada');
 
   // Ruta de prueba simple
   router.get("/test", (req, res) => {

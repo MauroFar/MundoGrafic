@@ -69,7 +69,7 @@ export default (client: any) => {
       
       // Crear permisos iniciales denegados para el nuevo usuario
       const newUserId = result.rows[0].id;
-      const modulos = ['clientes', 'cotizaciones', 'ordenes_trabajo', 'produccion', 'inventario', 'usuarios', 'reportes'];
+      const modulos = ['clientes', 'cotizaciones', 'ordenes_trabajo', 'produccion', 'inventario', 'usuarios', 'reportes', 'certificados'];
       
       for (const modulo of modulos) {
         await client.query(

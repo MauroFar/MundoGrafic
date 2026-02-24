@@ -12,7 +12,8 @@ const PermisosModal = ({ usuario, onClose, onSave }) => {
     { id: 'produccion', nombre: 'Producción', descripcion: 'Módulos de producción' },
     { id: 'inventario', nombre: 'Inventario', descripcion: 'Control de inventario' },
     { id: 'usuarios', nombre: 'Usuarios', descripcion: 'Gestión de usuarios (solo admin)' },
-    { id: 'reportes', nombre: 'Reportes', descripcion: 'Ver y generar reportes' }
+    { id: 'reportes', nombre: 'Reportes', descripcion: 'Ver y generar reportes' },
+    { id: 'certificados', nombre: 'Certificados', descripcion: 'Gestión de certificados de calidad' }
   ];
 
   const [permisos, setPermisos] = useState({});

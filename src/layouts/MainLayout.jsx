@@ -12,6 +12,7 @@ const MainLayout = () => {
     location.pathname.startsWith('/clientes') ||
     location.pathname.startsWith('/cotizaciones') ||
     location.pathname.startsWith('/ordendeTrabajo') ||
+    location.pathname.startsWith('/certificados') ||
     location.pathname === '/dashboardGeneral' ||
     location.pathname === '/productosTerminados' ||
     location.pathname === '/produccionDiaria';

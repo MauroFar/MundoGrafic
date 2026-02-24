@@ -19,7 +19,7 @@ export default (client: any) => {
         console.log(`✅ [Permisos] Usuario es admin (desde JWT) - Acceso a todos los módulos`);
         return res.json({
           esAdmin: true,
-          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo']
+          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo', 'certificados']
         });
       }
 
@@ -39,7 +39,7 @@ export default (client: any) => {
         // Admin ve todos los módulos administrativos
         return res.json({
           esAdmin: true,
-          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo']
+          modulos: ['usuarios', 'roles', 'areas', 'catalogo-procesos', 'tipos-trabajo', 'certificados']
         });
       }
 
@@ -91,7 +91,7 @@ export default (client: any) => {
       
       // Si es admin, dar todos los permisos
       if (req.user?.rol === 'admin') {
-        const modulos = ['clientes', 'cotizaciones', 'ordenes_trabajo', 'produccion', 'inventario', 'usuarios', 'reportes'];
+        const modulos = ['clientes', 'cotizaciones', 'ordenes_trabajo', 'produccion', 'inventario', 'usuarios', 'reportes', 'certificados'];
         const permisosAdmin = modulos.map(modulo => ({
           modulo,
           puede_crear: true,

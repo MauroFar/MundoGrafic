@@ -84,6 +84,7 @@ const Sidebar = () => {
       location.pathname.startsWith("/clientes") ||
       location.pathname.startsWith("/cotizaciones") ||
       location.pathname.startsWith("/ordendeTrabajo") ||
+      location.pathname.startsWith("/certificados") ||
       location.pathname.startsWith("/produccion") ||
       location.pathname.startsWith("/admin") ||
       location.pathname === "/administracion" ||
@@ -96,7 +97,7 @@ const Sidebar = () => {
   const getMenuItems = () => {
     if (location.pathname.startsWith("/clientes")) return menus.clientes;
     if (location.pathname.startsWith("/cotizaciones")) return menus.cotizaciones;
-    if (location.pathname.startsWith("/ordendeTrabajo")) return menus.ordenTrabajo;
+    if (location.pathname.startsWith("/ordendeTrabajo") || location.pathname.startsWith("/certificados")) return menus.ordenTrabajo;
     if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
       return menus.administracion;
     }

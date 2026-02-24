@@ -40,6 +40,10 @@ const OrdenesVer: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showDetalleModal, setShowDetalleModal] = useState<boolean>(false);
   const [ordenDetalle, setOrdenDetalle] = useState<any>(null);
+  const [showSeleccionProductoModal, setShowSeleccionProductoModal] = useState<boolean>(false);
+  const [productosParaSeleccion, setProductosParaSeleccion] = useState<any[]>([]);
+  const [ordenParaCertificado, setOrdenParaCertificado] = useState<any>(null);
+  const [productoSeleccionadoIndex, setProductoSeleccionadoIndex] = useState<number | null>(null);
   const [showCotizacionModal, setShowCotizacionModal] = useState<boolean>(false);
   const [cotizacionDetalle, setCotizacionDetalle] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -47,9 +51,19 @@ const OrdenesVer: React.FC = () => {
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
 
   // Función para verificar si el estado es de producción
+  const normalizeKey = (s: string | undefined) => {
+    if (!s) return '';
+    // quitar acentos y normalizar espacios -> guiones bajos
+    return s.toString()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/\s+/g, '_');
+  };
+
   const esEstadoProduccion = (estado: string | undefined): boolean => {
     if (!estado) return false;
-    const key = estado.toString().toLowerCase().replace(/\s+/g, '_');
+    const key = normalizeKey(estado);
     const estadosProduccion = [
       'en_produccion',
       'en_proceso',
@@ -71,7 +85,7 @@ const OrdenesVer: React.FC = () => {
 
   // Función para obtener el estilo del badge según el estado
   const getEstadoStyle = (estado: string | undefined): { classes: string; text: string } => {
-    const key = (estado || '').toString().toLowerCase().replace(/\s+/g, '_');
+    const key = normalizeKey(estado);
 
     const displayMap: { [k: string]: string } = {
       pendiente: 'Pendiente',
@@ -118,6 +132,40 @@ const OrdenesVer: React.FC = () => {
     const classes = colorMap[key] || 'bg-gray-100 text-gray-800';
 
     return { classes, text };
+  };
+
+  // Generar certificado: obtiene detalle y decide si mostrar modal de selección de producto
+  const handleGenerarCertificado = async (ordenId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(errText || 'Error al obtener detalle de la orden');
+      }
+      const data = await response.json();
+      setOrdenParaCertificado(data);
+      const productos = data?.detalle?.productos_digital || [];
+      if (productos.length > 1) {
+        setProductosParaSeleccion(productos);
+        setShowSeleccionProductoModal(true);
+      } else {
+        const producto = productos[0] || null;
+        navigate('/certificados/crear', { state: { orden: data, producto } });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al generar certificado');
+    }
+  };
+
+  const handleConfirmarProductoParaCertificado = (index: number) => {
+    const producto = productosParaSeleccion[index];
+    navigate('/certificados/crear', { state: { orden: ordenParaCertificado, producto } });
+    setShowSeleccionProductoModal(false);
+    setProductosParaSeleccion([]);
+    setOrdenParaCertificado(null);
   };
 
   useEffect(() => {
@@ -348,7 +396,8 @@ const OrdenesVer: React.FC = () => {
       const data = await response.json();
       
       // Actualizar el estado de la orden localmente para reflejar el cambio inmediato
-      setOrdenes(prev => prev.map(orden => orden.id === id ? { ...orden, estado: "en producción" } : orden));
+      // Guardamos la clave normalizada sin acentos para que las funciones de UI la reconozcan
+      setOrdenes(prev => prev.map(orden => orden.id === id ? { ...orden, estado: "en_produccion" } : orden));
       setProduccionEnviada(prev => ({ ...prev, [id]: true }));
       setModalProduccionId(null);
       
@@ -566,39 +615,63 @@ const OrdenesVer: React.FC = () => {
                         <FaDownload />
                         <span className="text-xs mt-1 text-gray-600">Descargar</span>
                       </button>
-                      {esEstadoProduccion(orden.estado) ? (
-                        <>
-                          <button
-                            className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
-                            onClick={() => navigate('/produccion/kanban')}
-                            title="Ver estado en producción"
-                          >
-                            <FaTasks />
-                            <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
-                          </button>
-                          <button
-                            className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
-                            onClick={() => {
-                              const raw = orden.estado || '';
-                              const normalized = raw.toString().toLowerCase().replace(/\s+/g, '_');
-                              setModalActualizarEstadoId(orden.id);
-                              setEstadoSeleccionado(normalized);
-                            }}
-                            title="Actualizar Estado"
-                          >
-                            <FaSync />
-                            <span className="text-xs mt-1 text-gray-600">Actualizar Estado</span>
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                          onClick={() => setModalProduccionId(orden.id)}
-                          title="Enviar a Producción"
-                        >
-                          <span className="font-bold text-xs">Enviar a Producción</span>
-                        </button>
-                      )}
+                      {
+                        (() => {
+                          const raw = orden.estado || '';
+                          const estadoNorm = raw.toString().toLowerCase().replace(/\s+/g, '_');
+                          if (estadoNorm === 'entregado') {
+                            return (
+                              <div className="p-2 text-gray-500 text-xs">Entregado</div>
+                            );
+                          }
+
+                          if (esEstadoProduccion(orden.estado)) {
+                            return (
+                              <>
+                                <button
+                                  className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
+                                  onClick={() => navigate('/produccion/kanban')}
+                                  title="Ver estado en producción"
+                                >
+                                  <FaTasks />
+                                  <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
+                                </button>
+                                <button
+                                  className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
+                                  onClick={() => {
+                                    const raw2 = orden.estado || '';
+                                    const normalized = raw2.toString().toLowerCase().replace(/\s+/g, '_');
+                                    setModalActualizarEstadoId(orden.id);
+                                    setEstadoSeleccionado(normalized);
+                                  }}
+                                  title="Actualizar Estado"
+                                >
+                                  <FaSync />
+                                  <span className="text-xs mt-1 text-gray-600">Actualizar Estado</span>
+                                </button>
+                                <button
+                                  className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
+                                  onClick={() => handleGenerarCertificado(orden.id)}
+                                  title="Generar Certificado"
+                                >
+                                  <FaFileAlt />
+                                  <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>
+                                </button>
+                              </>
+                            );
+                          }
+
+                          return (
+                            <button
+                              className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
+                              onClick={() => setModalProduccionId(orden.id)}
+                              title="Enviar a Producción"
+                            >
+                              <span className="font-bold text-xs">Enviar a Producción</span>
+                            </button>
+                          );
+                        })()
+                      }
                       {orden.id_cotizacion && (
                         <button
                           className="p-2 text-orange-600 hover:bg-orange-100 rounded flex flex-col items-center"
@@ -624,6 +697,35 @@ const OrdenesVer: React.FC = () => {
         >
           Cargar más
         </button>
+      )}
+      {showSeleccionProductoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowSeleccionProductoModal(false)}>
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Seleccionar Producto para Certificado</h3>
+            <p className="text-sm text-gray-600 mb-4">Esta orden contiene varios productos. Seleccione el producto para el cual desea generar el certificado.</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {productosParaSeleccion.map((p, idx) => (
+                <div key={idx} className="flex items-center justify-between border rounded p-3">
+                  <div>
+                    <div className="font-medium">{p.producto || p.descripcion || `Producto ${idx+1}`}</div>
+                    <div className="text-sm text-gray-600">Cantidad: {p.cantidad || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <button
+                      className="bg-indigo-600 text-white px-3 py-1 rounded"
+                      onClick={() => handleConfirmarProductoParaCertificado(idx)}
+                    >
+                      Seleccionar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 text-right">
+              <button className="px-4 py-2 mr-2 rounded border" onClick={() => setShowSeleccionProductoModal(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modalActualizarEstadoId && (

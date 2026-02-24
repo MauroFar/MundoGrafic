@@ -66,6 +66,15 @@ const Administracion = () => {
       ruta: "/admin/tipos-trabajo",
       color: "#f59e0b"
     }
+    ,
+    {
+      id: 'certificados',
+      titulo: "Certificados",
+      descripcion: "Gestión de Certificados de Análisis de Calidad",
+      icono: <FaBoxes />,
+      ruta: "/certificados",
+      color: "#10b981"
+    }
   ];
 
   // Filtrar módulos según permisos
