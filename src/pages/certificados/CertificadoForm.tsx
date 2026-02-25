@@ -24,17 +24,19 @@ const CertificadoForm: React.FC = () => {
     lote: '',
     orden_compra: '',
     inspeccionado_por: '',
-    observaciones: '',
+    observaciones: 'MUNDO GRAFIC certifica que el 100% del producto se encuentra revisado y aprobado por el control de calidad.',
     caracteristicas: [
-      { name: 'LARGO (mm)', minimo: '', nominal: '', maximo: '' },
-      { name: 'ANCHO (mm)', minimo: '', nominal: '', maximo: '' },
-      { name: 'ALTO (mm)', minimo: '', nominal: '', maximo: '' },
-      { name: 'ESPESOR (Micras)', minimo: '', nominal: '', maximo: '' }
+      { name: 'LARGO', minimo: '', nominal: '', maximo: '' },
+      { name: 'ANCHO', minimo: '', nominal: '', maximo: '' },
+      { name: 'ALTO', minimo: '', nominal: '', maximo: '' },
+      { name: 'ESPESOR', minimo: '', nominal: '', maximo: '' }
     ]
   });
 
   const [saving, setSaving] = useState(false);
   const [fechaCaducidadManual, setFechaCaducidadManual] = useState(false);
+  const [catalogoCaracteristicas, setCatalogoCaracteristicas] = useState<any[]>([]);
+  const caracteristicasOrden = ['LARGO','ANCHO','ALTO','ESPESOR'];
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -50,9 +52,23 @@ const CertificadoForm: React.FC = () => {
         if (!res.ok) throw new Error('No se pudo cargar certificado');
         const data = await res.json();
         // Mapear a form
+        // Mapear características recibidas a las filas fijas en orden
+        const recibidas = (data.caracteristicas || []).reduce((acc:any, cur:any) => {
+          const key = String(cur.nombre || '').toLowerCase();
+          acc[key] = cur;
+          return acc;
+        }, {} as any);
+
+        const caracteristicasOrdenadas = caracteristicasOrden.map((nameKey:string) => {
+          const found = recibidas[String(nameKey).toLowerCase()];
+          if (found) return { caracteristica_id: found.caracteristica_id || null, name: found.nombre || found.name || nameKey, unidad: found.unidad || '', minimo: found.minimo || '', nominal: found.nominal || '', maximo: found.maximo || '' };
+          // si no se encuentra en datos, tentativamente dejar vacío (se complementará desde catálogo cuando esté cargado)
+          return { caracteristica_id: null, name: nameKey, unidad: '', minimo: '', nominal: '', maximo: '' };
+        });
+
         setForm((f:any) => ({
           ...f,
-            numero_certificado: data.numero_certificado,
+          numero_certificado: data.numero_certificado,
           fecha_creacion: data.fecha_creacion ? data.fecha_creacion.slice(0,10) : f.fecha_creacion,
           fecha_elaboracion: data.fecha_elaboracion ? data.fecha_elaboracion.slice(0,10) : f.fecha_elaboracion,
           fecha_caducidad: data.fecha_caducidad ? data.fecha_caducidad.slice(0,10) : f.fecha_caducidad,
@@ -66,7 +82,7 @@ const CertificadoForm: React.FC = () => {
           orden_compra: data.orden_compra || f.orden_compra,
           inspeccionado_por: data.inspeccionado_por || f.inspeccionado_por,
           observaciones: data.observaciones || f.observaciones,
-          caracteristicas: (data.caracteristicas && data.caracteristicas.map((c:any) => ({ name: c.nombre, minimo: c.minimo, nominal: c.nominal, maximo: c.maximo, unidad: c.unidad }))) || f.caracteristicas
+          caracteristicas: caracteristicasOrdenadas
         }));
 
         // Si la API trajo fecha_caducidad, marcamos como editada por usuario (no sobreescribir luego)
@@ -78,6 +94,47 @@ const CertificadoForm: React.FC = () => {
     };
     cargar();
   }, [id]);
+
+  useEffect(() => {
+    // cargar catálogo de caracteristicas
+    const loadCatalog = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${apiUrl}/api/certificados/caracteristicas`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('No se pudo cargar el catálogo');
+        const data = await res.json();
+        setCatalogoCaracteristicas(data || []);
+        // Si el formulario ya tiene filas (por carga del certificado), rellenar unidad desde el catálogo
+        setForm((f:any) => {
+          const rows = Array.isArray(f.caracteristicas) ? f.caracteristicas.map((r:any) => {
+            const byId = (data || []).find((c:any) => String(c.id) === String(r.caracteristica_id));
+            const rawName = String(r.name || r.nombre || '').toLowerCase();
+            const byName = (data || []).find((c:any) => {
+              const catName = String(c.nombre || '').toLowerCase();
+              return catName === rawName || rawName.includes(catName) || catName.includes(rawName);
+            });
+            const found = byId || byName;
+            return { ...r, unidad: r.unidad || (found ? found.unidad : '') };
+          }) : null;
+
+          // Si no hay filas, inicializar con orden fijo
+          if (!rows || rows.length === 0) {
+            const mapped = caracteristicasOrden.map(nameKey => {
+              const found = (data || []).find((c:any) => String(c.nombre).toLowerCase() === String(nameKey).toLowerCase());
+              return { caracteristica_id: found ? found.id : null, name: found ? found.nombre : nameKey, unidad: found ? found.unidad : '', minimo: '', nominal: '', maximo: '' };
+            });
+            return { ...f, caracteristicas: mapped };
+          }
+
+          return { ...f, caracteristicas: rows };
+        });
+      } catch (err) {
+        console.error('Error cargando catalogo caracteristicas', err);
+      }
+    };
+    loadCatalog();
+  }, []);
 
   useEffect(() => {
     // Prefill desde location.state si venimos desde OrdenesVer
@@ -219,6 +276,120 @@ const CertificadoForm: React.FC = () => {
         inspeccionado_por: form.inspeccionado_por || null,
         observaciones: form.observaciones || null,
         caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
+            caracteristica_id: c.caracteristica_id || null,
+            nombre: c.name || c.nombre || `c${idx+1}`,
+            minimo: c.minimo || null,
+            nominal: c.nominal || null,
+            maximo: c.maximo || null,
+            unidad: c.unidad || null,
+            orden: idx
+        })) : []
+      };
+
+      const res = await fetch(`${apiUrl}/api/certificados`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al guardar certificado');
+      }
+
+      const data = await res.json();
+      // Mostrar confirmación y redirigir al listado de certificados
+      toast.success(`Certificado ${data.numero_certificado || ''} guardado correctamente`);
+      navigate('/certificados');
+    } catch (error: any) {
+      alert(error.message || 'Error al guardar certificado');
+      setSaving(false);
+    }
+  };
+
+  const actualizarCertificado = async () => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+
+      const payload: any = {
+        numero_certificado: form.numero_certificado || null,
+        orden_trabajo_id: form.orden_trabajo_id || null,
+        numero_orden: form.numero_orden || null,
+        cliente_nombre: form.cliente || null,
+        referencia: form.referencia || null,
+        producto_descripcion: form.descripcion || null,
+        cantidad: form.cantidad || null,
+        codigo_producto: form.codigo || null,
+        lote: form.lote || null,
+        orden_compra: form.orden_compra || null,
+        fecha_elaboracion: form.fecha_elaboracion || null,
+        fecha_caducidad: form.fecha_caducidad || null,
+        inspeccionado_por: form.inspeccionado_por || null,
+        observaciones: form.observaciones || null,
+        caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
+          caracteristica_id: c.caracteristica_id || null,
+          nombre: c.name || c.nombre || `c${idx+1}`,
+          minimo: c.minimo || null,
+          nominal: c.nominal || null,
+          maximo: c.maximo || null,
+          unidad: c.unidad || null,
+          orden: idx
+        })) : []
+      };
+
+      const res = await fetch(`${apiUrl}/api/certificados/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al actualizar certificado');
+      }
+
+      const data = await res.json();
+      toast.success(`Certificado ${data.numero_certificado || ''} actualizado correctamente`);
+      navigate('/certificados');
+    } catch (error: any) {
+      alert(error.message || 'Error al actualizar certificado');
+      setSaving(false);
+    }
+  };
+
+  const guardarComoNuevo = async () => {
+    setSaving(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+
+      const payload: any = {
+        numero_certificado: null,
+        orden_trabajo_id: form.orden_trabajo_id || null,
+        numero_orden: form.numero_orden || null,
+        cliente_nombre: form.cliente || null,
+        producto_cod_mg: form.referencia || null,
+        producto_cod_cliente: form.codigo || null,
+        producto_descripcion: form.descripcion || null,
+        cantidad: form.cantidad || null,
+        codigo_producto: form.codigo || null,
+        lote: form.lote || null,
+        orden_compra: form.orden_compra || null,
+        fecha_elaboracion: form.fecha_elaboracion || null,
+        fecha_caducidad: form.fecha_caducidad || null,
+        inspeccionado_por: form.inspeccionado_por || null,
+        observaciones: form.observaciones || null,
+        caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
+          caracteristica_id: c.caracteristica_id || null,
           nombre: c.name || c.nombre || `c${idx+1}`,
           minimo: c.minimo || null,
           nominal: c.nominal || null,
@@ -243,11 +414,10 @@ const CertificadoForm: React.FC = () => {
       }
 
       const data = await res.json();
-      // Mostrar confirmación y redirigir al listado de certificados
       toast.success(`Certificado ${data.numero_certificado || ''} guardado correctamente`);
       navigate('/certificados');
     } catch (error: any) {
-      alert(error.message || 'Error al guardar certificado');
+      alert(error.message || 'Error al guardar como nuevo');
       setSaving(false);
     }
   };
@@ -286,6 +456,21 @@ const CertificadoForm: React.FC = () => {
               )}
               {esVista && (
                 <>
+                  <button
+                    className={`px-4 py-2 ${saving ? 'bg-gray-400' : 'bg-yellow-600'} text-white rounded ml-2`}
+                    onClick={() => actualizarCertificado()}
+                    disabled={saving}
+                  >
+                    {saving ? 'Actualizando...' : 'Actualizar'}
+                  </button>
+
+                  <button
+                    className={`px-4 py-2 ${saving ? 'bg-gray-400' : 'bg-indigo-600'} text-white rounded ml-2`}
+                    onClick={() => guardarComoNuevo()}
+                    disabled={saving}
+                  >
+                    {saving ? 'Guardando...' : 'Guardar como nuevo'}
+                  </button>
                   <button
                     className="px-4 py-2 bg-blue-600 text-white rounded ml-2"
                     onClick={() => { if (id) verPDF(Number(id)); }}
@@ -451,22 +636,31 @@ const CertificadoForm: React.FC = () => {
             <div className="w-1/3 pl-6">
               <div className="bg-gray-50 p-4 rounded">
                 <div className="text-sm font-semibold mb-2">CARACTERISTICAS CUANTITATIVAS</div>
-                <table className="w-full text-xs border">
+                <table className="w-full text-xs border" style={{ tableLayout: 'fixed' as const }}>
                   <thead>
-                    <tr>
-                      <th className="border px-1">CARACTERISTICAS</th>
-                      <th className="border px-1">Mínimo</th>
-                      <th className="border px-1">Nominal</th>
-                      <th className="border px-1">Máximo</th>
-                    </tr>
+                        <tr>
+                          <th className="border px-1" style={{ width: '38%' }}>CARACTERISTICA</th>
+                          <th className="border px-1" style={{ width: '15%' }}>UNIDAD</th>
+                          <th className="border px-1" style={{ width: '15%' }}>Mínimo</th>
+                          <th className="border px-1" style={{ width: '16%' }}>Nominal</th>
+                          <th className="border px-1" style={{ width: '16%' }}>Máximo</th>
+                        </tr>
                   </thead>
                   <tbody>
                     {form.caracteristicas.map((row:any, idx:number) => (
                       <tr key={idx} className="text-xs">
-                        <td className="border px-1 py-1">{row.name}</td>
-                        <td className="border px-1 text-center"><input value={row.minimo} onChange={(e) => actualizarCaracteristica(idx, 'minimo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
-                        <td className="border px-1 text-center"><input value={row.nominal} onChange={(e) => actualizarCaracteristica(idx, 'nominal', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
-                        <td className="border px-1 text-center"><input value={row.maximo} onChange={(e) => actualizarCaracteristica(idx, 'maximo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
+                        <td className="border px-1 py-1">
+                          <div className="text-xs font-medium">
+                            {String(row.name || '')
+                              .replace(/\s*\(.*\)\s*$/, '')
+                              .toLowerCase()
+                              .replace(/(^|\s)\S/g, s => s.toUpperCase())}
+                          </div>
+                        </td>
+                        <td className="border px-1 text-center"><span className="text-xs">{row.unidad || (catalogoCaracteristicas.find((c:any) => String(c.id) === String(row.caracteristica_id))?.unidad) || ''}</span></td>
+                        <td className="border px-1 text-center"><input value={row.minimo || ''} onChange={(e) => actualizarCaracteristica(idx, 'minimo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
+                        <td className="border px-1 text-center"><input value={row.nominal || ''} onChange={(e) => actualizarCaracteristica(idx, 'nominal', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
+                        <td className="border px-1 text-center"><input value={row.maximo || ''} onChange={(e) => actualizarCaracteristica(idx, 'maximo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
                       </tr>
                     ))}
                   </tbody>
