@@ -16,6 +16,21 @@ export default (client: any) => {
     }
   });
 
+  // Obtener siguiente número de certificado (sugerido) sin consumir la secuencia
+  router.get('/next-number', authRequired(), checkPermission(client, 'certificados', 'leer'), async (req, res) => {
+    try {
+      const seqRes = await client.query('SELECT COALESCE(MAX(numero_secuencia), 0) + 1 AS next_seq FROM certificado_calidad');
+      const nextSeq = seqRes.rows[0]?.next_seq || 1;
+      const yearRes = await client.query("SELECT to_char(now(),'YYYY') AS y");
+      const year = yearRes.rows[0]?.y || new Date().getFullYear();
+      const numero_certificado = `CERT-${year}-${String(nextSeq).padStart(6,'0')}`;
+      res.json({ next_seq: nextSeq, numero_certificado });
+    } catch (error: any) {
+      console.error('Error al obtener next-number certificados:', error);
+      res.status(500).json({ error: 'Error al calcular número de certificado' });
+    }
+  });
+
   // Catalogo de caracteristicas (para el formulario)
   router.get('/caracteristicas', authRequired(), checkPermission(client, 'certificados', 'leer'), async (req, res) => {
     try {

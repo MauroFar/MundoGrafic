@@ -102,6 +102,23 @@ const CertificadoForm: React.FC = () => {
     );
   };
   useEffect(() => {
+    // Si no es vista (crear nuevo), solicitar al backend el número sugerido
+    const fetchNextNumber = async () => {
+      if (esVista) return;
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${apiUrl}/api/certificados/next-number`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.numero_certificado) {
+          setForm((f:any) => ({ ...f, numero_certificado: data.numero_certificado }));
+        }
+      } catch (e) {
+        // ignore silently
+      }
+    };
+    fetchNextNumber();
     // Si es vista, cargar datos desde API
     const cargar = async () => {
       if (!esVista) return;
@@ -684,10 +701,7 @@ const CertificadoForm: React.FC = () => {
                   <label className="block text-xs font-semibold text-gray-600">FECHA DE ELABORACIÓN:</label>
                   <input type="date" className="w-full border rounded px-2 py-1" value={form.fecha_elaboracion} onChange={(e) => actualizar('fecha_elaboracion', e.target.value)} />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600">Certificado N.:</label>
-                  <input className="w-full border rounded px-2 py-1 bg-gray-50" value={form.numero_certificado} readOnly />
-                </div>
+                {/* El número de certificado se muestra arriba en el título; aquí no es editable */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600">CLIENTE:</label>
                   <input className="w-full border rounded px-2 py-1" value={form.cliente} onChange={(e) => actualizar('cliente', e.target.value)} />
