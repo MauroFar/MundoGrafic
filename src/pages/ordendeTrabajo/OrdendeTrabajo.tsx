@@ -1024,7 +1024,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
             terminados_especiales: terminadosEspeciales,
             cantidad_por_rollo: cantidadPorRollo,
             numero_salida: numeroSalida,
-            observaciones: observacionesDigital
+            observaciones: observacionesDigital,
+            espesor: espesorDigital
           } : {
             // Datos específicos de offset
             material: material,

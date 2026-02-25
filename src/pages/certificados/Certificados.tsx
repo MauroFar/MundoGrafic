@@ -27,7 +27,14 @@ const Certificados: React.FC = () => {
       const res = await fetch(`${apiUrl}/api/certificados`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Error al cargar certificados');
       const data = await res.json();
-      setCertificados(data || []);
+      // Ordenar por fecha de creación (más recientes primero). Usar created_at, fecha_creacion o fecha si están disponibles.
+      const arr = Array.isArray(data) ? data.slice() : [];
+      arr.sort((a: any, b: any) => {
+        const ta = new Date(a.created_at || a.fecha_creacion || a.fecha || 0).getTime();
+        const tb = new Date(b.created_at || b.fecha_creacion || b.fecha || 0).getTime();
+        return tb - ta;
+      });
+      setCertificados(arr);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Error al cargar certificados');

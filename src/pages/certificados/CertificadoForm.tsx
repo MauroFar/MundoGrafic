@@ -213,10 +213,18 @@ const CertificadoForm: React.FC = () => {
         const existing = Array.isArray(f.caracteristicas) ? f.caracteristicas : [];
         const caracteristicas = existing.map((r:any) => {
           const name = String(r.name || r.nombre || '').toUpperCase();
-          if (name === 'LARGO') return { ...r, nominal: r.nominal || medidaAlto };
-          if (name === 'ANCHO') return { ...r, nominal: r.nominal || medidaAncho };
-          if (name === 'ESPESOR') return { ...r, nominal: r.nominal || espesorVal };
-          return r;
+          let nominal = r.nominal || '';
+          if (name === 'LARGO' && !nominal) nominal = medidaAlto || '';
+          if (name === 'ANCHO' && !nominal) nominal = medidaAncho || '';
+          if (name === 'ESPESOR' && !nominal) nominal = espesorVal || '';
+          const updated: any = { ...r, nominal };
+          // si nominal es numérico y no existen minimo/maximo, calcularlos
+          const num = parseFloat(String(nominal).replace(',', '.'));
+          if (!isNaN(num)) {
+            if (!updated.minimo) updated.minimo = String(Number((num - 1).toFixed(3)).toString());
+            if (!updated.maximo) updated.maximo = String(Number((num + 1).toFixed(3)).toString());
+          }
+          return updated;
         });
 
         return {
@@ -505,7 +513,21 @@ const CertificadoForm: React.FC = () => {
   const actualizarCaracteristica = (index: number, campo: string, valor: any) => {
     setForm((f:any) => {
       const c = Array.isArray(f.caracteristicas) ? [...f.caracteristicas] : [];
-      c[index] = { ...c[index], [campo]: valor };
+      const updated = { ...c[index], [campo]: valor };
+      // Si se actualiza el nominal para LARGO/ANCHO/ESPESOR, ajustar mínimo y máximo automáticamente
+      try {
+        const name = String(updated.name || updated.nombre || '').toUpperCase();
+        if (campo === 'nominal' && (name === 'LARGO' || name === 'ANCHO' || name === 'ESPESOR')) {
+          const num = parseFloat(String(valor).replace(',', '.'));
+          if (!isNaN(num)) {
+            updated.minimo = String(Number((num - 1).toFixed(3)).toString());
+            updated.maximo = String(Number((num + 1).toFixed(3)).toString());
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      c[index] = updated;
       return { ...f, caracteristicas: c };
     });
   };
