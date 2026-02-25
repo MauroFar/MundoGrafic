@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
@@ -206,17 +206,77 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const [vendedoresList, setVendedoresList] = useState<any[]>([]);
 
-  // Lista fija para los demás responsables
-  const RESPONSABLES_FIJOS = ['GEOVANY','ROBINSON','FERNANDO','WILLIAM','DAVID','CRISTIAN'];
+  // Componente interno: desplegable editable (input + lista de opciones)
+  const EditableCombo: React.FC<{
+    value: string;
+    onChange: (v: string) => void;
+    options: string[];
+    placeholder?: string;
+  }> = ({ value, onChange, options, placeholder }) => {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      const onDoc = (e: MouseEvent) => {
+        if (!containerRef.current) return;
+        if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+      };
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+      document.addEventListener('mousedown', onDoc);
+      document.addEventListener('keydown', onKey);
+      return () => {
+        document.removeEventListener('mousedown', onDoc);
+        document.removeEventListener('keydown', onKey);
+      };
+    }, []);
+
+    return (
+      <div ref={containerRef} className="relative">
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none text-center"
+          />
+          <button
+            type="button"
+            onClick={() => { setOpen(s => !s); inputRef.current?.focus(); }}
+            className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
+          >
+            ▾
+          </button>
+        </div>
+        {open && (
+          <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+            {options.map(opt => (
+              <div
+                key={opt}
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm text-center"
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Listas fijas solicitadas por el usuario
+  const VENDEDORES_FIJOS = ['HENRY','GUSTAVO','JUAN CARLOS','OSCAR','XAVIER','GEOVANNY','MARCO','ANDRES'];
+  const PREPRENSA_OPTIONS = ['ROBINSON','GEOVANNY','ANDRES'];
+  const OPERACIONES_OPTIONS = ['FERNANDO','ROBINSON','GEOVANNY','CRISTIAN','WILLIAM','JUAN DAVID'];
+  // Mantener por compatibilidad si se usa en otros lugares
+  const RESPONSABLES_FIJOS = [...new Set([...PREPRENSA_OPTIONS, ...OPERACIONES_OPTIONS, 'DAVID'])];
 
   useEffect(() => {
-    // cargar vendedores para el select de vendedor
-    const token = localStorage.getItem('token');
-    fetch(`${apiUrl}/api/usuarios/vendedores`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(data => setVendedoresList(Array.isArray(data) ? data : []))
-      .catch(err => { console.error('Error cargando vendedores:', err); setVendedoresList([]); });
-  }, [apiUrl]);
+    // Usar lista fija de vendedores según solicitaste
+    setVendedoresList(VENDEDORES_FIJOS.map(name => ({ id: name, nombre: name })));
+  }, []);
 
   // Helper: extrae la primera línea de un texto y elimina etiquetas HTML
   const extractFirstLine = (text: any) => {
@@ -1436,88 +1496,72 @@ const OrdendeTrabajoEditar: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={vendedor}
-                    onChange={e => setVendedor(e.target.value)}
-                  >
-                    <option value="">-- Seleccione vendedor --</option>
-                    {vendedoresList.map(v => (
-                      <option key={v.id} value={v.nombre}>{v.nombre}</option>
-                    ))}
-                  </select>
+                    onChange={setVendedor}
+                    options={vendedoresList.map(v => v.nombre)}
+                    placeholder="-- Seleccione vendedor --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Pre-prensa</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={preprensa}
-                    onChange={e => setPreprensa(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setPreprensa}
+                    options={PREPRENSA_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Impresión</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={prensa}
-                    onChange={e => setPrensa(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setPrensa}
+                    options={OPERACIONES_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Laminado/Barnizado</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={laminadoBarnizado}
-                    onChange={e => setLaminadoBarnizado(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setLaminadoBarnizado}
+                    options={OPERACIONES_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Troquelado</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={troquelado}
-                    onChange={e => setTroquelado(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setTroquelado}
+                    options={OPERACIONES_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={terminados}
-                    onChange={e => setTerminados(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setTerminados}
+                    options={OPERACIONES_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Liberación Producto</label>
-                  <select
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center mb-2"
+                  <EditableCombo
                     value={liberacionProducto}
-                    onChange={e => setLiberacionProducto(e.target.value)}
-                  >
-                    <option value="">-- Seleccione --</option>
-                    {RESPONSABLES_FIJOS.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                    onChange={setLiberacionProducto}
+                    options={OPERACIONES_OPTIONS}
+                    placeholder="-- Seleccione --"
+                  />
                 </div>
               </div>
             ) : (

@@ -97,6 +97,204 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
   const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('1000');
 
+  // Adherencia options and dropdown state
+  const adherenciaOptions = React.useMemo(() => ['MULTIPROPOSITO','P1', 'P3H', 'P4', 'TERMICO', 'SIN ADH.'], []);
+  const [showAdherenciaOptions, setShowAdherenciaOptions] = React.useState<boolean>(false);
+  const adherenciaContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const adherenciaInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Material options and dropdown state
+  const materialOptions = React.useMemo(() => [
+    'PROPALCOTE',
+    'POLIPROPILENO BLANCO MATE',
+    'POLIPROPILENO BLANCO BRILLANTE',
+    'POLIPROPILENO TRANSPARENTE',
+    'POLIPROPILENO METALIZADO',
+    'TERMOENCOGIBLE PVC',
+    'TERMOENCOGIBLE PET',
+    'CARTULINA METALIZADA',
+    'CARTULINA NORMAL',
+    'BOPP METALIZADO',
+    'BOPP BLANCO',
+    'BOPP TRANSPARENTE',
+    'TERMICO DIRECTO PAPEL',
+    'TERMICO DIRECTO POLIPROPILENO',
+    'POLIPROPILENO BLANCO FREZZER',
+  ], []);
+  const [showMaterialOptions, setShowMaterialOptions] = React.useState<boolean>(false);
+  const materialContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const materialInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Cerrar dropdown si se hace click fuera o se presiona Escape
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!adherenciaContainerRef.current) return;
+      if (!adherenciaContainerRef.current.contains(e.target as Node)) {
+        setShowAdherenciaOptions(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAdherenciaOptions(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  // Troquel options and dropdown state
+  const troquelOptions = React.useMemo(() => ['FLEXIBLE', 'PLANO', 'REFILADO'], []);
+  const [showTroquelOptions, setShowTroquelOptions] = React.useState<boolean>(false);
+  const troquelContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const troquelInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    const onDocClickTroquel = (e: MouseEvent) => {
+      if (!troquelContainerRef.current) return;
+      if (!troquelContainerRef.current.contains(e.target as Node)) {
+        setShowTroquelOptions(false);
+      }
+    };
+    const onKeyTroquel = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowTroquelOptions(false);
+    };
+    document.addEventListener('mousedown', onDocClickTroquel);
+    document.addEventListener('keydown', onKeyTroquel);
+    return () => {
+      document.removeEventListener('mousedown', onDocClickTroquel);
+      document.removeEventListener('keydown', onKeyTroquel);
+    };
+  }, []);
+
+  // Terminado de etiqueta options and dropdown state
+  const terminadoOptions = React.useMemo(() => [
+    'BARNIZ BRILLANTE UV TOTAL',
+    'BARNIZ MATE  UV TOTAL',
+    'BARNIZ BRILLANTE UV  CON RESERVA',
+    'BARNIZ MATE  UV TOTAL CON RESERVA',
+    'LAMINADO BRILLANTE BIOGLOSS',
+    'LAMINADO MATE BIOGLOSS',
+    'LAMINADO BRILLANTE BOPP',
+    'LAMINADO MATE BOPP',
+    'SIN PROTECCION',
+  ], []);
+  const [showTerminadoOptions, setShowTerminadoOptions] = React.useState<boolean>(false);
+  const terminadoContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const terminadoInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    const onDocClickTerm = (e: MouseEvent) => {
+      if (!terminadoContainerRef.current) return;
+      if (!terminadoContainerRef.current.contains(e.target as Node)) {
+        setShowTerminadoOptions(false);
+      }
+    };
+    const onKeyTerm = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowTerminadoOptions(false);
+    };
+    document.addEventListener('mousedown', onDocClickTerm);
+    document.addEventListener('keydown', onKeyTerm);
+    return () => {
+      document.removeEventListener('mousedown', onDocClickTerm);
+      document.removeEventListener('keydown', onKeyTerm);
+    };
+  }, []);
+
+  // Proveedor de Material options and dropdown state
+  const proveedorOptions = React.useMemo(() => [
+    'GLOBAL',
+    'ARCLAD',
+    'FLEXIPACK',
+    'FLEXOR',
+    'RITRAMA',
+    'ARROVIECH',
+  ], []);
+  const [showProveedorOptions, setShowProveedorOptions] = React.useState<boolean>(false);
+  const proveedorContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const proveedorInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    const onDocClickProv = (e: MouseEvent) => {
+      if (!proveedorContainerRef.current) return;
+      if (!proveedorContainerRef.current.contains(e.target as Node)) {
+        setShowProveedorOptions(false);
+      }
+    };
+    const onKeyProv = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowProveedorOptions(false);
+    };
+    document.addEventListener('mousedown', onDocClickProv);
+    document.addEventListener('keydown', onKeyProv);
+    return () => {
+      document.removeEventListener('mousedown', onDocClickProv);
+      document.removeEventListener('keydown', onKeyProv);
+    };
+  }, []);
+
+  // Impresión options and dropdown state (editable)
+  const impresionOptions = React.useMemo(() => ['Nuevo', 'Reimpresion'], []);
+  const [showImpresionOptions, setShowImpresionOptions] = React.useState<boolean>(false);
+  const impresionContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const impresionInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    const onDocClickImp = (e: MouseEvent) => {
+      if (!impresionContainerRef.current) return;
+      if (!impresionContainerRef.current.contains(e.target as Node)) {
+        setShowImpresionOptions(false);
+      }
+    };
+    const onKeyImp = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowImpresionOptions(false); };
+    document.addEventListener('mousedown', onDocClickImp);
+    document.addEventListener('keydown', onKeyImp);
+    return () => {
+      document.removeEventListener('mousedown', onDocClickImp);
+      document.removeEventListener('keydown', onKeyImp);
+    };
+  }, []);
+
+  // Tipo de impresión options and dropdown state (editable)
+  const tipoImpresionOptions = React.useMemo(() => ['CMY','CMYK','CMYKW','NEGRO(K)','CMYKW+OV'], []);
+  const [showTipoImpresionOptions, setShowTipoImpresionOptions] = React.useState<boolean>(false);
+  const tipoImpresionContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const tipoImpresionInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    const onDocClickTipo = (e: MouseEvent) => {
+      if (!tipoImpresionContainerRef.current) return;
+      if (!tipoImpresionContainerRef.current.contains(e.target as Node)) {
+        setShowTipoImpresionOptions(false);
+      }
+    };
+    const onKeyTipo = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowTipoImpresionOptions(false); };
+    document.addEventListener('mousedown', onDocClickTipo);
+    document.addEventListener('keydown', onKeyTipo);
+    return () => {
+      document.removeEventListener('mousedown', onDocClickTipo);
+      document.removeEventListener('keydown', onKeyTipo);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!materialContainerRef.current) return;
+      if (!materialContainerRef.current.contains(e.target as Node)) {
+        setShowMaterialOptions(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMaterialOptions(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
   // Solo sincronizar una vez desde los productos (para órdenes existentes),
   // para no interferir mientras el usuario edita manualmente.
   const haSincronizadoDesdeProductos = React.useRef(false);
@@ -412,37 +610,122 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Adherencia */}
-          <div>
+          {/* Adherencia: editable combo with explicit dropdown button */}
+          <div className="relative" ref={adherenciaContainerRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Adherencia</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={adherencia}
-              onChange={(e) => setAdherencia(e.target.value)}
-            />
+            <div className="flex">
+              <input
+                ref={adherenciaInputRef}
+                placeholder="Seleccionar o escribir..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={adherencia}
+                onChange={(e) => setAdherencia(e.target.value)}
+                onFocus={() => {/* keep list closed on focus */}}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAdherenciaOptions((s) => {
+                  const next = !s;
+                  if (next && adherenciaInputRef.current) adherenciaInputRef.current.focus();
+                  return next;
+                })}
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                aria-label="Mostrar opciones de adherencia"
+              >
+                ▾
+              </button>
+            </div>
+            {showAdherenciaOptions && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+                {adherenciaOptions.map((opt) => (
+                  <li
+                    key={opt}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onMouseDown={(e) => { e.preventDefault(); setAdherencia(opt); setShowAdherenciaOptions(false); }}
+                  >
+                    {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Material */}
-          <div>
+          {/* Material: editable combo with dropdown */}
+          <div className="relative" ref={materialContainerRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={material}
-              onChange={(e) => setMaterial(e.target.value)}
-            />
+            <div className="flex">
+              <input
+                ref={materialInputRef}
+                placeholder="Seleccionar o escribir..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowMaterialOptions((s) => {
+                  const next = !s;
+                  if (next && materialInputRef.current) materialInputRef.current.focus();
+                  return next;
+                })}
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                aria-label="Mostrar opciones de material"
+              >
+                ▾
+              </button>
+            </div>
+            {showMaterialOptions && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
+                {materialOptions.map((opt) => (
+                  <li
+                    key={opt}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onMouseDown={(e) => { e.preventDefault(); setMaterial(opt); setShowMaterialOptions(false); }}
+                  >
+                    {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Proveedor de Material */}
-          <div>
+          {/* Proveedor de Material: editable combo */}
+          <div className="relative" ref={proveedorContainerRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor de Material</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={proveedorMaterial}
-              onChange={(e) => setProveedorMaterial(e.target.value)}
-            />
+            <div className="flex">
+              <input
+                ref={proveedorInputRef}
+                placeholder="Seleccionar o escribir..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={proveedorMaterial}
+                onChange={(e) => setProveedorMaterial(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowProveedorOptions((s) => {
+                  const next = !s;
+                  if (next && proveedorInputRef.current) proveedorInputRef.current.focus();
+                  return next;
+                })}
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                aria-label="Mostrar opciones de proveedor"
+              >
+                ▾
+              </button>
+            </div>
+            {showProveedorOptions && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+                {proveedorOptions.map((opt) => (
+                  <li
+                    key={opt}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onMouseDown={(e) => { e.preventDefault(); setProveedorMaterial(opt); setShowProveedorOptions(false); }}
+                  >
+                    {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Espesor */}
@@ -479,50 +762,95 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             />
           </div>
 
-          {/* Impresión */}
-          <div>
+          {/* Impresión (editable combo) */}
+          <div ref={impresionContainerRef} className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
-            <select
-              className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={impresion}
-              onChange={(e) => setImpresion(e.target.value)}
-            >
-              <option value="">Seleccione opción</option>
-              <option value="Nuevo">Nuevo</option>
-              <option value="Reimpresion">Reimpresión</option>
-            </select>
+            <div className="flex">
+              <input
+                ref={impresionInputRef}
+                placeholder="Seleccione opción"
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+                value={impresion}
+                onChange={(e) => setImpresion(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => { setShowImpresionOptions(s => !s); impresionInputRef.current?.focus(); }}
+                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50"
+              >▾</button>
+            </div>
+            {showImpresionOptions && (
+              <ul className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 bg-white rounded max-h-40 overflow-auto">
+                {impresionOptions.map(opt => (
+                  <li key={opt} onClick={() => { setImpresion(opt); setShowImpresionOptions(false); }} className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-center">{opt}</li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Tipo de Impresión */}
-          <div>
+          {/* Tipo de Impresión (editable combo) */}
+          <div ref={tipoImpresionContainerRef} className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Impresión</label>
-            <select
-              className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={tipoImpresion}
-              onChange={(e) => setTipoImpresion(e.target.value)}
-            >
-              <option value="">Seleccione opción</option>
-              <option value="CMY">CMY</option>
-              <option value="CMYK">CMYK</option>
-              <option value="CMYKW">CMYKW</option>
-              <option value="NEGRO(K)">NEGRO(K)</option>
-              <option value="CMYKW+OV">CMYKW+OV</option>
-            </select>
+            <div className="flex">
+              <input
+                ref={tipoImpresionInputRef}
+                placeholder="Seleccione opción"
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+                value={tipoImpresion}
+                onChange={(e) => setTipoImpresion(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => { setShowTipoImpresionOptions(s => !s); tipoImpresionInputRef.current?.focus(); }}
+                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50"
+              >▾</button>
+            </div>
+            {showTipoImpresionOptions && (
+              <ul className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 bg-white rounded max-h-40 overflow-auto">
+                {tipoImpresionOptions.map(opt => (
+                  <li key={opt} onClick={() => { setTipoImpresion(opt); setShowTipoImpresionOptions(false); }} className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-center">{opt}</li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Troquel */}
-          <div>
+          {/* Troquel: editable combo */}
+          <div className="relative" ref={troquelContainerRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Troquel</label>
-            <select
-              className="w-full px-2 py-1.5 border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={troquel}
-              onChange={(e) => setTroquel(e.target.value)}
-            >
-              <option value="">Seleccione opción</option>
-              <option value="Flexible">Flexible</option>
-              <option value="Plano">Plano</option>
-              <option value="Ninguno">Ninguno</option>
-            </select>
+            <div className="flex">
+              <input
+                ref={troquelInputRef}
+                placeholder="Seleccionar o escribir..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={troquel}
+                onChange={(e) => setTroquel(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowTroquelOptions((s) => {
+                  const next = !s;
+                  if (next && troquelInputRef.current) troquelInputRef.current.focus();
+                  return next;
+                })}
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                aria-label="Mostrar opciones de troquel"
+              >
+                ▾
+              </button>
+            </div>
+            {showTroquelOptions && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+                {troquelOptions.map((opt) => (
+                  <li
+                    key={opt}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onMouseDown={(e) => { e.preventDefault(); setTroquel(opt); setShowTroquelOptions(false); }}
+                  >
+                    {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Código Troquel */}
@@ -536,15 +864,43 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             />
           </div>
 
-          {/* Terminado de Etiqueta */}
-          <div>
+          {/* Terminado de Etiqueta: editable combo */}
+          <div className="relative" ref={terminadoContainerRef}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Terminado de Etiqueta</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={terminadoEtiqueta}
-              onChange={(e) => setTerminadoEtiqueta(e.target.value)}
-            />
+            <div className="flex">
+              <input
+                ref={terminadoInputRef}
+                placeholder="Seleccionar o escribir..."
+                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={terminadoEtiqueta}
+                onChange={(e) => setTerminadoEtiqueta(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowTerminadoOptions((s) => {
+                  const next = !s;
+                  if (next && terminadoInputRef.current) terminadoInputRef.current.focus();
+                  return next;
+                })}
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                aria-label="Mostrar opciones de terminado"
+              >
+                ▾
+              </button>
+            </div>
+            {showTerminadoOptions && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
+                {terminadoOptions.map((opt) => (
+                  <li
+                    key={opt}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    onMouseDown={(e) => { e.preventDefault(); setTerminadoEtiqueta(opt); setShowTerminadoOptions(false); }}
+                  >
+                    {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Terminados Especiales */}
