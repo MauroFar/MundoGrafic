@@ -8,7 +8,7 @@ export default (client: any) => {
   // Listar certificados
   router.get('/', authRequired(), checkPermission(client, 'certificados', 'leer'), async (req, res) => {
     try {
-      const result = await client.query('SELECT * FROM certificado_calidad ORDER BY id DESC');
+      const result = await client.query('SELECT * FROM certificado_calidad ORDER BY created_at DESC');
       res.json(result.rows);
     } catch (error: any) {
       console.error('Error al listar certificados:', error);
@@ -85,7 +85,7 @@ export default (client: any) => {
 
             /* Header */
             .header { display:flex; align-items:stretch; gap:14px; border-bottom:2px solid #000; padding-bottom:12px; }
-            .logo { width:162px; }
+            .logo { width:182px; }
             .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
             .company-name { font-size:20px; font-weight:700; letter-spacing:0.6px; }
             .company-meta { font-size:12px; color:#222; margin-top:6px; }
@@ -122,7 +122,7 @@ export default (client: any) => {
         <body>
           <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:162px; height:auto;"/>` : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:260px; height:auto;"/>` : ''}</div>
               <div style="flex:1"></div>
               <div class="cert-number">
                 ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}
@@ -226,7 +226,7 @@ export default (client: any) => {
       const fs = require('fs/promises');
       const path = require('path');
       let logoBase64 = '';
-      try {
+        try {
         const logoPath = path.join(__dirname, '../../public/images/logo-mundografic.png');
         const b = await fs.readFile(logoPath);
         logoBase64 = `data:image/png;base64,${b.toString('base64')}`;
@@ -272,7 +272,7 @@ export default (client: any) => {
         <body>
           <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:162px; height:auto;"/>` : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:260px; height:auto;"/>` : ''}</div>
               <div style="flex:1"></div>
               <div class="cert-number">
                 ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}
@@ -280,7 +280,7 @@ export default (client: any) => {
               </div>
             </div>
 
-            <div style="text-align:center; font-weight:700; font-size:18px; margin:14px 0 12px 0">CERTIFICADO DE ANALISSI DE CALIDAD</div>
+            <div style="text-align:center; font-weight:700; font-size:18px; margin:14px 0 12px 0">CERTIFICADO DE ANÁLISIS DE CALIDAD</div>
 
             <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 

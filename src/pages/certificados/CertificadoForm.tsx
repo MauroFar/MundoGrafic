@@ -545,6 +545,7 @@ const CertificadoForm: React.FC = () => {
               </div>
             </div>
             <div>
+              <div className="flex items-center">
               <button className="px-4 py-2 bg-gray-400 text-white rounded mr-2" onClick={() => navigate('/certificados')}>Volver</button>
               {!esVista && (
                 <button
@@ -554,7 +555,9 @@ const CertificadoForm: React.FC = () => {
                 >
                   {saving ? 'Guardando...' : 'Guardar'}
                 </button>
+                
               )}
+              </div>
               {esVista && (
                 <>
                   <button
@@ -734,35 +737,35 @@ const CertificadoForm: React.FC = () => {
 
             </div>
 
-            <div className="w-1/2 pl-4">
+            <div className="w-2/3 pl-2">
               <div className="bg-gray-50 p-4 rounded">
                 <div className="text-sm font-semibold mb-2">CARACTERÍSTICAS CUANTITATIVAS</div>
                 <div className="overflow-x-auto">
-                <table className="w-full text-xs border" style={{ tableLayout: 'fixed' as const }}>
+                <table className="w-full text-sm border" style={{ tableLayout: 'fixed' as const }}>
                   <thead>
                         <tr>
-                          <th className="border px-1" style={{ width: '42%' }}>CARACTERÍSTICA</th>
-                          <th className="border px-1" style={{ width: '18%' }}>UNIDAD</th>
-                          <th className="border px-1" style={{ width: '12%' }}>MÍNIMO</th>
-                          <th className="border px-1" style={{ width: '14%' }}>NOMINAL</th>
-                          <th className="border px-1" style={{ width: '14%' }}>MÁXIMO</th>
+                          <th className="border px-5 py-2" style={{ width: '21%' }}>CARACTERÍSTICA</th>
+                          <th className="border px-5 py-2" style={{ width: '14%' }}>UNIDAD</th>
+                          <th className="border px-5 py-2" style={{ width: '14%' }}>MÍNIMO</th>
+                          <th className="border px-5 py-2" style={{ width: '14%' }}>NOMINAL</th>
+                          <th className="border px-5 py-2" style={{ width: '14%' }}>MÁXIMO</th>
                         </tr>
                   </thead>
                   <tbody>
                     {form.caracteristicas.map((row:any, idx:number) => (
-                      <tr key={idx} className="text-xs">
+                      <tr key={idx} className="text-sm">
                         <td className="border px-1 py-1">
-                          <div className="text-xs font-medium">
+                          <div className="text-sm font-medium">
                             {String(row.name || '')
                               .replace(/\s*\(.*\)\s*$/, '')
                               .toLowerCase()
                               .replace(/(^|\s)\S/g, s => s.toUpperCase())}
                           </div>
                         </td>
-                        <td className="border px-1 text-center"><span className="text-xs">{row.unidad || (catalogoCaracteristicas.find((c:any) => String(c.id) === String(row.caracteristica_id))?.unidad) || ''}</span></td>
-                        <td className="border px-1 text-center"><input value={row.minimo || ''} onChange={(e) => actualizarCaracteristica(idx, 'minimo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
-                        <td className="border px-1 text-center"><input value={row.nominal || ''} onChange={(e) => actualizarCaracteristica(idx, 'nominal', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
-                        <td className="border px-1 text-center"><input value={row.maximo || ''} onChange={(e) => actualizarCaracteristica(idx, 'maximo', e.target.value)} className="w-full text-center text-xs px-1 py-1" /></td>
+                        <td className="border px-1 text-center"><span className="text-sm">{row.unidad || (catalogoCaracteristicas.find((c:any) => String(c.id) === String(row.caracteristica_id))?.unidad) || ''}</span></td>
+                        <td className="border px-1 text-center"><input value={row.minimo || ''} onChange={(e) => actualizarCaracteristica(idx, 'minimo', e.target.value)} className="w-full text-center text-sm px-1 py-1" /></td>
+                        <td className="border px-1 text-center"><input value={row.nominal || ''} onChange={(e) => actualizarCaracteristica(idx, 'nominal', e.target.value)} className="w-full text-center text-sm px-1 py-1" /></td>
+                        <td className="border px-1 text-center"><input value={row.maximo || ''} onChange={(e) => actualizarCaracteristica(idx, 'maximo', e.target.value)} className="w-full text-center text-sm px-1 py-1" /></td>
                       </tr>
                     ))}
                   </tbody>

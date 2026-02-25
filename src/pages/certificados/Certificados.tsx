@@ -228,22 +228,20 @@ const Certificados: React.FC = () => {
             <table className="min-w-full border border-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="p-2 text-left">#</th>
-                  <th className="p-2 text-left">Orden</th>
+                  <th className="p-2 text-left">N Cert.</th>
+                  <th className="p-2 text-left">Referencia</th>
                   <th className="p-2 text-left">Cliente</th>
                   <th className="p-2 text-left">Fecha</th>
-                  <th className="p-2 text-left">N° Cert.</th>
                   <th className="p-2 text-left">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {certificados.map((c, i) => (
                   <tr key={i} className="border-t">
-                    <td className="p-2">{i + 1}</td>
-                    <td className="p-2">{c.numero_orden || '-'}</td>
+                    <td className="p-2">{c.numero_certificado || '-'}</td>
+                    <td className="p-2">{c.referencia || c.descripcion || '-'}</td>
                     <td className="p-2">{c.cliente_nombre || c.cliente || '-'}</td>
                     <td className="p-2">{formatDate(c.fecha_creacion || c.fecha || c.created_at)}</td>
-                    <td className="p-2">{c.numero_certificado || '-'}</td>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         <button
