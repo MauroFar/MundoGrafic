@@ -139,16 +139,42 @@ const VistaKanban = () => {
             cols.unshift(entregadoCol);
           }
         }
-        // Dedupe columns by id preserving order
-        const seen = new Set();
+        // Dedupe columns by id preserving order. Merge singular/plural duplicates (e.g. 'terminado' vs 'terminados')
         const uniqueCols = [];
+        const normIndex = {}; // normalized id -> index in uniqueCols
+        const normalizeId = (id) => (id || '').toString().toLowerCase().trim().replace(/s$/, '');
+
         cols.forEach(c => {
           if (!c || !c.id) return;
-          if (!seen.has(c.id)) {
-            seen.add(c.id);
-            uniqueCols.push(c);
+          const norm = normalizeId(c.id);
+          if (normIndex[norm] === undefined) {
+            // first time we see this normalized id
+            normIndex[norm] = uniqueCols.length;
+            // make shallow copy to avoid mutating backend object
+            uniqueCols.push({ ...c, aliases: Array.isArray(c.aliases) ? [...c.aliases] : [] });
+          } else {
+            // merge with existing
+            const idx = normIndex[norm];
+            const existing = uniqueCols[idx];
+            // union aliases
+            existing.aliases = Array.from(new Set([...(existing.aliases || []), ...(c.aliases || [])]));
+            // prefer plural id/title if available
+            const existingIsPlural = (existing.id || '').toString().endsWith('s');
+            const newIsPlural = (c.id || '').toString().endsWith('s');
+            if (!existingIsPlural && newIsPlural) {
+              // replace id/title/color/icon with plural variant
+              existing.id = c.id;
+              existing.titulo = c.titulo;
+              existing.color = c.color || existing.color;
+              existing.icono = c.icono || existing.icono;
+            } else {
+              // keep existing but ensure color/icon exist
+              existing.color = existing.color || c.color;
+              existing.icono = existing.icono || c.icono;
+            }
           }
         });
+
         console.log('🔁 Columnas procesadas para Kanban (unicas):', uniqueCols.map(c => ({ id: c.id, titulo: c.titulo })));
         setColumnas(uniqueCols);
         return uniqueCols;
