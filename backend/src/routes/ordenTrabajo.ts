@@ -11,6 +11,74 @@ import { validateOrdenTrabajo, validateOrdenTrabajoUpdate } from "../middleware/
 export default (client: any) => {
   const router = express.Router();
 
+  // Mapeo y normalización de estados (display -> canonical)
+  const CANONICAL_STATES = new Set([
+    'en_preprensa', 'en_prensa', 'laminado', 'troquelado', 'terminados', 'liberado', 'entregado'
+  ]);
+
+  const DISPLAY_TO_CANON: Record<string, string> = {
+    'preprensa': 'en_preprensa',
+    'pre prensa': 'en_preprensa',
+    'en preprensa': 'en_preprensa',
+
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'prensa / impresion': 'en_prensa',
+    'prensa / impresión': 'en_prensa',
+    'prensa impresion': 'en_prensa',
+    'en prensa': 'en_prensa',
+
+    'laminado/barnizado': 'laminado',
+    'laminado barnizado': 'laminado',
+    'laminado': 'laminado',
+
+    'troquelado': 'troquelado',
+
+    'terminados': 'terminados',
+
+    'producto liberado': 'liberado',
+    'liberado': 'liberado',
+
+    'producto entregado': 'entregado',
+    'entregado': 'entregado'
+  };
+
+  function normalizeString(s: any): string {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function normalizeEstado(input: any): string | null {
+    if (input === null || input === undefined) return null;
+    const normalized = normalizeString(input);
+    // Si ya es un canonical conocido
+    if (CANONICAL_STATES.has(normalized)) return normalized;
+    // Buscar en display map
+    if (DISPLAY_TO_CANON[normalized]) return DISPLAY_TO_CANON[normalized];
+    return null;
+  }
+
   // Obtener datos del cliente de una cotización
   router.get("/datosCotizacion/:id", authRequired(), async (req, res): Promise<void> => {
     const { id } = req.params;
@@ -1499,22 +1567,19 @@ export default (client: any) => {
         FROM orden_trabajo ot
         LEFT JOIN detalle_orden_trabajo dot ON ot.id = dot.orden_trabajo_id
         WHERE ot.estado IN (
-          'en producción', 
-          'En Proceso',
-          'en preprensa',
-          'En Preprensa',
-          'en prensa',
-          'En Prensa',
-          'En Impresión',
-          'en impresión',
-          'en acabados',
-          'En Acabados',
-          'en control de calidad',
-          'En Control de Calidad',
-          'en empacado',
-          'En Empacado',
-          'entregado',
-          'Entregado'
+          -- general / human variants
+          'en producción', 'En Proceso', 'en produccion', 'en proceso', 'pendiente', 'Pendiente',
+          -- preprensa / prensa variants (with spaces and underscores)
+          'en preprensa','En Preprensa','en_preprensa', 'En_Preprensa',
+          'en prensa','En Prensa','en_prensa','En_Prensa','en impresion','En Impresión','en_impresion',
+          -- acabados / empacado
+          'en acabados','En Acabados','en_acabados','en empacado','En Empacado','en_empacado',
+          -- digital-specific stages (canonical keys)
+          'laminado','troquelado','terminados','terminado','liberado','entregado',
+          -- control/quality
+          'en control de calidad','En Control de Calidad','en_control_de_calidad',
+          -- delivered/other
+          'Entregado','entregado','Facturado','facturado'
         )
         ORDER BY ot.fecha_entrega ASC, ot.created_at DESC
       `);
@@ -1551,12 +1616,12 @@ export default (client: any) => {
         ],
         digital: [
           { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', aliases: ['en preprensa','en pre-prensa','preprensa'] },
-          { id: 'en_prensa', titulo: 'Prensa / Impresión', color: 'purple', aliases: ['en prensa','en impresión','en impresion'] },
-          { id: 'laminado', titulo: 'Laminado / Barnizado', color: 'orange', aliases: ['laminado','barnizado','laminado/barnizado'] },
+          { id: 'en_prensa', titulo: 'Impresión', color: 'purple', aliases: ['en prensa','en impresión','impresión','impresion'] },
+          { id: 'laminado', titulo: 'Laminado/Barnizado', color: 'orange', aliases: ['laminado','barnizado','laminado/barnizado'] },
           { id: 'troquelado', titulo: 'Troquelado', color: 'teal', aliases: ['troquelado','troquel'] },
-          { id: 'terminado', titulo: 'Terminado', color: 'yellow', aliases: ['terminado','terminados'] },
+          { id: 'terminado', titulo: 'Terminados', color: 'yellow', aliases: ['terminado','terminados'] },
           { id: 'liberado', titulo: 'Producto Liberado', color: 'gray', aliases: ['liberado','liberación producto','producto liberado'] },
-          { id: 'entregado', titulo: 'Entregado', color: 'green', aliases: ['entregado','completado','facturado'] }
+          { id: 'entregado', titulo: 'Producto Entregado', color: 'green', aliases: ['entregado','producto entregado','completado','facturado'] }
         ]
       };
 
@@ -1691,14 +1756,27 @@ export default (client: any) => {
     
     try {
       console.log(`🔄 Actualizando estado de orden ${id}:`, { estado, preprensa, prensa, terminados });
-      
+
+      // Normalizar/validar estado si viene en el payload
+      let estadoToSet: string | undefined = undefined;
+      if (estado !== undefined) {
+        const normalized = normalizeEstado(estado);
+        if (normalized === null) {
+          const allowed = Array.from(CANONICAL_STATES).concat(Object.keys(DISPLAY_TO_CANON)).map(s => s);
+          console.warn(`⚠️ Estado no reconocido recibido: ${estado}`);
+          return res.status(400).json({ success: false, error: 'Estado no reconocido', allowed_values: allowed });
+        }
+        estadoToSet = normalized;
+        console.log(`➡️ Estado normalizado: '${estado}' -> '${estadoToSet}'`);
+      }
+
       let query = 'UPDATE orden_trabajo SET updated_at = CURRENT_TIMESTAMP';
       const params: any[] = [];
       let paramCounter = 1;
       
-      if (estado !== undefined) {
+      if (estadoToSet !== undefined) {
         query += `, estado = $${paramCounter}`;
-        params.push(estado);
+        params.push(estadoToSet);
         paramCounter++;
       }
       if (preprensa !== undefined) {

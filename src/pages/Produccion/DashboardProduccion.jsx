@@ -264,11 +264,11 @@ const DashboardProduccion = () => {
           >
             <option value="todos">Todos los estados</option>
             <option value="pendiente">Pendientes</option>
-            <option value="en_preprensa">En Preprensa</option>
-            <option value="en_prensa">En Prensa</option>
+            <option value="Preprensa">En Preprensa</option>
+            <option value="Prensa / Impresión">En Prensa</option>
             <option value="en_acabados">En Acabados</option>
             <option value="en_control_calidad">En Control</option>
-            <option value="entregado">Entregadas</option>
+            <option value="Entregado">Entregadas</option>
             <option value="retrasada">Retrasadas</option>
           </select>
 

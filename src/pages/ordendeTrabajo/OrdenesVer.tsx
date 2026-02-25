@@ -746,24 +746,24 @@ const OrdenesVer: React.FC = () => {
                   if (tipo === 'digital') {
                     return (
                       <>
-                        <option value="en_preprensa">Preprensa</option>
-                        <option value="en_prensa">Impresión</option>
-                        <option value="laminado">Laminado/Barnizado</option>
-                        <option value="troquelado">Troquelado</option>
-                        <option value="terminados">Terminados</option>
-                        <option value="liberado">Producto Liberado</option>
-                        <option value="entregado">Producto Entregado</option>
+                        <option value="Preprensa">Preprensa</option>
+                        <option value="Impresión">Impresión</option>
+                        <option value="Laminado/Barnizado">Laminado/Barnizado</option>
+                        <option value="Troquelado">Troquelado</option>
+                        <option value="Terminados">Terminados</option>
+                        <option value="Producto Liberado">Producto Liberado</option>
+                        <option value="Producto Entregado">Producto Entregado</option>
                       </>
                     );
                   }
 
                   return (
                     <>
-                      <option value="en_preprensa">Preprensa</option>
-                      <option value="en_prensa">Prensa / Impresión</option>
-                      <option value="en_acabados">Acabados / Empacado</option>
-                      <option value="en_control_de_calidad">Listo p/Entrega</option>
-                      <option value="entregado">Entregado</option>
+                      <option value="Preprensa">Preprensa</option>
+                      <option value="Prensa / Impresión">Prensa / Impresión</option>
+                      <option value="Acabados / Empacado">Acabados / Empacado</option>
+                      <option value="Listo p/Entrega">Listo p/Entrega</option>
+                      <option value="Entregado">Entregado</option>
                     </>
                   );
                 })()}

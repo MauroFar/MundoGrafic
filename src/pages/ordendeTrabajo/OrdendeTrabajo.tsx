@@ -1268,13 +1268,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
                         value={estado}
                         onChange={(e) => setEstado(e.target.value)}
                       >
-                        <option value="en_preprensa">Pre Prensa</option>
-                        <option value="en_prensa">Impresión</option>
-                        <option value="laminado">Laminado/Barnizado</option>
-                        <option value="troquelado">Troquelado</option>
-                        <option value="terminados">Terminados</option>
-                        <option value="liberado">Producto Liberado</option>
-                        <option value="entregado">Producto Entregado</option>
+                        <option value="Preprensa">Pre Prensa</option>
+                        <option value="Impresión">Impresión</option>
+                        <option value="Laminado/Barnizado">Laminado/Barnizado</option>
+                        <option value="Troquelado">Troquelado</option>
+                        <option value="Terminados">Terminados</option>
+                        <option value="Producto Liberado">Producto Liberado</option>
+                        <option value="Producto Entregado">Producto Entregado</option>
                       </select>
                     ) : (
                       <select 

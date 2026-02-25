@@ -66,6 +66,12 @@ const VistaKanban = () => {
     // eslint-disable-next-line
   }, [filtroResponsable, busquedaActiva, workflowType]);
 
+  // Función pública para recargar workflow y órdenes (útil cuando el usuario pulsa el mismo botón)
+  const refreshWorkflowAndOrders = async (tipo) => {
+    const cols = await cargarWorkflow(tipo || workflowType);
+    await cargarOrdenes(cols);
+  };
+
   const cargarWorkflow = async (tipo) => {
     try {
       const token = localStorage.getItem('token');
@@ -75,15 +81,57 @@ const VistaKanban = () => {
       if (!resp.ok) return;
       const json = await resp.json();
       if (json && json.workflow) {
+        console.log('🔁 Workflow desde backend:', json.workflow);
         // choose icons based on color mapping
         const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
         let cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
         // For digital workflows enforce the desired stage order:
         // preprensa, impresion, laminado, troquelado, terminado, producto liberado, entregado
         if ((tipo || '').toString().toLowerCase() === 'digital') {
-          const desiredOrder = ['en_preprensa','en_prensa','laminado','troquelado','terminado','liberado','entregado'];
-          cols = desiredOrder.map(id => cols.find(c => c.id === id)).filter(Boolean);
-        } else {
+            const desiredOrder = ['en_preprensa','en_prensa','laminado','troquelado','terminados','liberado','entregado'];
+            // normalize helper
+            const normalize = (s) => {
+              if (!s) return '';
+              try {
+                return s.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim().replace(/[_\s]+/g, ' ');
+              } catch (e) {
+                return s.toString().toLowerCase().trim().replace(/[_\s]+/g, ' ');
+              }
+            };
+
+            const colsByMatch = [];
+            const remaining = [...cols];
+            desiredOrder.forEach(desId => {
+              const desNorm = normalize(desId);
+              // find by id, titulo or aliases
+              let foundIndex = remaining.findIndex(c => normalize(c.id || '') === desNorm);
+              if (foundIndex === -1) foundIndex = remaining.findIndex(c => normalize(c.titulo || '').includes(desNorm) || desNorm.includes(normalize(c.titulo || '')));
+              if (foundIndex === -1) foundIndex = remaining.findIndex(c => (c.aliases || []).map(a => normalize(a)).some(a => a === desNorm || a.includes(desNorm) || desNorm.includes(a)));
+              if (foundIndex > -1) {
+                colsByMatch.push(remaining[foundIndex]);
+                remaining.splice(foundIndex, 1);
+              }
+            });
+            // Append any remaining columns (not in desired order) after the ordered ones
+            cols = [...colsByMatch, ...remaining];
+
+            // Ensure expected stages exist even if backend omitted them: add lightweight fallbacks
+              const expected = [
+                { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue' },
+                { id: 'en_prensa', titulo: 'Impresión', color: 'purple' },
+                { id: 'laminado', titulo: 'Laminado/Barnizado', color: 'orange' },
+                { id: 'troquelado', titulo: 'Troquelado', color: 'teal' },
+                { id: 'terminados', titulo: 'Terminados', color: 'yellow' },
+                { id: 'liberado', titulo: 'Producto Liberado', color: 'gray' },
+                { id: 'entregado', titulo: 'Producto Entregado', color: 'green' }
+              ];
+              const existingIds = new Set(cols.map(c => c.id));
+              expected.forEach(exp => {
+                if (!existingIds.has(exp.id)) {
+                  cols.push({ id: exp.id, titulo: exp.titulo, color: exp.color, aliases: [exp.id], icono: iconMap[exp.color] || FaPlay });
+                }
+              });
+          } else {
           // For non-digital (offset) keep the backend order but ensure 'entregado' is visible first
           const idx = cols.findIndex(c => c.id === 'entregado');
           if (idx > -1) {
@@ -91,8 +139,19 @@ const VistaKanban = () => {
             cols.unshift(entregadoCol);
           }
         }
-        setColumnas(cols);
-        return cols;
+        // Dedupe columns by id preserving order
+        const seen = new Set();
+        const uniqueCols = [];
+        cols.forEach(c => {
+          if (!c || !c.id) return;
+          if (!seen.has(c.id)) {
+            seen.add(c.id);
+            uniqueCols.push(c);
+          }
+        });
+        console.log('🔁 Columnas procesadas para Kanban (unicas):', uniqueCols.map(c => ({ id: c.id, titulo: c.titulo })));
+        setColumnas(uniqueCols);
+        return uniqueCols;
       }
       return null;
     } catch (err) {
@@ -116,6 +175,14 @@ const VistaKanban = () => {
 
       const data = await response.json();
       console.log('📦 Órdenes recibidas del backend:', data);
+      // Debug: log each order's id, estado and tipo_orden to diagnose filtering
+      try {
+        if (Array.isArray(data.ordenes)) {
+          data.ordenes.forEach(o => console.debug(`🔎 Orden recibido id=${o.id} numero=${o.numero_orden} estado='${o.estado}' tipo_orden='${o.tipo_orden}'`));
+        }
+      } catch (e) {
+        console.error('Error al depurar órdenes recibidas', e);
+      }
 
       // Inicializar las columnas vacías dinámicamente
       const colsToUse = colsParam || columnas;
@@ -123,10 +190,21 @@ const VistaKanban = () => {
       colsToUse.forEach(c => { ordenesAgrupadas[c.id] = []; });
 
       // Filtrar por tipo de orden (offset|digital)
-      let ordenesFiltradas = (data.ordenes || []).filter(o => {
+      const allOrdenes = (data.ordenes || []);
+      // Log counts per tipo_orden for debugging
+      const countsByTipo = allOrdenes.reduce((acc, o) => {
+        const t = ((o.tipo_orden || 'offset') + '').toString().toLowerCase();
+        acc[t] = (acc[t] || 0) + 1;
+        return acc;
+      }, {});
+      console.debug('📊 Conteo por tipo_orden recibido:', countsByTipo);
+      let ordenesFiltradas = allOrdenes.filter(o => {
         const tipoOrden = (o.tipo_orden || 'offset').toString().toLowerCase();
-        return tipoOrden === workflowType;
+        const keep = tipoOrden === workflowType;
+        if (!keep) console.debug(`⛔ Orden ${o.id} filtrada por tipo_orden='${tipoOrden}' (workflowType='${workflowType}')`);
+        return keep;
       });
+      console.debug(`✅ Órdenes tras filtrado por tipo ('${workflowType}'): ${ordenesFiltradas.length} de ${allOrdenes.length}`);
 
       // Filtrar por número de orden si hay búsqueda activa
       if (busquedaActiva && busquedaActiva.trim() !== '') {
@@ -137,25 +215,63 @@ const VistaKanban = () => {
       }
 
       // Agrupar las órdenes por estado utilizando aliases definidos en columnas
+      const normalize = (s) => {
+        if (!s) return '';
+        try {
+          return s.toString()
+            .normalize('NFD')
+            .replace(/\p{Diacritic}/gu, '')
+            .toLowerCase()
+            .trim()
+            .replace(/^en\s+/, '')
+            .replace(/[_\s]+/g, ' ');
+        } catch (e) {
+          return s.toString().toLowerCase().trim().replace(/[_\s]+/g, ' ');
+        }
+      };
+
       if (ordenesFiltradas && Array.isArray(ordenesFiltradas)) {
+        const unmatched = new Set();
         ordenesFiltradas.forEach(orden => {
-          const estadoRaw = (orden.estado || '').toString().toLowerCase().trim();
+          const estadoRaw = String(orden.estado || '');
+          const estadoNorm = normalize(estadoRaw);
           let matched = false;
           for (let i = 0; i < colsToUse.length; i++) {
             const col = colsToUse[i];
-            const aliases = (col.aliases || []).map(a => a.toString().toLowerCase().trim());
-            if (aliases.includes(estadoRaw)) {
+            // build a robust alias set including normalized aliases, titulo and id variants
+            const aliases = new Set((col.aliases || []).map(a => normalize(a)));
+            aliases.add(normalize(col.titulo || ''));
+            const colIdNorm = normalize(col.id || '');
+            aliases.add(colIdNorm);
+            aliases.add(colIdNorm.replace(/[_\s]+/g, ''));
+            aliases.add(colIdNorm.replace(/[_\s]+/g, ' '));
+            // add singular/plural heuristic
+            if (colIdNorm.endsWith('s')) aliases.add(colIdNorm.replace(/s$/, ''));
+            else aliases.add(colIdNorm + 's');
+
+            const aliasArray = Array.from(aliases).filter(Boolean);
+
+            // Match if estado equals or includes an alias, or viceversa
+            const aliasMatch = aliasArray.some(a => a && (estadoNorm === a || estadoNorm.includes(a) || a.includes(estadoNorm)));
+            const idMatch = colIdNorm && (estadoNorm === colIdNorm || estadoNorm.includes(colIdNorm) || colIdNorm.includes(estadoNorm));
+
+            if (aliasMatch || idMatch) {
+              console.debug(`🧭 Match orden ${orden.id} estado='${estadoRaw}' -> columna='${col.id}' (estadoNorm='${estadoNorm}')`);
               ordenesAgrupadas[col.id].push({ ...orden, responsable_actual: orden.vendedor || orden.preprensa || orden.prensa || orden.terminados || 'Sin asignar' });
               matched = true;
               break;
+            } else {
+              console.debug(`--- intentar orden ${orden.id} estado='${estadoRaw}' contra columna='${col.id}': aliases=${JSON.stringify(aliasArray)}`);
             }
           }
           if (!matched) {
-            // if not matched, put into first column
+            // if not matched, put into first column and record the state for debugging
             const firstCol = colsToUse[0];
             ordenesAgrupadas[firstCol.id].push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
+            unmatched.add(estadoRaw);
           }
         });
+        if (unmatched.size > 0) console.warn('⚠️ Estados sin match en Kanban (ir a aliases en workflow):', Array.from(unmatched));
       }
 
       console.log('✅ Órdenes agrupadas:', ordenesAgrupadas);
@@ -331,19 +447,19 @@ const VistaKanban = () => {
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setWorkflowType('offset')}
+                  onClick={async () => { setWorkflowType('offset'); await refreshWorkflowAndOrders('offset'); }}
                 className={`px-3 py-2 rounded-md text-sm ${workflowType==='offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
               >
                 Offset
               </button>
               <button
-                onClick={() => setWorkflowType('digital')}
+                  onClick={async () => { setWorkflowType('digital'); await refreshWorkflowAndOrders('digital'); }}
                 className={`px-3 py-2 rounded-md text-sm ${workflowType==='digital' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
               >
                 Digital
               </button>
               <button
-                onClick={cargarOrdenes}
+                onClick={() => cargarOrdenes()}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 <FaSync className="h-4 w-4" />
