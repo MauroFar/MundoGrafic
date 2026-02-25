@@ -156,6 +156,127 @@ export default (client: any) => {
     }
   });
 
+  // Endpoint de preview: generar PDF y devolver base64 para vista previa en frontend
+  router.get('/:id/preview', authRequired(), checkPermission(client, 'certificados', 'leer'), async (req: any, res: any) => {
+    const { id } = req.params;
+    try {
+      const certRes = await client.query('SELECT * FROM certificado_calidad WHERE id = $1', [id]);
+      if (certRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Certificado no encontrado' });
+      const certificado = certRes.rows[0];
+      const carRes = await client.query('SELECT * FROM certificado_medicion WHERE certificado_id = $1 ORDER BY orden ASC', [id]);
+      const caracteristicas = carRes.rows;
+
+      const fs = require('fs/promises');
+      const path = require('path');
+      let logoBase64 = '';
+      try {
+        const logoPath = path.join(__dirname, '../../public/images/logo.png');
+        const b = await fs.readFile(logoPath);
+        logoBase64 = `data:image/png;base64,${b.toString('base64')}`;
+      } catch (e) {
+        logoBase64 = '';
+      }
+
+      const html = `
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+            .header { display:flex; align-items:center; gap:16px; }
+            .title { text-align:center; flex:1 }
+            .box { border:1px solid #000; padding:6px; }
+            table{ width:100%; border-collapse: collapse; }
+            td, th { border: 1px solid #000; padding:4px; }
+            .no-border { border: none; }
+            .center { text-align:center }
+            .small { font-size:11px }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="width:180px">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px"/>` : ''}</div>
+            <div class="title">
+              <h2>CERTIFICADO DE ANALISIS DE CALIDAD</h2>
+            </div>
+            <div style="width:160px"></div>
+          </div>
+
+          <h3>INFORMACION GENERAL</h3>
+          <table>
+            <tr>
+              <td><strong>FECHA:</strong> ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</td>
+                <td><strong>CLIENTE:</strong> ${certificado.cliente_nombre || ''}</td>
+                <td><strong>REFERENCIA:</strong> ${certificado.referencia || certificado.descripcion || ''}</td>
+            </tr>
+            <tr>
+              <td><strong>MATERIAL:</strong> ${certificado.material || ''}</td>
+              <td><strong>CANTIDAD:</strong> ${certificado.cantidad || ''}</td>
+              <td><strong>CODIGO:</strong> ${certificado.codigo || ''}</td>
+            </tr>
+            <tr>
+              <td><strong>LOTE:</strong> ${certificado.lote || ''}</td>
+              <td><strong>N° CERTIFICADO:</strong> ${certificado.numero_certificado || ''}</td>
+              <td><strong>ORDEN DE COMPRA:</strong> ${certificado.orden_compra || ''}</td>
+            </tr>
+          </table>
+
+          <h3>CARACTERISTICAS CUANTITATIVAS</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>CARACTERISTICA</th>
+                <th>MINIMO</th>
+                <th>NOMINAL</th>
+                <th>MAXIMO</th>
+                <th>UNIDAD</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${caracteristicas.map((c:any) => `
+                <tr>
+                  <td>${c.nombre}</td>
+                  <td class="center">${c.minimo || ''}</td>
+                  <td class="center">${c.nominal || ''}</td>
+                  <td class="center">${c.maximo || ''}</td>
+                  <td class="center">${c.unidad || ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div style="margin-top:16px">
+            <strong>OBSERVACIONES:</strong>
+            <div class="box">${certificado.observaciones || ''}</div>
+          </div>
+
+          <div style="margin-top:24px; display:flex; gap:24px">
+            <div style="flex:1">
+              <div style="border:1px solid #000; padding:8px; width:240px">INSPECCIONADO POR:<br><div style="margin-top:8px">${certificado.inspeccionado_por || ''}</div></div>
+            </div>
+            <div style="flex:1"></div>
+          </div>
+
+        </body>
+        </html>
+      `;
+
+      const puppeteer = require('puppeteer');
+      const browser = await puppeteer.launch({ headless: 'new' });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+      await browser.close();
+
+      const pdfBase64 = pdfBuffer.toString('base64');
+      const dataUrl = `data:application/pdf;base64,${pdfBase64}`;
+      res.json({ success: true, pdf: dataUrl });
+    } catch (error: any) {
+      console.error('Error generando preview PDF certificado:', error);
+      res.status(500).json({ success: false, error: 'Error generando preview' });
+    }
+  });
+
   // Crear certificado (y mediciones)
   router.post('/', authRequired(), checkPermission(client, 'certificados', 'crear'), async (req: any, res) => {
     const {

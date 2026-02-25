@@ -15,7 +15,6 @@ const Certificados: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCert, setSelectedCert] = useState<any>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -37,7 +36,77 @@ const Certificados: React.FC = () => {
 
   useEffect(() => { cargarCertificados(); }, []);
 
-  // noop
+  const verPDF = async (id: number) => {
+    try {
+      setPreviewUrl(null);
+      setShowPreview(true);
+      setPreviewLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${id}/preview`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener la vista previa');
+      const data = await res.json();
+      if (!data.success || !data.pdf) throw new Error('Respuesta inválida al generar vista previa');
+      setPreviewUrl(data.pdf);
+    } catch (err: any) {
+      console.error('Error en verPDF certificados:', err);
+      toast.error(err.message || 'Error al cargar el PDF');
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const descargarPDF = async (id: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener el PDF');
+      const blob = await res.blob();
+      if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificado_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 10000);
+      toast.success('✅ PDF descargado exitosamente');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al descargar el PDF');
+    }
+  };
+
+  const imprimirPDF = async (id: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener el PDF');
+      const blob = await res.blob();
+      if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => { printWindow.print(); };
+      } else {
+        toast.error('No se pudo abrir la ventana de impresión. Permite ventanas emergentes.');
+      }
+      setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 10000);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al imprimir el PDF');
+    }
+  };
+
+  const cerrarPreview = () => {
+    setShowPreview(false);
+    if (previewUrl) {
+      try { window.URL.revokeObjectURL(previewUrl); } catch (e) {}
+    }
+    setPreviewUrl(null);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -56,93 +125,54 @@ const Certificados: React.FC = () => {
             </button>
             <button
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              onClick={() => { /* refrescar lista en el futuro */ }}
+              onClick={() => { cargarCertificados(); }}
             >
               Actualizar lista
             </button>
           </div>
         </div>
-        {/* Detail modal will be rendered below when needed */}
+      
         {showDetailModal && selectedCert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetailModal(false)}>
-            <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">Detalle Certificado</h2>
-                    <div className="text-green-100 text-sm">N° {selectedCert.numero_certificado || '-'}</div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <button onClick={() => setShowDetailModal(false)} className="text-white hover:bg-green-500 rounded-full p-2">
-                      <FaTimes size={20} />
-                    </button>
-                  </div>
-                </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="text-sm text-gray-500 block mb-1">Cliente</label>
+                <p className="text-gray-900 font-medium">{selectedCert.cliente_nombre || selectedCert.cliente || 'N/A'}</p>
               </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="text-sm text-gray-500 block mb-1">Referencia</label>
+                <p className="text-gray-900 font-medium">{selectedCert.referencia || '-'}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="text-sm text-gray-500 block mb-1">Material / Lote</label>
+                <p className="text-gray-900 font-medium">{(selectedCert.material || '-') + ' / ' + (selectedCert.lote || '-')}</p>
+              </div>
+            </div>
 
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="text-sm text-gray-500 block mb-1">Cliente</label>
-                    <p className="text-gray-900 font-medium">{selectedCert.cliente_nombre || selectedCert.cliente || 'N/A'}</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="text-sm text-gray-500 block mb-1">Referencia</label>
-                    <p className="text-gray-900 font-medium">{selectedCert.referencia || '-'}</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <label className="text-sm text-gray-500 block mb-1">Material / Lote</label>
-                    <p className="text-gray-900 font-medium">{(selectedCert.material || '-') + ' / ' + (selectedCert.lote || '-')}</p>
-                  </div>
-                </div>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-600">Descripcion</label>
+              <div className="bg-white border rounded p-3">{selectedCert.descripcion || '-'}</div>
+            </div>
 
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold text-gray-600">Descripcion</label>
-                  <div className="bg-white border rounded p-3">{selectedCert.descripcion || '-'}</div>
-                </div>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-600">Observaciones</label>
+              <div className="bg-white border rounded p-3">{selectedCert.observaciones || '-'}</div>
+            </div>
 
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold text-gray-600">Observaciones</label>
-                  <div className="bg-white border rounded p-3">{selectedCert.observaciones || '-'}</div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <label className="text-sm text-gray-600 block mb-2 font-semibold">Creado por</label>
-                    <p className="text-gray-900 font-medium mb-1">{selectedCert.created_by_nombre || 'Sistema'}</p>
-                    <p className="text-xs text-gray-500">{selectedCert.created_at ? new Date(selectedCert.created_at).toLocaleString('es-EC') : '-'}</p>
-                  </div>
-                  <div className="flex items-center gap-2 justify-end">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2" onClick={async () => {
-                      try {
-                        setPdfLoading(true);
-                        const apiUrl = import.meta.env.VITE_API_URL;
-                        const token = localStorage.getItem('token');
-                        const res = await fetch(`${apiUrl}/api/certificados/${selectedCert.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-                        if (!res.ok) throw new Error('Error al generar PDF');
-                        const blob = await res.blob();
-                        if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
-                        const url = window.URL.createObjectURL(blob);
-                        const win = window.open(url, '_blank');
-                        if (!win) {
-                          toast.error('No se pudo abrir la ventana. Permite ventanas emergentes y vuelve a intentarlo.');
-                          // as fallback, trigger download
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `certificado_${selectedCert.numero_certificado || selectedCert.id}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        } else {
-                          // leave URL to be handled by browser; revoke after delay
-                          setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 20000);
-                        }
-                      } catch (err:any) {
-                        toast.error(err.message || 'Error al obtener PDF');
-                      } finally { setPdfLoading(false); }
-                    }}>{pdfLoading ? 'Generando...' : (<><FaFileAlt/> Ver / Imprimir</>)}</button>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <label className="text-sm text-gray-600 block mb-2 font-semibold">Creado por</label>
+                <p className="text-gray-900 font-medium mb-1">{selectedCert.created_by_nombre || 'Sistema'}</p>
+                <p className="text-xs text-gray-500">{selectedCert.created_at ? new Date(selectedCert.created_at).toLocaleString('es-EC') : '-'}</p>
+              </div>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2"
+                  onClick={() => { if (selectedCert && selectedCert.id) verPDF(selectedCert.id); }}
+                >
+                  <FaFileAlt />
+                  <span>Ver / Imprimir</span>
+                </button>
               </div>
             </div>
           </div>
@@ -155,7 +185,7 @@ const Certificados: React.FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
                 <button
-                  onClick={() => { setShowPreview(false); if (previewUrl) { try { window.URL.revokeObjectURL(previewUrl); } catch (e) {} } setPreviewUrl(null); }}
+                  onClick={() => cerrarPreview()}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
                 >
                   ×
@@ -169,11 +199,9 @@ const Certificados: React.FC = () => {
                       <p className="text-gray-600">Generando vista previa...</p>
                     </div>
                   </div>
-                ) : (
-                  previewUrl ? (
-                    <object data={previewUrl} type="application/pdf" className="w-full h-full">
-                      <p>No se puede mostrar el PDF. Por favor, intente abrirlo en otra pestaña.</p>
-                    </object>
+                  ) : (
+                    previewUrl ? (
+                    <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-600">No hay PDF para mostrar.</div>
                   )
@@ -213,7 +241,7 @@ const Certificados: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
-                          onClick={() => { setSelectedCert(c); setShowDetailModal(true); }}
+                          onClick={() => { if (c && c.id) verPDF(c.id); else toast.error('ID del certificado no disponible'); }}
                           title="Ver"
                         >
                           <FaEye />

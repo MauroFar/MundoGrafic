@@ -36,7 +36,6 @@ const CertificadoForm: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [fechaCaducidadManual, setFechaCaducidadManual] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -102,6 +101,78 @@ const CertificadoForm: React.FC = () => {
       }));
     }
   }, [location]);
+
+  const verPDF = async (certId: number) => {
+    try {
+      setPreviewUrl(null);
+      setShowPreview(true);
+      setPreviewLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${certId}/preview`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener la vista previa');
+      const data = await res.json();
+      if (!data.success || !data.pdf) throw new Error('Respuesta inválida al generar vista previa');
+      setPreviewUrl(data.pdf);
+    } catch (err: any) {
+      console.error('Error en verPDF certificado:', err);
+      toast.error(err.message || 'Error al cargar el PDF');
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const descargarPDF = async (certId: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${certId}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener el PDF');
+      const blob = await res.blob();
+      if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificado_${certId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 10000);
+      toast.success('✅ PDF descargado exitosamente');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al descargar el PDF');
+    }
+  };
+
+  const imprimirPDF = async (certId: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/certificados/${certId}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Error al obtener el PDF');
+      const blob = await res.blob();
+      if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => { printWindow.print(); };
+      } else {
+        toast.error('No se pudo abrir la ventana de impresión. Permite ventanas emergentes.');
+      }
+      setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 10000);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al imprimir el PDF');
+    }
+  };
+
+  const cerrarPreview = () => {
+    setShowPreview(false);
+    if (previewUrl) {
+      try { window.URL.revokeObjectURL(previewUrl); } catch (e) {}
+    }
+    setPreviewUrl(null);
+  };
 
   // Helper: sumar 1 año en formato YYYY-MM-DD
   const addOneYear = (dateStr: string) => {
@@ -217,34 +288,9 @@ const CertificadoForm: React.FC = () => {
                 <>
                   <button
                     className="px-4 py-2 bg-blue-600 text-white rounded ml-2"
-                    onClick={async () => {
-                      try {
-                        setPdfLoading(true);
-                        const apiUrl = import.meta.env.VITE_API_URL;
-                        const token = localStorage.getItem('token');
-                        const res = await fetch(`${apiUrl}/api/certificados/${id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-                        if (!res.ok) throw new Error('Error al generar PDF');
-                        const blob = await res.blob();
-                        if (blob.type !== 'application/pdf') throw new Error('El archivo recibido no es un PDF válido');
-                        const url = window.URL.createObjectURL(blob);
-                        const win = window.open(url, '_blank');
-                        if (!win) {
-                          alert('No se pudo abrir la ventana. Permite ventanas emergentes y vuelve a intentarlo.');
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `certificado_${form.numero_certificado || id}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        } else {
-                          setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 20000);
-                        }
-                      } catch (err:any) {
-                        alert(err.message || 'Error al obtener PDF');
-                      } finally { setPdfLoading(false); }
-                    }}
+                    onClick={() => { if (id) verPDF(Number(id)); }}
                   >
-                    {pdfLoading ? 'Cargando...' : 'Ver / Imprimir PDF'}
+                    Ver / Imprimir PDF
                   </button>
 
                   {showDetailModal && (
@@ -292,21 +338,7 @@ const CertificadoForm: React.FC = () => {
                               <p className="text-xs text-gray-500">{form.created_at ? new Date(form.created_at).toLocaleString('es-EC') : '-'}</p>
                             </div>
                             <div className="flex items-center gap-2 justify-end">
-                              <button className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2" onClick={async () => {
-                                try {
-                                  setPdfLoading(true);
-                                  const apiUrl = import.meta.env.VITE_API_URL;
-                                  const token = localStorage.getItem('token');
-                                  const res = await fetch(`${apiUrl}/api/certificados/${id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-                                  if (!res.ok) throw new Error('Error al generar PDF');
-                                  const blob = await res.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  window.open(url, '_blank');
-                                  setTimeout(() => { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 20000);
-                                } catch (err:any) {
-                                  alert(err.message || 'Error al obtener PDF');
-                                } finally { setPdfLoading(false); }
-                              }}>{pdfLoading ? 'Generando...' : (<><FaFileAlt/> Ver / Imprimir</>)}</button>
+                              <button className="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2" onClick={() => { if (id) verPDF(Number(id)); }}><FaFileAlt/> Ver / Imprimir</button>
                             </div>
                           </div>
                         </div>
@@ -320,7 +352,7 @@ const CertificadoForm: React.FC = () => {
                         <div className="flex justify-between items-center mb-4">
                           <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
                           <button
-                            onClick={() => { setShowPreview(false); if (previewUrl) { try { window.URL.revokeObjectURL(previewUrl); } catch (e) {} } setPreviewUrl(null); }}
+                            onClick={() => cerrarPreview()}
                             className="text-gray-500 hover:text-gray-700 text-2xl"
                           >
                             ×
@@ -336,9 +368,7 @@ const CertificadoForm: React.FC = () => {
                             </div>
                           ) : (
                             previewUrl ? (
-                              <object data={previewUrl} type="application/pdf" className="w-full h-full">
-                                <p>No se puede mostrar el PDF. Por favor, intente abrirlo en otra pestaña.</p>
-                              </object>
+                              <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-600">No hay PDF para mostrar.</div>
                             )
