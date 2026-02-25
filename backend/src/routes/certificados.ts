@@ -34,7 +34,11 @@ export default (client: any) => {
       const certRes = await client.query('SELECT * FROM certificado_calidad WHERE id = $1', [id]);
       if (certRes.rows.length === 0) return res.status(404).json({ error: 'Certificado no encontrado' });
       const certificado = certRes.rows[0];
-      const carRes = await client.query('SELECT * FROM certificado_medicion WHERE certificado_id = $1 ORDER BY orden ASC', [id]);
+      const carRes = await client.query(`SELECT cm.id, cm.certificado_id, cm.caracteristica_id, cm.minimo, cm.nominal, cm.maximo, cm.orden, c.nombre, c.unidad
+        FROM certificado_medicion cm
+        LEFT JOIN caracteristica c ON cm.caracteristica_id = c.id
+        WHERE cm.certificado_id = $1
+        ORDER BY cm.orden ASC`, [id]);
       certificado.caracteristicas = carRes.rows;
       res.json(certificado);
     } catch (error: any) {
@@ -50,7 +54,11 @@ export default (client: any) => {
       const certRes = await client.query('SELECT * FROM certificado_calidad WHERE id = $1', [id]);
       if (certRes.rows.length === 0) return res.status(404).json({ error: 'Certificado no encontrado' });
       const certificado = certRes.rows[0];
-      const carRes = await client.query('SELECT * FROM certificado_medicion WHERE certificado_id = $1 ORDER BY orden ASC', [id]);
+      const carRes = await client.query(`SELECT cm.id, cm.certificado_id, cm.caracteristica_id, cm.minimo, cm.nominal, cm.maximo, cm.orden, c.nombre, c.unidad
+        FROM certificado_medicion cm
+        LEFT JOIN caracteristica c ON cm.caracteristica_id = c.id
+        WHERE cm.certificado_id = $1
+        ORDER BY cm.orden ASC`, [id]);
       const caracteristicas = carRes.rows;
 
       // Leer logo si existe
@@ -178,7 +186,11 @@ export default (client: any) => {
       const certRes = await client.query('SELECT * FROM certificado_calidad WHERE id = $1', [id]);
       if (certRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Certificado no encontrado' });
       const certificado = certRes.rows[0];
-      const carRes = await client.query('SELECT * FROM certificado_medicion WHERE certificado_id = $1 ORDER BY orden ASC', [id]);
+      const carRes = await client.query(`SELECT cm.id, cm.certificado_id, cm.caracteristica_id, cm.minimo, cm.nominal, cm.maximo, cm.orden, c.nombre, c.unidad
+        FROM certificado_medicion cm
+        LEFT JOIN caracteristica c ON cm.caracteristica_id = c.id
+        WHERE cm.certificado_id = $1
+        ORDER BY cm.orden ASC`, [id]);
       const caracteristicas = carRes.rows;
 
       const fs = require('fs/promises');
@@ -351,25 +363,40 @@ export default (client: any) => {
 
       const certificadoId = result.rows[0].id;
 
-      // Insertar mediciones: intentamos resolver caracteristica_id y unidad desde catálogo
+      // Insertar mediciones: preferimos caracteristica_id del payload; si no existe, resolvemos por nombre.
       if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
         for (let i = 0; i < caracteristicas.length; i++) {
           const c = caracteristicas[i];
-          const nombre = c.nombre || c.name || null;
-          let caracteristicaId: number | null = null;
+          let nombre = c.nombre || c.name || null;
+          let caracteristicaId: number | null = c.caracteristica_id || null;
           let unidadResolved: string | null = c.unidad || null;
 
-          if (nombre) {
-            const catRes = await client.query('SELECT id, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1', [nombre]);
+          // Si nos dieron un id, obtener nombre/unidad del catálogo si falta información
+          if (caracteristicaId) {
+            const catRes = await client.query('SELECT id, nombre, unidad FROM caracteristica WHERE id = $1 LIMIT 1', [caracteristicaId]);
+            if (catRes.rows.length > 0) {
+              const cat = catRes.rows[0];
+              nombre = nombre || cat.nombre || nombre;
+              if (!unidadResolved && cat.unidad) unidadResolved = cat.unidad;
+            } else {
+              // id proporcionado pero no existe: ignorarlo
+              caracteristicaId = null;
+            }
+          }
+
+          // Si no hay id, intentamos resolver por nombre (case-insensitive)
+          if (!caracteristicaId && nombre) {
+            const catRes = await client.query('SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1', [nombre]);
             if (catRes.rows.length > 0) {
               caracteristicaId = catRes.rows[0].id;
+              nombre = catRes.rows[0].nombre || nombre;
               if (!unidadResolved && catRes.rows[0].unidad) unidadResolved = catRes.rows[0].unidad;
             }
           }
 
           await client.query(`INSERT INTO certificado_medicion (
-            certificado_id, caracteristica_id, nombre, minimo, nominal, maximo, unidad, orden
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [certificadoId, caracteristicaId, nombre, c.minimo || null, c.nominal || null, c.maximo || null, unidadResolved || null, c.orden || i]);
+            certificado_id, caracteristica_id, minimo, nominal, maximo, orden
+          ) VALUES ($1,$2,$3,$4,$5,$6)`, [certificadoId, caracteristicaId, c.minimo || null, c.nominal || null, c.maximo || null, c.orden || i]);
         }
       }
 
@@ -435,21 +462,33 @@ export default (client: any) => {
       if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
         for (let i = 0; i < caracteristicas.length; i++) {
           const c = caracteristicas[i];
-          const nombre = c.nombre || c.name || null;
-          let caracteristicaId: number | null = null;
+          let nombre = c.nombre || c.name || null;
+          let caracteristicaId: number | null = c.caracteristica_id || null;
           let unidadResolved: string | null = c.unidad || null;
 
-          if (nombre) {
-            const catRes = await client.query('SELECT id, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1', [nombre]);
+          if (caracteristicaId) {
+            const catRes = await client.query('SELECT id, nombre, unidad FROM caracteristica WHERE id = $1 LIMIT 1', [caracteristicaId]);
+            if (catRes.rows.length > 0) {
+              const cat = catRes.rows[0];
+              nombre = nombre || cat.nombre || nombre;
+              if (!unidadResolved && cat.unidad) unidadResolved = cat.unidad;
+            } else {
+              caracteristicaId = null;
+            }
+          }
+
+          if (!caracteristicaId && nombre) {
+            const catRes = await client.query('SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1', [nombre]);
             if (catRes.rows.length > 0) {
               caracteristicaId = catRes.rows[0].id;
+              nombre = catRes.rows[0].nombre || nombre;
               if (!unidadResolved && catRes.rows[0].unidad) unidadResolved = catRes.rows[0].unidad;
             }
           }
 
           await client.query(`INSERT INTO certificado_medicion (
-            certificado_id, caracteristica_id, nombre, minimo, nominal, maximo, unidad, orden
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [id, caracteristicaId, nombre, c.minimo || null, c.nominal || null, c.maximo || null, unidadResolved || null, c.orden || i]);
+            certificado_id, caracteristica_id, minimo, nominal, maximo, orden
+          ) VALUES ($1,$2,$3,$4,$5,$6)`, [id, caracteristicaId, c.minimo || null, c.nominal || null, c.maximo || null, c.orden || i]);
         }
       }
 
