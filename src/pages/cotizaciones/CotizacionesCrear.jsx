@@ -305,7 +305,12 @@ function CotizacionesCrear() {
 
         // Calcular totales basados en los detalles
         const subtotalCalculado = filasActualizadas.reduce((sum, fila) => sum + fila.valor_total, 0);
-        const ivaCalculado = subtotalCalculado * 0.12;
+        let ivaCalculado;
+        if (cotizacionData && cotizacionData.iva != null) {
+          ivaCalculado = parseFloat(cotizacionData.iva) || 0;
+        } else {
+          ivaCalculado = subtotalCalculado * 0.15;
+        }
         const totalCalculado = subtotalCalculado + ivaCalculado;
 
         setSubtotal(subtotalCalculado);
