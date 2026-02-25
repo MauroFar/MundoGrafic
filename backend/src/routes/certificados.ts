@@ -84,52 +84,53 @@ export default (client: any) => {
             .sheet { width: 100%; box-sizing: border-box; padding: 0.5cm 0.8cm; }
 
             /* Header */
-            .header { display:flex; align-items:stretch; gap:12px; border-bottom:2px solid #000; padding-bottom:10px; }
-            .logo { width:160px; }
+            .header { display:flex; align-items:stretch; gap:14px; border-bottom:2px solid #000; padding-bottom:12px; }
+            .logo { width:162px; }
             .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
-            .company-name { font-size:18px; font-weight:700; letter-spacing:0.6px; }
-            .company-meta { font-size:10px; color:#222; margin-top:4px; }
-            .cert-number { width:200px; text-align:right; font-weight:700; font-size:12px; }
+            .company-name { font-size:20px; font-weight:700; letter-spacing:0.6px; }
+            .company-meta { font-size:12px; color:#222; margin-top:6px; }
+            .cert-number { width:202px; text-align:right; font-weight:700; font-size:14px; }
 
             /* Title */
-            .title { text-align:center; font-size:14px; font-weight:700; margin:14px 0 6px 0; }
+            .title { text-align:center; font-size:16px; font-weight:700; margin:16px 0 8px 0; }
 
             /* Info grid */
-            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px; }
+            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px; }
             .info-item { display:flex; }
-            .info-label { width:140px; font-weight:700; font-size:11px; }
-            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:4px; font-size:11px; }
+            .info-label { width:142px; font-weight:700; font-size:13px; }
+            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:6px; font-size:13px; }
 
             /* Measurements table */
-            table.carac { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
-            table.carac thead th { text-align:center; font-weight:700; padding:8px 6px; border-bottom:1px solid #000; }
-            table.carac tbody td { padding:8px 6px; border-bottom:1px solid #e0e0e0; }
+            table.carac { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+            table.carac thead th { text-align:center; font-weight:700; padding:10px 8px; border-bottom:1px solid #000; }
+            table.carac tbody td { padding:10px 8px; border-bottom:1px solid #e0e0e0; }
             table.carac tbody tr:nth-child(even) td { background:#f7f7f7; }
-            .carac-name { text-align:left; padding-left:8px; }
-            .carac-unidad { width:80px; text-align:center; }
-            .carac-val { width:90px; text-align:center; }
+            .carac-name { text-align:left; padding-left:10px; }
+            .carac-unidad { width:82px; text-align:center; }
+            .carac-val { width:92px; text-align:center; }
 
-            .observaciones { margin-top:12px; font-size:11px; }
-            .obs-box { border:1px solid #000; padding:8px; min-height:48px; }
+            .observaciones { margin-top:14px; font-size:13px; }
+            .obs-box { border:1px solid #000; padding:10px; min-height:50px; }
 
-            .signatures { display:flex; gap:12px; margin-top:18px; }
-            .sign-block { flex:1; border-top:1px solid #000; padding-top:8px; text-align:left; font-size:11px; }
-            .sign-label { font-weight:700; font-size:11px; margin-bottom:6px; }
+            .signatures { display:flex; gap:14px; margin-top:20px; }
+            .sign-block { flex:1; border-top:1px solid #000; padding-top:10px; text-align:left; font-size:13px; }
+            .sign-label { font-weight:700; font-size:13px; margin-bottom:8px; }
 
-            .footer { position:fixed; bottom:8px; left:0; right:0; text-align:center; font-size:10px; color:#444; }
+            .footer { position:fixed; bottom:10px; left:0; right:0; text-align:center; font-size:12px; color:#444; }
           </style>
         </head>
         <body>
           <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px; height:auto;"/>` : ''}</div>
-              <div class="company">
-                <div class="company-name">MUNDO GRAFIC</div>
-                <div class="company-meta">CERTIFICADO DE ANALISIS DE CALIDAD</div>
-                <div class="company-meta">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:162px; height:auto;"/>` : ''}</div>
+              <div style="flex:1"></div>
+              <div class="cert-number">
+                ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}
+                <div style="font-size:12px; color:#222; margin-top:8px; font-weight:400">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
               </div>
-              <div class="cert-number">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
             </div>
+
+            <div style="text-align:center; font-weight:700; font-size:18px; margin:14px 0 12px 0">CERTIFICADO DE ANÁLISIS DE CALIDAD</div>
 
             <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 
@@ -137,7 +138,7 @@ export default (client: any) => {
               <div class="info-item"><div class="info-label">Cliente:</div><div class="info-value">${certificado.cliente_nombre || ''}</div></div>
               <div class="info-item"><div class="info-label">Referencia:</div><div class="info-value">${certificado.referencia || certificado.descripcion || ''}</div></div>
               <div class="info-item"><div class="info-label">Material:</div><div class="info-value">${certificado.material || ''}</div></div>
-              <div class="info-item"><div class="info-label">Descripción:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Tipo de Terminado:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
               <div class="info-item"><div class="info-label">Cantidad:</div><div class="info-value">${certificado.cantidad || ''}</div></div>
               <div class="info-item"><div class="info-label">Código:</div><div class="info-value">${certificado.codigo || ''}</div></div>
               <div class="info-item"><div class="info-label">Lote:</div><div class="info-value">${certificado.lote || ''}</div></div>
@@ -150,7 +151,7 @@ export default (client: any) => {
             <table class="carac">
               <thead>
                 <tr>
-                  <th style="text-align:left; padding-left:8px">CARACTERÍSTICA</th>
+                  <th style="text-align:left; padding-left:10px">CARACTERÍSTICA</th>
                   <th class="carac-unidad">UNIDAD</th>
                   <th class="carac-val">MÍNIMO</th>
                   <th class="carac-val">NOMINAL</th>
@@ -242,43 +243,44 @@ export default (client: any) => {
             @page { size: A4; margin: 1cm; }
             body { font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; color: #000; margin:0; }
             .sheet { width: 100%; box-sizing: border-box; padding: 0.5cm 0.8cm; }
-            .header { display:flex; align-items:stretch; gap:12px; border-bottom:2px solid #000; padding-bottom:10px; }
-            .logo { width:160px; }
+            .header { display:flex; align-items:stretch; gap:14px; border-bottom:2px solid #000; padding-bottom:12px; }
+            .logo { width:162px; }
             .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
-            .company-name { font-size:18px; font-weight:700; letter-spacing:0.6px; }
-            .company-meta { font-size:10px; color:#222; margin-top:4px; }
-            .cert-number { width:200px; text-align:right; font-weight:700; font-size:12px; }
-            .title { text-align:center; font-size:14px; font-weight:700; margin:14px 0 6px 0; }
-            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px; }
+            .company-name { font-size:20px; font-weight:700; letter-spacing:0.6px; }
+            .company-meta { font-size:12px; color:#222; margin-top:6px; }
+            .cert-number { width:202px; text-align:right; font-weight:700; font-size:14px; }
+            .title { text-align:center; font-size:16px; font-weight:700; margin:16px 0 8px 0; }
+            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px; }
             .info-item { display:flex; }
-            .info-label { width:140px; font-weight:700; font-size:11px; }
-            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:4px; font-size:11px; }
-            table.carac { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
-            table.carac thead th { text-align:center; font-weight:700; padding:8px 6px; border-bottom:1px solid #000; }
-            table.carac tbody td { padding:8px 6px; border-bottom:1px solid #e0e0e0; }
+            .info-label { width:142px; font-weight:700; font-size:13px; }
+            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:6px; font-size:13px; }
+            table.carac { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+            table.carac thead th { text-align:center; font-weight:700; padding:10px 8px; border-bottom:1px solid #000; }
+            table.carac tbody td { padding:10px 8px; border-bottom:1px solid #e0e0e0; }
             table.carac tbody tr:nth-child(even) td { background:#f7f7f7; }
-            .carac-name { text-align:left; padding-left:8px; }
-            .carac-unidad { width:80px; text-align:center; }
-            .carac-val { width:90px; text-align:center; }
-            .observaciones { margin-top:12px; font-size:11px; }
-            .obs-box { border:1px solid #000; padding:8px; min-height:48px; }
-            .signatures { display:flex; gap:12px; margin-top:18px; }
-            .sign-block { flex:1; border-top:1px solid #000; padding-top:8px; text-align:left; font-size:11px; }
-            .sign-label { font-weight:700; font-size:11px; margin-bottom:6px; }
-            .footer { position:fixed; bottom:8px; left:0; right:0; text-align:center; font-size:10px; color:#444; }
+            .carac-name { text-align:left; padding-left:10px; }
+            .carac-unidad { width:82px; text-align:center; }
+            .carac-val { width:92px; text-align:center; }
+            .observaciones { margin-top:14px; font-size:13px; }
+            .obs-box { border:1px solid #000; padding:10px; min-height:50px; }
+            .signatures { display:flex; gap:14px; margin-top:20px; }
+            .sign-block { flex:1; border-top:1px solid #000; padding-top:10px; text-align:left; font-size:13px; }
+            .sign-label { font-weight:700; font-size:13px; margin-bottom:8px; }
+            .footer { position:fixed; bottom:10px; left:0; right:0; text-align:center; font-size:12px; color:#444; }
           </style>
         </head>
         <body>
           <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px; height:auto;"/>` : ''}</div>
-              <div class="company">
-                <div class="company-name">MUNDO GRAFIC</div>
-                <div class="company-meta">CERTIFICADO DE ANALISIS DE CALIDAD</div>
-                <div class="company-meta">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:162px; height:auto;"/>` : ''}</div>
+              <div style="flex:1"></div>
+              <div class="cert-number">
+                ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}
+                <div style="font-size:12px; color:#222; margin-top:8px; font-weight:400">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
               </div>
-              <div class="cert-number">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
             </div>
+
+            <div style="text-align:center; font-weight:700; font-size:18px; margin:14px 0 12px 0">CERTIFICADO DE ANALISSI DE CALIDAD</div>
 
             <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 
@@ -286,7 +288,7 @@ export default (client: any) => {
               <div class="info-item"><div class="info-label">Cliente:</div><div class="info-value">${certificado.cliente_nombre || ''}</div></div>
               <div class="info-item"><div class="info-label">Referencia:</div><div class="info-value">${certificado.referencia || certificado.descripcion || ''}</div></div>
               <div class="info-item"><div class="info-label">Material:</div><div class="info-value">${certificado.material || ''}</div></div>
-              <div class="info-item"><div class="info-label">Descripción:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Tipo de Terminado:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
               <div class="info-item"><div class="info-label">Cantidad:</div><div class="info-value">${certificado.cantidad || ''}</div></div>
               <div class="info-item"><div class="info-label">Código:</div><div class="info-value">${certificado.codigo || ''}</div></div>
               <div class="info-item"><div class="info-label">Lote:</div><div class="info-value">${certificado.lote || ''}</div></div>
@@ -299,7 +301,7 @@ export default (client: any) => {
             <table class="carac">
               <thead>
                 <tr>
-                  <th style="text-align:left; padding-left:8px">CARACTERÍSTICA</th>
+                  <th style="text-align:left; padding-left:10px">CARACTERÍSTICA</th>
                   <th class="carac-unidad">UNIDAD</th>
                   <th class="carac-val">MÍNIMO</th>
                   <th class="carac-val">NOMINAL</th>
@@ -329,7 +331,7 @@ export default (client: any) => {
                 <div class="sign-block">
                   <div class="sign-label">INSPECCIONADO POR</div>
                   <div>Nombre: ${certificado.inspeccionado_por || ''}</div>
-                  <div style="margin-top:12px">Firma: _________________________</div>
+                  <div style="margin-top:14px">Firma: _________________________</div>
                 </div>
               </div>
             </div>

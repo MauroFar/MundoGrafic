@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Logo from '../../components/Logo';
@@ -41,6 +41,66 @@ const CertificadoForm: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Editable combo component (input + dropdown) reused here
+  const EditableCombo: React.FC<{
+    value: string;
+    onChange: (v: string) => void;
+    options: string[];
+    placeholder?: string;
+  }> = ({ value, onChange, options, placeholder }) => {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+      const onDoc = (e: MouseEvent) => {
+        if (!containerRef.current) return;
+        if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+      };
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+      document.addEventListener('mousedown', onDoc);
+      document.addEventListener('keydown', onKey);
+      return () => {
+        document.removeEventListener('mousedown', onDoc);
+        document.removeEventListener('keydown', onKey);
+      };
+    }, []);
+
+    return (
+      <div ref={containerRef} className="relative">
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => { setOpen(s => !s); inputRef.current?.focus(); }}
+            className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
+          >
+            ▾
+          </button>
+        </div>
+        {open && (
+          <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+            {options.map(opt => (
+              <div
+                key={opt}
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm"
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   useEffect(() => {
     // Si es vista, cargar datos desde API
     const cargar = async () => {
@@ -142,20 +202,39 @@ const CertificadoForm: React.FC = () => {
     if (state.orden) {
       const orden = state.orden;
       const producto = state.producto || {};
-      setForm((f:any) => ({
-        ...f,
-        numero_certificado: f.numero_certificado || null,
-        numero_orden: orden.numero_orden || orden.numero_orden || '',
-        orden_trabajo_id: orden.id || orden.id || null,
-        cliente: orden.nombre_cliente || f.cliente,
-        referencia: producto.producto || producto.descripcion || f.referencia,
-        material: (orden.detalle && (orden.detalle.material || orden.detalle.proveedor_material)) || producto.material || f.material,
-        descripcion: '',
-        cantidad: producto.cantidad || f.cantidad,
-        codigo: producto.cod_cliente || f.codigo,
-        lote: (orden.detalle && (orden.detalle.lote_produccion || orden.detalle.lote_produccion)) || producto.lote || f.lote,
-        orden_compra: orden.orden_compra || f.orden_compra
-      }));
+
+      // attempt to read measurements from product or order detalle
+      const medidaAlto = producto.medida_alto || orden.detalle?.medida_alto || orden.detalle?.medida_alto_mm || '';
+      const medidaAncho = producto.medida_ancho || orden.detalle?.medida_ancho || orden.detalle?.medida_ancho_mm || '';
+      const espesorVal = orden.detalle?.espesor || producto.espesor || '';
+
+      setForm((f:any) => {
+        // build caracteristicas preserving existing rows but filling nominal where applicable
+        const existing = Array.isArray(f.caracteristicas) ? f.caracteristicas : [];
+        const caracteristicas = existing.map((r:any) => {
+          const name = String(r.name || r.nombre || '').toUpperCase();
+          if (name === 'LARGO') return { ...r, nominal: r.nominal || medidaAlto };
+          if (name === 'ANCHO') return { ...r, nominal: r.nominal || medidaAncho };
+          if (name === 'ESPESOR') return { ...r, nominal: r.nominal || espesorVal };
+          return r;
+        });
+
+        return {
+          ...f,
+          numero_certificado: f.numero_certificado || null,
+          numero_orden: orden.numero_orden || orden.numero_orden || '',
+          orden_trabajo_id: orden.id || orden.id || null,
+          cliente: orden.nombre_cliente || f.cliente,
+          referencia: producto.producto || producto.descripcion || f.referencia,
+          material: (orden.detalle && (orden.detalle.material || orden.detalle.proveedor_material)) || producto.material || f.material,
+          descripcion: '',
+          cantidad: producto.cantidad || f.cantidad,
+          codigo: producto.cod_cliente || f.codigo,
+          lote: (orden.detalle && (orden.detalle.lote_produccion || orden.detalle.lote_produccion)) || producto.lote || f.lote,
+          orden_compra: orden.orden_compra || f.orden_compra,
+          caracteristicas
+        };
+      });
     }
   }, [location]);
 
@@ -601,7 +680,7 @@ const CertificadoForm: React.FC = () => {
                   <input className="w-full border rounded px-2 py-1" value={form.material} onChange={(e) => actualizar('material', e.target.value)} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-600">DESCRIPCION:</label>
+                  <label className="block text-xs font-semibold text-gray-600">TIPO DE TERMINADO:</label>
                   <textarea className="w-full border rounded px-2 py-1" rows={3} value={form.descripcion} onChange={(e) => actualizar('descripcion', e.target.value)} />
                 </div>
               </div>
@@ -633,17 +712,18 @@ const CertificadoForm: React.FC = () => {
 
             </div>
 
-            <div className="w-1/3 pl-6">
+            <div className="w-1/2 pl-4">
               <div className="bg-gray-50 p-4 rounded">
-                <div className="text-sm font-semibold mb-2">CARACTERISTICAS CUANTITATIVAS</div>
+                <div className="text-sm font-semibold mb-2">CARACTERÍSTICAS CUANTITATIVAS</div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-xs border" style={{ tableLayout: 'fixed' as const }}>
                   <thead>
                         <tr>
-                          <th className="border px-1" style={{ width: '38%' }}>CARACTERISTICA</th>
-                          <th className="border px-1" style={{ width: '15%' }}>UNIDAD</th>
-                          <th className="border px-1" style={{ width: '15%' }}>Mínimo</th>
-                          <th className="border px-1" style={{ width: '16%' }}>Nominal</th>
-                          <th className="border px-1" style={{ width: '16%' }}>Máximo</th>
+                          <th className="border px-1" style={{ width: '42%' }}>CARACTERÍSTICA</th>
+                          <th className="border px-1" style={{ width: '18%' }}>UNIDAD</th>
+                          <th className="border px-1" style={{ width: '12%' }}>MÍNIMO</th>
+                          <th className="border px-1" style={{ width: '14%' }}>NOMINAL</th>
+                          <th className="border px-1" style={{ width: '14%' }}>MÁXIMO</th>
                         </tr>
                   </thead>
                   <tbody>
@@ -665,10 +745,16 @@ const CertificadoForm: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+                </div>
 
                 <div className="mt-4">
                   <label className="block text-xs font-semibold text-gray-600">INSPECCIONADO POR:</label>
-                  <input className="w-full border rounded px-2 py-1" value={form.inspeccionado_por} onChange={(e) => actualizar('inspeccionado_por', e.target.value)} />
+                  <EditableCombo
+                    value={form.inspeccionado_por || ''}
+                    onChange={(v) => actualizar('inspeccionado_por', v)}
+                    options={[ 'GEOVANNY', 'ROBINSON', 'FERNANDO', 'WILLIAM' ]}
+                    placeholder="Seleccione o escriba..."
+                  />
                 </div>
 
                 <div className="mt-6 text-xs text-gray-600">MUNDO GRAFIC certifica que el 100% del producto se encuentra revisado y aprobado por el control de calidad.</div>
