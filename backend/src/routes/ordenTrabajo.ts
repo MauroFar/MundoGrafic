@@ -1110,7 +1110,7 @@ export default (client: any) => {
                 <div class="campo-valor">${detalle.espesor || ''}</div>
               </div>
               <div class="campo">
-                <div class="campo-label">LOTE MATERIAL</div>
+                <div class="campo-label">LOTE MATERIAL/CODIGO MATERIAL</div>
                 <div class="campo-valor">${detalle.lote_material || ''}</div>
               </div>
               <div class="campo">

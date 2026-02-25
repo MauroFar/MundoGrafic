@@ -180,18 +180,29 @@ const createCliente = (client: any) => {
       console.log('📝 [Clientes API] Creando nuevo cliente:', { nombre, empresa, email, userId });
       
       // Verificar si el cliente ya existe por email o RUC/Cédula
-      const checkQuery = `
-        SELECT id FROM clientes 
-        WHERE email_cliente = $1 OR ruc_cedula_cliente = $2
-      `;
-      const checkResult = await client.query(checkQuery, [email, ruc_cedula]);
-      
-      if (checkResult.rows.length > 0) {
-        return res.status(409).json({ 
-          error: 'El cliente ya existe',
-          details: 'Ya existe un cliente con ese email o RUC/Cédula',
-          clienteId: checkResult.rows[0].id 
-        });
+      // Sólo realizar la verificación para los campos que vienen con valor (no vacíos).
+      const conditions: string[] = [];
+      const params: any[] = [];
+
+      if (email && String(email).trim() !== '') {
+        params.push(email.trim());
+        conditions.push(`email_cliente = $${params.length}`);
+      }
+      if (ruc_cedula && String(ruc_cedula).trim() !== '') {
+        params.push(ruc_cedula.trim());
+        conditions.push(`ruc_cedula_cliente = $${params.length}`);
+      }
+
+      if (conditions.length > 0) {
+        const checkQuery = `SELECT id FROM clientes WHERE ${conditions.join(' OR ')} LIMIT 1`;
+        const checkResult = await client.query(checkQuery, params);
+        if (checkResult.rows.length > 0) {
+          return res.status(409).json({ 
+            error: 'El cliente ya existe',
+            details: 'Ya existe un cliente con ese email o RUC/Cédula',
+            clienteId: checkResult.rows[0].id 
+          });
+        }
       }
       
       // Crear el cliente (sin codigo_cliente primero)

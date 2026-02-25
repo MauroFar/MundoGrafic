@@ -1182,7 +1182,7 @@ const OrdenesVer: React.FC = () => {
                         )}
                         {ordenDetalle.detalle?.lote_material && (
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <label className="text-sm text-gray-500 block mb-1">Lote Material</label>
+                            <label className="text-sm text-gray-500 block mb-1">Lote Material/Codigo Material</label>
                             <p className="text-gray-900 font-medium">{ordenDetalle.detalle.lote_material}</p>
                           </div>
                         )}

@@ -457,9 +457,9 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             />
           </div>
 
-          {/* Lote Material */}
+          {/* Lote Material/Codigo Material */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lote Material</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lote Material/Codigo Material</label>
             <input
               type="text"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"

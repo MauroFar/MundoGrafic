@@ -73,90 +73,119 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
-      // Generar HTML del certificado con márgenes y layout pedido
+      // Nuevo diseño monocromo profesional para el certificado
       const html = `
         <html>
         <head>
           <meta charset="utf-8" />
           <style>
-            @page { size: A4; }
-            body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0; }
-            .page { padding: 1cm; box-sizing: border-box; }
-            .header { display:flex; align-items:center; gap:16px; }
-            .logo { width:180px; }
-            .title-main { text-align:center; flex:1; font-size:16px; font-weight:700; }
-            .section-title { text-align:center; font-size:14px; margin:12px 0; font-weight:700; }
-            .info-table { width:100%; border-collapse: collapse; margin-bottom:8px; }
-            .info-table td { padding:6px 4px; vertical-align:top; }
-            .label { font-weight:700; width:40%; }
-            .box { border:1px solid #000; padding:6px; min-height:40px; }
-            table.carac { width:100%; border-collapse: collapse; margin-top:8px; }
-            table.carac th, table.carac td { border:1px solid #000; padding:6px; text-align:center; }
-            .observaciones { margin-top:12px; }
-            .inspeccion { margin-top:20px; display:flex; gap:24px; }
-            .inspeccion .field { border:1px solid #000; padding:8px; width:45%; min-height:48px; }
+            @page { size: A4; margin: 1cm; }
+            body { font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; color: #000; margin:0; }
+            .sheet { width: 100%; box-sizing: border-box; padding: 0.5cm 0.8cm; }
+
+            /* Header */
+            .header { display:flex; align-items:stretch; gap:12px; border-bottom:2px solid #000; padding-bottom:10px; }
+            .logo { width:160px; }
+            .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
+            .company-name { font-size:18px; font-weight:700; letter-spacing:0.6px; }
+            .company-meta { font-size:10px; color:#222; margin-top:4px; }
+            .cert-number { width:200px; text-align:right; font-weight:700; font-size:12px; }
+
+            /* Title */
+            .title { text-align:center; font-size:14px; font-weight:700; margin:14px 0 6px 0; }
+
+            /* Info grid */
+            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px; }
+            .info-item { display:flex; }
+            .info-label { width:140px; font-weight:700; font-size:11px; }
+            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:4px; font-size:11px; }
+
+            /* Measurements table */
+            table.carac { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
+            table.carac thead th { text-align:center; font-weight:700; padding:8px 6px; border-bottom:1px solid #000; }
+            table.carac tbody td { padding:8px 6px; border-bottom:1px solid #e0e0e0; }
+            table.carac tbody tr:nth-child(even) td { background:#f7f7f7; }
+            .carac-name { text-align:left; padding-left:8px; }
+            .carac-unidad { width:80px; text-align:center; }
+            .carac-val { width:90px; text-align:center; }
+
+            .observaciones { margin-top:12px; font-size:11px; }
+            .obs-box { border:1px solid #000; padding:8px; min-height:48px; }
+
+            .signatures { display:flex; gap:12px; margin-top:18px; }
+            .sign-block { flex:1; border-top:1px solid #000; padding-top:8px; text-align:left; font-size:11px; }
+            .sign-label { font-weight:700; font-size:11px; margin-bottom:6px; }
+
+            .footer { position:fixed; bottom:8px; left:0; right:0; text-align:center; font-size:10px; color:#444; }
           </style>
         </head>
         <body>
-          <div class="page">
+          <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px"/>` : ''}</div>
-              <div class="title-main">CERTIFICADO DE ANALISIS DE CALIDAD</div>
-              <div style="width:160px; text-align:right; font-weight:700">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px; height:auto;"/>` : ''}</div>
+              <div class="company">
+                <div class="company-name">MUNDO GRAFIC</div>
+                <div class="company-meta">CERTIFICADO DE ANALISIS DE CALIDAD</div>
+                <div class="company-meta">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
+              </div>
+              <div class="cert-number">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
             </div>
 
-            <div class="section-title">INFORMACION GENERAL</div>
+            <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 
-            <table class="info-table">
-              <tr><td class="label">Fecha:</td><td>${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</td></tr>
-              <tr><td class="label">Cliente:</td><td>${certificado.cliente_nombre || ''}</td></tr>
-              <tr><td class="label">Referencia:</td><td>${certificado.referencia || certificado.descripcion || ''}</td></tr>
-              <tr><td class="label">Material:</td><td>${certificado.material || ''}</td></tr>
-              <tr><td class="label">Descripcion:</td><td>${certificado.descripcion || ''}</td></tr>
-              <tr><td class="label">Cantidad:</td><td>${certificado.cantidad || ''}</td></tr>
-              <tr><td class="label">Codigo:</td><td>${certificado.codigo || ''}</td></tr>
-              <tr><td class="label">Lote:</td><td>${certificado.lote || ''}</td></tr>
-              <tr><td class="label">Orden de Compra:</td><td>${certificado.orden_compra || ''}</td></tr>
-              <tr><td class="label">Fecha Elaboracion:</td><td>${certificado.fecha_elaboracion ? new Date(certificado.fecha_elaboracion).toLocaleDateString('es-EC') : ''}</td></tr>
-              <tr><td class="label">Fecha Caducidad:</td><td>${certificado.fecha_caducidad ? new Date(certificado.fecha_caducidad).toLocaleDateString('es-EC') : ''}</td></tr>
-            </table>
+            <div class="info-grid">
+              <div class="info-item"><div class="info-label">Cliente:</div><div class="info-value">${certificado.cliente_nombre || ''}</div></div>
+              <div class="info-item"><div class="info-label">Referencia:</div><div class="info-value">${certificado.referencia || certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Material:</div><div class="info-value">${certificado.material || ''}</div></div>
+              <div class="info-item"><div class="info-label">Descripción:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Cantidad:</div><div class="info-value">${certificado.cantidad || ''}</div></div>
+              <div class="info-item"><div class="info-label">Código:</div><div class="info-value">${certificado.codigo || ''}</div></div>
+              <div class="info-item"><div class="info-label">Lote:</div><div class="info-value">${certificado.lote || ''}</div></div>
+              <div class="info-item"><div class="info-label">Orden de Compra:</div><div class="info-value">${certificado.orden_compra || ''}</div></div>
+              <div class="info-item"><div class="info-label">Fecha elaboración:</div><div class="info-value">${certificado.fecha_elaboracion ? new Date(certificado.fecha_elaboracion).toLocaleDateString('es-EC') : ''}</div></div>
+              <div class="info-item"><div class="info-label">Fecha caducidad:</div><div class="info-value">${certificado.fecha_caducidad ? new Date(certificado.fecha_caducidad).toLocaleDateString('es-EC') : ''}</div></div>
+            </div>
 
-            <div class="section-title">CARACTERISTICAS CUANTITATIVAS</div>
+            <div class="title">CARACTERÍSTICAS CUANTITATIVAS</div>
             <table class="carac">
               <thead>
                 <tr>
-                  <th>CARACTERISTICA</th>
-                  <th>UNIDAD</th>
-                  <th>MINIMO</th>
-                  <th>NOMINAL</th>
-                  <th>MAXIMO</th>
+                  <th style="text-align:left; padding-left:8px">CARACTERÍSTICA</th>
+                  <th class="carac-unidad">UNIDAD</th>
+                  <th class="carac-val">MÍNIMO</th>
+                  <th class="carac-val">NOMINAL</th>
+                  <th class="carac-val">MÁXIMO</th>
                 </tr>
               </thead>
               <tbody>
                 ${caracteristicas.map((c:any) => `
                   <tr>
-                    <td style="text-align:left; padding-left:8px">${c.nombre}</td>
-                    <td>${c.unidad || ''}</td>
-                    <td>${c.minimo || ''}</td>
-                    <td>${c.nominal || ''}</td>
-                    <td>${c.maximo || ''}</td>
+                    <td class="carac-name">${c.nombre || ''}</td>
+                    <td class="carac-unidad">${c.unidad || ''}</td>
+                    <td class="carac-val">${c.minimo || ''}</td>
+                    <td class="carac-val">${c.nominal || ''}</td>
+                    <td class="carac-val">${c.maximo || ''}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
 
             <div class="observaciones">
-              <strong>OBSERVACIONES:</strong>
-              <div class="box">${certificado.observaciones || ''}</div>
+              <div class="info-label">OBSERVACIONES:</div>
+              <div class="obs-box">${certificado.observaciones || ''}</div>
             </div>
 
-            <div class="inspeccion">
-              <div class="field">
-                <div style="font-weight:700; margin-bottom:6px">INSPECCIONADO POR</div>
-                <div>Nombre: ${certificado.inspeccionado_por || ''}</div>
-                <div style="margin-top:18px">Firma:</div>
+            <div class="signatures">
+              <div style="flex:1">
+                <div class="sign-block">
+                  <div class="sign-label">INSPECCIONADO POR</div>
+                  <div>Nombre: ${certificado.inspeccionado_por || ''}</div>
+                  <div style="margin-top:12px">Firma: _________________________</div>
+                </div>
               </div>
             </div>
+
+            
           </div>
         </body>
         </html>
@@ -204,89 +233,108 @@ export default (client: any) => {
         logoBase64 = '';
       }
 
+      // Plantilla de preview (igual diseño monocromo profesional)
       const html = `
         <html>
         <head>
           <meta charset="utf-8" />
           <style>
-            @page { size: A4; }
-            body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0; }
-            .page { padding: 1cm; box-sizing: border-box; }
-            .header { display:flex; align-items:center; gap:16px; }
-            .logo { width:180px; }
-            .title-main { text-align:center; flex:1; font-size:16px; font-weight:700; }
-            .section-title { text-align:center; font-size:14px; margin:12px 0; font-weight:700; }
-            .info-table { width:100%; border-collapse: collapse; margin-bottom:8px; }
-            .info-table td { padding:6px 4px; vertical-align:top; }
-            .label { font-weight:700; width:40%; }
-            .box { border:1px solid #000; padding:6px; min-height:40px; }
-            table.carac { width:100%; border-collapse: collapse; margin-top:8px; }
-            table.carac th, table.carac td { border:1px solid #000; padding:6px; text-align:center; }
-            .observaciones { margin-top:12px; }
-            .inspeccion { margin-top:20px; display:flex; gap:24px; }
-            .inspeccion .field { border:1px solid #000; padding:8px; width:45%; min-height:48px; }
+            @page { size: A4; margin: 1cm; }
+            body { font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; color: #000; margin:0; }
+            .sheet { width: 100%; box-sizing: border-box; padding: 0.5cm 0.8cm; }
+            .header { display:flex; align-items:stretch; gap:12px; border-bottom:2px solid #000; padding-bottom:10px; }
+            .logo { width:160px; }
+            .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
+            .company-name { font-size:18px; font-weight:700; letter-spacing:0.6px; }
+            .company-meta { font-size:10px; color:#222; margin-top:4px; }
+            .cert-number { width:200px; text-align:right; font-weight:700; font-size:12px; }
+            .title { text-align:center; font-size:14px; font-weight:700; margin:14px 0 6px 0; }
+            .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px; }
+            .info-item { display:flex; }
+            .info-label { width:140px; font-weight:700; font-size:11px; }
+            .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:4px; font-size:11px; }
+            table.carac { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
+            table.carac thead th { text-align:center; font-weight:700; padding:8px 6px; border-bottom:1px solid #000; }
+            table.carac tbody td { padding:8px 6px; border-bottom:1px solid #e0e0e0; }
+            table.carac tbody tr:nth-child(even) td { background:#f7f7f7; }
+            .carac-name { text-align:left; padding-left:8px; }
+            .carac-unidad { width:80px; text-align:center; }
+            .carac-val { width:90px; text-align:center; }
+            .observaciones { margin-top:12px; font-size:11px; }
+            .obs-box { border:1px solid #000; padding:8px; min-height:48px; }
+            .signatures { display:flex; gap:12px; margin-top:18px; }
+            .sign-block { flex:1; border-top:1px solid #000; padding-top:8px; text-align:left; font-size:11px; }
+            .sign-label { font-weight:700; font-size:11px; margin-bottom:6px; }
+            .footer { position:fixed; bottom:8px; left:0; right:0; text-align:center; font-size:10px; color:#444; }
           </style>
         </head>
         <body>
-          <div class="page">
+          <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px"/>` : ''}</div>
-              <div class="title-main">CERTIFICADO DE ANALISIS DE CALIDAD</div>
-              <div style="width:160px; text-align:right; font-weight:700">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:160px; height:auto;"/>` : ''}</div>
+              <div class="company">
+                <div class="company-name">MUNDO GRAFIC</div>
+                <div class="company-meta">CERTIFICADO DE ANALISIS DE CALIDAD</div>
+                <div class="company-meta">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</div>
+              </div>
+              <div class="cert-number">${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ''}</div>
             </div>
 
-            <div class="section-title">INFORMACION GENERAL</div>
+            <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 
-            <table class="info-table">
-              <tr><td class="label">Fecha:</td><td>${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString('es-EC') : ''}</td></tr>
-              <tr><td class="label">Cliente:</td><td>${certificado.cliente_nombre || ''}</td></tr>
-              <tr><td class="label">Referencia:</td><td>${certificado.referencia || certificado.descripcion || ''}</td></tr>
-              <tr><td class="label">Material:</td><td>${certificado.material || ''}</td></tr>
-              <tr><td class="label">Descripcion:</td><td>${certificado.descripcion || ''}</td></tr>
-              <tr><td class="label">Cantidad:</td><td>${certificado.cantidad || ''}</td></tr>
-              <tr><td class="label">Codigo:</td><td>${certificado.codigo || ''}</td></tr>
-              <tr><td class="label">Lote:</td><td>${certificado.lote || ''}</td></tr>
-              <tr><td class="label">Orden de Compra:</td><td>${certificado.orden_compra || ''}</td></tr>
-              <tr><td class="label">Fecha Elaboracion:</td><td>${certificado.fecha_elaboracion ? new Date(certificado.fecha_elaboracion).toLocaleDateString('es-EC') : ''}</td></tr>
-              <tr><td class="label">Fecha Caducidad:</td><td>${certificado.fecha_caducidad ? new Date(certificado.fecha_caducidad).toLocaleDateString('es-EC') : ''}</td></tr>
-            </table>
+            <div class="info-grid">
+              <div class="info-item"><div class="info-label">Cliente:</div><div class="info-value">${certificado.cliente_nombre || ''}</div></div>
+              <div class="info-item"><div class="info-label">Referencia:</div><div class="info-value">${certificado.referencia || certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Material:</div><div class="info-value">${certificado.material || ''}</div></div>
+              <div class="info-item"><div class="info-label">Descripción:</div><div class="info-value">${certificado.descripcion || ''}</div></div>
+              <div class="info-item"><div class="info-label">Cantidad:</div><div class="info-value">${certificado.cantidad || ''}</div></div>
+              <div class="info-item"><div class="info-label">Código:</div><div class="info-value">${certificado.codigo || ''}</div></div>
+              <div class="info-item"><div class="info-label">Lote:</div><div class="info-value">${certificado.lote || ''}</div></div>
+              <div class="info-item"><div class="info-label">Orden de Compra:</div><div class="info-value">${certificado.orden_compra || ''}</div></div>
+              <div class="info-item"><div class="info-label">Fecha elaboración:</div><div class="info-value">${certificado.fecha_elaboracion ? new Date(certificado.fecha_elaboracion).toLocaleDateString('es-EC') : ''}</div></div>
+              <div class="info-item"><div class="info-label">Fecha caducidad:</div><div class="info-value">${certificado.fecha_caducidad ? new Date(certificado.fecha_caducidad).toLocaleDateString('es-EC') : ''}</div></div>
+            </div>
 
-            <div class="section-title">CARACTERISTICAS CUANTITATIVAS</div>
+            <div class="title">CARACTERÍSTICAS CUANTITATIVAS</div>
             <table class="carac">
               <thead>
                 <tr>
-                  <th>CARACTERISTICA</th>
-                  <th>UNIDAD</th>
-                  <th>MINIMO</th>
-                  <th>NOMINAL</th>
-                  <th>MAXIMO</th>
+                  <th style="text-align:left; padding-left:8px">CARACTERÍSTICA</th>
+                  <th class="carac-unidad">UNIDAD</th>
+                  <th class="carac-val">MÍNIMO</th>
+                  <th class="carac-val">NOMINAL</th>
+                  <th class="carac-val">MÁXIMO</th>
                 </tr>
               </thead>
               <tbody>
                 ${caracteristicas.map((c:any) => `
                   <tr>
-                    <td style="text-align:left; padding-left:8px">${c.nombre}</td>
-                    <td>${c.unidad || ''}</td>
-                    <td>${c.minimo || ''}</td>
-                    <td>${c.nominal || ''}</td>
-                    <td>${c.maximo || ''}</td>
+                    <td class="carac-name">${c.nombre || ''}</td>
+                    <td class="carac-unidad">${c.unidad || ''}</td>
+                    <td class="carac-val">${c.minimo || ''}</td>
+                    <td class="carac-val">${c.nominal || ''}</td>
+                    <td class="carac-val">${c.maximo || ''}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
 
             <div class="observaciones">
-              <strong>OBSERVACIONES:</strong>
-              <div class="box">${certificado.observaciones || ''}</div>
+              <div class="info-label">OBSERVACIONES:</div>
+              <div class="obs-box">${certificado.observaciones || ''}</div>
             </div>
 
-            <div class="inspeccion">
-              <div class="field">
-                <div style="font-weight:700; margin-bottom:6px">INSPECCIONADO POR</div>
-                <div>Nombre: ${certificado.inspeccionado_por || ''}</div>
-                <div style="margin-top:18px">Firma:</div>
+            <div class="signatures">
+              <div style="flex:1">
+                <div class="sign-block">
+                  <div class="sign-label">INSPECCIONADO POR</div>
+                  <div>Nombre: ${certificado.inspeccionado_por || ''}</div>
+                  <div style="margin-top:12px">Firma: _________________________</div>
+                </div>
               </div>
             </div>
+
+            
           </div>
         </body>
         </html>
