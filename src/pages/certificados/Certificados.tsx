@@ -253,6 +253,8 @@ const Certificados: React.FC = () => {
                           <span className="text-xs mt-1 text-gray-600">Ver pdf/Imprimir</span>
                         </button>
 
+                        
+
                         <button
                           className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
                           onClick={() => navigate(`/certificados/editar/${c.id || i}`)}
