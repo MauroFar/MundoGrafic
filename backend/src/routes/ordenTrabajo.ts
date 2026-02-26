@@ -17,45 +17,28 @@ export default (client: any) => {
   ]);
 
   const DISPLAY_TO_CANON: Record<string, string> = {
+    // Preprensa variants
     'preprensa': 'en_preprensa',
     'pre prensa': 'en_preprensa',
     'en preprensa': 'en_preprensa',
 
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
-    'impresion': 'en_prensa',
+    // Impresión / prensa variants (unique keys only)
     'impresion': 'en_prensa',
     'prensa / impresion': 'en_prensa',
     'prensa / impresión': 'en_prensa',
     'prensa impresion': 'en_prensa',
     'en prensa': 'en_prensa',
 
+    // Laminado variants
     'laminado/barnizado': 'laminado',
     'laminado barnizado': 'laminado',
     'laminado': 'laminado',
 
+    // Otros estados
     'troquelado': 'troquelado',
-
     'terminados': 'terminados',
-
     'producto liberado': 'liberado',
     'liberado': 'liberado',
-
     'producto entregado': 'entregado',
     'entregado': 'entregado'
   };
@@ -495,30 +478,50 @@ export default (client: any) => {
       preprensa,
       prensa,
       terminados,
-      facturado,
-      laminado_barnizado,
-      troquelado,
-      liberacion_producto,
-      // Campos de cantidad final para cada responsable
-      vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
-      laminado_barnizado_cantidad_final, troquelado_cantidad_final,
-      terminados_cantidad_final, liberacion_producto_cantidad_final,
-      id_detalle_cotizacion,
-      tipo_orden, // Nuevo campo
-      // Nuevos campos de trabajo - extraer del objeto detalle
-      detalle
-    } = req.body;
+        'prensa / impresion': 'en_prensa',
+        'prensa / impresión': 'en_prensa',
+        'prensa impresion': 'en_prensa',
+        'en prensa': 'en_prensa',
 
-    // Obtener el ID del usuario del token JWT
-    const userId = (req as any).user.id;
-    console.log('👤 Usuario editando orden:', userId);
+    // Impresión / prensa variants (keep unique keys only)
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'impresion': 'en_prensa',
+    'prensa / impresion': 'en_prensa',
+    'prensa / impresión': 'en_prensa',
+    'prensa impresion': 'en_prensa',
+    'en prensa': 'en_prensa',
 
-    // Extraer campos del detalle
-    const material = detalle?.material;
-    const corteMaterial = detalle?.corte_material;
-    const cantidadPliegosCompra = detalle?.cantidad_pliegos_compra;
-    const exceso = detalle?.exceso;
-    const totalPliegos = detalle?.total_pliegos;
+    // Laminado variants
+    'laminado/barnizado': 'laminado',
+    'laminado barnizado': 'laminado',
+    'laminado': 'laminado',
+
+    // Otros estados
+    'troquelado': 'troquelado',
+    'terminados': 'terminados',
+    'producto liberado': 'liberado',
+    'liberado': 'liberado',
+    'producto entregado': 'entregado',
+    'entregado': 'entregado'
+  };
     const tamano = detalle?.tamano;
     const tamanoAbierto1 = detalle?.tamano_abierto_1;
     const tamanoCerrado1 = detalle?.tamano_cerrado_1;
