@@ -1252,49 +1252,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
         <div className="container mx-auto px-4 py-4">
           {/* Encabezado */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4">
               <div className="flex-shrink-0">
                 <Logo/>
               </div>
               <h2 className="text-xl font-bold text-gray-800 flex-1 text-center">
                 Orden de Trabajo
               </h2>
-              <div className="flex-shrink-0">
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-semibold text-gray-700">Estado:</label>
-                    {((tipoOrdenSeleccionado === 'digital') || (ordenData && (ordenData.tipo_orden || '').toString().toLowerCase() === 'digital')) ? (
-                      <select
-                        className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
-                        value={estado}
-                        onChange={(e) => setEstado(e.target.value)}
-                      >
-                        <option value="Preprensa">Pre Prensa</option>
-                        <option value="Impresión">Impresión</option>
-                        <option value="Laminado/Barnizado">Laminado/Barnizado</option>
-                        <option value="Troquelado">Troquelado</option>
-                        <option value="Terminados">Terminados</option>
-                        <option value="Producto Liberado">Producto Liberado</option>
-                        <option value="Producto Entregado">Producto Entregado</option>
-                      </select>
-                    ) : (
-                      <select 
-                        className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm"
-                        value={estado}
-                        onChange={(e) => setEstado(e.target.value)}
-                      >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="en_proceso">En Proceso</option>
-                        <option value="en_impresion">En Impresión</option>
-                        <option value="en_acabados">En Acabados</option>
-                        <option value="en_empacado">En Empacado</option>
-                        <option value="listo_para_entrega">Listo para Entrega</option>
-                        <option value="entregado">Entregado</option>
-                        <option value="facturado">Facturado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
-                    )}
-                  </div>
-              </div>
             </div>
 
             {/* Información General - Diseño compacto */}

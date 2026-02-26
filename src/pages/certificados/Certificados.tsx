@@ -250,7 +250,7 @@ const Certificados: React.FC = () => {
                           title="Ver"
                         >
                           <FaEye />
-                          <span className="text-xs mt-1 text-gray-600">Ver</span>
+                          <span className="text-xs mt-1 text-gray-600">Ver pdf/Imprimir</span>
                         </button>
 
                         <button
