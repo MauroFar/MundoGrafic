@@ -30,9 +30,9 @@ export default function(client) {
           c.contacto,
           c.celuar
         FROM cotizaciones c
-        JOIN clientes cl ON c.cliente_id = cl.id
-        JOIN rucs r ON c.ruc_id = r.id
-        JOIN usuarios u ON c.usuario_id = u.id
+        LEFT JOIN clientes cl ON c.cliente_id = cl.id
+        LEFT JOIN rucs r ON c.ruc_id = r.id
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
         WHERE c.id = $1;
       `, [id]);
 
