@@ -46,6 +46,7 @@ const CertificadoForm: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const referenciaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Editable combo component (input + dropdown) reused here
   const EditableCombo: React.FC<{
@@ -291,6 +292,14 @@ const CertificadoForm: React.FC = () => {
     };
     cargar();
   }, [id]);
+
+  // ajustar altura del textarea de referencia cuando cambie el valor (por carga o edición)
+  useEffect(() => {
+    if (!referenciaRef.current) return;
+    const el = referenciaRef.current;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [form.referencia]);
 
   useEffect(() => {
     // cargar catálogo de caracteristicas
@@ -947,7 +956,23 @@ const CertificadoForm: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600">REFERENCIA:</label>
-                  <input className="w-full border rounded px-2 py-1" value={form.referencia} onChange={(e) => actualizar('referencia', e.target.value)} />
+                  <textarea
+                    ref={referenciaRef}
+                    rows={1}
+                    className="w-full border rounded px-2 py-1 resize-none overflow-hidden"
+                    value={form.referencia}
+                    onChange={(e) => {
+                      actualizar('referencia', e.target.value);
+                      const el = e.target as HTMLTextAreaElement;
+                      el.style.height = 'auto';
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
+                    onInput={(e) => {
+                      const el = e.target as HTMLTextAreaElement;
+                      el.style.height = 'auto';
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600">MATERIAL:</label>

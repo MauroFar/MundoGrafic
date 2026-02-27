@@ -11,6 +11,8 @@ export default (client: any) => {
     caracteristicas: any[],
     logoBase64: string,
   ) {
+    const referenciaRaw = (certificado.referencia || certificado.descripcion || "") as string;
+    const referenciaHtml = referenciaRaw.replace(/\r\n/g,'\n').replace(/\n/g,'<br/>');
     return `
          <html>
         <head>
@@ -172,7 +174,7 @@ export default (client: any) => {
 
               <div class="box big-center">
                 <div class="label">REFERENCIA</div>
-                <div class="value">${certificado.referencia || certificado.descripcion || ""}</div>
+                  <div class="value">${referenciaHtml}</div>
               </div>
 
               

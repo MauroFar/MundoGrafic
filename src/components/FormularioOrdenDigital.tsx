@@ -96,6 +96,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   // Tamaño de papel global para todos los productos (valores por defecto editables)
   const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
   const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('1000');
+  const productosContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Adherencia options and dropdown state
   const adherenciaOptions = React.useMemo(() => ['MULTIPROPOSITO','P1', 'P3H', 'P4', 'TERMICO', 'SIN ADH.'], []);
@@ -315,6 +316,17 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
     haSincronizadoDesdeProductos.current = true;
   }, [productosArray]);
 
+  // Ajustar la altura de los textareas de 'producto' cuando cambian los productos (para contenido precargado)
+  React.useEffect(() => {
+    if (!productosContainerRef.current) return;
+    const areas = productosContainerRef.current.querySelectorAll('textarea');
+    areas.forEach((a) => {
+      const el = a as HTMLTextAreaElement;
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    });
+  }, [productosArray]);
+
   // Calcula cavidad a partir de gap, medidas y tamaño de papel
   const recalcularCavidadObj = (producto: any) => {
     const gapH = parseFloat(producto.gap_horizontal) || 0;
@@ -432,6 +444,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
     <>
       {/* Información del Trabajo - Tabla de Productos */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+        {/* container ref used to adjust textarea heights for producto field */}
+        <div ref={productosContainerRef}>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-2 border-b border-gray-200">
           <h3 className="text-lg font-bold text-gray-800">
             Información del Trabajo
@@ -522,11 +536,22 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                       />
                     </td>
                     <td className="px-2 py-2 border border-gray-300">
-                      <input
-                        type="text"
-                        className="w-full min-w-[150px] px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      <textarea
+                        rows={1}
+                        className="w-full min-w-[150px] px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
                         value={producto.producto}
-                        onChange={(e) => actualizarProducto(index, 'producto', e.target.value)}
+                        onChange={(e) => {
+                          actualizarProducto(index, 'producto', e.target.value);
+                          // adjust height
+                          const el = e.target as HTMLTextAreaElement;
+                          el.style.height = 'auto';
+                          el.style.height = `${el.scrollHeight}px`;
+                        }}
+                        onInput={(e) => {
+                          const el = e.target as HTMLTextAreaElement;
+                          el.style.height = 'auto';
+                          el.style.height = `${el.scrollHeight}px`;
+                        }}
                       />
                     </td>
                     <td className="px-2 py-2 border border-gray-300">
@@ -600,6 +625,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               )}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 
