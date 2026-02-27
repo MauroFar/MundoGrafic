@@ -17,19 +17,22 @@ export default (client: any) => {
           <meta charset="utf-8" />
           <style>
             @page { size: A4; margin: 1cm; }
-            body { font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; color: #000; margin:0; }
+            body { font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif; color: #000; margin:0; font-size:14px; font-weight:400; }
+            /* Ensure most text inherits the body font and weight */
+            .value, .small, .label, .box, p, div { font-family: inherit; font-weight: inherit; }
             .sheet { width: 100%; box-sizing: border-box; padding: 0.4cm 0.6cm; }
 
             /* Header */
             .header { display:flex; align-items:stretch; gap:14px; border-bottom:2px solid #000; padding-bottom:12px; }
-            .logo { width:182px; }
+            .logo { width:140px; }
             .company { flex:1; display:flex; flex-direction:column; justify-content:center; }
-            .company-name { font-size:20px; font-weight:700; letter-spacing:0.6px; }
+            .company-name { font-size:20px; font-weight:400; letter-spacing:0.6px; }
             .company-meta { font-size:12px; color:#222; margin-top:6px; }
-            .cert-number { width:202px; text-align:right; font-weight:700; font-size:14px; }
+            .cert-number { width:202px; text-align:right; font-weight:400; font-size:14px; }
 
             /* Title */
             .title { text-align:center; font-size:16px; font-weight:700; margin:10px 0 6px 0; }
+            .header-title { font-size:18px; font-weight:700; text-align:center; letter-spacing:0.4px; }
 
             /* Product info block (three columns with boxed layout) */
             .header-block { display:flex; gap:8px; margin-bottom:4px; align-items:flex-start; }
@@ -37,12 +40,12 @@ export default (client: any) => {
             .box.big-left { flex:1.5; min-height:auto; max-height:84px; }
             .box.big-center { flex:1.1; min-height:auto; max-height:84px; display:flex; flex-direction:column; justify-content:flex-start; }
             .box.right-col { flex:0 0 180px; display:flex; flex-direction:column; gap:6px; align-items:stretch; }
-            .box .label { font-size:11px; color:#6b7176; font-weight:700; margin-bottom:6px; text-transform:uppercase; }
+            .box .label { font-size:11px; color:#6b7176; font-weight:400; margin-bottom:6px; text-transform:uppercase; }
             .box .value { font-size:14px; color:#0b2235; font-weight:400; margin-top:4px; }
             /* right column compact boxes */
             .right-col .small-box { padding:4px; min-height:30px; display:flex; flex-direction:column; justify-content:center; }
             .right-col .row { display:flex; gap:6px; }
-            .right-col .small-box .value { font-size:15px; font-weight:800; }
+            .right-col .small-box .value { font-size:15px; font-weight:400; }
             .right-col .small-box.small-qty { min-height:40px; }
               max-height:44px;
               overflow:hidden;
@@ -58,32 +61,32 @@ export default (client: any) => {
               overflow:hidden;
             }
             /* Specific: keep small-box/right values bold, but cliente/referencia normal */
-            .right-col .small-box .value { font-size:18px; font-weight:800; }
+            .right-col .small-box .value { font-size:18px; font-weight:400; }
             .box.big-left .value, .box.big-center .value { font-size:14px; font-weight:400; }
             .right-col .small-box { border:1px solid #c3c7cc; padding:8px; background:#fff; }
             .right-col .row { display:flex; gap:8px; }
             .right-small { text-align:right; }
-            .lot { background:transparent; padding:2px 6px; display:inline-block; font-weight:800; }
+            .lot { background:transparent; padding:2px 6px; display:inline-block; font-weight:400; }
             .right-col .small-box .value { font-size:18px; }
 
             /* Info grid */
             .info-grid { width:100%; display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px; }
             .info-item { display:flex; }
-            .info-label { width:142px; font-weight:700; font-size:13px; }
+            .info-label { width:142px; font-weight:400; font-size:13px; }
             .info-value { flex:1; border-bottom:1px solid #ddd; padding-bottom:6px; font-size:13px; }
 
             /* General box styling for consistent bordered look */
             .box { border:1.2px solid #c3c7cc; padding:10px; box-sizing:border-box; background:#fff; }
             .box.full-row { margin-top:8px; }
-            .label { font-size:11px; color:#6b7176; font-weight:700; margin-bottom:6px; text-transform:uppercase; }
-            .small { font-size:14px; color:#0b2235; font-weight:700; }
+            .label { font-size:11px; color:#6b7176; font-weight:400; margin-bottom:6px; text-transform:uppercase; }
+            .small { font-size:14px; color:#0b2235; font-weight:400; }
             .meta-row { display:flex; justify-content:space-between; align-items:center; }
             .meta-item { display:flex; flex-direction:column; }
             .meta-item .label { margin-bottom:4px; }
 
             /* Measurements table */
             table.carac { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
-            table.carac thead th { text-align:center; font-weight:700; padding:10px 8px; border-bottom:1px solid #000; }
+            table.carac thead th { text-align:center; font-weight:400; padding:10px 8px; border-bottom:1px solid #000; }
             table.carac tbody td { padding:10px 8px; border-bottom:1px solid #e0e0e0; }
             table.carac tbody tr:nth-child(even) td { background:#f7f7f7; }
             .carac-name { text-align:left; padding-left:10px; }
@@ -94,29 +97,29 @@ export default (client: any) => {
             .obs-box { border:1px solid #000; padding:10px; min-height:50px; }
 
             /* Section title for table */
-            .section-title { text-align:center; font-size:14px; font-weight:800; margin:18px 0 8px 0; text-transform:uppercase; }
+            .section-title { text-align:center; font-size:14px; font-weight:700; margin:18px 0 8px 0; text-transform:uppercase; }
 
             /* Table box styling to match reference */
             .carac-wrap { border:1.2px solid #c3c7cc; padding:6px; background:#fff; }
             table.carac { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; margin-top:8px; }
-            table.carac thead th { text-align:center; font-weight:800; padding:10px 8px; border:1px solid #cfd6db; background:#f8f9fa; font-size:12px; }
+            table.carac thead th { text-align:center; font-weight:400; padding:10px 8px; border:1px solid #cfd6db; background:#f8f9fa; font-size:12px; }
             table.carac tbody td { padding:10px 8px; border:1px solid #e6e9ec; vertical-align:middle; }
             table.carac tbody tr:nth-child(even) td { background: #fff; }
-            .carac-name { text-align:left; padding-left:10px; font-weight:700; }
+            .carac-name { text-align:left; padding-left:10px; font-weight:400; }
             .carac-unidad { width:82px; text-align:center; }
-            .carac-val { width:92px; text-align:center; font-weight:700; }
+            .carac-val { width:92px; text-align:center; font-weight:400; }
 
             .signatures { display:flex; gap:14px; margin-top:20px; }
             .sign-block { flex:1; border-top:1px solid #000; padding-top:10px; text-align:left; font-size:13px; }
-            .sign-label { font-weight:700; font-size:13px; margin-bottom:8px; }
+            .sign-label { font-weight:400; font-size:13px; margin-bottom:8px; }
 
             /* New signature boxes layout */
             .signs { margin-top:14px; }
-            .sign-title { font-size:12px; color:#222; margin-bottom:6px; font-weight:700; }
+            .sign-title { font-size:12px; color:#222; margin-bottom:6px; font-weight:400; }
             .sign-row { display:flex; gap:8px; }
             .sign-box { flex:1; border:1.2px solid #c3c7cc; padding:10px; box-sizing:border-box; background:#fff; min-height:56px; display:flex; flex-direction:column; justify-content:flex-start; }
-            .sign-box .label { font-size:11px; color:#6b7176; font-weight:700; margin-bottom:6px; text-transform:uppercase; }
-            .sign-box .value { font-size:13px; color:#0b2235; font-weight:700; }
+            .sign-box .label { font-size:11px; color:#6b7176; font-weight:400; margin-bottom:6px; text-transform:uppercase; }
+            .sign-box .value { font-size:13px; color:#0b2235; font-weight:400; }
 
             .footer { position:fixed; bottom:10px; left:0; right:0; text-align:center; font-size:12px; color:#444; }
           </style>
@@ -124,16 +127,17 @@ export default (client: any) => {
         <body>
           <div class="sheet">
             <div class="header">
-              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:260px; height:auto;"/>` : ""}</div>
-              <div style="flex:1"></div>
+              <div class="logo">${logoBase64 ? `<img src="${logoBase64}" style="max-width:140px; height:auto;"/>` : ""}</div>
+              <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+                <div class="header-title">CERTIFICADO DE ANÁLISIS DE CALIDAD</div>
+              </div>
               <div class="cert-number">
                 ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ""}
                 <div style="font-size:12px; color:#222; margin-top:8px; font-weight:400">Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString("es-EC") : ""}</div>
-                <div style="font-size:12px; color:#222; margin-top:6px; font-weight:700">ORDEN DE COMPRA: ${certificado.orden_compra || ""}</div>
+                <div style="font-size:12px; color:#222; margin-top:6px; font-weight:400">ORDEN DE COMPRA: ${certificado.orden_compra || ""}</div>
               </div>
             </div>
 
-            <div style="text-align:center; font-weight:700; font-size:18px; margin:14px 0 12px 0">CERTIFICADO DE ANÁLISIS DE CALIDAD</div>
 
             <div class="title">INFORMACIÓN DEL PRODUCTO</div>
 
@@ -168,7 +172,7 @@ export default (client: any) => {
 
               <div class="box big-center">
                 <div class="label">REFERENCIA</div>
-                <div class="value" style="font-weight:300; font-size:15px">${certificado.referencia || certificado.descripcion || ""}</div>
+                <div class="value">${certificado.referencia || certificado.descripcion || ""}</div>
               </div>
 
               
