@@ -110,6 +110,14 @@ export default (client: any) => {
             .sign-block { flex:1; border-top:1px solid #000; padding-top:10px; text-align:left; font-size:13px; }
             .sign-label { font-weight:700; font-size:13px; margin-bottom:8px; }
 
+            /* New signature boxes layout */
+            .signs { margin-top:14px; }
+            .sign-title { font-size:12px; color:#222; margin-bottom:6px; font-weight:700; }
+            .sign-row { display:flex; gap:8px; }
+            .sign-box { flex:1; border:1.2px solid #c3c7cc; padding:10px; box-sizing:border-box; background:#fff; min-height:56px; display:flex; flex-direction:column; justify-content:flex-start; }
+            .sign-box .label { font-size:11px; color:#6b7176; font-weight:700; margin-bottom:6px; text-transform:uppercase; }
+            .sign-box .value { font-size:13px; color:#0b2235; font-weight:700; }
+
             .footer { position:fixed; bottom:10px; left:0; right:0; text-align:center; font-size:12px; color:#444; }
           </style>
         </head>
@@ -142,9 +150,14 @@ export default (client: any) => {
                     <div class="small">${certificado.lote || ""}</div>
                   </div>
                   <div class="box" style="flex:1;">
-                    <div class="label">MATERIAL</div>
-                    <div class="small">${certificado.material || ""}</div>
+                    <div class="label">LOTE DE DESPACHO</div>
+                    <div class="small right-small">${certificado.lote_despacho || ""}</div>
                   </div>
+                </div>
+
+                <div class="box" style="flex:1;">
+                  <div class="label">MATERIAL</div>
+                  <div class="small">${certificado.material || ""}</div>
                 </div>
 
                 <div class="box big-left">
@@ -156,13 +169,9 @@ export default (client: any) => {
               <div class="box big-center">
                 <div class="label">REFERENCIA</div>
                 <div class="value" style="font-weight:300; font-size:15px">${certificado.referencia || certificado.descripcion || ""}</div>
-                <div style="margin-top:8px;">
-                  <div class="box" style="padding:6px;">
-                    <div class="label">LOTE DE DESPACHO</div>
-                    <div class="value right-small">${certificado.lote_despacho || ""}</div>
-                  </div>
-                </div>
               </div>
+
+              
 
               <div class="box right-col">
                 <div class="small-box">
@@ -251,17 +260,38 @@ export default (client: any) => {
             </div>
 
             <div class="signs">
-              <div class="sign">
-                <div class="small">CORPORACIÓN MUNDOGRAFIC</div>
-                <div style="margin-top:8px; font-weight:700;">APROBADO POR: ${certificado.inspeccionado_por || ""}</div>
-                <div class="small" style="margin-top:6px">ÁREA / DEPARTAMENTO</div>
-                <div style="margin-top:18px">FIRMA: ________________________</div>
+              <div class="sign-title">CORPORACIÓN MUNDOGRAFIC</div>
+              <div class="sign-row">
+                <div class="sign-box">
+                  <div class="label">APROBADO POR:</div>
+                  <div class="value">${certificado.inspeccionado_por || ""}</div>
+                </div>
+                <div class="sign-box">
+                  <div class="label">ÁREA / DEPARTAMENTO</div>
+                  <div class="value">&nbsp;</div>
+                </div>
+                <div class="sign-box">
+                  <div class="label">FIRMA</div>
+                  <div class="value">________________________</div>
+                </div>
               </div>
-              <div class="sign">
-                <div class="small">RECEPCIÓN DE PRODUCTO</div>
-                <div style="margin-top:8px; font-weight:700;">${certificado.cliente_nombre || ""}</div>
-                <div class="small" style="margin-top:6px">ÁREA / DEPARTAMENTO</div>
-                <div style="margin-top:18px">FIRMA: ________________________</div>
+
+              <div style="height:10px"></div>
+
+              <div class="sign-title">RECEPCIÓN DE PRODUCTO</div>
+              <div class="sign-row">
+                <div class="sign-box">
+                  <div class="label">CLIENTE</div>
+                  <div class="value">${certificado.cliente_nombre || ""}</div>
+                </div>
+                <div class="sign-box">
+                  <div class="label">ÁREA / DEPARTAMENTO</div>
+                  <div class="value">&nbsp;</div>
+                </div>
+                <div class="sign-box">
+                  <div class="label">FIRMA</div>
+                  <div class="value">________________________</div>
+                </div>
               </div>
             </div>
 
