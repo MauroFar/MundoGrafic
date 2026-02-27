@@ -13,6 +13,15 @@ export default (client: any) => {
   ) {
     const referenciaRaw = (certificado.referencia || certificado.descripcion || "") as string;
     const referenciaHtml = referenciaRaw.replace(/\r\n/g,'\n').replace(/\n/g,'<br/>');
+    const formatMesAno = (d:any) => {
+      if (!d) return "";
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return "";
+      const months = [
+        'enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'
+      ];
+      return `${months[dt.getMonth()]}/${dt.getFullYear()}`;
+    };
     return `
          <html>
         <head>
@@ -209,13 +218,13 @@ export default (client: any) => {
                
                 <div style="display:flex; gap:8px; margin-top:8px;">
                   <div style="flex:1;" class="box">
-                    <div class="label">FECHA DE ELABORACIÓN</div>
-                    <div class="small">${certificado.fecha_elaboracion ? new Date(certificado.fecha_elaboracion).toLocaleDateString("es-EC") : ""}</div>
+                      <div class="label">FECHA DE ELABORACIÓN</div>
+                      <div class="small">${formatMesAno(certificado.fecha_elaboracion)}</div>
                   </div>
-                  <div style="flex:1;" class="box">
-                    <div class="label">FECHA DE CADUCIDAD</div>
-                    <div class="small">${certificado.fecha_caducidad ? new Date(certificado.fecha_caducidad).toLocaleDateString("es-EC") : ""}</div>
-                  </div>
+                    <div style="flex:1;" class="box">
+                      <div class="label">FECHA DE CADUCIDAD</div>
+                      <div class="small">${formatMesAno(certificado.fecha_caducidad)}</div>
+                    </div>
                 </div>
               </div>
               
