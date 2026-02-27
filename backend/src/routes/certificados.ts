@@ -272,7 +272,7 @@ export default (client: any) => {
                 </div>
                 <div class="sign-box">
                   <div class="label">ÁREA / DEPARTAMENTO</div>
-                  <div class="value">&nbsp;</div>
+                  <div class="value">${certificado.aprobado_area || ""}</div>
                 </div>
                 <div class="sign-box">
                   <div class="label">FIRMA</div>
@@ -290,7 +290,7 @@ export default (client: any) => {
                 </div>
                 <div class="sign-box">
                   <div class="label">ÁREA / DEPARTAMENTO</div>
-                  <div class="value">&nbsp;</div>
+                  <div class="value">${certificado.recepcion_area || ""}</div>
                 </div>
                 <div class="sign-box">
                   <div class="label">FIRMA</div>
@@ -573,11 +573,11 @@ export default (client: any) => {
         await client.query("BEGIN");
         // Insertar en certificado_calidad
         const insertQuery = `INSERT INTO certificado_calidad (
-        numero_certificado, fecha_elaboracion, fecha_caducidad, cliente_nombre,
+        numero_certificado, fecha_creacion, fecha_elaboracion, fecha_caducidad, cliente_nombre,
         referencia, material, descripcion, cantidad, codigo, lote,
         cantidad_despachada, lote_despacho, tamano_cm, orden_compra,
-        inspeccionado_por, observaciones, created_by, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now()) RETURNING id, numero_certificado`;
+        inspeccionado_por, observaciones, aprobado_area, recepcion_area, created_by, created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20, now()) RETURNING id, numero_certificado`;
 
         // Mapear referencia/material/descripcion desde body o desde los campos producto_ para mayor compatibilidad
         const referenciaVal =
@@ -603,6 +603,7 @@ export default (client: any) => {
 
         const result = await client.query(insertQuery, [
           req.body.numero_certificado || null,
+          req.body.fecha_creacion || null,
           fecha_elaboracion || null,
           fecha_caducidad || null,
           cliente_nombre || null,
@@ -618,6 +619,8 @@ export default (client: any) => {
           orden_compra || null,
           inspeccionado_por || null,
           observaciones || null,
+          req.body.aprobado_area || null,
+          req.body.recepcion_area || null,
           userId,
         ]);
 
@@ -739,12 +742,13 @@ export default (client: any) => {
 
         await client.query(
           `UPDATE certificado_calidad SET
-        fecha_elaboracion=$1, fecha_caducidad=$2, cliente_nombre=$3,
-        referencia=$4, material=$5, descripcion=$6, cantidad=$7, codigo=$8, lote=$9,
-        cantidad_despachada=$10, lote_despacho=$11, tamano_cm=$12, orden_compra=$13,
-        inspeccionado_por=$14, observaciones=$15, updated_by=$16, updated_at=now()
-        WHERE id=$17`,
+        fecha_creacion=$1, fecha_elaboracion=$2, fecha_caducidad=$3, cliente_nombre=$4,
+        referencia=$5, material=$6, descripcion=$7, cantidad=$8, codigo=$9, lote=$10,
+        cantidad_despachada=$11, lote_despacho=$12, tamano_cm=$13, orden_compra=$14,
+        inspeccionado_por=$15, observaciones=$16, aprobado_area=$17, recepcion_area=$18, updated_by=$19, updated_at=now()
+        WHERE id=$20`,
           [
+            req.body.fecha_creacion || null,
             fecha_elaboracion || null,
             fecha_caducidad || null,
             req.body.cliente_nombre || null,
@@ -760,6 +764,8 @@ export default (client: any) => {
             orden_compra || null,
             inspeccionado_por || null,
             observaciones || null,
+            req.body.aprobado_area || null,
+            req.body.recepcion_area || null,
             userId,
             id,
           ],

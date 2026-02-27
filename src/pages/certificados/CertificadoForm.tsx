@@ -25,6 +25,8 @@ const CertificadoForm: React.FC = () => {
     lote: '',
     lote_despacho: '',
     tamano_cm: '',
+    aprobado_area: '',
+    recepcion_area: '',
     orden_compra: '',
     inspeccionado_por: '',
     observaciones: 'MUNDO GRAFIC certifica que el 100% del producto se encuentra revisado y aprobado por el control de calidad.',
@@ -134,49 +136,65 @@ const CertificadoForm: React.FC = () => {
         // Mapear a form
         // Mapear características recibidas a las filas fijas en orden
         const recibidasArr = Array.isArray(data.caracteristicas) ? data.caracteristicas.slice() : [];
-        const recibidasMap = (recibidasArr || []).reduce((acc:any, cur:any) => {
-          const key = String(cur.nombre || '').toLowerCase();
-          acc[key] = cur;
-          return acc;
-        }, {} as any);
 
-        // Incluir primero las filas fijas en el orden esperado y luego cualquier característica adicional
-        const seen = new Set<string>();
+        // Construir filas fijas respetando si existen múltiples entradas con el mismo nombre
+        const seenIds = new Set<string|number>();
         const caracteristicasOrdenadas: any[] = [];
 
         caracteristicasOrden.forEach((nameKey: string) => {
           const key = String(nameKey).toLowerCase();
-          const found = recibidasMap[key];
-          if (found) {
-            caracteristicasOrdenadas.push({ caracteristica_id: found.caracteristica_id || null, name: found.nombre || found.name || nameKey, unidad: found.unidad || '', minimo: found.minimo || '', nominal: found.nominal || '', maximo: found.maximo || '' });
-            seen.add(key);
+          // encontrar todas las coincidencias por nombre (p.ej. ESPESOR puede aparecer 2 veces con distintas unidades)
+          const matches = (recibidasArr || []).filter((c:any) => String(c.nombre || c.name || '').toLowerCase().includes(key));
+          if (matches.length > 0) {
+            // preferir la unidad mm si existe
+            const preferred = matches.find((m:any) => String((m.unidad || '')).toLowerCase().includes('mm')) || matches[0];
+            caracteristicasOrdenadas.push({ caracteristica_id: preferred.caracteristica_id || preferred.id || null, name: preferred.nombre || preferred.name || nameKey, unidad: preferred.unidad || '', minimo: preferred.minimo || '', nominal: preferred.nominal || '', maximo: preferred.maximo || '' });
+            // marcar solo la coincidencia preferida como vista; las demás (p.ej. Micras) se añadirán después
+            const prefUid = preferred.id || (preferred.caracteristica_id ? `ci:${preferred.caracteristica_id}` : JSON.stringify(preferred));
+            seenIds.add(prefUid);
           } else {
             caracteristicasOrdenadas.push({ caracteristica_id: null, name: nameKey, unidad: '', minimo: '', nominal: '', maximo: '' });
           }
         });
 
-        // Añadir cualquier característica recibida que no esté en las fijas (por ejemplo "ESPESOR mm")
+        // Añadir cualquier característica recibida que no esté ya incluida (por ejemplo la otra unidad de ESPESOR)
         recibidasArr.forEach((r:any) => {
-          const key = String(r.nombre || '').toLowerCase();
-          if (!seen.has(key)) {
+          const uid = r.id || (r.caracteristica_id ? `ci:${r.caracteristica_id}` : JSON.stringify(r));
+          if (!seenIds.has(uid)) {
             caracteristicasOrdenadas.push({ caracteristica_id: r.caracteristica_id || null, name: r.nombre || r.name || '', unidad: r.unidad || '', minimo: r.minimo || '', nominal: r.nominal || '', maximo: r.maximo || '' });
-            seen.add(key);
+            seenIds.add(uid);
           }
         });
 
         // Si el certificado tiene un campo espesor en mm (columna separada en la tabla), agregar como fila adicional si no existe
         try {
-          const espesorMm = (data && (data.espesor_mm || data.espesorMM || data.espesor_mm_value)) || data.espesor_mm === 0 ? data.espesor_mm : null;
-          // algunas bases pueden usar diferentes convenciones; normalizamos comprobando varias claves
-          const possible = data.espesor_mm || data.espesorMM || data.espesor_mm_value || data.espesor_mm_value === 0 ? (data.espesor_mm || data.espesorMM || data.espesor_mm_value) : null;
-          const espVal = possible;
-          if (espVal !== null && espVal !== undefined) {
-            const key = String('espesor').toLowerCase();
-            // si no existe ya una fila relacionada con espesor, añadirla como 'ESPESOR (mm)'
-            // Allow adding ESPESOR (mm) even if there is an ESPESOR in Micras.
-            const existsMm = caracteristicasOrdenadas.find((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String(r.unidad || '').toLowerCase().includes('mm'));
-            if (!existsMm) {
-              // compute minimo/maximo if numeric
+          // Normalizar detección de espesor (admite distintos nombres y valor 0)
+          let espVal: any = null;
+          if (data) {
+            if (data.espesor_mm !== undefined && data.espesor_mm !== null) espVal = data.espesor_mm;
+            else if (data.espesorMM !== undefined && data.espesorMM !== null) espVal = data.espesorMM;
+            else if (data.espesor_mm_value !== undefined && data.espesor_mm_value !== null) espVal = data.espesor_mm_value;
+          }
+          if (espVal !== null && espVal !== undefined && espVal !== '') {
+            // Buscar cualquier fila existente que sea 'ESPESOR' (independiente de unidad) y actualizarla
+            const espIndexAny = caracteristicasOrdenadas.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor'));
+            if (espIndexAny > -1) {
+              // actualizar fila existente para asegurar unidad 'mm' y valor nominal
+              const existing = caracteristicasOrdenadas[espIndexAny];
+              const updated = { ...existing };
+              updated.unidad = updated.unidad || 'mm';
+              if (!updated.nominal || String(updated.nominal).trim() === '') updated.nominal = String(espVal);
+              // si no tiene minimo/maximo los calculamos
+              try {
+                const num = parseFloat(String(updated.nominal).replace(',', '.'));
+                if (!isNaN(num)) {
+                  updated.minimo = updated.minimo || String(Number((num - 1).toFixed(3)).toString());
+                  updated.maximo = updated.maximo || String(Number((num + 1).toFixed(3)).toString());
+                }
+              } catch (e) {}
+              caracteristicasOrdenadas[espIndexAny] = updated;
+            } else {
+              // si no existe, añadir nueva fila ESPESOR (mm)
               let minimo = '';
               let maximo = '';
               try {
@@ -212,27 +230,57 @@ const CertificadoForm: React.FC = () => {
           // ignore reorder errors
         }
 
-        setForm((f:any) => ({
-          ...f,
-          numero_certificado: data.numero_certificado,
-          fecha_creacion: data.fecha_creacion ? data.fecha_creacion.slice(0,10) : f.fecha_creacion,
-          fecha_elaboracion: data.fecha_elaboracion ? data.fecha_elaboracion.slice(0,10) :     f.fecha_elaboracion,
-          fecha_caducidad: data.fecha_caducidad ? data.fecha_caducidad.slice(0,10) : f.fecha_caducidad,
-          cliente: data.cliente_nombre || f.cliente,
-          referencia: data.referencia || data.producto_cod_mg || f.referencia,
-          material: data.material || data.producto_descripcion || f.material,
-          descripcion: data.descripcion || f.descripcion,
-          cantidad: data.cantidad || f.cantidad,
-          cantidad_despachada: data.cantidad_despachada || f.cantidad_despachada,
-          codigo: data.codigo || data.codigo_producto || f.codigo,
-          lote: data.lote || f.lote,
-          lote_despacho: data.lote_despacho || f.lote_despacho,
-          tamano_cm: data.tamano_cm || f.tamano_cm,
-          orden_compra: data.orden_compra || f.orden_compra,
-          inspeccionado_por: data.inspeccionado_por || f.inspeccionado_por,
-          observaciones: data.observaciones || f.observaciones,
-          caracteristicas: caracteristicasOrdenadas
-        }));
+        setForm((f:any) => {
+          // preserve any existing rows from previous state that may include ESPESOR (mm)
+          const prevRows = Array.isArray(f.caracteristicas) ? f.caracteristicas.slice() : [];
+          const rows = caracteristicasOrdenadas.slice();
+          const hasEspMmInRows = rows.find((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
+          const hasEspMmInPrev = prevRows.find((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
+          if (!hasEspMmInRows && hasEspMmInPrev) {
+            // add the espesor mm row from previous rows
+            rows.push(hasEspMmInPrev);
+          }
+
+          // Ensure ordering: put ESPESOR (mm) right after ALTO and move ESPESOR (micras) to the end
+          try {
+            const espMmIdx2 = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
+            if (espMmIdx2 > -1) {
+              const it2 = rows.splice(espMmIdx2,1)[0];
+              const altoIdx2 = rows.findIndex((r:any) => String(r.name || '').toUpperCase() === 'ALTO');
+              const insertPos2 = altoIdx2 >= 0 ? altoIdx2 + 1 : 0;
+              rows.splice(insertPos2,0,it2);
+            }
+            const micIdx2 = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
+            if (micIdx2 > -1) {
+              const mic2 = rows.splice(micIdx2,1)[0];
+              rows.push(mic2);
+            }
+          } catch(e) {}
+
+          return {
+            ...f,
+            numero_certificado: data.numero_certificado,
+            fecha_creacion: data.fecha_creacion ? data.fecha_creacion.slice(0,10) : f.fecha_creacion,
+            fecha_elaboracion: data.fecha_elaboracion ? data.fecha_elaboracion.slice(0,10) :     f.fecha_elaboracion,
+            fecha_caducidad: data.fecha_caducidad ? data.fecha_caducidad.slice(0,10) : f.fecha_caducidad,
+            cliente: data.cliente_nombre || f.cliente,
+            referencia: data.referencia || data.producto_cod_mg || f.referencia,
+            material: data.material || data.producto_descripcion || f.material,
+            descripcion: data.descripcion || f.descripcion,
+            cantidad: data.cantidad || f.cantidad,
+            cantidad_despachada: data.cantidad_despachada || f.cantidad_despachada,
+            codigo: data.codigo || data.codigo_producto || f.codigo,
+            lote: data.lote || f.lote,
+            lote_despacho: data.lote_despacho || f.lote_despacho,
+            tamano_cm: data.tamano_cm || f.tamano_cm,
+            orden_compra: data.orden_compra || f.orden_compra,
+            inspeccionado_por: data.inspeccionado_por || f.inspeccionado_por,
+            aprobado_area: data.aprobado_area || f.aprobado_area,
+            recepcion_area: data.recepcion_area || f.recepcion_area,
+            observaciones: data.observaciones || f.observaciones,
+            caracteristicas: rows
+          };
+        });
 
         // Si la API trajo fecha_caducidad, marcamos como editada por usuario (no sobreescribir luego)
         if (data.fecha_caducidad) setFechaCaducidadManual(true);
@@ -341,6 +389,8 @@ const CertificadoForm: React.FC = () => {
       // attempt to read measurements from product or order detalle
       const medidaAlto = producto.medida_alto || orden.detalle?.medida_alto || orden.detalle?.medida_alto_mm || '';
       const medidaAncho = producto.medida_ancho || orden.detalle?.medida_ancho || orden.detalle?.medida_ancho_mm || '';
+      const medidaAlto_mm = orden.detalle?.medida_alto_mm || producto.medida_alto_mm || null;
+      const medidaAncho_mm = orden.detalle?.medida_ancho_mm || producto.medida_ancho_mm || null;
       const espesorVal = orden.detalle?.espesor || producto.espesor || '';
 
       setForm((f:any) => {
@@ -375,7 +425,56 @@ const CertificadoForm: React.FC = () => {
           codigo: producto.cod_cliente || f.codigo,
           lote: (orden.detalle && (orden.detalle.lote_produccion || orden.detalle.lote_produccion)) || producto.lote || f.lote,
           orden_compra: orden.orden_compra || f.orden_compra,
-          caracteristicas
+          caracteristicas,
+          // compute tamano_cm as "AnchoxAlto" in cm
+          tamano_cm: (() => {
+            const toNumber = (v: any) => {
+              if (v === null || v === undefined) return NaN;
+              const s = String(v).toLowerCase().trim();
+              // extract first numeric occurrence
+              const m = s.match(/[-+]?[0-9]*\.?[0-9]+/);
+              if (!m) return NaN;
+              return parseFloat(m[0].replace(',', '.'));
+            };
+
+            const fmt = (n: number) => {
+              if (isNaN(n)) return '';
+              if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+              return String(Math.round(n * 100) / 100);
+            };
+
+            // Determine ancho in cm
+            let anchoCm: number | null = null;
+            let altoCm: number | null = null;
+
+            // prefer explicit mm fields when present
+            if (medidaAncho_mm) {
+              const num = toNumber(medidaAncho_mm);
+              if (!isNaN(num)) anchoCm = num / 10;
+            }
+            if (medidaAlto_mm) {
+              const num = toNumber(medidaAlto_mm);
+              if (!isNaN(num)) altoCm = num / 10;
+            }
+
+            // fallback to raw values
+            if (anchoCm === null) {
+              const n = toNumber(medidaAncho);
+              if (!isNaN(n)) {
+                // heuristic: values > 100 likely in mm
+                anchoCm = n > 100 ? n / 10 : n;
+              }
+            }
+            if (altoCm === null) {
+              const n = toNumber(medidaAlto);
+              if (!isNaN(n)) {
+                altoCm = n > 100 ? n / 10 : n;
+              }
+            }
+
+            if (anchoCm === null || altoCm === null) return '';
+            return `${fmt(anchoCm)}x${fmt(altoCm)}`;
+          })()
         };
       });
     }
@@ -495,11 +594,14 @@ const CertificadoForm: React.FC = () => {
         lote: form.lote || null,
         lote_despacho: form.lote_despacho || null,
         tamano_cm: form.tamano_cm || null,
+        fecha_creacion: form.fecha_creacion || null,
         orden_compra: form.orden_compra || null,
         fecha_elaboracion: form.fecha_elaboracion || null,
         fecha_caducidad: form.fecha_caducidad || null,
         inspeccionado_por: form.inspeccionado_por || null,
         observaciones: form.observaciones || null,
+        aprobado_area: form.aprobado_area || null,
+        recepcion_area: form.recepcion_area || null,
         caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
             caracteristica_id: c.caracteristica_id || null,
             nombre: c.name || c.nombre || `c${idx+1}`,
@@ -555,11 +657,14 @@ const CertificadoForm: React.FC = () => {
         lote: form.lote || null,
         lote_despacho: form.lote_despacho || null,
         tamano_cm: form.tamano_cm || null,
+        fecha_creacion: form.fecha_creacion || null,
         orden_compra: form.orden_compra || null,
         fecha_elaboracion: form.fecha_elaboracion || null,
         fecha_caducidad: form.fecha_caducidad || null,
         inspeccionado_por: form.inspeccionado_por || null,
         observaciones: form.observaciones || null,
+        aprobado_area: form.aprobado_area || null,
+        recepcion_area: form.recepcion_area || null,
         caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
           caracteristica_id: c.caracteristica_id || null,
           nombre: c.name || c.nombre || `c${idx+1}`,
@@ -614,11 +719,14 @@ const CertificadoForm: React.FC = () => {
         lote: form.lote || null,
         lote_despacho: form.lote_despacho || null,
         tamano_cm: form.tamano_cm || null,
+        fecha_creacion: form.fecha_creacion || null,
         orden_compra: form.orden_compra || null,
         fecha_elaboracion: form.fecha_elaboracion || null,
         fecha_caducidad: form.fecha_caducidad || null,
         inspeccionado_por: form.inspeccionado_por || null,
         observaciones: form.observaciones || null,
+        aprobado_area: form.aprobado_area || null,
+        recepcion_area: form.recepcion_area || null,
         caracteristicas: Array.isArray(form.caracteristicas) ? form.caracteristicas.map((c:any, idx:number) => ({
           caracteristica_id: c.caracteristica_id || null,
           nombre: c.name || c.nombre || `c${idx+1}`,
@@ -822,7 +930,7 @@ const CertificadoForm: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-600">FECHA CREACIÓN (certificado):</label>
-                    <input type="date" className="w-full border rounded px-2 py-1 bg-gray-50" value={form.fecha_creacion} readOnly />
+                    <input type="date" className="w-full border rounded px-2 py-1" value={form.fecha_creacion} onChange={(e) => actualizar('fecha_creacion', e.target.value)} />
                   </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600">FECHA DE ELABORACIÓN:</label>
@@ -936,6 +1044,23 @@ const CertificadoForm: React.FC = () => {
                     options={[ 'GEOVANNY', 'ROBINSON', 'FERNANDO', 'WILLIAM' ]}
                     placeholder="Seleccione o escriba..."
                   />
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-gray-600">ÁREA / DEPARTAMENTO (APROBADO POR):</label>
+                  <input className="w-full border rounded px-2 py-1" value={form.aprobado_area || ''} onChange={(e) => actualizar('aprobado_area', e.target.value)} />
+                </div>
+
+                <div className="mt-4 border-t pt-3">
+                  <div className="text-sm font-semibold mb-2">RECEPCIÓN DE PRODUCTO</div>
+                  <div className="mb-2">
+                    <label className="block text-xs font-semibold text-gray-600">CLIENTE:</label>
+                    <input className="w-full border rounded px-2 py-1" value={form.cliente || ''} onChange={(e) => actualizar('cliente', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600">ÁREA / DEPARTAMENTO (RECEPCIÓN):</label>
+                    <input className="w-full border rounded px-2 py-1" value={form.recepcion_area || ''} onChange={(e) => actualizar('recepcion_area', e.target.value)} />
+                  </div>
                 </div>
 
                 <div className="mt-6 text-xs text-gray-600">MUNDO GRAFIC certifica que el 100% del producto se encuentra revisado y aprobado por el control de calidad.</div>
