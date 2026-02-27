@@ -861,7 +861,7 @@ const CertificadoForm: React.FC = () => {
                   <input className="w-full border rounded px-2 py-1" value={form.codigo} onChange={(e) => actualizar('codigo', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600">LOTE DESPACHO:</label>
+                  <label className="block text-xs font-semibold text-gray-600">LOTE:</label>
                   <input className="w-full border rounded px-2 py-1" value={form.lote} onChange={(e) => actualizar('lote', e.target.value)} />
                 </div>
               </div>
