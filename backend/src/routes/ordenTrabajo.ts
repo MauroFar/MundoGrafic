@@ -1508,6 +1508,8 @@ export default (client: any) => {
     try {
       console.log('📊 Obteniendo órdenes en producción...');
       
+      // Para soportar workflows digitales con la nueva tabla `estado_orden_digital`
+      // añadimos campos adicionaless: estado_orden_digital_id, estado_digital_key, estado_digital_titulo
       const result = await client.query(`
         SELECT 
           ot.id,
@@ -1520,7 +1522,7 @@ export default (client: any) => {
           ot.concepto,
           ot.fecha_creacion,
           ot.fecha_entrega,
-          ot.estado,
+          COALESCE(eod.key, ot.estado) AS estado,
           ot.notas_observaciones,
           ot.vendedor,
           ot.preprensa,
@@ -1529,6 +1531,9 @@ export default (client: any) => {
           ot.facturado,
           ot.id_cotizacion,
           ot.tipo_orden,
+          ot.estado_orden_digital_id,
+          eod.key as estado_digital_key,
+          eod.titulo as estado_digital_titulo,
           dot.material,
           dot.corte_material,
           dot.cantidad_pliegos_compra,
@@ -1547,7 +1552,10 @@ export default (client: any) => {
           ot.updated_at
         FROM orden_trabajo ot
         LEFT JOIN detalle_orden_trabajo dot ON ot.id = dot.orden_trabajo_id
-        WHERE ot.estado IN (
+        LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+        WHERE (
+          ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital'
+        ) AND ot.estado IN (
           -- general / human variants
           'en producción', 'En Proceso', 'en produccion', 'en proceso', 'pendiente', 'Pendiente',
           -- preprensa / prensa variants (with spaces and underscores)
@@ -1555,14 +1563,57 @@ export default (client: any) => {
           'en prensa','En Prensa','en_prensa','En_Prensa','en impresion','En Impresión','en_impresion',
           -- acabados / empacado
           'en acabados','En Acabados','en_acabados','en empacado','En Empacado','en_empacado',
-          -- digital-specific stages (canonical keys)
-          'laminado','troquelado','terminados','terminado','liberado','entregado',
           -- control/quality
           'en control de calidad','En Control de Calidad','en_control_de_calidad',
           -- delivered/other
           'Entregado','entregado','Facturado','facturado'
         )
-        ORDER BY ot.fecha_entrega ASC, ot.created_at DESC
+        UNION ALL
+        -- Órdenes digitales: basadas en estado_orden_digital_id
+        SELECT
+          ot.id,
+          ot.numero_orden,
+          ot.nombre_cliente,
+          ot.contacto,
+          ot.email,
+          ot.telefono,
+          ot.cantidad,
+          ot.concepto,
+          ot.fecha_creacion,
+          ot.fecha_entrega,
+          COALESCE(eod.key, ot.estado) AS estado,
+          ot.notas_observaciones,
+          ot.vendedor,
+          ot.preprensa,
+          ot.prensa,
+          ot.terminados,
+          ot.facturado,
+          ot.id_cotizacion,
+          ot.tipo_orden,
+          ot.estado_orden_digital_id,
+          eod.key as estado_digital_key,
+          eod.titulo as estado_digital_titulo,
+          dot.material,
+          dot.corte_material,
+          dot.cantidad_pliegos_compra,
+          dot.exceso,
+          dot.total_pliegos,
+          dot.tamano,
+          dot.tamano_abierto_1,
+          dot.tamano_cerrado_1,
+          dot.impresion,
+          dot.instrucciones_impresion,
+          dot.instrucciones_acabados,
+          dot.instrucciones_empacado,
+          dot.observaciones,
+          dot.prensa_seleccionada,
+          ot.created_at,
+          ot.updated_at
+        FROM orden_trabajo ot
+        LEFT JOIN detalle_orden_trabajo dot ON ot.id = dot.orden_trabajo_id
+        LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+        WHERE ot.tipo_orden = 'digital'
+        ORDER BY fecha_entrega ASC, created_at DESC
       `);
       
       console.log(`✅ Se encontraron ${result.rows.length} órdenes en producción`);
@@ -1585,6 +1636,13 @@ export default (client: any) => {
   router.get('/produccion/workflow', authRequired(), async (req: any, res: any) => {
     try {
       const tipo = (req.query.tipo || 'offset').toString().toLowerCase();
+      
+      if (tipo === 'digital') {
+        // Traer desde la tabla `estado_orden_digital` los estados ordenados
+        const q = await client.query(`SELECT id, key, titulo, orden, color, activo FROM estado_orden_digital WHERE activo = TRUE ORDER BY orden ASC`);
+        const workflow = q.rows.map((r: any) => ({ id: r.key, titulo: r.titulo, color: r.color || 'gray', aliases: [r.key, r.titulo] }));
+        return res.json({ success: true, workflow });
+      }
 
       const workflows: any = {
         offset: [
@@ -1738,26 +1796,59 @@ export default (client: any) => {
     try {
       console.log(`🔄 Actualizando estado de orden ${id}:`, { estado, preprensa, prensa, terminados });
 
-      // Normalizar/validar estado si viene en el payload
-      let estadoToSet: string | undefined = undefined;
-      if (estado !== undefined) {
+      // Si la orden es digital queremos actualizar la columna `estado_orden_digital_id`
+      let isDigitalOrder = false;
+      try {
+        const tipoRes = await client.query('SELECT tipo_orden FROM orden_trabajo WHERE id = $1', [id]);
+        if (tipoRes.rows.length > 0 && (tipoRes.rows[0].tipo_orden || '').toString().toLowerCase() === 'digital') {
+          isDigitalOrder = true;
+        }
+      } catch (e) {
+        console.warn('No se pudo determinar tipo_orden:', e);
+      }
+
+      let query = 'UPDATE orden_trabajo SET updated_at = CURRENT_TIMESTAMP';
+      const params: any[] = [];
+      let paramCounter = 1;
+
+      if (isDigitalOrder && estado !== undefined) {
+        // estado puede venir como key (string) o id (number) o titulo (ej. 'Preprensa').
+        let estadoId: number | null = null;
+        // Si viene id numérico, validar directamente
+        if (typeof estado === 'number' || /^[0-9]+$/.test(String(estado))) {
+          const r = await client.query('SELECT id FROM estado_orden_digital WHERE id = $1', [estado]);
+          if (r.rows.length) estadoId = r.rows[0].id;
+        } else if (typeof estado === 'string') {
+          // Traer todos los estados activos y hacer una búsqueda tolerante (normalizando)
+          const rows = (await client.query('SELECT id, key, titulo FROM estado_orden_digital WHERE activo = TRUE')).rows;
+          const normalize = (s: string) => s.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim().replace(/[_\s]+/g, '');
+          const target = normalize(estado);
+          for (const r of rows) {
+            const keyNorm = normalize(r.key || '');
+            const tituloNorm = normalize(r.titulo || '');
+            if (keyNorm === target || tituloNorm === target || keyNorm.includes(target) || tituloNorm.includes(target) || target.includes(keyNorm) || target.includes(tituloNorm)) {
+              estadoId = r.id;
+              break;
+            }
+          }
+        }
+        if (estadoId === null) {
+          // Devolver lista permitida para ayudar al frontend
+          const allowedRows = (await client.query('SELECT id, key, titulo FROM estado_orden_digital WHERE activo = TRUE ORDER BY orden')).rows;
+          return res.status(400).json({ success: false, error: 'Estado digital no reconocido', allowed: allowedRows });
+        }
+        query += `, estado_orden_digital_id = $${paramCounter}`;
+        params.push(estadoId);
+        paramCounter++;
+      } else if (estado !== undefined) {
         const normalized = normalizeEstado(estado);
         if (normalized === null) {
           const allowed = Array.from(CANONICAL_STATES).concat(Object.keys(DISPLAY_TO_CANON)).map(s => s);
           console.warn(`⚠️ Estado no reconocido recibido: ${estado}`);
           return res.status(400).json({ success: false, error: 'Estado no reconocido', allowed_values: allowed });
         }
-        estadoToSet = normalized;
-        console.log(`➡️ Estado normalizado: '${estado}' -> '${estadoToSet}'`);
-      }
-
-      let query = 'UPDATE orden_trabajo SET updated_at = CURRENT_TIMESTAMP';
-      const params: any[] = [];
-      let paramCounter = 1;
-      
-      if (estadoToSet !== undefined) {
         query += `, estado = $${paramCounter}`;
-        params.push(estadoToSet);
+        params.push(normalized);
         paramCounter++;
       }
       if (preprensa !== undefined) {
@@ -1785,6 +1876,16 @@ export default (client: any) => {
         return res.status(404).json({ success: false, error: "Orden no encontrada" });
       }
       
+      // Si actualizamos un estado digital, guardar historial
+      try {
+        const updated = result.rows[0];
+        if (isDigitalOrder && updated.estado_orden_digital_id) {
+          await client.query(`INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`, [id, updated.estado_orden_digital_id, req.user?.id || null, req.body.nota || null]);
+        }
+      } catch (e) {
+        console.warn('No se pudo insertar historial de estado digital:', e?.message || e);
+      }
+
       console.log('✅ Estado actualizado correctamente');
       res.json({ success: true, orden: result.rows[0] });
     } catch (error: any) {

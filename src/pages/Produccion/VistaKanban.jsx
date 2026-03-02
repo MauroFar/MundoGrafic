@@ -13,6 +13,7 @@ import {
   FaSync,
   FaTimes
 } from 'react-icons/fa';
+import OrdenDetalleModal from '../../components/OrdenDetalleModal';
 
 const VistaKanban = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -42,6 +43,8 @@ const VistaKanban = () => {
     { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] }
   ]);
   const [workflowType, setWorkflowType] = useState('offset');
+  const [showOrdenModal, setShowOrdenModal] = useState(false);
+  const [ordenDetalleModal, setOrdenDetalleModal] = useState(null);
 
   useEffect(() => {
     const doLoad = async () => {
@@ -81,6 +84,14 @@ const VistaKanban = () => {
       if (!resp.ok) return;
       const json = await resp.json();
       if (json && json.workflow) {
+        console.log('🔁 Workflow raw desde backend:', json.workflow);
+        // If requesting digital workflow, prefer to use backend-provided workflow exactly
+        if ((tipo || '').toString().toLowerCase() === 'digital') {
+          const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
+          const cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
+          setColumnas(cols);
+          return cols;
+        }
         console.log('🔁 Workflow desde backend:', json.workflow);
         // choose icons based on color mapping
         const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
@@ -424,6 +435,34 @@ const VistaKanban = () => {
     return `${diasRestantes} días`;
   };
 
+  const openOrdenModal = async (ordenOrId) => {
+    try {
+      // If caller provided the full order object, use it directly
+      if (ordenOrId && typeof ordenOrId === 'object' && ordenOrId.id) {
+        setOrdenDetalleModal(ordenOrId);
+        setShowOrdenModal(true);
+        return;
+      }
+      // Fallback: if only id provided, try to find it in current state
+      const id = ordenOrId;
+      const allCols = Object.values(ordenes).flat();
+      const found = allCols.find(o => String(o.id) === String(id));
+      if (found) {
+        setOrdenDetalleModal(found);
+        setShowOrdenModal(true);
+        return;
+      }
+      console.warn('Orden no encontrada en estado local, no se realizará fetch adicional');
+    } catch (e) {
+      console.error('Error abriendo modal de orden:', e);
+    }
+  };
+
+  const closeOrdenModal = () => {
+    setShowOrdenModal(false);
+    setOrdenDetalleModal(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -496,6 +535,16 @@ const VistaKanban = () => {
           </div>
           
      
+          {showOrdenModal && (
+            <OrdenDetalleModal
+              ordenDetalle={ordenDetalleModal}
+              onClose={closeOrdenModal}
+              onEdit={(id) => { closeOrdenModal(); navigate(`/ordendeTrabajo/editar/${id}`); }}
+              onViewPDF={(id) => { window.open(`${apiUrl}/api/ordenTrabajo/${id}/preview`, '_blank'); }}
+              canEdit={false}
+            />
+          )}
+
         </div>
       </div>
 
@@ -510,8 +559,8 @@ const VistaKanban = () => {
           return (
             <div
               key={columna.id}
-              className={`bg-${columna.color}-50 rounded-lg p-3 flex-shrink-0`}
-              style={{ minWidth: '280px' }}
+              className={`bg-${columna.color}-50 rounded-lg p-2 flex-shrink-0`}
+              style={{ minWidth: '220px' }}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, columna.id)}
             >
@@ -533,8 +582,9 @@ const VistaKanban = () => {
                     key={orden.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, orden)}
-                    className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-3 cursor-move hover:shadow-md transition-shadow text-sm`}
-                    style={{ lineHeight: '1.1' }}
+                    onClick={() => openOrdenModal(orden)}
+                    className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 cursor-move hover:shadow-md transition-shadow text-sm`}
+                    style={{ lineHeight: '1.05', cursor: 'pointer' }}
                   >
                     {/* Header de la tarjeta */}
                     <div className="flex justify-between items-start mb-1">
@@ -552,7 +602,7 @@ const VistaKanban = () => {
                         )}
                       </div>
                       <button
-                        onClick={() => navigate(`/produccion/seguimiento/${orden.id}`)}
+                        onClick={(e) => { e.stopPropagation(); openOrdenModal(orden); }}
                         className="text-gray-400 hover:text-gray-600 text-xs"
                       >
                         <FaEye className="h-4 w-4" />
@@ -593,13 +643,7 @@ const VistaKanban = () => {
                     <div className="mt-2 pt-2 border-t border-gray-100">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => navigate(`/ordendeTrabajo/editar/${orden.id}`)}
-                          className="flex-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => navigate(`/produccion/seguimiento/${orden.id}`)}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/produccion/seguimiento/${orden.id}`); }}
                           className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
                         >
                           Seguir
