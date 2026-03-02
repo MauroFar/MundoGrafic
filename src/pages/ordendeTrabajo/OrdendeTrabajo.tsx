@@ -122,6 +122,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
+  const [materialEspesor, setMaterialEspesor] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
    const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState<string>('');
    const [exceso, setExceso] = useState<string>('');
@@ -193,10 +194,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
       return;
     }
 
-    // fechaEntrega viene como 'YYYY-MM-DD'
+    // fechaEntrega viene como 'YYYY-MM-DD' -> formatear año a 2 dígitos
     const [anio, mes, dia] = fechaEntrega.split('-');
     if (anio && mes && dia) {
-      setLoteProduccion(`MG${anio}${mes}${dia}`);
+      const anio2 = anio.slice(-2);
+      setLoteProduccion(`MG${anio2}${mes}${dia}`);
     } else {
       setLoteProduccion('');
     }
@@ -545,6 +547,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       if (ordenData.tipo_orden === 'offset' || !ordenData.tipo_orden) {
         // Material, impresion, observaciones para offset
         setMaterial(ordenData.detalle?.material || '');
+        setMaterialEspesor(ordenData.detalle?.espesor_material || ordenData.detalle?.espesor || '');
         setImpresion(ordenData.detalle?.impresion || '');
         setObservaciones(ordenData.detalle?.observaciones || '');
         
@@ -883,6 +886,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       } : {
         // Datos específicos de offset
         material: material,
+        espesor_material: materialEspesor,
         corte_material: corteMaterial,
         cantidad_pliegos_compra: cantidadPliegosCompra,
         exceso: exceso,
@@ -1029,6 +1033,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           } : {
             // Datos específicos de offset
             material: material,
+            espesor_material: materialEspesor,
             corte_material: corteMaterial,
             cantidad_pliegos_compra: cantidadPliegosCompra,
             exceso: exceso,
@@ -1426,6 +1431,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setTamanoCerrado1={setTamanoCerrado1}
               material={material}
               setMaterial={setMaterial}
+              materialEspesor={materialEspesor}
+              setMaterialEspesor={setMaterialEspesor}
               corteMaterial={corteMaterial}
               setCorteMaterial={setCorteMaterial}
               cantidadPliegosCompra={cantidadPliegosCompra}

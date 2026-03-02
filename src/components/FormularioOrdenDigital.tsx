@@ -105,22 +105,34 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   const adherenciaInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Material options and dropdown state
-  const materialOptions = React.useMemo(() => [
-    'PROPALCOTE',
-    'POLIPROPILENO BLANCO MATE',
-    'POLIPROPILENO BLANCO BRILLANTE',
-    'POLIPROPILENO TRANSPARENTE',
-    'POLIPROPILENO METALIZADO',
-    'TERMOENCOGIBLE PVC',
-    'TERMOENCOGIBLE PET',
-    'CARTULINA METALIZADA',
-    'CARTULINA NORMAL',
-    'BOPP METALIZADO',
-    'BOPP BLANCO',
-    'BOPP TRANSPARENTE',
-    'TERMICO DIRECTO PAPEL',
-    'TERMICO DIRECTO POLIPROPILENO',
-    'POLIPROPILENO BLANCO FREZZER',
+  const MATERIALS = React.useMemo(() => [
+    { name: 'PROPALCOTE', display: 'PROPALCOTE (0,045 mm)', unit: '0.045' },
+    { name: 'POLIPROPILENO BLANCO MATE', display: 'POLIPROPILENO BLANCO MATE (0,054 mm)', unit: '0.054' },
+    { name: 'POLIPROPILENO BLANCO BRILLANTE', display: 'POLIPROPILENO BLANCO BRILLANTE (0,060 mm)', unit: '0.060' },
+    { name: 'POLIPROPILENO TRANSPARENTE', display: 'POLIPROPILENO TRANSPARENTE (0,050 mm)', unit: '0.050' },
+    { name: 'POLIPROPILENO METALIZADO', display: 'POLIPROPILENO METALIZADO (0,050 mm)', unit: '0.050' },
+    { name: 'TERMOENCOGIBLE PVC', display: 'TERMOENCOGIBLE PVC (0,04 mm)', unit: '0.040' },
+    { name: 'TERMOENCOGIBLE PET', display: 'TERMOENCOGIBLE PET (0,040 mm)', unit: '0.040' },
+    { name: 'CARTULINA METALIZADA', display: 'CARTULINA METALIZADA', unit: '' },
+    { name: 'CARTULINA NORMAL', display: 'CARTULINA NORMAL', unit: '' },
+    { name: 'BOPP METALIZADO', display: 'BOPP METALIZADO (0,06 mm)', unit: '0.060' },
+    { name: 'BOPP BLANCO', display: 'BOPP BLANCO (0,06 mm)', unit: '0.060' },
+    { name: 'BOPP TRANSPARENTE', display: 'BOPP TRANSPARENTE (0,06 mm)', unit: '0.060' },
+    { name: 'TERMICO DIRECTO PAPEL', display: 'TERMICO DIRECTO PAPEL (0,045 mm)', unit: '0.045' },
+    { name: 'TERMICO DIRECTO POLIPROPILENO', display: 'TERMICO DIRECTO POLIPROPILENO (0,054 mm)', unit: '0.054' },
+    { name: 'POLIPROPILENO BLANCO FREZZER', display: 'POLIPROPILENO BLANCO FREZZER (0,054 mm)', unit: '0.054' },
+  ], []);
+  // Terminados (unidad) - mover aquí para evitar uso antes de inicializar
+  const TERMINADOS = React.useMemo(() => [
+    { name: 'BARNIZ BRILLANTE UV TOTAL', display: 'BARNIZ BRILLANTE UV TOTAL (0,010 mm)', unit: '0.010' },
+    { name: 'BARNIZ MATE  UV TOTAL', display: 'BARNIZ MATE  UV TOTAL (0,010 mm)', unit: '0.010' },
+    { name: 'BARNIZ BRILLANTE UV  CON RESERVA', display: 'BARNIZ BRILLANTE UV  CON RESERVA (0,010 mm)', unit: '0.010' },
+    { name: 'BARNIZ MATE  UV TOTAL CON RESERVA', display: 'BARNIZ MATE  UV TOTAL CON RESERVA (0,010 mm)', unit: '0.010' },
+    { name: 'LAMINADO BRILLANTE BIOGLOSS', display: 'LAMINADO BRILLANTE BIOGLOSS (0,028 mm)', unit: '0.028' },
+    { name: 'LAMINADO MATE BIOGLOSS', display: 'LAMINADO MATE BIOGLOSS (0,037 mm)', unit: '0.037' },
+    { name: 'LAMINADO BRILLANTE BOPP', display: 'LAMINADO BRILLANTE BOPP (0,030 mm)', unit: '0.030' },
+    { name: 'LAMINADO MATE BOPP', display: 'LAMINADO MATE BOPP (0,040 mm)', unit: '0.040' },
+    { name: 'SIN PROTECCION', display: 'SIN PROTECCION (0 mm)', unit: '0' },
   ], []);
   const [showMaterialOptions, setShowMaterialOptions] = React.useState<boolean>(false);
   const materialContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -144,6 +156,37 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
       document.removeEventListener('keydown', onKey);
     };
   }, []);
+
+  const materialDisplay = (() => {
+    const found = MATERIALS.find(m => m.name === material);
+    return found ? found.display : material;
+  })();
+  const [materialUnit, setMaterialUnit] = React.useState<string>('');
+  const [terminadoUnit, setTerminadoUnit] = React.useState<string>('');
+
+  const computeEspesor = (matUnit: string, termUnit: string) => {
+    const m = parseFloat(matUnit || '0') || 0;
+    const t = parseFloat(termUnit || '0') || 0;
+    const s = m + t;
+    return s > 0 ? String(Number(s.toFixed(3))) : '';
+  };
+  const terminadoDisplay = (() => {
+    const found = TERMINADOS.find(t => t.name === terminadoEtiqueta);
+    return found ? found.display : terminadoEtiqueta;
+  })();
+
+  // Sincronizar unidades locales cuando cambian las props `material` o `terminadoEtiqueta` (por edición)
+  React.useEffect(() => {
+    const m = MATERIALS.find(x => x.name === material);
+    const t = TERMINADOS.find(x => x.name === terminadoEtiqueta);
+    const mu = m ? (m.unit || '') : '';
+    const tu = t ? (t.unit || '') : '';
+    setMaterialUnit(mu);
+    setTerminadoUnit(tu);
+    const esp = computeEspesor(mu, tu);
+    setEspesor(esp);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [material, terminadoEtiqueta]);
 
   // Troquel options and dropdown state
   const troquelOptions = React.useMemo(() => ['FLEXIBLE', 'PLANO', 'REFILADO'], []);
@@ -169,18 +212,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
     };
   }, []);
 
-  // Terminado de etiqueta options and dropdown state
-  const terminadoOptions = React.useMemo(() => [
-    'BARNIZ BRILLANTE UV TOTAL',
-    'BARNIZ MATE  UV TOTAL',
-    'BARNIZ BRILLANTE UV  CON RESERVA',
-    'BARNIZ MATE  UV TOTAL CON RESERVA',
-    'LAMINADO BRILLANTE BIOGLOSS',
-    'LAMINADO MATE BIOGLOSS',
-    'LAMINADO BRILLANTE BOPP',
-    'LAMINADO MATE BOPP',
-    'SIN PROTECCION',
-  ], []);
+  // Terminado de etiqueta options and dropdown state (con unidad)
   const [showTerminadoOptions, setShowTerminadoOptions] = React.useState<boolean>(false);
   const terminadoContainerRef = React.useRef<HTMLDivElement | null>(null);
   const terminadoInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -684,8 +716,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                 ref={materialInputRef}
                 placeholder="Seleccionar o escribir..."
                 className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={material}
-                onChange={(e) => setMaterial(e.target.value)}
+                value={materialDisplay}
+                onChange={(e) => { setMaterial(e.target.value); setMaterialUnit(''); const esp = computeEspesor('', terminadoUnit); setEspesor(esp); }}
               />
               <button
                 type="button"
@@ -702,13 +734,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             </div>
             {showMaterialOptions && (
               <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
-                {materialOptions.map((opt) => (
+                {MATERIALS.map((opt) => (
                   <li
-                    key={opt}
+                    key={opt.name}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    onMouseDown={(e) => { e.preventDefault(); setMaterial(opt); setShowMaterialOptions(false); }}
+                    onMouseDown={(e) => { e.preventDefault(); setMaterial(opt.name); setMaterialUnit(opt.unit || ''); const esp = computeEspesor(opt.unit || '', terminadoUnit); setEspesor(esp); setShowMaterialOptions(false); }}
                   >
-                    {opt}
+                    {opt.display}
                   </li>
                 ))}
               </ul>
@@ -759,7 +791,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">Espesor</label>
             <input
               type="text"
-              placeholder="Micras"
+              placeholder="mm"
               className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={espesor}
               onChange={(e) => setEspesor(e.target.value)}
@@ -898,8 +930,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                 ref={terminadoInputRef}
                 placeholder="Seleccionar o escribir..."
                 className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={terminadoEtiqueta}
-                onChange={(e) => setTerminadoEtiqueta(e.target.value)}
+                value={terminadoDisplay}
+                onChange={(e) => { setTerminadoEtiqueta(e.target.value); setTerminadoUnit(''); const esp = computeEspesor(materialUnit, ''); setEspesor(esp); }}
               />
               <button
                 type="button"
@@ -916,13 +948,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             </div>
             {showTerminadoOptions && (
               <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
-                {terminadoOptions.map((opt) => (
+                {TERMINADOS.map((opt) => (
                   <li
-                    key={opt}
+                    key={opt.name}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    onMouseDown={(e) => { e.preventDefault(); setTerminadoEtiqueta(opt); setShowTerminadoOptions(false); }}
+                    onMouseDown={(e) => { e.preventDefault(); setTerminadoEtiqueta(opt.name); setTerminadoUnit(opt.unit || ''); const esp = computeEspesor(materialUnit, opt.unit || ''); setEspesor(esp); setShowTerminadoOptions(false); }}
                   >
-                    {opt}
+                    {opt.display}
                   </li>
                 ))}
               </ul>

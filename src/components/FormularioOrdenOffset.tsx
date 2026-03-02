@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SelectorPrensa from './SelectorPrensa';
 
 interface FormularioOrdenOffsetProps {
@@ -15,6 +15,8 @@ interface FormularioOrdenOffsetProps {
   // Material y Corte
   material: string;
   setMaterial: (value: string) => void;
+  materialEspesor: string;
+  setMaterialEspesor: (value: string) => void;
   corteMaterial: string;
   setCorteMaterial: (value: string) => void;
 
@@ -55,6 +57,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   setTamanoCerrado1,
   material,
   setMaterial,
+  materialEspesor,
+  setMaterialEspesor,
   corteMaterial,
   setCorteMaterial,
   cantidadPliegosCompra,
@@ -77,6 +81,40 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   notasObservaciones,
   setNotasObservaciones,
 }) => {
+  const MATERIALS = React.useMemo(() => [
+    { name: 'PROPALCOTE', display: 'PROPALCOTE (0,045 mm)', unit: '0.045' },
+    { name: 'POLIPROPILENO BLANCO MATE', display: 'POLIPROPILENO BLANCO MATE (0,054 mm)', unit: '0.054' },
+    { name: 'POLIPROPILENO BLANCO BRILLANTE', display: 'POLIPROPILENO BLANCO BRILLANTE (0,060 mm)', unit: '0.060' },
+    { name: 'POLIPROPILENO TRANSPARENTE', display: 'POLIPROPILENO TRANSPARENTE (0,050 mm)', unit: '0.050' },
+    { name: 'POLIPROPILENO METALIZADO', display: 'POLIPROPILENO METALIZADO (0,050 mm)', unit: '0.050' },
+    { name: 'TERMOENCOGIBLE PVC', display: 'TERMOENCOGIBLE PVC (0,04 mm)', unit: '0.040' },
+    { name: 'TERMOENCOGIBLE PET', display: 'TERMOENCOGIBLE PET (0,040 mm)', unit: '0.040' },
+    { name: 'CARTULINA METALIZADA', display: 'CARTULINA METALIZADA', unit: '' },
+    { name: 'CARTULINA NORMAL', display: 'CARTULINA NORMAL', unit: '' },
+    { name: 'BOPP METALIZADO', display: 'BOPP METALIZADO (0,06 mm)', unit: '0.060' },
+    { name: 'BOPP BLANCO', display: 'BOPP BLANCO (0,06 mm)', unit: '0.060' },
+    { name: 'BOPP TRANSPARENTE', display: 'BOPP TRANSPARENTE (0,06 mm)', unit: '0.060' },
+    { name: 'TERMICO DIRECTO PAPEL', display: 'TERMICO DIRECTO PAPEL (0,045 mm)', unit: '0.045' },
+    { name: 'TERMICO DIRECTO POLIPROPILENO', display: 'TERMICO DIRECTO POLIPROPILENO (0,054 mm)', unit: '0.054' },
+    { name: 'POLIPROPILENO BLANCO FREZZER', display: 'POLIPROPILENO BLANCO FREZZER (0,054 mm)', unit: '0.054' },
+  ], []);
+
+  const [showMaterialOptions, setShowMaterialOptions] = useState<boolean>(false);
+  const materialContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!materialContainerRef.current) return;
+      if (!materialContainerRef.current.contains(e.target as Node)) setShowMaterialOptions(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowMaterialOptions(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
   return (
     <>
       {/* Información del Trabajo - Diseño compacto */}
@@ -138,16 +176,39 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
         </h3>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-            <textarea
-              className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
-              rows={2}
-              value={material}
-              onChange={e => setMaterial(e.target.value)}
-              placeholder="Especificaciones del material..."
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+              <div className="relative" ref={materialContainerRef}>
+                <div className="flex">
+                  <input
+                    ref={(el) => { /* noop: keep uncontrolled ref if needed later */ }}
+                    placeholder="Seleccionar o escribir..."
+                    className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-green-500"
+                    value={(() => {
+                      // Mostrar nombre + unidad si coincide con lista conocida
+                      const found = MATERIALS.find(m => m.name === material);
+                      return found ? found.display : material;
+                    })()}
+                    onChange={(e) => { setMaterial(e.target.value); setMaterialEspesor(''); }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowMaterialOptions(s => !s)}
+                    className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                  >▾</button>
+                </div>
+                {showMaterialOptions && (
+                  <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+                    {MATERIALS.map(opt => (
+                      <li key={opt.name} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                        onMouseDown={(e) => { e.preventDefault(); setMaterial(opt.name); setMaterialEspesor(opt.unit || ''); setShowMaterialOptions(false); }}>
+                        {opt.display}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Corte de Material</label>

@@ -405,13 +405,20 @@ const CertificadoForm: React.FC = () => {
       setForm((f:any) => {
         // build caracteristicas preserving existing rows but filling nominal where applicable
         const existing = Array.isArray(f.caracteristicas) ? f.caracteristicas : [];
-        const caracteristicas = existing.map((r:any) => {
+          const caracteristicas = existing.map((r:any) => {
           const name = String(r.name || r.nombre || '').toUpperCase();
           let nominal = r.nominal || '';
           if (name === 'LARGO' && !nominal) nominal = medidaAlto || '';
           if (name === 'ANCHO' && !nominal) nominal = medidaAncho || '';
           if (String(name).includes('ESPESOR') && !nominal) nominal = espesorVal || '';
           const updated: any = { ...r, nominal };
+          // Si estamos prefijando espesor desde la orden, forzar unidad 'mm' para evitar que
+          // el mapeo del catálogo asigne la característica de 'Micras' por defecto.
+          try {
+            if (String(name).toLowerCase().includes('espesor') && nominal && (!updated.unidad || String(updated.unidad).trim() === '')) {
+              updated.unidad = 'mm';
+            }
+          } catch (e) {}
           // si nominal es numérico y no existen minimo/maximo, calcularlos
           const num = parseFloat(String(nominal).replace(',', '.'));
           if (!isNaN(num)) {
@@ -420,6 +427,58 @@ const CertificadoForm: React.FC = () => {
           }
           return updated;
         });
+
+        // Ensure catalog-driven ESPESOR rows (mm + micras) are present when available
+        try {
+          const cat = catalogoCaracteristicas || [];
+          const espMmCat = cat.find((c:any) => String(c.nombre || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
+          const espMicCat = cat.find((c:any) => String(c.nombre || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mic'));
+          const hasMmRow = caracteristicas.find((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
+          const hasMicRow = caracteristicas.find((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
+          if (espMmCat && !hasMmRow) {
+            caracteristicas.push({ caracteristica_id: espMmCat.id, name: espMmCat.nombre, unidad: espMmCat.unidad || 'mm', minimo: '', nominal: '', maximo: '' });
+          }
+          if (!hasMicRow) {
+            if (espMicCat) {
+              caracteristicas.push({ caracteristica_id: espMicCat.id, name: espMicCat.nombre, unidad: espMicCat.unidad || 'micras', minimo: '', nominal: '', maximo: '' });
+            } else {
+              // Add a generic ESPESOR (micras) row so both units are present when prefilling from an order
+              caracteristicas.push({ caracteristica_id: null, name: 'ESPESOR (micras)', unidad: 'micras', minimo: '', nominal: '', maximo: '' });
+            }
+          }
+        } catch (e) {}
+
+        // If the order provided an espesor value, set it into the ESPESOR (mm) row
+        try {
+          if (espesorVal !== null && espesorVal !== undefined && String(espesorVal).trim() !== '') {
+            const raw = String(espesorVal);
+            // find mm and mic rows
+            const mmIdx = caracteristicas.findIndex((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
+            const micIdx = caracteristicas.findIndex((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
+            if (mmIdx > -1) {
+              caracteristicas[mmIdx].nominal = raw;
+              // compute min/max if missing
+              try {
+                const num = parseFloat(raw.replace(',', '.'));
+                if (!isNaN(num)) {
+                  caracteristicas[mmIdx].minimo = caracteristicas[mmIdx].minimo || String(Number((num - 1).toFixed(3)).toString());
+                  caracteristicas[mmIdx].maximo = caracteristicas[mmIdx].maximo || String(Number((num + 1).toFixed(3)).toString());
+                }
+              } catch (e) {}
+            }
+            if (micIdx > -1) {
+              try {
+                const num = parseFloat(raw.replace(',', '.'));
+                if (!isNaN(num)) {
+                  const mic = String(Number((num * 1000)).toFixed(4));
+                  caracteristicas[micIdx].nominal = mic;
+                  caracteristicas[micIdx].minimo = caracteristicas[micIdx].minimo || String(Number((parseFloat(mic) - 1).toFixed(4)).toString());
+                  caracteristicas[micIdx].maximo = caracteristicas[micIdx].maximo || String(Number((parseFloat(mic) + 1).toFixed(4)).toString());
+                }
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
 
         return {
           ...f,
@@ -488,6 +547,41 @@ const CertificadoForm: React.FC = () => {
       });
     }
   }, [location]);
+
+  // Keep ESPESOR (micras) synchronized with ESPESOR (mm) when the user edits values
+  useEffect(() => {
+    try {
+      const rows = Array.isArray(form.caracteristicas) ? form.caracteristicas : [];
+      if (rows.length === 0) return;
+      let mmValue: string | null = null;
+      rows.forEach((r:any) => {
+        const name = String(r.name || r.nombre || '').toLowerCase();
+        const unidad = String(r.unidad || '').toLowerCase();
+        if (name.includes('espesor') && unidad.includes('mm')) {
+          mmValue = r.nominal || null;
+        }
+      });
+      if (!mmValue) return;
+      const num = parseFloat(String(mmValue).replace(',', '.'));
+      if (isNaN(num)) return;
+      const micComputed = String(Number((num * 1000)).toFixed(4));
+      let changed = false;
+      const newRows = rows.map((r:any) => ({ ...r }));
+      const micIdx = newRows.findIndex((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
+      if (micIdx > -1) {
+        const existing = String(newRows[micIdx].nominal || '').trim();
+        if (existing !== micComputed) {
+          newRows[micIdx].nominal = micComputed;
+          if (!newRows[micIdx].minimo) newRows[micIdx].minimo = String(Number((parseFloat(micComputed) - 1).toFixed(4)).toString());
+          if (!newRows[micIdx].maximo) newRows[micIdx].maximo = String(Number((parseFloat(micComputed) + 1).toFixed(4)).toString());
+          changed = true;
+        }
+      }
+      if (changed) setForm((f:any) => ({ ...f, caracteristicas: newRows }));
+    } catch (e) {
+      // ignore sync errors
+    }
+  }, [form.caracteristicas]);
 
   const verPDF = async (certId: number) => {
     try {

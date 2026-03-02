@@ -243,28 +243,37 @@ export default (client: any) => {
                   </tr>
                 </thead>
                 <tbody>
-                  ${
-                    caracteristicas && caracteristicas.length > 0
-                      ? caracteristicas
-                          .map(
-                            (c: any) => `
-                    <tr>
-                      <td>${c.nombre || ""}</td>
-                      <td class="small">${c.unidad || ""}</td>
-                      <td class="center">${c.minimo || ""}</td>
-                      <td class="center">${c.nominal || ""}</td>
-                      <td class="center">${c.maximo || ""}</td>
-                    </tr>
-                  `,
-                          )
-                          .join("")
-                      : `
-                    <tr><td>LARGO (mm)</td><td></td><td></td><td></td><td></td></tr>
-                    <tr><td>ANCHO (mm)</td><td></td><td></td><td></td><td></td></tr>
-                    <tr><td>ESPESOR (mm)</td><td></td><td></td><td></td><td></td></tr>
-                    <tr><td>ESPESOR (micras)</td><td></td><td></td><td></td><td></td></tr>
-                  `
-                  }
+                  ${(() => {
+                      // Ensure ESPESOR (mm) and ESPESOR (micras) are present or shown from certificado fields
+                      const rows = Array.isArray(caracteristicas) ? [...caracteristicas] : [];
+                      const hasEspMm = rows.some((r:any) => String(r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad||'')).toLowerCase().includes('mm'));
+                      const hasEspMic = rows.some((r:any) => String(r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad||'')).toLowerCase().includes('mic'));
+                      if (!hasEspMm && (certificado.espesor_mm !== undefined && certificado.espesor_mm !== null && certificado.espesor_mm !== '')) {
+                        rows.push({ nombre: 'ESPESOR (mm)', unidad: 'mm', minimo: '', nominal: certificado.espesor_mm, maximo: '' });
+                      }
+                      if (!hasEspMic && (certificado.espesor_micras4 !== undefined && certificado.espesor_micras4 !== null && certificado.espesor_micras4 !== '')) {
+                        rows.push({ nombre: 'ESPESOR (micras)', unidad: 'micras', minimo: '', nominal: certificado.espesor_micras4, maximo: '' });
+                      }
+                      if (rows && rows.length > 0) {
+                        return rows
+                          .map((c: any) => `
+                      <tr>
+                        <td>${c.nombre || ""}</td>
+                        <td class="small">${c.unidad || ""}</td>
+                        <td class="center">${c.minimo || ""}</td>
+                        <td class="center">${c.nominal || ""}</td>
+                        <td class="center">${c.maximo || ""}</td>
+                      </tr>
+                    `)
+                          .join("");
+                      }
+                      return `
+                      <tr><td>LARGO (mm)</td><td></td><td></td><td></td><td></td></tr>
+                      <tr><td>ANCHO (mm)</td><td></td><td></td><td></td><td></td></tr>
+                      <tr><td>ESPESOR (mm)</td><td></td><td></td><td></td><td></td></tr>
+                      <tr><td>ESPESOR (micras)</td><td></td><td></td><td></td><td></td></tr>
+                    `;
+                    })()}
                 </tbody>
               </table>
             </div>
@@ -664,14 +673,27 @@ export default (client: any) => {
             // Si no hay id, intentamos resolver por nombre (case-insensitive)
             if (!caracteristicaId && nombre) {
               const catRes = await client.query(
-                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1",
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1)",
                 [nombre],
               );
               if (catRes.rows.length > 0) {
-                caracteristicaId = catRes.rows[0].id;
-                nombre = catRes.rows[0].nombre || nombre;
-                if (!unidadResolved && catRes.rows[0].unidad)
-                  unidadResolved = catRes.rows[0].unidad;
+                // Si el payload trajo unidad, preferimos la entrada que tenga la misma unidad (p.ej. 'mm')
+                if (unidadResolved) {
+                  const match = catRes.rows.find((r: any) => String((r.unidad || '')).toLowerCase() === String(unidadResolved).toLowerCase());
+                  if (match) {
+                    caracteristicaId = match.id;
+                    nombre = match.nombre || nombre;
+                    unidadResolved = unidadResolved || match.unidad;
+                  } else {
+                    caracteristicaId = catRes.rows[0].id;
+                    nombre = catRes.rows[0].nombre || nombre;
+                    unidadResolved = unidadResolved || catRes.rows[0].unidad;
+                  }
+                } else {
+                  caracteristicaId = catRes.rows[0].id;
+                  nombre = catRes.rows[0].nombre || nombre;
+                  if (!unidadResolved && catRes.rows[0].unidad) unidadResolved = catRes.rows[0].unidad;
+                }
               }
             }
 
@@ -689,6 +711,36 @@ export default (client: any) => {
               ],
             );
           }
+        }
+        // Persistir espesor_mm y espesor_micras4 si vienen en el payload o en las caracteristicas
+        try {
+          let espesorMmVal: any = null;
+          if (req.body.espesor_mm !== undefined && req.body.espesor_mm !== null && req.body.espesor_mm !== '') {
+            espesorMmVal = req.body.espesor_mm;
+          } else if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
+            // Preferir caracteristica con unidad 'mm'
+            const espMm = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
+            if (espMm && espMm.nominal !== undefined && espMm.nominal !== null && espMm.nominal !== '') espesorMmVal = espMm.nominal;
+            // Fallback: cualquier campo que parezca espesor
+            if ((espesorMmVal === null || espesorMmVal === '') && caracteristicas.length > 0) {
+              const espAny = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && (c.nominal !== undefined && c.nominal !== null && c.nominal !== ''));
+              if (espAny) espesorMmVal = espAny.nominal;
+            }
+          }
+          let espesorMicVal: any = null;
+          if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
+            const num = parseFloat(String(espesorMmVal).replace(',', '.'));
+            if (!isNaN(num)) {
+              espesorMicVal = String(Number((num * 1000)).toFixed(4));
+            }
+            await client.query(
+              "UPDATE certificado_calidad SET espesor_mm=$1, espesor_micras4=$2 WHERE id=$3",
+              [espesorMmVal || null, espesorMicVal || null, certificadoId],
+            );
+          }
+        } catch (e) {
+          // no bloquear creación por error en este paso
+          console.error('Error al persistir espesor en certificado:', e);
         }
 
         await client.query("COMMIT");
@@ -810,14 +862,26 @@ export default (client: any) => {
 
             if (!caracteristicaId && nombre) {
               const catRes = await client.query(
-                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1) LIMIT 1",
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) = lower($1)",
                 [nombre],
               );
               if (catRes.rows.length > 0) {
-                caracteristicaId = catRes.rows[0].id;
-                nombre = catRes.rows[0].nombre || nombre;
-                if (!unidadResolved && catRes.rows[0].unidad)
-                  unidadResolved = catRes.rows[0].unidad;
+                if (unidadResolved) {
+                  const match = catRes.rows.find((r: any) => String((r.unidad || '')).toLowerCase() === String(unidadResolved).toLowerCase());
+                  if (match) {
+                    caracteristicaId = match.id;
+                    nombre = match.nombre || nombre;
+                    unidadResolved = unidadResolved || match.unidad;
+                  } else {
+                    caracteristicaId = catRes.rows[0].id;
+                    nombre = catRes.rows[0].nombre || nombre;
+                    unidadResolved = unidadResolved || catRes.rows[0].unidad;
+                  }
+                } else {
+                  caracteristicaId = catRes.rows[0].id;
+                  nombre = catRes.rows[0].nombre || nombre;
+                  if (!unidadResolved && catRes.rows[0].unidad) unidadResolved = catRes.rows[0].unidad;
+                }
               }
             }
 
@@ -835,6 +899,34 @@ export default (client: any) => {
               ],
             );
           }
+        }
+
+        // Persistir espesor_mm y espesor_micras4 si vienen en el payload o en las caracteristicas
+        try {
+          let espesorMmVal: any = null;
+          if (req.body.espesor_mm !== undefined && req.body.espesor_mm !== null && req.body.espesor_mm !== '') {
+            espesorMmVal = req.body.espesor_mm;
+          } else if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
+            const espMm = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
+            if (espMm && espMm.nominal !== undefined && espMm.nominal !== null && espMm.nominal !== '') espesorMmVal = espMm.nominal;
+            if ((espesorMmVal === null || espesorMmVal === '') && caracteristicas.length > 0) {
+              const espAny = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && (c.nominal !== undefined && c.nominal !== null && c.nominal !== ''));
+              if (espAny) espesorMmVal = espAny.nominal;
+            }
+          }
+          let espesorMicVal: any = null;
+          if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
+            const num = parseFloat(String(espesorMmVal).replace(',', '.'));
+            if (!isNaN(num)) {
+              espesorMicVal = String(Number((num * 1000)).toFixed(4));
+            }
+            await client.query(
+              "UPDATE certificado_calidad SET espesor_mm=$1, espesor_micras4=$2 WHERE id=$3",
+              [espesorMmVal || null, espesorMicVal || null, id],
+            );
+          }
+        } catch (e) {
+          console.error('Error al persistir espesor en certificado (update):', e);
         }
 
         await client.query("COMMIT");
