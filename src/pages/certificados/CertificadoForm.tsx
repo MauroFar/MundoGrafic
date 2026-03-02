@@ -26,6 +26,8 @@ const CertificadoForm: React.FC = () => {
     lote_despacho: '',
     tamano_cm: '',
     aprobado_area: '',
+    // valor por defecto editable solicitado
+    aprobado_area: 'ÍNDIGO',
     recepcion_area: '',
     orden_compra: '',
     inspeccionado_por: '',
@@ -85,7 +87,7 @@ const CertificadoForm: React.FC = () => {
           />
           <button
             type="button"
-            onClick={() => { setOpen(s => !s); inputRef.current?.focus(); }}
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(s => !s); inputRef.current?.focus(); }}
             className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
           >
             ▾
@@ -149,10 +151,10 @@ const CertificadoForm: React.FC = () => {
         const token = localStorage.getItem('token');
         const res = await fetch(`${apiUrl}/api/certificados/${id}`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error('No se pudo cargar certificado');
-        const data = await res.json();
+        const data = (await res.json()) || {};
         // Mapear a form
         // Mapear características recibidas a las filas fijas en orden
-        const recibidasArr = Array.isArray(data.caracteristicas) ? data.caracteristicas.slice() : [];
+        const recibidasArr = data && Array.isArray(data.caracteristicas) ? data.caracteristicas.slice() : [];
 
         // Construir filas fijas respetando si existen múltiples entradas con el mismo nombre
         const seenIds = new Set<string|number>();
@@ -250,7 +252,7 @@ const CertificadoForm: React.FC = () => {
 
         setForm((f:any) => {
           // preserve any existing rows from previous state that may include ESPESOR (mm)
-          const prevRows = Array.isArray(f.caracteristicas) ? f.caracteristicas.slice() : [];
+          const prevRows = Array.isArray(f?.caracteristicas) ? f.caracteristicas.slice() : [];
           const rows = caracteristicasOrdenadas.slice();
           const hasEspMmInRows = rows.find((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
           const hasEspMmInPrev = prevRows.find((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
@@ -262,46 +264,37 @@ const CertificadoForm: React.FC = () => {
           // Ensure ordering: put ESPESOR (mm) right after ALTO and move ESPESOR (micras) to the end
           try {
             const espMmIdx2 = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
-            if (micIdx > -1) {
-              try {
-                const num = parseFloat(raw.replace(',', '.'));
-                if (!isNaN(num)) {
-                  const micRaw = num * 1000;
-                  let mic = '';
-                  if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) mic = String(Math.round(micRaw));
-                  else mic = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
-                  caracteristicas[micIdx].nominal = mic;
-                  caracteristicas[micIdx]._micras_manual = false; // auto-generated
-                  try {
-                    const micNum = parseFloat(String(mic).replace(',', '.'));
-                    if (!isNaN(micNum)) {
-                      // use step = 1 for micras (integer) and format without unnecessary zeros
-                      caracteristicas[micIdx].minimo = caracteristicas[micIdx].minimo || String(Number(micNum - 1).toFixed(0));
-                      caracteristicas[micIdx].maximo = caracteristicas[micIdx].maximo || String(Number(micNum + 1).toFixed(0));
-                    }
-                  } catch (e) {}
-                }
-              } catch (e) {}
+            if (espMmIdx2 > -1) {
+              const item = rows.splice(espMmIdx2, 1)[0];
+              const altoIdx = rows.findIndex((r:any) => String(r.name || '').toUpperCase() === 'ALTO');
+              const insertPos = altoIdx >= 0 ? altoIdx + 1 : 0;
+              rows.splice(insertPos, 0, item);
             }
+            const micIdxLocal = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
+            if (micIdxLocal > -1) {
+              const mic = rows.splice(micIdxLocal, 1)[0];
+              rows.push(mic);
+            }
+
             return {
-            ...f,
-            cliente: data.cliente_nombre || f.cliente,
-            referencia: data.referencia || data.producto_cod_mg || f.referencia,
-            material: data.material || data.producto_descripcion || f.material,
-            descripcion: data.descripcion || f.descripcion,
-            cantidad: data.cantidad || f.cantidad,
-            cantidad_despachada: data.cantidad_despachada || f.cantidad_despachada,
-            codigo: data.codigo || data.codigo_producto || f.codigo,
-            lote: data.lote || f.lote,
-            lote_despacho: data.lote_despacho || f.lote_despacho,
-            tamano_cm: data.tamano_cm || f.tamano_cm,
-            orden_compra: data.orden_compra || f.orden_compra,
-            inspeccionado_por: data.inspeccionado_por || f.inspeccionado_por,
-            aprobado_area: data.aprobado_area || f.aprobado_area,
-            recepcion_area: data.recepcion_area || f.recepcion_area,
-            observaciones: data.observaciones || f.observaciones,
-            caracteristicas: rows
-          };
+              ...f,
+              cliente: data.cliente_nombre || f?.cliente,
+              referencia: data.referencia || data.producto_cod_mg || f?.referencia,
+              material: data.material || data.producto_descripcion || f?.material,
+              descripcion: data.descripcion || f?.descripcion,
+              cantidad: data.cantidad || f?.cantidad,
+              cantidad_despachada: data.cantidad_despachada || f?.cantidad_despachada,
+              codigo: data.codigo || data.codigo_producto || f?.codigo,
+              lote: data.lote || f?.lote,
+              lote_despacho: data.lote_despacho || f?.lote_despacho,
+              tamano_cm: data.tamano_cm || f?.tamano_cm,
+              orden_compra: data.orden_compra || f?.orden_compra,
+              inspeccionado_por: data.inspeccionado_por || f?.inspeccionado_por,
+              aprobado_area: data.aprobado_area || f?.aprobado_area,
+              recepcion_area: data.recepcion_area || f?.recepcion_area,
+              observaciones: data.observaciones || f?.observaciones,
+              caracteristicas: rows
+            };
           } catch (e) {}
         });
 
@@ -335,7 +328,7 @@ const CertificadoForm: React.FC = () => {
         setCatalogoCaracteristicas(data || []);
         // Si el formulario ya tiene filas (por carga del certificado), rellenar unidad desde el catálogo
         setForm((f:any) => {
-          const rows = Array.isArray(f.caracteristicas) ? f.caracteristicas.map((r:any) => {
+          const rows = Array.isArray(f?.caracteristicas) ? f.caracteristicas.map((r:any) => {
             const byId = (data || []).find((c:any) => String(c.id) === String(r.caracteristica_id));
             const rawName = String(r.name || r.nombre || '').toLowerCase();
             const byName = (data || []).find((c:any) => {
@@ -426,7 +419,7 @@ const CertificadoForm: React.FC = () => {
 
       setForm((f:any) => {
         // build caracteristicas preserving existing rows but filling nominal where applicable
-        const existing = Array.isArray(f.caracteristicas) ? f.caracteristicas : [];
+        const existing = Array.isArray(f?.caracteristicas) ? f.caracteristicas : [];
           const caracteristicas = existing.map((r:any) => {
           const name = String(r.name || r.nombre || '').toUpperCase();
           let nominal = r.nominal || '';
@@ -607,16 +600,34 @@ const CertificadoForm: React.FC = () => {
       const micIdx = newRows.findIndex((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
       if (micIdx > -1) {
         const existing = String(newRows[micIdx].nominal || '').trim();
-        if (existing !== micComputed) {
-          newRows[micIdx].nominal = micComputed;
+        const micManual = !!newRows[micIdx]._micras_manual;
+        // If user marked micras as manual, do not overwrite their nominal value
+        if (!micManual) {
+          let localChanged = false;
+          if (existing !== micComputed) {
+            newRows[micIdx].nominal = micComputed;
+            localChanged = true;
+          }
           try {
             const micNum = parseFloat(String(micComputed).replace(',', '.'));
             if (!isNaN(micNum)) {
-              if (!newRows[micIdx].minimo) newRows[micIdx].minimo = String(Number((micNum - 1)).toFixed(4)).replace(/\.0+$/, '');
-              if (!newRows[micIdx].maximo) newRows[micIdx].maximo = String(Number((micNum + 1)).toFixed(4)).replace(/\.0+$/, '');
+              const desiredMin = String(Math.round(micNum - 1));
+              const desiredMax = String(Math.round(micNum + 1));
+              if (String(newRows[micIdx].minimo || '') !== desiredMin) {
+                newRows[micIdx].minimo = desiredMin;
+                localChanged = true;
+              }
+              if (String(newRows[micIdx].maximo || '') !== desiredMax) {
+                newRows[micIdx].maximo = desiredMax;
+                localChanged = true;
+              }
+              if (newRows[micIdx]._micras_manual) {
+                newRows[micIdx]._micras_manual = false;
+                localChanged = true;
+              }
             }
           } catch (e) {}
-          changed = true;
+          if (localChanged) changed = true;
         }
       }
       if (changed) setForm((f:any) => ({ ...f, caracteristicas: newRows }));
@@ -909,7 +920,7 @@ const CertificadoForm: React.FC = () => {
   const actualizar = (campo: string, valor: any) => setForm((f:any) => ({ ...f, [campo]: valor }));
   const actualizarCaracteristica = (index: number, campo: string, valor: any) => {
     setForm((f:any) => {
-      const c = Array.isArray(f.caracteristicas) ? [...f.caracteristicas] : [];
+      const c = Array.isArray(f?.caracteristicas) ? [...f.caracteristicas] : [];
       const updated = { ...c[index], [campo]: valor };
       // Si se actualiza el nominal para LARGO/ANCHO/ESPESOR, ajustar mínimo y máximo automáticamente
       try {
@@ -1153,7 +1164,7 @@ const CertificadoForm: React.FC = () => {
                   <input className="w-full border rounded px-2 py-1" value={form.lote_despacho} onChange={(e) => actualizar('lote_despacho', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600">TAMAÑO (cm):</label>
+                  <label className="block text-xs font-semibold text-gray-600">TAMAÑO (<span className="lowercase">cm</span>):</label>
                   <input className="w-full border rounded px-2 py-1" value={form.tamano_cm} onChange={(e) => actualizar('tamano_cm', e.target.value)} />
                 </div>
               </div>

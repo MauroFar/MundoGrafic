@@ -245,7 +245,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           />
           <button
             type="button"
-            onClick={() => { setOpen(s => !s); inputRef.current?.focus(); }}
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(s => !s); inputRef.current?.focus(); }}
             className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
           >
             ▾
