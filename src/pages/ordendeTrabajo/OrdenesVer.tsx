@@ -14,6 +14,9 @@ interface OrdenTrabajo {
   email_cliente?: string;
   tipo_orden?: string;
   id_cotizacion?: number;
+  estado_orden_digital_id?: number;
+  estado_digital_key?: string;
+  estado_digital_titulo?: string;
 }
 
 const OrdenesVer: React.FC = () => {
@@ -571,11 +574,15 @@ const OrdenesVer: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 border-b">{orden.fecha_creacion?.slice(0,10)}</td>
                   <td className="px-6 py-4 border-b">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      getEstadoStyle(orden.estado).classes
-                    }`}>
-                      {getEstadoStyle(orden.estado).text}
-                    </span>
+                    {(() => {
+                      const key = (orden as any).estado_digital_key || orden.estado;
+                      const s = getEstadoStyle(key);
+                      return (
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${s.classes}`}>
+                          {s.text}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 border-b">
                     <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
@@ -617,7 +624,7 @@ const OrdenesVer: React.FC = () => {
                       </button>
                       {
                         (() => {
-                          const raw = orden.estado || '';
+                          const raw = (orden as any).estado_digital_key || orden.estado || '';
                           const estadoNorm = raw.toString().toLowerCase().replace(/\s+/g, '_');
                           if (estadoNorm === 'entregado') {
                             return (
@@ -625,7 +632,7 @@ const OrdenesVer: React.FC = () => {
                             );
                           }
 
-                          if (esEstadoProduccion(orden.estado)) {
+                          if (esEstadoProduccion((orden as any).estado_digital_key || orden.estado)) {
                             return (
                               <>
                                 <button
@@ -639,11 +646,17 @@ const OrdenesVer: React.FC = () => {
                                 <button
                                   className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
                                   onClick={() => {
-                                    const raw2 = orden.estado || '';
-                                    const normalized = raw2.toString().toLowerCase().replace(/\s+/g, '_');
-                                    setModalActualizarEstadoId(orden.id);
-                                    setEstadoSeleccionado(normalized);
-                                  }}
+                                      const tipo = (orden.tipo_orden || '').toString().toLowerCase();
+                                      let initial = '';
+                                      if (tipo === 'digital') {
+                                        initial = orden.estado_digital_key || (orden.estado ? orden.estado.toString().toLowerCase().replace(/\s+/g, '_') : '');
+                                      } else {
+                                        const raw2 = orden.estado || '';
+                                        initial = raw2.toString().toLowerCase().replace(/\s+/g, '_');
+                                      }
+                                      setModalActualizarEstadoId(orden.id);
+                                      setEstadoSeleccionado(initial);
+                                    }}
                                   title="Actualizar Estado"
                                 >
                                   <FaSync />
@@ -746,24 +759,24 @@ const OrdenesVer: React.FC = () => {
                   if (tipo === 'digital') {
                     return (
                       <>
-                        <option value="Preprensa">Preprensa</option>
-                        <option value="Impresión">Impresión</option>
-                        <option value="Laminado/Barnizado">Laminado/Barnizado</option>
-                        <option value="Troquelado">Troquelado</option>
-                        <option value="Terminados">Terminados</option>
-                        <option value="Producto Liberado">Producto Liberado</option>
-                        <option value="Producto Entregado">Producto Entregado</option>
+                        <option value="en_preprensa">Preprensa</option>
+                        <option value="en_prensa">Impresión</option>
+                        <option value="laminado">Laminado/Barnizado</option>
+                        <option value="troquelado">Troquelado</option>
+                        <option value="terminados">Terminados</option>
+                        <option value="liberado">Producto Liberado</option>
+                        <option value="entregado">Producto Entregado</option>
                       </>
                     );
                   }
 
                   return (
                     <>
-                      <option value="Preprensa">Preprensa</option>
-                      <option value="Prensa / Impresión">Prensa / Impresión</option>
-                      <option value="Acabados / Empacado">Acabados / Empacado</option>
-                      <option value="Listo p/Entrega">Listo p/Entrega</option>
-                      <option value="Entregado">Entregado</option>
+                      <option value="en_preprensa">Preprensa</option>
+                      <option value="en_prensa">Prensa / Impresión</option>
+                      <option value="en_acabados">Acabados / Empacado</option>
+                      <option value="listo_para_entrega">Listo p/Entrega</option>
+                      <option value="entregado">Entregado</option>
                     </>
                   );
                 })()}
@@ -788,7 +801,14 @@ const OrdenesVer: React.FC = () => {
                     if (!response.ok) throw new Error('Error al actualizar estado');
                     const data = await response.json();
                     // Actualizar lista localmente
-                    setOrdenes(prev => prev.map(o => o.id === (modalActualizarEstadoId as number) ? { ...o, estado: data.orden?.estado || estadoSeleccionado } : o));
+                    setOrdenes(prev => prev.map(o => {
+                      if (o.id !== (modalActualizarEstadoId as number)) return o;
+                      const tipo = (o.tipo_orden || '').toString().toLowerCase();
+                      const newEstado = data.orden?.estado || estadoSeleccionado;
+                      const newKey = data.orden?.estado_digital_key || (tipo === 'digital' ? estadoSeleccionado : o.estado_digital_key);
+                      const newId = data.orden?.estado_orden_digital_id || o.estado_orden_digital_id;
+                      return { ...o, estado: newEstado, estado_digital_key: newKey, estado_orden_digital_id: newId };
+                    }));
                     setModalActualizarEstadoId(null);
                     setEstadoSeleccionado('');
                     // Notificar y ofrecer ir a Kanban
