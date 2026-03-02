@@ -875,7 +875,7 @@ export default (client: any) => {
 
         await client.query(
           `UPDATE certificado_calidad SET
-        fecha_creacion=$1, fecha_elaboracion=$2, fecha_caducidad=$3, cliente_nombre=$4,
+        fecha_creacion = COALESCE(NULLIF($1, ''), now()), fecha_elaboracion=$2, fecha_caducidad=$3, cliente_nombre=$4,
         referencia=$5, material=$6, descripcion=$7, cantidad=$8, codigo=$9, lote=$10,
         cantidad_despachada=$11, lote_despacho=$12, tamano_cm=$13, orden_compra=$14,
         inspeccionado_por=$15, observaciones=$16, aprobado_area=$17, recepcion_area=$18, updated_by=$19, updated_at=now()

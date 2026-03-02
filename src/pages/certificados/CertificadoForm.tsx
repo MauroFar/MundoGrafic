@@ -122,6 +122,16 @@ const CertificadoForm: React.FC = () => {
     const max = (v + step).toFixed(decimals);
     return { step, decimals, min, max };
   };
+  // Helper: format a date-like value to YYYY-MM-DD for <input type="date">
+  const formatDateForInput = (d: any) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
   useEffect(() => {
     // Si no es vista (crear nuevo), solicitar al backend el número sugerido
     const fetchNextNumber = async () => {
@@ -278,6 +288,7 @@ const CertificadoForm: React.FC = () => {
 
             return {
               ...f,
+              fecha_creacion: data.fecha_creacion ? formatDateForInput(data.fecha_creacion) : (data.created_at ? formatDateForInput(data.created_at) : f?.fecha_creacion),
               cliente: data.cliente_nombre || f?.cliente,
               referencia: data.referencia || data.producto_cod_mg || f?.referencia,
               material: data.material || data.producto_descripcion || f?.material,
