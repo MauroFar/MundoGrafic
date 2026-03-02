@@ -107,13 +107,29 @@ const CertificadoForm: React.FC = () => {
       </div>
     );
   };
+  // Helper: compute step and formatted min/max based on the nominal string
+  const computeStepAndBounds = (rawVal: string) => {
+    const s = String(rawVal || '').trim();
+    const v = parseFloat(s.replace(',', '.'));
+    if (isNaN(v)) return { step: 1, decimals: 0, min: '', max: '' };
+    // count decimals in the textual representation (after '.')
+    const parts = s.indexOf('.') >= 0 ? s.split('.') : (s.indexOf(',') >= 0 ? s.split(',') : [s]);
+    const decimals = parts.length > 1 ? parts[1].length : 0;
+    const step = decimals > 0 ? Math.pow(10, -decimals) : 1;
+    const min = (v - step).toFixed(decimals);
+    const max = (v + step).toFixed(decimals);
+    return { step, decimals, min, max };
+  };
   useEffect(() => {
     // Si no es vista (crear nuevo), solicitar al backend el número sugerido
     const fetchNextNumber = async () => {
       if (esVista) return;
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
-        const token = localStorage.getItem('token');
+        const micRaw = num * 1000;
+        let micComputed = '';
+        if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micComputed = String(Math.round(micRaw));
+        else micComputed = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
         const res = await fetch(`${apiUrl}/api/certificados/next-number`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
@@ -189,8 +205,11 @@ const CertificadoForm: React.FC = () => {
               try {
                 const num = parseFloat(String(updated.nominal).replace(',', '.'));
                 if (!isNaN(num)) {
-                  updated.minimo = updated.minimo || String(Number((num - 1).toFixed(3)).toString());
-                  updated.maximo = updated.maximo || String(Number((num + 1).toFixed(3)).toString());
+                  const isEspesorMm = String(updated.nombre || updated.name || '').toLowerCase().includes('espesor') && String((updated.unidad || '')).toLowerCase().includes('mm');
+                  const step = isEspesorMm ? 0.001 : 1;
+                  const decimals = step < 1 ? 3 : 0;
+                  updated.minimo = updated.minimo || String(Number((num - step).toFixed(decimals)).toString());
+                  updated.maximo = updated.maximo || String(Number((num + step).toFixed(decimals)).toString());
                 }
               } catch (e) {}
               caracteristicasOrdenadas[espIndexAny] = updated;
@@ -199,11 +218,9 @@ const CertificadoForm: React.FC = () => {
               let minimo = '';
               let maximo = '';
               try {
-                const num = parseFloat(String(espVal).replace(',', '.'));
-                if (!isNaN(num)) {
-                  minimo = String(Number((num - 1).toFixed(3)).toString());
-                  maximo = String(Number((num + 1).toFixed(3)).toString());
-                }
+                const calc = computeStepAndBounds(String(espVal));
+                minimo = calc.min;
+                maximo = calc.max;
               } catch (e) { /* ignore */ }
               caracteristicasOrdenadas.push({ caracteristica_id: null, name: 'ESPESOR (mm)', unidad: 'mm', minimo, nominal: String(espVal), maximo });
             }
@@ -245,25 +262,29 @@ const CertificadoForm: React.FC = () => {
           // Ensure ordering: put ESPESOR (mm) right after ALTO and move ESPESOR (micras) to the end
           try {
             const espMmIdx2 = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mm'));
-            if (espMmIdx2 > -1) {
-              const it2 = rows.splice(espMmIdx2,1)[0];
-              const altoIdx2 = rows.findIndex((r:any) => String(r.name || '').toUpperCase() === 'ALTO');
-              const insertPos2 = altoIdx2 >= 0 ? altoIdx2 + 1 : 0;
-              rows.splice(insertPos2,0,it2);
+            if (micIdx > -1) {
+              try {
+                const num = parseFloat(raw.replace(',', '.'));
+                if (!isNaN(num)) {
+                  const micRaw = num * 1000;
+                  let mic = '';
+                  if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) mic = String(Math.round(micRaw));
+                  else mic = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+                  caracteristicas[micIdx].nominal = mic;
+                  caracteristicas[micIdx]._micras_manual = false; // auto-generated
+                  try {
+                    const micNum = parseFloat(String(mic).replace(',', '.'));
+                    if (!isNaN(micNum)) {
+                      // use step = 1 for micras (integer) and format without unnecessary zeros
+                      caracteristicas[micIdx].minimo = caracteristicas[micIdx].minimo || String(Number(micNum - 1).toFixed(0));
+                      caracteristicas[micIdx].maximo = caracteristicas[micIdx].maximo || String(Number(micNum + 1).toFixed(0));
+                    }
+                  } catch (e) {}
+                }
+              } catch (e) {}
             }
-            const micIdx2 = rows.findIndex((r:any) => String(r.name || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
-            if (micIdx2 > -1) {
-              const mic2 = rows.splice(micIdx2,1)[0];
-              rows.push(mic2);
-            }
-          } catch(e) {}
-
-          return {
+            return {
             ...f,
-            numero_certificado: data.numero_certificado,
-            fecha_creacion: data.fecha_creacion ? data.fecha_creacion.slice(0,10) : f.fecha_creacion,
-            fecha_elaboracion: data.fecha_elaboracion ? data.fecha_elaboracion.slice(0,10) :     f.fecha_elaboracion,
-            fecha_caducidad: data.fecha_caducidad ? data.fecha_caducidad.slice(0,10) : f.fecha_caducidad,
             cliente: data.cliente_nombre || f.cliente,
             referencia: data.referencia || data.producto_cod_mg || f.referencia,
             material: data.material || data.producto_descripcion || f.material,
@@ -281,6 +302,7 @@ const CertificadoForm: React.FC = () => {
             observaciones: data.observaciones || f.observaciones,
             caracteristicas: rows
           };
+          } catch (e) {}
         });
 
         // Si la API trajo fecha_caducidad, marcamos como editada por usuario (no sobreescribir luego)
@@ -422,8 +444,9 @@ const CertificadoForm: React.FC = () => {
           // si nominal es numérico y no existen minimo/maximo, calcularlos
           const num = parseFloat(String(nominal).replace(',', '.'));
           if (!isNaN(num)) {
-            if (!updated.minimo) updated.minimo = String(Number((num - 1).toFixed(3)).toString());
-            if (!updated.maximo) updated.maximo = String(Number((num + 1).toFixed(3)).toString());
+            const calc = computeStepAndBounds(String(nominal));
+            if (!updated.minimo) updated.minimo = calc.min;
+            if (!updated.maximo) updated.maximo = calc.max;
           }
           return updated;
         });
@@ -461,8 +484,11 @@ const CertificadoForm: React.FC = () => {
               try {
                 const num = parseFloat(raw.replace(',', '.'));
                 if (!isNaN(num)) {
-                  caracteristicas[mmIdx].minimo = caracteristicas[mmIdx].minimo || String(Number((num - 1).toFixed(3)).toString());
-                  caracteristicas[mmIdx].maximo = caracteristicas[mmIdx].maximo || String(Number((num + 1).toFixed(3)).toString());
+                  try {
+                    const calc = computeStepAndBounds(String(num));
+                    caracteristicas[mmIdx].minimo = caracteristicas[mmIdx].minimo || calc.min;
+                    caracteristicas[mmIdx].maximo = caracteristicas[mmIdx].maximo || calc.max;
+                  } catch (e) {}
                 }
               } catch (e) {}
             }
@@ -470,10 +496,18 @@ const CertificadoForm: React.FC = () => {
               try {
                 const num = parseFloat(raw.replace(',', '.'));
                 if (!isNaN(num)) {
-                  const mic = String(Number((num * 1000)).toFixed(4));
+                  const micRaw = num * 1000;
+                  let mic = '';
+                  if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) mic = String(Math.round(micRaw));
+                  else mic = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
                   caracteristicas[micIdx].nominal = mic;
-                  caracteristicas[micIdx].minimo = caracteristicas[micIdx].minimo || String(Number((parseFloat(mic) - 1).toFixed(4)).toString());
-                  caracteristicas[micIdx].maximo = caracteristicas[micIdx].maximo || String(Number((parseFloat(mic) + 1).toFixed(4)).toString());
+                  try {
+                    const micNum = parseFloat(String(mic).replace(',', '.'));
+                    if (!isNaN(micNum)) {
+                      caracteristicas[micIdx].minimo = caracteristicas[micIdx].minimo || String(Number((micNum - 1)).toFixed(4)).replace(/\.0+$/, '');
+                      caracteristicas[micIdx].maximo = caracteristicas[micIdx].maximo || String(Number((micNum + 1)).toFixed(4)).replace(/\.0+$/, '');
+                    }
+                  } catch (e) {}
                 }
               } catch (e) {}
             }
@@ -564,7 +598,10 @@ const CertificadoForm: React.FC = () => {
       if (!mmValue) return;
       const num = parseFloat(String(mmValue).replace(',', '.'));
       if (isNaN(num)) return;
-      const micComputed = String(Number((num * 1000)).toFixed(4));
+      const micRaw = num * 1000;
+      let micComputed = '';
+      if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micComputed = String(Math.round(micRaw));
+      else micComputed = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
       let changed = false;
       const newRows = rows.map((r:any) => ({ ...r }));
       const micIdx = newRows.findIndex((r:any) => String(r.name || r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad || '')).toLowerCase().includes('mic'));
@@ -572,8 +609,13 @@ const CertificadoForm: React.FC = () => {
         const existing = String(newRows[micIdx].nominal || '').trim();
         if (existing !== micComputed) {
           newRows[micIdx].nominal = micComputed;
-          if (!newRows[micIdx].minimo) newRows[micIdx].minimo = String(Number((parseFloat(micComputed) - 1).toFixed(4)).toString());
-          if (!newRows[micIdx].maximo) newRows[micIdx].maximo = String(Number((parseFloat(micComputed) + 1).toFixed(4)).toString());
+          try {
+            const micNum = parseFloat(String(micComputed).replace(',', '.'));
+            if (!isNaN(micNum)) {
+              if (!newRows[micIdx].minimo) newRows[micIdx].minimo = String(Number((micNum - 1)).toFixed(4)).replace(/\.0+$/, '');
+              if (!newRows[micIdx].maximo) newRows[micIdx].maximo = String(Number((micNum + 1)).toFixed(4)).replace(/\.0+$/, '');
+            }
+          } catch (e) {}
           changed = true;
         }
       }
@@ -875,8 +917,16 @@ const CertificadoForm: React.FC = () => {
         if (campo === 'nominal' && (name === 'LARGO' || name === 'ANCHO' || name.includes('ESPESOR'))) {
           const num = parseFloat(String(valor).replace(',', '.'));
           if (!isNaN(num)) {
-            updated.minimo = String(Number((num - 1).toFixed(3)).toString());
-            updated.maximo = String(Number((num + 1).toFixed(3)).toString());
+            const calc = computeStepAndBounds(String(valor));
+            updated.minimo = calc.min;
+            updated.maximo = calc.max;
+          }
+        }
+        // If user edits the micras nominal manually, mark it to avoid auto-sync
+        if (campo === 'nominal') {
+          const unidad = String(updated.unidad || '').toLowerCase();
+          if (name.includes('ESPESOR') && unidad.includes('mic')) {
+            updated._micras_manual = true;
           }
         }
       } catch (e) {

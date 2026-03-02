@@ -731,7 +731,11 @@ export default (client: any) => {
           if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
             const num = parseFloat(String(espesorMmVal).replace(',', '.'));
             if (!isNaN(num)) {
-              espesorMicVal = String(Number((num * 1000)).toFixed(4));
+              const micRaw = num * 1000;
+              let micStr = '';
+              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micStr = String(Math.round(micRaw));
+              else micStr = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+              espesorMicVal = micStr;
             }
             await client.query(
               "UPDATE certificado_calidad SET espesor_mm=$1, espesor_micras4=$2 WHERE id=$3",
@@ -918,7 +922,11 @@ export default (client: any) => {
           if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
             const num = parseFloat(String(espesorMmVal).replace(',', '.'));
             if (!isNaN(num)) {
-              espesorMicVal = String(Number((num * 1000)).toFixed(4));
+              const micRaw = num * 1000;
+              let micStr = '';
+              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micStr = String(Math.round(micRaw));
+              else micStr = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+              espesorMicVal = micStr;
             }
             await client.query(
               "UPDATE certificado_calidad SET espesor_mm=$1, espesor_micras4=$2 WHERE id=$3",
