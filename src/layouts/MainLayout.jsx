@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -17,14 +17,44 @@ const MainLayout = () => {
     location.pathname === '/productosTerminados' ||
     location.pathname === '/produccionDiaria';
 
+  const [menuVisible, setMenuVisible] = useState(true);
+
+  // Mantener el menú visible por defecto; el usuario lo oculta/activa manualmente.
+
+  useEffect(() => {
+    const onToggle = (e) => {
+      setMenuVisible((v) => !v);
+    };
+    const onShow = (e) => setMenuVisible(true);
+    const onHide = (e) => setMenuVisible(false);
+    window.addEventListener('toggle-sidebar', onToggle);
+    window.addEventListener('show-sidebar', onShow);
+    window.addEventListener('hide-sidebar', onHide);
+    return () => {
+      window.removeEventListener('toggle-sidebar', onToggle);
+      window.removeEventListener('show-sidebar', onShow);
+      window.removeEventListener('hide-sidebar', onHide);
+    };
+  }, []);
+
   return (
-    <div className="main-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="main-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       <Header />
-      <div className="layout-body" style={{ display: 'flex', flex: 1, width: '100%' }}>
-        {showSidebar && <Sidebar />}
-        <div className="layout-content" style={{ width: '100%', flex: 1, padding: '1rem' }}>
+      <div className="layout-body" style={{ display: 'flex', flex: 1, width: '100%', overflowX: 'hidden' }}>
+        {showSidebar && menuVisible && <Sidebar />}
+        <div className="layout-content" style={{ flex: 1, padding: '1rem', minWidth: 0, overflowX: 'hidden', overflowY: 'auto' }}>
           <Outlet />
         </div>
+        {/* Floating button to show sidebar when hidden (visible on Kanban route) */}
+        {showSidebar && !menuVisible && (
+          <button
+            onClick={() => window.dispatchEvent(new Event('show-sidebar'))}
+            className="fixed bottom-6 left-6 z-50 bg-blue-600 text-white px-3 py-2 rounded shadow-lg hover:bg-blue-700"
+            title="Mostrar menú"
+          >
+            Mostrar menú
+          </button>
+        )}
       </div>
     </div>
   );

@@ -120,9 +120,18 @@ const Sidebar = () => {
   return (
     <aside className="bg-gray-900 text-white w-full sm:w-64 min-h-screen p-4 flex flex-col justify-between shadow-lg">
       <div>
-        <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">
-          {inSubmenu ? "Opciones" : "Menú"}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-center text-blue-400">
+            {inSubmenu ? "Opciones" : "Menú"}
+          </h2>
+          <button
+            onClick={() => window.dispatchEvent(new Event('hide-sidebar'))}
+            className="ml-2 text-sm bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded"
+            title="Ocultar menú"
+          >
+            Ocultar
+          </button>
+        </div>
 
         {/* Render solo el menú activo */}
         <ul className="space-y-2">

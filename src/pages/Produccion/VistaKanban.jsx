@@ -511,6 +511,7 @@ const VistaKanban = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* (Sidebar toggle moved to Sidebar component) */}
               <button
                   onClick={async () => { setWorkflowType('offset'); await refreshWorkflowAndOrders('offset'); }}
                 className={`px-3 py-2 rounded-md text-sm ${workflowType==='offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
