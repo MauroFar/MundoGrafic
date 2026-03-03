@@ -27,8 +27,6 @@ warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
 error() { echo -e "${RED}[✗]${NC} $*" >&2; }
 
 # ── Configuración ─────────────────────────────────────────────────────
-BLUE_DIR="/opt/mundografic"               # directorio de producción (blue)
-GREEN_DIR="/opt/mundografic/green"         # directorio nuevo de staging (green)
 GREEN_PORT=4001
 BLUE_PORT=3002
 PROD_DB="sistema_mg"
@@ -36,11 +34,48 @@ STAGING_DB="sistema_mg_staging"
 SYSTEMD_TEMPLATE="/etc/systemd/system/mundografic@.service"
 NGINX_UPSTREAM="/etc/nginx/conf.d/mundografic_upstream.conf"
 
+# Auto-detectar el directorio de producción (blue)
+# Se busca en las rutas más comunes del servidor
+detect_blue_dir() {
+  # Obtener el usuario real que llamó sudo (no root)
+  local real_user="${SUDO_USER:-$USER}"
+  local real_home
+  real_home=$(getent passwd "$real_user" | cut -d: -f6)
+
+  local candidates=(
+    "$real_home/MundoGrafic"
+    "$real_home/mundografic"
+    "/opt/mundografic"
+    "/var/www/mundografic"
+    "/srv/mundografic"
+  )
+  for candidate in "${candidates[@]}"; do
+    if [ -f "$candidate/package.json" ] && [ -d "$candidate/backend" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  echo ""
+}
+
+BLUE_DIR=$(detect_blue_dir)
+
+if [ -z "$BLUE_DIR" ]; then
+  warn "No se encontró el directorio de producción automáticamente."
+  read -rp "Introduce la ruta completa del directorio de producción (ej: /home/mauro_far/MundoGrafic): " BLUE_DIR
+fi
+
+# El directorio green vive junto al blue (mismo nivel, sufijo -verde o subcarpeta green)
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+GREEN_DIR="$REAL_HOME/MundoGrafic-verde"
+
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║   MundoGrafic — Setup inicial del entorno Green          ║"
-echo "║   Producción (blue): $BLUE_DIR  → :$BLUE_PORT            ║"
-echo "║   Staging    (green): $GREEN_DIR → :$GREEN_PORT          ║"
+echo "╠══════════════════════════════════════════════════════════╣"
+printf "║   Producción (blue):  %-36s║\n" "$BLUE_DIR  →  :$BLUE_PORT"
+printf "║   Staging    (green): %-36s║\n" "$GREEN_DIR  →  :$GREEN_PORT"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -72,8 +107,8 @@ else
   git clone "$REPO_URL" "$GREEN_DIR"
 fi
 
-# Determinar usuario propietario (el mismo que producción)
-OWNER=$(stat -c '%U' "$BLUE_DIR" 2>/dev/null || echo "www-data")
+# Determinar usuario propietario (el mismo que ejecutó sudo, no root)
+OWNER="$REAL_USER"
 chown -R "$OWNER":"$OWNER" "$GREEN_DIR"
 
 # ── PASO 3: Crear .env de green ───────────────────────────────────────
@@ -107,17 +142,37 @@ else
 fi
 
 # ── PASO 4: Instalar servicio systemd ─────────────────────────────────
-step "PASO 4/8 — Instalando servicio systemd…"
-TEMPLATE_SRC="$GREEN_DIR/backend/deploy/mundografic@.service"
-if [ -f "$SYSTEMD_TEMPLATE" ]; then
-  info "Servicio systemd $SYSTEMD_TEMPLATE ya existe."
-elif [ -f "$TEMPLATE_SRC" ]; then
-  cp "$TEMPLATE_SRC" "$SYSTEMD_TEMPLATE"
-  systemctl daemon-reload
-  info "Servicio systemd instalado desde $TEMPLATE_SRC"
-else
-  warn "No se encontró la plantilla $TEMPLATE_SRC. Instala el servicio manualmente."
-fi
+step "PASO 4/8 — Instalando servicio systemd para mundografic@green…"
+# Generamos una unit dedicada (no el template genérico) con las rutas reales
+GREEN_UNIT="/etc/systemd/system/mundografic@green.service"
+
+cat > "$GREEN_UNIT" <<UNIT
+# Generado automáticamente por setup-green-server.sh
+# Instancia GREEN (staging) de MundoGrafic
+# Directorio: $GREEN_DIR/backend
+[Unit]
+Description=MundoGrafic backend — instancia green (staging)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=$OWNER
+WorkingDirectory=$GREEN_DIR/backend
+EnvironmentFile=$GREEN_DIR/backend/.env
+ExecStart=/usr/bin/node $GREEN_DIR/backend/dist/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+info "Servicio systemd creado: $GREEN_UNIT"
 
 # ── PASO 5: Crear BD staging desde producción ─────────────────────────
 step "PASO 5/8 — Creando BD staging ($STAGING_DB)…"

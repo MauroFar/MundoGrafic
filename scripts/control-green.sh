@@ -18,14 +18,31 @@ PORT_GREEN=4001
 PROD_DB="sistema_mg"
 STAGING_DB="sistema_mg_staging"
 
-# Directorio base de la app en el servidor
-APP_BASE_DIR="/opt/mundografic"
-BLUE_DIR="$APP_BASE_DIR"               # producción vive directamente en /opt/mundografic
-GREEN_DIR="$APP_BASE_DIR/green"        # staging en /opt/mundografic/green
+# Auto-detectar el usuario real (puede ejecutarse con sudo)
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6 2>/dev/null || eval echo "~$REAL_USER")
 
-# Override automático si usas directorio en home
-if [ -d "$HOME/MundoGrafic-verde" ]; then
-  GREEN_DIR="$HOME/MundoGrafic-verde"
+# Auto-detectar directorio de producción (blue)
+_detect_blue() {
+  local candidates=(
+    "$REAL_HOME/MundoGrafic"
+    "$REAL_HOME/mundografic"
+    "/opt/mundografic"
+    "/var/www/mundografic"
+    "/srv/mundografic"
+  )
+  for c in "${candidates[@]}"; do
+    [ -f "$c/package.json" ] && [ -d "$c/backend" ] && { echo "$c"; return; }
+  done
+  echo "/opt/mundografic"
+}
+
+BLUE_DIR=$(_detect_blue)
+GREEN_DIR="$REAL_HOME/MundoGrafic-verde"
+
+# Override manual: si existe /opt/mundografic/green úsalo como fallback
+if [ ! -d "$GREEN_DIR" ] && [ -d "/opt/mundografic/green" ]; then
+  GREEN_DIR="/opt/mundografic/green"
 fi
 
 GREEN_ENV_SYSTEM="/etc/mundografic/green.env"
