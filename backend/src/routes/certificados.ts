@@ -11,14 +11,29 @@ export default (client: any) => {
     caracteristicas: any[],
     logoBase64: string,
   ) {
-    const referenciaRaw = (certificado.referencia || certificado.descripcion || "") as string;
-    const referenciaHtml = referenciaRaw.replace(/\r\n/g,'\n').replace(/\n/g,'<br/>');
-    const formatMesAno = (d:any) => {
+    const referenciaRaw = (certificado.referencia ||
+      certificado.descripcion ||
+      "") as string;
+    const referenciaHtml = referenciaRaw
+      .replace(/\r\n/g, "\n")
+      .replace(/\n/g, "<br/>");
+    const formatMesAno = (d: any) => {
       if (!d) return "";
       const dt = new Date(d);
       if (isNaN(dt.getTime())) return "";
       const months = [
-        'enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
       ];
       return `${months[dt.getMonth()]}/${dt.getFullYear()}`;
     };
@@ -246,19 +261,60 @@ export default (client: any) => {
                 </thead>
                 <tbody>
                   ${(() => {
-                      // Ensure ESPESOR (mm) and ESPESOR (micras) are present or shown from certificado fields
-                      const rows = Array.isArray(caracteristicas) ? [...caracteristicas] : [];
-                      const hasEspMm = rows.some((r:any) => String(r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad||'')).toLowerCase().includes('mm'));
-                      const hasEspMic = rows.some((r:any) => String(r.nombre || '').toLowerCase().includes('espesor') && String((r.unidad||'')).toLowerCase().includes('mic'));
-                      if (!hasEspMm && (certificado.espesor_mm !== undefined && certificado.espesor_mm !== null && certificado.espesor_mm !== '')) {
-                        rows.push({ nombre: 'ESPESOR (mm)', unidad: 'mm', minimo: '', nominal: certificado.espesor_mm, maximo: '' });
-                      }
-                      if (!hasEspMic && (certificado.espesor_micras4 !== undefined && certificado.espesor_micras4 !== null && certificado.espesor_micras4 !== '')) {
-                        rows.push({ nombre: 'ESPESOR (micras)', unidad: 'micras', minimo: '', nominal: certificado.espesor_micras4, maximo: '' });
-                      }
-                      if (rows && rows.length > 0) {
-                        return rows
-                          .map((c: any) => `
+                    // Ensure ESPESOR (mm) and ESPESOR (micras) are present or shown from certificado fields
+                    const rows = Array.isArray(caracteristicas)
+                      ? [...caracteristicas]
+                      : [];
+                    const hasEspMm = rows.some(
+                      (r: any) =>
+                        String(r.nombre || "")
+                          .toLowerCase()
+                          .includes("espesor") &&
+                        String(r.unidad || "")
+                          .toLowerCase()
+                          .includes("mm"),
+                    );
+                    const hasEspMic = rows.some(
+                      (r: any) =>
+                        String(r.nombre || "")
+                          .toLowerCase()
+                          .includes("espesor") &&
+                        String(r.unidad || "")
+                          .toLowerCase()
+                          .includes("mic"),
+                    );
+                    if (
+                      !hasEspMm &&
+                      certificado.espesor_mm !== undefined &&
+                      certificado.espesor_mm !== null &&
+                      certificado.espesor_mm !== ""
+                    ) {
+                      rows.push({
+                        nombre: "ESPESOR (mm)",
+                        unidad: "mm",
+                        minimo: "",
+                        nominal: certificado.espesor_mm,
+                        maximo: "",
+                      });
+                    }
+                    if (
+                      !hasEspMic &&
+                      certificado.espesor_micras4 !== undefined &&
+                      certificado.espesor_micras4 !== null &&
+                      certificado.espesor_micras4 !== ""
+                    ) {
+                      rows.push({
+                        nombre: "ESPESOR (micras)",
+                        unidad: "micras",
+                        minimo: "",
+                        nominal: certificado.espesor_micras4,
+                        maximo: "",
+                      });
+                    }
+                    if (rows && rows.length > 0) {
+                      return rows
+                        .map(
+                          (c: any) => `
                       <tr>
                         <td>${c.nombre || ""}</td>
                         <td class="small">${c.unidad || ""}</td>
@@ -266,16 +322,17 @@ export default (client: any) => {
                         <td class="center">${c.nominal || ""}</td>
                         <td class="center">${c.maximo || ""}</td>
                       </tr>
-                    `)
-                          .join("");
-                      }
-                      return `
+                    `,
+                        )
+                        .join("");
+                    }
+                    return `
                       <tr><td>LARGO (mm)</td><td></td><td></td><td></td><td></td></tr>
                       <tr><td>ANCHO (mm)</td><td></td><td></td><td></td><td></td></tr>
                       <tr><td>ESPESOR (mm)</td><td></td><td></td><td></td><td></td></tr>
                       <tr><td>ESPESOR (micras)</td><td></td><td></td><td></td><td></td></tr>
                     `;
-                    })()}
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -651,33 +708,51 @@ export default (client: any) => {
         // Insertar mediciones: preferimos caracteristica_id del payload; si no existe, resolvemos por nombre.
         if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
           // helper para resolver caracteristica por nombre + unidad de forma robusta
-          const resolveCaracteristicaFlexible = async (name: string | null, unidad: string | null) => {
-            const nm = (name || '').trim();
-            const un = (unidad || '').trim();
+          const resolveCaracteristicaFlexible = async (
+            name: string | null,
+            unidad: string | null,
+          ) => {
+            const nm = (name || "").trim();
+            const un = (unidad || "").trim();
             if (nm) {
               // intento directo nombre+unidad
               if (un) {
-                let r = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, un]);
+                let r = await client.query(
+                  "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                  [nm, un],
+                );
                 if (r.rows.length) return r.rows[0];
               }
               // intento nombre exacto
-              let r2 = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", [nm]);
+              let r2 = await client.query(
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                [nm],
+              );
               if (r2.rows.length) return r2.rows[0];
               // buscar por nombre parcial
-              const r3 = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%' + nm.toLowerCase() + '%']);
+              const r3 = await client.query(
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+                ["%" + nm.toLowerCase() + "%"],
+              );
               if (r3.rows.length) return r3.rows[0];
             }
             // si no hay nombre útil, probar por unidad y 'espesor'
             if (unidad) {
               const u = unidad.toLowerCase();
-              const variants = [u, 'micras', 'micra', 'µm', 'um', 'mm'];
+              const variants = [u, "micras", "micra", "µm", "um", "mm"];
               for (const v of variants) {
-                const r = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(unidad)=lower($1) LIMIT 1", [v]);
+                const r = await client.query(
+                  "SELECT id, nombre, unidad FROM caracteristica WHERE lower(unidad)=lower($1) LIMIT 1",
+                  [v],
+                );
                 if (r.rows.length) return r.rows[0];
               }
             }
             // fallback general: buscar cualquier ESPESOR
-            const rf = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%espesor%']);
+            const rf = await client.query(
+              "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+              ["%espesor%"],
+            );
             if (rf.rows.length) return rf.rows[0];
             return null;
           };
@@ -706,13 +781,19 @@ export default (client: any) => {
 
             // Si no hay id, intentar resolver de forma más flexible
             if (!caracteristicaId) {
-              const resolved = await resolveCaracteristicaFlexible(nombre, unidadResolved);
+              const resolved = await resolveCaracteristicaFlexible(
+                nombre,
+                unidadResolved,
+              );
               if (resolved) {
                 caracteristicaId = resolved.id;
                 nombre = nombre || resolved.nombre;
                 unidadResolved = unidadResolved || resolved.unidad;
               } else {
-                console.log('No se pudo resolver caracteristica para:', { nombre, unidad: unidadResolved });
+                console.log("No se pudo resolver caracteristica para:", {
+                  nombre,
+                  unidad: unidadResolved,
+                });
               }
             }
 
@@ -734,89 +815,212 @@ export default (client: any) => {
         // Persistir ESPESOR como filas en `certificado_medicion` (vinculadas a `caracteristica`)
         try {
           let espesorMmVal: any = null;
-          if (req.body.espesor_mm !== undefined && req.body.espesor_mm !== null && req.body.espesor_mm !== '') {
+          if (
+            req.body.espesor_mm !== undefined &&
+            req.body.espesor_mm !== null &&
+            req.body.espesor_mm !== ""
+          ) {
             espesorMmVal = req.body.espesor_mm;
-          } else if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
-            const espMm = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
-            if (espMm && espMm.nominal !== undefined && espMm.nominal !== null && espMm.nominal !== '') espesorMmVal = espMm.nominal;
-            if ((espesorMmVal === null || espesorMmVal === '') && caracteristicas.length > 0) {
-              const espAny = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && (c.nominal !== undefined && c.nominal !== null && c.nominal !== ''));
+          } else if (
+            Array.isArray(caracteristicas) &&
+            caracteristicas.length > 0
+          ) {
+            const espMm = caracteristicas.find(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mm"),
+            );
+            if (
+              espMm &&
+              espMm.nominal !== undefined &&
+              espMm.nominal !== null &&
+              espMm.nominal !== ""
+            )
+              espesorMmVal = espMm.nominal;
+            if (
+              (espesorMmVal === null || espesorMmVal === "") &&
+              caracteristicas.length > 0
+            ) {
+              const espAny = caracteristicas.find(
+                (c: any) =>
+                  String(c.nombre || c.name || "")
+                    .toLowerCase()
+                    .includes("espesor") &&
+                  c.nominal !== undefined &&
+                  c.nominal !== null &&
+                  c.nominal !== "",
+              );
               if (espAny) espesorMmVal = espAny.nominal;
             }
           }
 
           let espesorMicVal: any = null;
-          if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
-            const num = parseFloat(String(espesorMmVal).replace(',', '.'));
+          if (
+            espesorMmVal !== null &&
+            espesorMmVal !== undefined &&
+            espesorMmVal !== ""
+          ) {
+            const num = parseFloat(String(espesorMmVal).replace(",", "."));
             if (!isNaN(num)) {
               const micRaw = num * 1000;
-              let micStr = '';
-              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micStr = String(Math.round(micRaw));
-              else micStr = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+              let micStr = "";
+              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9)
+                micStr = String(Math.round(micRaw));
+              else
+                micStr = String(parseFloat(micRaw.toFixed(4))).replace(
+                  /\.0+$/,
+                  "",
+                );
               espesorMicVal = micStr;
             }
           }
 
           // Insertar ESPESOR (mm) y ESPESOR (micras) sólo si no vinieron ya en `caracteristicas` payload
-          const payloadHasEspMm = Array.isArray(caracteristicas) && caracteristicas.some((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
-          const payloadHasEspMic = Array.isArray(caracteristicas) && caracteristicas.some((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mic'));
+          const payloadHasEspMm =
+            Array.isArray(caracteristicas) &&
+            caracteristicas.some(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mm"),
+            );
+          const payloadHasEspMic =
+            Array.isArray(caracteristicas) &&
+            caracteristicas.some(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mic"),
+            );
 
           // obtener orden base actual (para anexar al final)
-          const cntRes = await client.query('SELECT COUNT(*)::int AS cnt FROM certificado_medicion WHERE certificado_id = $1', [certificadoId]);
-          let ordenBase = (cntRes.rows[0] && cntRes.rows[0].cnt) ? parseInt(cntRes.rows[0].cnt, 10) : 0;
+          const cntRes = await client.query(
+            "SELECT COUNT(*)::int AS cnt FROM certificado_medicion WHERE certificado_id = $1",
+            [certificadoId],
+          );
+          let ordenBase =
+            cntRes.rows[0] && cntRes.rows[0].cnt
+              ? parseInt(cntRes.rows[0].cnt, 10)
+              : 0;
 
           if (espesorMmVal !== null && !payloadHasEspMm) {
             // resolver caracteristica id para ESPESOR mm
-            let carRes = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", ['ESPESOR', 'mm']);
+            let carRes = await client.query(
+              "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+              ["ESPESOR", "mm"],
+            );
             if (carRes.rows.length === 0) {
               // fallback por nombre cualquiera
-              carRes = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", ['ESPESOR']);
+              carRes = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                ["ESPESOR"],
+              );
             }
             const carId = carRes.rows[0] ? carRes.rows[0].id : null;
-            await client.query(`INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`, [certificadoId, carId, null, espesorMmVal || null, null, ordenBase++]);
+            await client.query(
+              `INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`,
+              [
+                certificadoId,
+                carId,
+                null,
+                espesorMmVal || null,
+                null,
+                ordenBase++,
+              ],
+            );
           }
 
           if (espesorMicVal !== null && !payloadHasEspMic) {
             // resolver caracteristica id para ESPESOR micras usando varios intentos (unidad variantes y búsqueda por nombre)
-            const resolveCaracteristica = async (name: string, unit?: string) => {
-              const nm = (name || '').trim();
-              const un = (unit || '').trim();
-              let r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, un]);
+            const resolveCaracteristica = async (
+              name: string,
+              unit?: string,
+            ) => {
+              const nm = (name || "").trim();
+              const un = (unit || "").trim();
+              let r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                [nm, un],
+              );
               if (r.rows.length) return r.rows[0].id;
-              const unitVariants = [un, 'micras', 'micra', 'µm', 'um'];
+              const unitVariants = [un, "micras", "micra", "µm", "um"];
               for (const u of unitVariants) {
                 if (!u) continue;
-                r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, u]);
+                r = await client.query(
+                  "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                  [nm, u],
+                );
                 if (r.rows.length) return r.rows[0].id;
               }
-              r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", [nm]);
+              r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                [nm],
+              );
               if (r.rows.length) return r.rows[0].id;
-              r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%espesor%']);
+              r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+                ["%espesor%"],
+              );
               if (r.rows.length) return r.rows[0].id;
               return null;
             };
 
-            const carId2 = await resolveCaracteristica('ESPESOR', 'micras');
-            console.log('Resolviendo caracteristica ESPESOR micras ->', carId2);
-            await client.query(`INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`, [certificadoId, carId2, null, espesorMicVal || null, null, ordenBase++]);
+            const carId2 = await resolveCaracteristica("ESPESOR", "micras");
+            console.log("Resolviendo caracteristica ESPESOR micras ->", carId2);
+            await client.query(
+              `INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`,
+              [
+                certificadoId,
+                carId2,
+                null,
+                espesorMicVal || null,
+                null,
+                ordenBase++,
+              ],
+            );
           }
         } catch (e) {
           // No bloquear creación por error al intentar agregar espesor como medicion
-          console.error('Error al persistir ESPESOR en certificado (medicion):', e);
+          console.error(
+            "Error al persistir ESPESOR en certificado (medicion):",
+            e,
+          );
         }
 
         await client.query("COMMIT");
         try {
-          const fullRes = await client.query("SELECT * FROM certificado_calidad WHERE id = $1", [certificadoId]);
-          console.log('Certificado creado id=', certificadoId);
+          const fullRes = await client.query(
+            "SELECT * FROM certificado_calidad WHERE id = $1",
+            [certificadoId],
+          );
+          console.log("Certificado creado id=", certificadoId);
           res.status(201).json({
             id: certificadoId,
             numero_certificado: result.rows[0].numero_certificado,
             certificado: fullRes.rows[0] || null,
           });
         } catch (e) {
-          console.log('Certificado creado id=', certificadoId, ' (no se pudo leer fila completa)');
-          res.status(201).json({ id: certificadoId, numero_certificado: result.rows[0].numero_certificado });
+          console.log(
+            "Certificado creado id=",
+            certificadoId,
+            " (no se pudo leer fila completa)",
+          );
+          res
+            .status(201)
+            .json({
+              id: certificadoId,
+              numero_certificado: result.rows[0].numero_certificado,
+            });
         }
       } catch (error: any) {
         await client.query("ROLLBACK");
@@ -910,28 +1114,46 @@ export default (client: any) => {
           [id],
         );
         if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
-          const resolveCaracteristicaFlexible = async (name: string | null, unidad: string | null) => {
-            const nm = (name || '').trim();
-            const un = (unidad || '').trim();
+          const resolveCaracteristicaFlexible = async (
+            name: string | null,
+            unidad: string | null,
+          ) => {
+            const nm = (name || "").trim();
+            const un = (unidad || "").trim();
             if (nm) {
               if (un) {
-                let r = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, un]);
+                let r = await client.query(
+                  "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                  [nm, un],
+                );
                 if (r.rows.length) return r.rows[0];
               }
-              let r2 = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", [nm]);
+              let r2 = await client.query(
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                [nm],
+              );
               if (r2.rows.length) return r2.rows[0];
-              const r3 = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%' + nm.toLowerCase() + '%']);
+              const r3 = await client.query(
+                "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+                ["%" + nm.toLowerCase() + "%"],
+              );
               if (r3.rows.length) return r3.rows[0];
             }
             if (unidad) {
               const u = unidad.toLowerCase();
-              const variants = [u, 'micras', 'micra', 'µm', 'um', 'mm'];
+              const variants = [u, "micras", "micra", "µm", "um", "mm"];
               for (const v of variants) {
-                const r = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(unidad)=lower($1) LIMIT 1", [v]);
+                const r = await client.query(
+                  "SELECT id, nombre, unidad FROM caracteristica WHERE lower(unidad)=lower($1) LIMIT 1",
+                  [v],
+                );
                 if (r.rows.length) return r.rows[0];
               }
             }
-            const rf = await client.query("SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%espesor%']);
+            const rf = await client.query(
+              "SELECT id, nombre, unidad FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+              ["%espesor%"],
+            );
             if (rf.rows.length) return rf.rows[0];
             return null;
           };
@@ -957,13 +1179,19 @@ export default (client: any) => {
             }
 
             if (!caracteristicaId) {
-              const resolved = await resolveCaracteristicaFlexible(nombre, unidadResolved);
+              const resolved = await resolveCaracteristicaFlexible(
+                nombre,
+                unidadResolved,
+              );
               if (resolved) {
                 caracteristicaId = resolved.id;
                 nombre = nombre || resolved.nombre;
                 unidadResolved = unidadResolved || resolved.unidad;
               } else {
-                console.log('No se pudo resolver caracteristica (update) para:', { nombre, unidad: unidadResolved });
+                console.log(
+                  "No se pudo resolver caracteristica (update) para:",
+                  { nombre, unidad: unidadResolved },
+                );
               }
             }
 
@@ -986,70 +1214,170 @@ export default (client: any) => {
         // Persistir ESPESOR como filas en `certificado_medicion` (vinculadas a `caracteristica`)
         try {
           let espesorMmVal: any = null;
-          if (req.body.espesor_mm !== undefined && req.body.espesor_mm !== null && req.body.espesor_mm !== '') {
+          if (
+            req.body.espesor_mm !== undefined &&
+            req.body.espesor_mm !== null &&
+            req.body.espesor_mm !== ""
+          ) {
             espesorMmVal = req.body.espesor_mm;
-          } else if (Array.isArray(caracteristicas) && caracteristicas.length > 0) {
-            const espMm = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
-            if (espMm && espMm.nominal !== undefined && espMm.nominal !== null && espMm.nominal !== '') espesorMmVal = espMm.nominal;
-            if ((espesorMmVal === null || espesorMmVal === '') && caracteristicas.length > 0) {
-              const espAny = caracteristicas.find((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && (c.nominal !== undefined && c.nominal !== null && c.nominal !== ''));
+          } else if (
+            Array.isArray(caracteristicas) &&
+            caracteristicas.length > 0
+          ) {
+            const espMm = caracteristicas.find(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mm"),
+            );
+            if (
+              espMm &&
+              espMm.nominal !== undefined &&
+              espMm.nominal !== null &&
+              espMm.nominal !== ""
+            )
+              espesorMmVal = espMm.nominal;
+            if (
+              (espesorMmVal === null || espesorMmVal === "") &&
+              caracteristicas.length > 0
+            ) {
+              const espAny = caracteristicas.find(
+                (c: any) =>
+                  String(c.nombre || c.name || "")
+                    .toLowerCase()
+                    .includes("espesor") &&
+                  c.nominal !== undefined &&
+                  c.nominal !== null &&
+                  c.nominal !== "",
+              );
               if (espAny) espesorMmVal = espAny.nominal;
             }
           }
 
           let espesorMicVal: any = null;
-          if (espesorMmVal !== null && espesorMmVal !== undefined && espesorMmVal !== '') {
-            const num = parseFloat(String(espesorMmVal).replace(',', '.'));
+          if (
+            espesorMmVal !== null &&
+            espesorMmVal !== undefined &&
+            espesorMmVal !== ""
+          ) {
+            const num = parseFloat(String(espesorMmVal).replace(",", "."));
             if (!isNaN(num)) {
               const micRaw = num * 1000;
-              let micStr = '';
-              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micStr = String(Math.round(micRaw));
-              else micStr = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+              let micStr = "";
+              if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9)
+                micStr = String(Math.round(micRaw));
+              else
+                micStr = String(parseFloat(micRaw.toFixed(4))).replace(
+                  /\.0+$/,
+                  "",
+                );
               espesorMicVal = micStr;
             }
           }
 
-          const payloadHasEspMm = Array.isArray(caracteristicas) && caracteristicas.some((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mm'));
-          const payloadHasEspMic = Array.isArray(caracteristicas) && caracteristicas.some((c:any) => String(c.nombre || c.name || '').toLowerCase().includes('espesor') && String((c.unidad || '')).toLowerCase().includes('mic'));
+          const payloadHasEspMm =
+            Array.isArray(caracteristicas) &&
+            caracteristicas.some(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mm"),
+            );
+          const payloadHasEspMic =
+            Array.isArray(caracteristicas) &&
+            caracteristicas.some(
+              (c: any) =>
+                String(c.nombre || c.name || "")
+                  .toLowerCase()
+                  .includes("espesor") &&
+                String(c.unidad || "")
+                  .toLowerCase()
+                  .includes("mic"),
+            );
 
           // obtener orden base actual (para anexar al final)
-          const cntRes = await client.query('SELECT COUNT(*)::int AS cnt FROM certificado_medicion WHERE certificado_id = $1', [id]);
-          let ordenBase = (cntRes.rows[0] && cntRes.rows[0].cnt) ? parseInt(cntRes.rows[0].cnt, 10) : 0;
+          const cntRes = await client.query(
+            "SELECT COUNT(*)::int AS cnt FROM certificado_medicion WHERE certificado_id = $1",
+            [id],
+          );
+          let ordenBase =
+            cntRes.rows[0] && cntRes.rows[0].cnt
+              ? parseInt(cntRes.rows[0].cnt, 10)
+              : 0;
 
           if (espesorMmVal !== null && !payloadHasEspMm) {
-            let carRes = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", ['ESPESOR', 'mm']);
+            let carRes = await client.query(
+              "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+              ["ESPESOR", "mm"],
+            );
             if (carRes.rows.length === 0) {
-              carRes = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", ['ESPESOR']);
+              carRes = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                ["ESPESOR"],
+              );
             }
             const carId = carRes.rows[0] ? carRes.rows[0].id : null;
-            await client.query(`INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`, [id, carId, null, espesorMmVal || null, null, ordenBase++]);
+            await client.query(
+              `INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`,
+              [id, carId, null, espesorMmVal || null, null, ordenBase++],
+            );
           }
 
           if (espesorMicVal !== null && !payloadHasEspMic) {
-            const resolveCaracteristica = async (name: string, unit?: string) => {
-              const nm = (name || '').trim();
-              const un = (unit || '').trim();
-              let r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, un]);
+            const resolveCaracteristica = async (
+              name: string,
+              unit?: string,
+            ) => {
+              const nm = (name || "").trim();
+              const un = (unit || "").trim();
+              let r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                [nm, un],
+              );
               if (r.rows.length) return r.rows[0].id;
-              const unitVariants = [un, 'micras', 'micra', 'µm', 'um'];
+              const unitVariants = [un, "micras", "micra", "µm", "um"];
               for (const u of unitVariants) {
                 if (!u) continue;
-                r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1", [nm, u]);
+                r = await client.query(
+                  "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) AND lower(unidad)=lower($2) LIMIT 1",
+                  [nm, u],
+                );
                 if (r.rows.length) return r.rows[0].id;
               }
-              r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1", [nm]);
+              r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre)=lower($1) LIMIT 1",
+                [nm],
+              );
               if (r.rows.length) return r.rows[0].id;
-              r = await client.query("SELECT id FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1", ['%espesor%']);
+              r = await client.query(
+                "SELECT id FROM caracteristica WHERE lower(nombre) LIKE $1 LIMIT 1",
+                ["%espesor%"],
+              );
               if (r.rows.length) return r.rows[0].id;
               return null;
             };
 
-            const carId2 = await resolveCaracteristica('ESPESOR', 'micras');
-            console.log('Resolviendo caracteristica ESPESOR micras (update) ->', carId2);
-            await client.query(`INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`, [id, carId2, null, espesorMicVal || null, null, ordenBase++]);
+            const carId2 = await resolveCaracteristica("ESPESOR", "micras");
+            console.log(
+              "Resolviendo caracteristica ESPESOR micras (update) ->",
+              carId2,
+            );
+            await client.query(
+              `INSERT INTO certificado_medicion (certificado_id, caracteristica_id, minimo, nominal, maximo, orden) VALUES ($1,$2,$3,$4,$5,$6)`,
+              [id, carId2, null, espesorMicVal || null, null, ordenBase++],
+            );
           }
         } catch (e) {
-          console.error('Error al persistir ESPESOR en certificado (medicion - update):', e);
+          console.error(
+            "Error al persistir ESPESOR en certificado (medicion - update):",
+            e,
+          );
         }
 
         await client.query("COMMIT");

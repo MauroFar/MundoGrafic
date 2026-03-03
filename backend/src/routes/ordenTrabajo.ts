@@ -291,8 +291,10 @@ export default (client: any) => {
     try {
       const { busqueda, fechaDesde, fechaHasta, limite } = req.query;
       let query = `
-        SELECT id, numero_orden, nombre_cliente, concepto, fecha_creacion, estado, tipo_orden, id_cotizacion
-        FROM orden_trabajo
+        SELECT ot.id, ot.numero_orden, ot.nombre_cliente, ot.concepto, ot.fecha_creacion, ot.estado, ot.tipo_orden, ot.id_cotizacion,
+               ot.estado_orden_digital_id, e.key AS estado_digital_key, e.titulo AS estado_digital_titulo
+        FROM orden_trabajo ot
+        LEFT JOIN estado_orden_digital e ON ot.estado_orden_digital_id = e.id
       `;
       let where: string[] = [];
       let params: any[] = [];

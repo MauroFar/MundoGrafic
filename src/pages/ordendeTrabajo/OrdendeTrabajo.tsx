@@ -835,7 +835,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         ? (productosDigital[0]?.producto || 'Orden Digital')
         : concepto;
     
-    const dataToSend = {
+      const dataToSend = {
       // Datos generales
       nombre_cliente,
       orden_compra,
@@ -846,7 +846,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       concepto: conceptoParaBackend,
       fecha_creacion: fechaCreacion || null,
       fecha_entrega: fechaEntrega || null,
-      estado,
+        // Para órdenes digitales no enviamos el campo `estado` (usar estado_orden_digital_id)
+        ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
       notas_observaciones: notasObservaciones,
       vendedor,
       preprensa,
@@ -996,7 +997,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           concepto: conceptoParaBackend,
           fecha_creacion: fechaCreacion || null,
           fecha_entrega: fechaEntrega || null,
-          estado,
+          ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
           notas_observaciones: notasObservaciones,
           vendedor,
           preprensa,
@@ -1132,7 +1133,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         concepto: conceptoParaBackend,
         fecha_creacion: fechaCreacion || null,
         fecha_entrega: fechaEntrega || null,
-        estado: 'pendiente', // Nueva orden siempre pendiente
+        // Nueva orden: para digitales no usamos `estado` (se gestionará con estado_orden_digital)
+        ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado: 'pendiente' }),
         notas_observaciones: notasObservaciones,
         vendedor,
         preprensa,

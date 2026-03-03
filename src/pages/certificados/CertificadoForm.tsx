@@ -25,7 +25,6 @@ const CertificadoForm: React.FC = () => {
     lote: '',
     lote_despacho: '',
     tamano_cm: '',
-    aprobado_area: '',
     // valor por defecto editable solicitado
     aprobado_area: 'ÍNDIGO',
     recepcion_area: '',
@@ -138,10 +137,7 @@ const CertificadoForm: React.FC = () => {
       if (esVista) return;
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
-        const micRaw = num * 1000;
-        let micComputed = '';
-        if (Math.abs(micRaw - Math.round(micRaw)) < 1e-9) micComputed = String(Math.round(micRaw));
-        else micComputed = String(parseFloat(micRaw.toFixed(4))).replace(/\.0+$/, '');
+        const token = localStorage.getItem('token');
         const res = await fetch(`${apiUrl}/api/certificados/next-number`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
