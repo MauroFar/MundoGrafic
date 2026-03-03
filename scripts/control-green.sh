@@ -99,18 +99,33 @@ function deploy_to_green() {
 
   info "Actualizando código en $GREEN_DIR…"
   sudo -u "$REAL_USER" git -C "$GREEN_DIR" fetch --all --prune
+
+  # Detectar si package.json cambió antes de hacer el reset
+  FRONTEND_PKG_CHANGED=$(sudo -u "$REAL_USER" git -C "$GREEN_DIR" diff HEAD origin/main --name-only 2>/dev/null | grep -c "^package.json$" || true)
+  BACKEND_PKG_CHANGED=$(sudo -u "$REAL_USER" git -C "$GREEN_DIR" diff HEAD origin/main --name-only 2>/dev/null | grep -c "^backend/package.json$" || true)
+
   sudo -u "$REAL_USER" git -C "$GREEN_DIR" reset --hard origin/main
 
-  info "Instalando dependencias del frontend…"
-  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR' && npm ci --legacy-peer-deps"
+  # Frontend: instalar deps solo si cambió package.json o no existe node_modules
+  if [ "$FRONTEND_PKG_CHANGED" -gt 0 ] || [ ! -d "$GREEN_DIR/node_modules" ]; then
+    info "Instalando dependencias del frontend (package.json modificado)…"
+    sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR' && npm ci --legacy-peer-deps"
+  else
+    info "Sin cambios en dependencias del frontend, omitiendo npm ci."
+  fi
 
   info "Compilando frontend (apunta a backend green :$PORT_GREEN)…"
   echo "VITE_API_URL=http://$(hostname -I | awk '{print $1}'):$PORT_GREEN" > "$GREEN_DIR/.env"
   chown "$REAL_USER":"$REAL_USER" "$GREEN_DIR/.env"
   sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR' && npm run build"
 
-  info "Instalando dependencias del backend…"
-  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm ci --legacy-peer-deps"
+  # Backend: instalar deps solo si cambió package.json o no existe node_modules
+  if [ "$BACKEND_PKG_CHANGED" -gt 0 ] || [ ! -d "$GREEN_DIR/backend/node_modules" ]; then
+    info "Instalando dependencias del backend (package.json modificado)…"
+    sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm ci --legacy-peer-deps"
+  else
+    info "Sin cambios en dependencias del backend, omitiendo npm ci."
+  fi
 
   info "Compilando backend (TypeScript)…"
   sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm run build"
