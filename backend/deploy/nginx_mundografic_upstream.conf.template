@@ -1,0 +1,18 @@
+# Template for /etc/nginx/conf.d/mundografic_upstream.conf
+# Control script will write a file like this pointing to blue or green backend port
+
+upstream mundografic_backends {
+  # server 127.0.0.1:4000;  # example
+}
+
+# Example site config should proxy to http://mundografic_backends
+# server {
+#   listen 80;
+#   server_name mundografic.example.com;
+#   location / {
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_pass http://mundografic_backends;
+#   }
+# }

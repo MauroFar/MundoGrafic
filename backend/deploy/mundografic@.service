@@ -1,0 +1,22 @@
+# systemd template unit for Mundografic (blue/green instances)
+# Save as /etc/systemd/system/mundografic@.service
+
+[Unit]
+Description=MundoGrafic app instance %i
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/mundografic/%i
+# Environment file per instance (e.g. /etc/mundografic/blue.env)
+EnvironmentFile=/etc/mundografic/%i.env
+# Start via npm script: 'start' should run the compiled server listening on $PORT
+ExecStart=/usr/bin/npm --prefix /opt/mundografic/%i run start
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
