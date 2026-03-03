@@ -1,18 +1,13 @@
-# Template for /etc/nginx/conf.d/mundografic_upstream.conf
-# Control script will write a file like this pointing to blue or green backend port
+# Template para /etc/nginx/conf.d/mundografic_upstream.conf
+#
+# NO edites este archivo manualmente en el servidor.
+# El script scripts/control-green.sh lo genera automáticamente al
+# ejecutar las opciones 4 (promover green) o 5 (rollback a blue).
+#
+# Blue  (producción): 127.0.0.1:3002
+# Green (staging):    127.0.0.1:4001
 
+# Estado por defecto: apuntando a blue (producción)
 upstream mundografic_backends {
-  # server 127.0.0.1:4000;  # example
+  server 127.0.0.1:3002 max_fails=3 fail_timeout=5s;
 }
-
-# Example site config should proxy to http://mundografic_backends
-# server {
-#   listen 80;
-#   server_name mundografic.example.com;
-#   location / {
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Real-IP $remote_addr;
-#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-#     proxy_pass http://mundografic_backends;
-#   }
-# }

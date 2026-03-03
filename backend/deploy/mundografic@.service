@@ -1,22 +1,34 @@
 # systemd template unit for Mundografic (blue/green instances)
 # Save as /etc/systemd/system/mundografic@.service
+#
+# Instancias disponibles:
+#   mundografic@green.service  → copia staging
+#
+# El .env de cada instancia se carga desde el WorkingDirectory/backend/.env
 
 [Unit]
-Description=MundoGrafic app instance %i
-After=network.target
+Description=MundoGrafic backend — instancia %i
+After=network.target postgresql.service
+Wants=postgresql.service
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/mundografic/%i
-# Environment file per instance (e.g. /etc/mundografic/blue.env)
-EnvironmentFile=/etc/mundografic/%i.env
-# Start via npm script: 'start' should run the compiled server listening on $PORT
-ExecStart=/usr/bin/npm --prefix /opt/mundografic/%i run start
+WorkingDirectory=/opt/mundografic/%i/backend
+
+# El .env debe existir en el directorio del backend de la instancia
+EnvironmentFile=/opt/mundografic/%i/backend/.env
+
+# Ejecuta el servidor compilado (npm run build debe haberse ejecutado antes)
+ExecStart=/usr/bin/node /opt/mundografic/%i/backend/dist/server.js
+
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
+
+# Límites de recursos (ajustable según tu servidor)
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target

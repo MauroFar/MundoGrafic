@@ -1,39 +1,131 @@
-# Green/Blue deployment - guía rápida
+# Guía Blue/Green Deployment — MundoGrafic
 
-Este repositorio incluye scripts y plantillas para implementar un despliegue Blue/Green en el servidor Debian.
+## Conceptos
 
-Componentes añadidos:
-- `scripts/control-green.sh` : script interactivo para desplegar, arrancar, promocionar y restaurar DB de staging.
-- `scripts/db-staging-setup.sh` : copia la BD de producción a `sistema_mg_staging` (ajustar nombres si hace falta).
-- `backend/deploy/mundografic@.service` : plantilla systemd (instancia por `blue` o `green`).
-- `backend/deploy/nginx_mundografic_upstream.conf.template` : plantilla para upstream nginx.
+| Instancia | Servicio systemd         | Puerto | Base de datos       | Rol            |
+|-----------|--------------------------|--------|---------------------|----------------|
+| **Blue**  | `mundografic-backend`    | `3002` | `sistema_mg`        | Producción     |
+| **Green** | `mundografic@green`      | `4001` | `sistema_mg_staging`| Staging/Pruebas|
 
-Resumen del flujo recomendado:
+El frontend de producción está en `/var/www/mundografic` (compilado con `npm run build`).  
+Nginx sirve el frontend y hace proxy de `/api/` al upstream activo (`blue` o `green`).
 
-1) Preparación en servidor (una vez):
-   - Crear carpetas: `/opt/mundografic/blue` y `/opt/mundografic/green`.
-   - Copiar tu código en ambas (o hacer `git clone` en cada una).
-   - Crear archivos de entorno por instancia: `/etc/mundografic/blue.env` y `/etc/mundografic/green.env`. En el `.env` incluir al menos `PORT=4000` (por ejemplo) y `DATABASE_URL` apuntando a `sistema_mg_staging` para la instancia green.
-   - Copiar la plantilla systemd a `/etc/systemd/system/mundografic@.service` y ajustar `ExecStart` si tu app usa otro comando (por ejemplo `node dist/server.js`).
-   - Crear el archivo nginx upstream en `/etc/nginx/conf.d/mundografic_upstream.conf` apuntando a blue inicialmente y configurar tu site para hacer `proxy_pass http://mundografic_backends;`.
+---
 
-2) Uso normal (en servidor):
-   - Ejecutar `./control-green.sh` y elegir `3) Deploy to green` para actualizar la copia green.
-   - Probar la instancia green (acceder al puerto local o usar un subdominio directo).
-   - Si todo está OK, elegir `4) Switch nginx to green` (promote) para que nginx apunte al puerto de green y recargar nginx.
-   - Si hay problemas, elegir `5) Switch nginx to blue`.
+## Archivos incluidos
 
-3) Base de datos:
-   - Para pruebas, usar la BD `sistema_mg_staging`. Ejecuta `sudo ./scripts/db-staging-setup.sh` para clonar prod -> staging.
-   - Asegúrate de que el `.env` de la instancia green apunte a `sistema_mg_staging`.
+| Archivo | Descripción |
+|---------|-------------|
+| `scripts/control-green.sh` | Script interactivo de control (deploy, promover, rollback, etc.) |
+| `scripts/db-staging-setup.sh` | Copia rápida de la BD de producción a staging (standalone) |
+| `backend/deploy/setup-green-server.sh` | **Setup inicial** en el servidor (ejecutar una vez) |
+| `backend/deploy/mundografic@.service` | Plantilla systemd para instancias blue/green |
+| `backend/deploy/green.env.template` | Plantilla `.env` para la instancia green |
+| `backend/deploy/nginx_mundografic_site.conf` | Configuración completa de nginx |
+| `backend/deploy/nginx_mundografic_upstream.conf.template` | Template del upstream (generado automáticamente) |
 
-Notas y seguridad:
-- Los scripts asumen que tienes `systemd`, `nginx` y `postgres` instalados y que la app puede ejecutarse desde `/opt/mundografic/<instance>`.
-- Las operaciones con DB usan el usuario postgres local (`sudo -u postgres`). Ajusta si usas otro usuario.
-- Antes de usar los scripts en producción, revisa y adapta rutas, puertos y comandos de start.
+---
 
-Si quieres, puedo:
-- Ajustar el `systemd` `ExecStart` a tu comando real (dime `npm run start` o `node dist/server.js`).
-- Generar un `nginx` site example listo para copiar a `/etc/nginx/sites-available/`.
-- Añadir pasos para manejar backups automáticos antes de restaurar staging.
+## Instalación en el servidor (primera vez)
 
+### Prerrequisitos en el servidor Debian
+```bash
+# Node.js 20+, npm, nginx, postgresql, git
+sudo apt update && sudo apt install -y git nginx postgresql
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash
+sudo apt install -y nodejs
+```
+
+### Ejecutar el setup automático
+```bash
+# Desde el directorio de producción (/opt/mundografic):
+sudo bash backend/deploy/setup-green-server.sh
+```
+
+Esto hace todo automáticamente:
+1. Clona el repo en `/opt/mundografic/green`
+2. Crea el `.env` de green (PORT=4001, DB=sistema_mg_staging)
+3. Instala el servicio systemd `mundografic@.service`
+4. Copia la BD de producción → `sistema_mg_staging`
+5. Compila el backend de green
+6. Inicia el servicio `mundografic@green`
+7. Abre el puerto 4001 en ufw
+
+### Configurar nginx (si aún no está)
+```bash
+sudo cp backend/deploy/nginx_mundografic_site.conf /etc/nginx/sites-available/mundografic
+sudo ln -s /etc/nginx/sites-available/mundografic /etc/nginx/sites-enabled/mundografic
+
+# Crear el upstream inicial apuntando a blue (producción)
+sudo tee /etc/nginx/conf.d/mundografic_upstream.conf > /dev/null <<EOF
+upstream mundografic_backends {
+  server 127.0.0.1:3002 max_fails=3 fail_timeout=5s;
+}
+EOF
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+## Flujo normal de trabajo
+
+```
+Desarrollas en local
+       ↓
+git push origin main
+       ↓
+En el servidor: sudo bash scripts/control-green.sh
+       ↓
+Opción 3 → Deploy a green (pull + build + restart)
+       ↓
+Pruebas en http://<servidor>:4001
+       ↓
+¿Todo OK?
+  ├── SÍ → Opción 4 (Promover green → producción)
+  └── NO → Corrige, repite desde opción 3
+               Si ya la promoviste → Opción 5 (Rollback a blue)
+```
+
+---
+
+## Comandos útiles en el servidor
+
+```bash
+# Script de control interactivo (menú completo)
+sudo bash scripts/control-green.sh
+
+# Ver logs de green en tiempo real
+sudo journalctl -u mundografic@green -f
+
+# Ver logs de producción (blue)
+sudo journalctl -u mundografic-backend -f
+
+# Estado de ambas instancias
+sudo systemctl status mundografic-backend mundografic@green
+
+# Refrescar BD staging manualmente
+sudo bash scripts/db-staging-setup.sh
+```
+
+---
+
+## ¿Qué hace cada opción del menú de control?
+
+| Opción | Acción |
+|--------|--------|
+| 1 | Iniciar servicio green |
+| 2 | Detener servicio green |
+| 3 | Deploy a green: `git pull` → `npm ci` → `build` → `restart` |
+| 4 | **Promover**: nginx apunta a green (`:4001`) — green pasa a producción |
+| 5 | **Rollback**: nginx vuelve a blue (`:3002`) |
+| 6 | Copiar BD producción → staging (sobreescribe `sistema_mg_staging`) |
+| 7 | Ver estado de servicios, nginx y puertos |
+| 8 | Setup inicial green (primera vez) |
+
+---
+
+## Notas
+- El archivo `/etc/nginx/conf.d/mundografic_upstream.conf` es **generado automáticamente** por el script. No lo edites a mano.
+- El `.env` de green vive en `/opt/mundografic/green/backend/.env`. Nunca contiene credenciales de producción en la BD (apunta a `sistema_mg_staging`).
+- Para averiguar el nombre actual del servicio de producción: `sudo systemctl list-units | grep mundografic`

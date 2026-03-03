@@ -1,212 +1,305 @@
 #!/usr/bin/env bash
 # control-green.sh
-# Script de ayuda para gestionar despliegue Blue/Green en el servidor
-# Debe ejecutarse en el servidor Debian con privilegios adecuados.
-# Rutas y puertos son ejemplos: adáptalos a tu entorno.
+# Script de control Blue/Green para MundoGrafic en servidor Debian.
+# Blue  = producción  → servicio: mundografic-backend  | puerto: 3002
+# Green = staging     → servicio: mundografic@green     | puerto: 4001
+#
+# Uso: sudo ./scripts/control-green.sh
 
 set -euo pipefail
 
-NGINX_UPSTREAM_CONF="/etc/nginx/conf.d/mundografic_upstream.conf"
-# Intentar detectar rutas comunes: /opt/mundografic/green o ~/MundoGrafic-verde
+# ─── Configuración ────────────────────────────────────────────────
+BLUE_SERVICE="mundografic-backend"      # servicio actual de producción
+GREEN_SERVICE="mundografic@green"       # instancia green (usa mundografic@.service)
+
+PORT_BLUE=3002
+PORT_GREEN=4001
+
+PROD_DB="sistema_mg"
+STAGING_DB="sistema_mg_staging"
+
+# Directorio base de la app en el servidor
 APP_BASE_DIR="/opt/mundografic"
+BLUE_DIR="$APP_BASE_DIR"               # producción vive directamente en /opt/mundografic
+GREEN_DIR="$APP_BASE_DIR/green"        # staging en /opt/mundografic/green
+
+# Override automático si usas directorio en home
 if [ -d "$HOME/MundoGrafic-verde" ]; then
-  APP_BASE_DIR="$HOME"
-  BLUE_INSTANCE="MundoGrafic"
-  GREEN_INSTANCE="MundoGrafic-verde"
-else
-  BLUE_INSTANCE="blue"
-  GREEN_INSTANCE="green"
+  GREEN_DIR="$HOME/MundoGrafic-verde"
 fi
-SERVICE_TEMPLATE="mundografic@.service"
+
+GREEN_ENV_SYSTEM="/etc/mundografic/green.env"
+GREEN_ENV_LOCAL="$GREEN_DIR/backend/.env"
+
+NGINX_UPSTREAM_CONF="/etc/nginx/conf.d/mundografic_upstream.conf"
+# ──────────────────────────────────────────────────────────────────
+
+# Colores para output
+RED='\033[0;31m'; GREEN_C='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+info()    { echo -e "${GREEN_C}[INFO]${NC}  $*"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 function show_menu() {
-  cat <<EOF
-MundoGrafic control - Blue/Green
-1) Start green instance
-2) Stop green instance
-3) Deploy to green (git pull -> install -> build -> restart)
-4) Switch nginx to green (promote)
-5) Switch nginx to blue (rollback)
-6) Create staging DB from production (dump -> restore)
-7) Show status
-0) Exit
-EOF
+  echo ""
+  echo "======================================================"
+  echo "  MundoGrafic — Control Blue/Green"
+  echo "  Blue  (PROD) → $BLUE_SERVICE  | :$PORT_BLUE"
+  echo "  Green (TEST) → $GREEN_SERVICE | :$PORT_GREEN"
+  echo "======================================================"
+  echo "  1) Iniciar instancia green"
+  echo "  2) Detener instancia green"
+  echo "  3) Deploy a green  (git pull → build → restart)"
+  echo "  4) Promover green → producción  (nginx apunta a :$PORT_GREEN)"
+  echo "  5) Rollback a blue → producción (nginx apunta a :$PORT_BLUE)"
+  echo "  6) Refrescar BD staging desde producción"
+  echo "  7) Ver estado del sistema"
+  echo "  8) Setup inicial green (primera vez)"
+  echo "  0) Salir"
+  echo "======================================================"
 }
 
-function start_instance() {
-  local instance=$1
-  echo "Starting instance: $instance"
+# ─── Iniciar / detener ──────────────────────────────────────────
+function start_green() {
+  info "Iniciando instancia green ($GREEN_SERVICE)…"
   sudo systemctl daemon-reload
-  sudo systemctl start "mundografic@${instance}"
-  sudo systemctl enable "mundografic@${instance}"
+  sudo systemctl start "$GREEN_SERVICE"
+  sudo systemctl enable "$GREEN_SERVICE"
+  info "Green iniciado. Accede en: http://$(hostname -I | awk '{print $1}'):$PORT_GREEN"
 }
 
-function stop_instance() {
-  local instance=$1
-  echo "Stopping instance: $instance"
-  sudo systemctl stop "mundografic@${instance}"
+function stop_green() {
+  info "Deteniendo instancia green ($GREEN_SERVICE)…"
+  sudo systemctl stop "$GREEN_SERVICE" || warn "El servicio no estaba activo."
 }
 
-function deploy_to_instance() {
-  local instance=$1
-  local dir="$APP_BASE_DIR/$instance"
-  echo "Deploying to $instance at $dir"
-  if [ ! -d "$dir" ]; then
-    echo "ERROR: directory $dir not found"
+# ─── Deploy a green ─────────────────────────────────────────────
+function deploy_to_green() {
+  if [ ! -d "$GREEN_DIR" ]; then
+    error "Directorio $GREEN_DIR no existe. Ejecuta primero la opción 8 (Setup inicial)."
     return 1
   fi
-  cd "$dir"
-  # Si existe un update.sh en la carpeta de la instancia, usarlo (se espera que haga pull/build/restart)
-  if [ -f "$dir/update.sh" ]; then
-    echo "Found update.sh in $dir — executing it"
-    sudo bash "$dir/update.sh"
-  else
-    echo "Pulling latest code..."
-    git fetch --all --prune
-    git reset --hard origin/main
-    echo "Installing dependencies..."
-    npm install --production
-    echo "Building... (if applicable)"
-    npm run build --if-present || true
-    echo "Restarting service..."
-    # Preferir unit mundografic-backend@<instance> si existe, de lo contrario mundografic@<instance>
-    if systemctl list-units --full -all | grep -q "mundografic-backend@${instance}.service"; then
-      sudo systemctl restart "mundografic-backend@${instance}"
-    else
-      sudo systemctl restart "mundografic@${instance}" || true
-    fi
-  fi
-  # After deployment, start dev servers for this instance (backend/frontend) so you can test
-  start_dev_servers "$instance" || true
+
+  info "Actualizando código en $GREEN_DIR…"
+  cd "$GREEN_DIR"
+  git fetch --all --prune
+  git reset --hard origin/main
+
+  info "Instalando dependencias del frontend…"
+  npm ci --legacy-peer-deps
+
+  info "Compilando frontend…"
+  npm run build
+
+  info "Instalando dependencias del backend…"
+  cd "$GREEN_DIR/backend"
+  npm ci --legacy-peer-deps
+
+  info "Compilando backend (TypeScript)…"
+  npm run build
+
+  info "Ejecutando migraciones de BD staging ($STAGING_DB)…"
+  run_migrations_green || warn "No se pudieron ejecutar migraciones (revisa manualmente)."
+
+  info "Reiniciando servicio green…"
+  sudo systemctl daemon-reload
+  sudo systemctl restart "$GREEN_SERVICE"
+  info "Deploy a green completado. Prueba en: http://$(hostname -I | awk '{print $1}'):$PORT_GREEN"
 }
 
-# Stop any dev servers started for this instance (by this script)
-function stop_dev_servers() {
-  local dir=$1
-  local piddir="$dir/.pids"
-  if [ -d "$piddir" ]; then
-    for f in "$piddir"/*; do
-      [ -f "$f" ] || continue
-      pid=$(cat "$f" 2>/dev/null || true)
-      if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        echo "Stopping process $pid from $f"
-        kill "$pid" || true
-      fi
-      rm -f "$f" || true
+# Aplica los archivos SQL de migrations/ a la BD staging
+function run_migrations_green() {
+  local migrations_dir="$GREEN_DIR/backend/migrations"
+  local env_file="$GREEN_ENV_LOCAL"
+  [ -f "$env_file" ] || env_file="$GREEN_ENV_SYSTEM"
+  [ -f "$env_file" ] || { warn "No se encontró .env de green para migraciones"; return 1; }
+
+  # Cargar variables
+  set -o allexport; source "$env_file"; set +o allexport
+
+  if [ -d "$migrations_dir" ]; then
+    for sql_file in "$migrations_dir"/*.sql; do
+      [ -f "$sql_file" ] || continue
+      info "Aplicando migración: $(basename "$sql_file")"
+      PGPASSWORD="$DB_PASSWORD" psql -h "${DB_HOST:-localhost}" -U "${DB_USER:-postgres}" \
+        -d "$STAGING_DB" -f "$sql_file" || warn "Migración $(basename "$sql_file") falló (puede que ya esté aplicada)"
     done
   fi
 }
 
-# Start frontend and backend in dev mode (nohup) under the instance owner
-function start_dev_servers() {
-  local instance=$1
-  local dir="$APP_BASE_DIR/$instance"
-  if [ ! -d "$dir" ]; then
-    echo "Directory $dir not found, cannot start dev servers"
-    return 1
-  fi
-  local owner
-  owner=$(stat -c '%U' "$dir" 2>/dev/null || echo "$USER")
-  local envfile1="$dir/.env"
-  local envfile2="/etc/mundografic/${instance}.env"
-  local envfile="$envfile1"
-  if [ ! -f "$envfile1" ] && [ -f "$envfile2" ]; then
-    envfile="$envfile2"
-  fi
-
-  local piddir="$dir/.pids"
-  local logsdir="$dir/logs"
-  mkdir -p "$piddir" "$logsdir"
-  chown -R "$owner":"$owner" "$piddir" "$logsdir" || true
-
-  stop_dev_servers "$dir"
-
-  # Backend
-  if [ -d "$dir/backend" ]; then
-    echo "Starting backend dev for $instance"
-    sudo -u "$owner" bash -lc "cd '$dir/backend' && nohup bash -lc 'set -a; [ -f \"$envfile\" ] && source \"$envfile\"; set +a; npm run dev' > '$logsdir/backend.log' 2>&1 & echo \$! > '$piddir/backend.pid'"
-  fi
-
-  # Frontend (root)
-  echo "Starting frontend dev for $instance"
-  sudo -u "$owner" bash -lc "cd '$dir' && nohup bash -lc 'set -a; [ -f \"$envfile\" ] && source \"$envfile\"; set +a; npm run dev' > '$logsdir/frontend.log' 2>&1 & echo \$! > '$piddir/frontend.pid'"
-}
-
-function read_port_from_envfile() {
-  local envfile=$1
-  if [ ! -f "$envfile" ]; then echo ""; return; fi
-  # Expect line like PORT=4000
-  grep -E '^PORT=' "$envfile" | head -n1 | cut -d'=' -f2
-}
-
+# ─── Nginx upstream ─────────────────────────────────────────────
 function write_nginx_upstream() {
-  local instance=$1
-  local envfile1="$APP_BASE_DIR/$instance/.env"
-  local envfile2="/etc/mundografic/${instance}.env"
-  local port=$(read_port_from_envfile "$envfile1")
-  if [ -z "$port" ]; then
-    port=$(read_port_from_envfile "$envfile2")
-  fi
-  if [ -z "$port" ]; then
-    echo "No PORT found in $envfile1 or $envfile2. Edit one of them or pass a port." >&2
-    return 1
-  fi
-  echo "Writing nginx upstream to point to 127.0.0.1:$port"
+  local port=$1
+  local label=$2
+  info "Apuntando nginx a 127.0.0.1:$port ($label)…"
   sudo tee "$NGINX_UPSTREAM_CONF" > /dev/null <<EOF
+# Generado por control-green.sh — activo: $label (:$port)
 upstream mundografic_backends {
   server 127.0.0.1:${port} max_fails=3 fail_timeout=5s;
 }
 EOF
   sudo nginx -t && sudo systemctl reload nginx
+  info "Nginx recargado. Tráfico ahora → $label (:$port)"
 }
 
 function promote_to_green() {
-  echo "Promoting GREEN -> live"
-  write_nginx_upstream "$GREEN_INSTANCE"
-  echo "Promoted. NGINX reloaded."
+  echo ""
+  warn "Esto enviará el tráfico de producción a la instancia GREEN (:$PORT_GREEN)."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+  write_nginx_upstream "$PORT_GREEN" "green (staging)"
 }
 
 function rollback_to_blue() {
-  echo "Rolling back to BLUE -> live"
-  write_nginx_upstream "$BLUE_INSTANCE"
-  echo "Rolled back. NGINX reloaded."
+  echo ""
+  warn "Esto devolverá el tráfico de producción a la instancia BLUE (:$PORT_BLUE)."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+  write_nginx_upstream "$PORT_BLUE" "blue (producción)"
 }
 
-function create_staging_db_from_production() {
-  # WARNING: this will copy data from production to staging DB. Customize DB names and credentials.
-  local prod_db="sistema_mg_production"
-  local staging_db="sistema_mg_staging"
-  local db_user="postgres"
-  echo "Dumping production DB ($prod_db) and restoring into $staging_db"
-  sudo -u postgres pg_dump -Fc "$prod_db" -f /tmp/prod_dump.dump
-  sudo -u postgres psql -c "DROP DATABASE IF EXISTS \"$staging_db\";"
-  sudo -u postgres psql -c "CREATE DATABASE \"$staging_db\";"
-  sudo -u postgres pg_restore -d "$staging_db" /tmp/prod_dump.dump
-  echo "Staging DB restored ($staging_db)"
+# ─── Base de datos staging ──────────────────────────────────────
+function refresh_staging_db() {
+  echo ""
+  warn "Esto SOBREESCRIBIRÁ $STAGING_DB con una copia de $PROD_DB."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+  local dump_file="/tmp/mundografic_prod_$(date +%Y%m%d_%H%M%S).dump"
+  info "Dumpeando $PROD_DB → $dump_file"
+  sudo -u postgres pg_dump -Fc "$PROD_DB" -f "$dump_file"
+
+  info "Recreando $STAGING_DB…"
+  sudo -u postgres psql -c "DROP DATABASE IF EXISTS \"$STAGING_DB\";"
+  sudo -u postgres psql -c "CREATE DATABASE \"$STAGING_DB\";"
+
+  info "Restaurando en $STAGING_DB…"
+  sudo -u postgres pg_restore -d "$STAGING_DB" "$dump_file"
+  rm -f "$dump_file"
+  info "BD staging lista: $STAGING_DB"
 }
 
-function status() {
-  echo "--- systemctl status (mundografic@blue|green) ---"
-  sudo systemctl status "mundografic@${BLUE_INSTANCE}" --no-pager || true
-  sudo systemctl status "mundografic@${GREEN_INSTANCE}" --no-pager || true
-  echo
-  echo "--- nginx upstream file ---"
-  sudo cat "$NGINX_UPSTREAM_CONF" || true
+# ─── Estado ─────────────────────────────────────────────────────
+function show_status() {
+  echo ""
+  echo "--- BLUE (producción): $BLUE_SERVICE ---"
+  sudo systemctl status "$BLUE_SERVICE" --no-pager -l 2>/dev/null || warn "Servicio blue no encontrado"
+
+  echo ""
+  echo "--- GREEN (staging): $GREEN_SERVICE ---"
+  sudo systemctl status "$GREEN_SERVICE" --no-pager -l 2>/dev/null || warn "Servicio green no activo"
+
+  echo ""
+  echo "--- Upstream nginx activo ---"
+  if [ -f "$NGINX_UPSTREAM_CONF" ]; then
+    cat "$NGINX_UPSTREAM_CONF"
+  else
+    warn "Archivo $NGINX_UPSTREAM_CONF no existe aún"
+  fi
+
+  echo ""
+  echo "--- Puertos en uso ---"
+  ss -tlnp 2>/dev/null | grep -E ":$PORT_BLUE|:$PORT_GREEN" || \
+    netstat -tlnp 2>/dev/null | grep -E ":$PORT_BLUE|:$PORT_GREEN" || \
+    warn "No se pudo verificar puertos (ss/netstat no disponibles)"
 }
 
-# Menu loop
+# ─── Setup inicial green (una sola vez) ─────────────────────────
+function setup_green_initial() {
+  info "=== Setup inicial de instancia green ==="
+  echo ""
+
+  # 1. Crear directorio y clonar repo
+  if [ ! -d "$GREEN_DIR" ]; then
+    info "Clonando repositorio en $GREEN_DIR…"
+    REPO_URL=""
+    if [ -d "${BLUE_DIR}/.git" ]; then
+      REPO_URL=$(git -C "$BLUE_DIR" remote get-url origin 2>/dev/null || true)
+    fi
+    if [ -z "$REPO_URL" ]; then
+      read -rp "URL del repositorio git: " REPO_URL
+    fi
+    sudo git clone "$REPO_URL" "$GREEN_DIR"
+    sudo chown -R "$USER":"$USER" "$GREEN_DIR"
+  else
+    info "Directorio $GREEN_DIR ya existe, omitiendo clone."
+  fi
+
+  # 2. Crear .env de green
+  info "Creando .env de green en $GREEN_DIR/backend/.env…"
+  BLUE_ENV_FILE="$BLUE_DIR/backend/.env"
+  if [ ! -f "$GREEN_DIR/backend/.env" ]; then
+    if [ -f "$BLUE_ENV_FILE" ]; then
+      # Copiar .env de blue y ajustar los valores de green
+      sed "s/^DB_NAME=.*/DB_NAME=$STAGING_DB/" "$BLUE_ENV_FILE" | \
+        sed "s/^PORT=.*/PORT=$PORT_GREEN/" > "$GREEN_DIR/backend/.env"
+      # Agregar PORT si no existía
+      grep -q '^PORT=' "$GREEN_DIR/backend/.env" || echo "PORT=$PORT_GREEN" >> "$GREEN_DIR/backend/.env"
+      info ".env de green creado desde .env de blue (DB apunta a $STAGING_DB, PORT=$PORT_GREEN)"
+    else
+      warn "No se encontró $BLUE_ENV_FILE. Crea $GREEN_DIR/backend/.env manualmente."
+      warn "Asegúrate de que contenga PORT=$PORT_GREEN y DB_NAME=$STAGING_DB"
+    fi
+  else
+    info "$GREEN_DIR/backend/.env ya existe, no se sobreescribe."
+  fi
+
+  # 3. Instalar servicio systemd
+  SERVICE_FILE="/etc/systemd/system/mundografic@.service"
+  TEMPLATE_FILE="$GREEN_DIR/backend/deploy/mundografic@.service"
+  if [ ! -f "$SERVICE_FILE" ] && [ -f "$TEMPLATE_FILE" ]; then
+    info "Instalando servicio systemd desde $TEMPLATE_FILE…"
+    sudo cp "$TEMPLATE_FILE" "$SERVICE_FILE"
+    sudo systemctl daemon-reload
+    info "Servicio systemd instalado."
+  elif [ -f "$SERVICE_FILE" ]; then
+    info "Servicio systemd $SERVICE_FILE ya existe."
+  else
+    warn "No se encontró $TEMPLATE_FILE. Instala manualmente el servicio systemd."
+  fi
+
+  # 4. Crear BD staging
+  read -rp "¿Crear/refrescar BD staging $STAGING_DB ahora? (s/N): " create_db
+  if [[ "$create_db" =~ ^[sS]$ ]]; then
+    refresh_staging_db
+  fi
+
+  # 5. Build inicial
+  read -rp "¿Instalar dependencias y compilar el código de green ahora? (s/N): " do_build
+  if [[ "$do_build" =~ ^[sS]$ ]]; then
+    info "Instalando dependencias frontend…"
+    cd "$GREEN_DIR" && npm ci --legacy-peer-deps
+    info "Compilando frontend…"
+    npm run build
+    info "Instalando dependencias backend…"
+    cd "$GREEN_DIR/backend" && npm ci --legacy-peer-deps
+    info "Compilando backend…"
+    npm run build
+    info "Build inicial completado."
+  fi
+
+  echo ""
+  info "=== Setup completado ==="
+  info "Próximos pasos:"
+  info "  1) Opción 1 → Iniciar instancia green"
+  info "  2) Prueba en http://$(hostname -I | awk '{print $1}'):$PORT_GREEN"
+  info "  3) Si todo OK → Opción 4 (Promover a producción)"
+}
+
+# ─── Menú principal ─────────────────────────────────────────────
 while true; do
   show_menu
-  read -rp "Option: " opt
+  read -rp "Opción: " opt
   case "$opt" in
-    1) start_instance "$GREEN_INSTANCE" ;;
-    2) stop_instance "$GREEN_INSTANCE" ;;
-    3) deploy_to_instance "$GREEN_INSTANCE" ;;
+    1) start_green ;;
+    2) stop_green ;;
+    3) deploy_to_green ;;
     4) promote_to_green ;;
     5) rollback_to_blue ;;
-    6) create_staging_db_from_production ;;
-    7) status ;;
-    0) exit 0 ;;
-    *) echo "Invalid option" ;;
+    6) refresh_staging_db ;;
+    7) show_status ;;
+    8) setup_green_initial ;;
+    0) info "Saliendo."; exit 0 ;;
+    *) warn "Opción inválida: $opt" ;;
   esac
 done

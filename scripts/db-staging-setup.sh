@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-PROD_DB="sistema_mg_production"
-STAGING_DB="sistema_mg_staging"
+PROD_DB="sistema_mg"        # nombre real de la BD de producción
+STAGING_DB="sistema_mg_staging"  # BD de staging para la instancia green
 DUMP_FILE="/tmp/prod_dump_$(date +%Y%m%d%H%M%S).dump"
 
 echo "Dumping production DB: $PROD_DB -> $DUMP_FILE"
