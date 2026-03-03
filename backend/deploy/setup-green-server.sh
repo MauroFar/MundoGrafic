@@ -120,21 +120,20 @@ if [ -f "$GREEN_ENV" ]; then
   warn ".env de green ya existe: $GREEN_ENV (no se sobreescribirá)"
 else
   if [ -f "$BLUE_ENV" ]; then
-    # Copiar .env de producción y adaptar valores para staging
+    # Copiar .env de producción limpio
     cp "$BLUE_ENV" "$GREEN_ENV"
-    # Cambiar o agregar PORT
-    if grep -q '^PORT=' "$GREEN_ENV"; then
-      sed -i "s/^PORT=.*/PORT=$GREEN_PORT/" "$GREEN_ENV"
-    else
-      echo "PORT=$GREEN_PORT" >> "$GREEN_ENV"
-    fi
-    # Cambiar DB_NAME a staging
-    sed -i "s/^DB_NAME=.*/DB_NAME=$STAGING_DB/" "$GREEN_ENV"
-    # Agregar NODE_ENV=staging
-    if ! grep -q '^NODE_ENV=' "$GREEN_ENV"; then
-      echo "NODE_ENV=staging" >> "$GREEN_ENV"
-    fi
-    info ".env de green creado (DB=$STAGING_DB, PORT=$GREEN_PORT)"
+
+    # Eliminar PORT y DB_NAME existentes (si los hay) y agregar los correctos al final
+    sed -i '/^PORT=/d' "$GREEN_ENV"
+    sed -i '/^DB_NAME=/d' "$GREEN_ENV"
+    sed -i '/^NODE_ENV=/d' "$GREEN_ENV"
+    echo "PORT=$GREEN_PORT"           >> "$GREEN_ENV"
+    echo "DB_NAME=$STAGING_DB"        >> "$GREEN_ENV"
+    echo "NODE_ENV=staging"           >> "$GREEN_ENV"
+
+    info ".env de green creado:"
+    info "  PORT=$GREEN_PORT  (blue usa $BLUE_PORT)"
+    info "  DB_NAME=$STAGING_DB  (blue usa $PROD_DB)"
   else
     error "No se encontró $BLUE_ENV. Crea $GREEN_ENV manualmente antes de continuar."
     exit 1
@@ -149,7 +148,7 @@ GREEN_UNIT="/etc/systemd/system/mundografic@green.service"
 cat > "$GREEN_UNIT" <<UNIT
 # Generado automáticamente por setup-green-server.sh
 # Instancia GREEN (staging) de MundoGrafic
-# Directorio: $GREEN_DIR/backend
+# El .env es cargado por dotenv desde WorkingDirectory
 [Unit]
 Description=MundoGrafic backend — instancia green (staging)
 After=network.target postgresql.service
@@ -159,7 +158,6 @@ Wants=postgresql.service
 Type=simple
 User=$OWNER
 WorkingDirectory=$GREEN_DIR/backend
-EnvironmentFile=$GREEN_DIR/backend/.env
 ExecStart=/usr/bin/node $GREEN_DIR/backend/dist/server.js
 Restart=on-failure
 RestartSec=5
@@ -188,14 +186,57 @@ rm -f "$DUMP_FILE"
 info "BD staging lista: $STAGING_DB"
 
 # ── PASO 6: Instalar dependencias y compilar ──────────────────────────
-step "PASO 6/8 — Compilando backend green…"
-# Ejecutar npm como el propietario del directorio, no como root
+step "PASO 6/8 — Compilando backend y frontend green…"
+
+# Frontend: apuntar al backend green
+echo "VITE_API_URL=http://$(hostname -I | awk '{print $1}'):$GREEN_PORT" > "$GREEN_DIR/.env"
+sudo -u "$OWNER" bash -c "cd '$GREEN_DIR' && npm ci --legacy-peer-deps"
+sudo -u "$OWNER" bash -c "cd '$GREEN_DIR' && npm run build"
+info "Frontend green compilado en $GREEN_DIR/dist/"
+
+# Backend
 sudo -u "$OWNER" bash -c "cd '$GREEN_DIR/backend' && npm ci --legacy-peer-deps"
 sudo -u "$OWNER" bash -c "cd '$GREEN_DIR/backend' && npm run build"
 info "Backend green compilado en $GREEN_DIR/backend/dist/"
 
+# ── PASO 7: Configurar nginx para el green (puerto 8080) ──────────────
+step "PASO 7/8 — Configurando nginx para la instancia green en puerto 8080…"
+cat > /etc/nginx/sites-available/mundografic-green <<NGINX
+server {
+    listen 8080;
+    server_name _;
+
+    root $GREEN_DIR/dist;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass         http://127.0.0.1:${GREEN_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+    }
+
+    location /storage/ { proxy_pass http://127.0.0.1:${GREEN_PORT}; }
+    location /uploads/ { proxy_pass http://127.0.0.1:${GREEN_PORT}; }
+
+    access_log /var/log/nginx/mundografic_green_access.log;
+    error_log  /var/log/nginx/mundografic_green_error.log;
+}
+NGINX
+
+if [ ! -f /etc/nginx/sites-enabled/mundografic-green ]; then
+  ln -s /etc/nginx/sites-available/mundografic-green /etc/nginx/sites-enabled/mundografic-green
+fi
+nginx -t && systemctl reload nginx
+info "Nginx configurado. App green disponible en puerto 8080."
+
 # ── PASO 7: Iniciar servicio green ────────────────────────────────────
-step "PASO 7/8 — Iniciando servicio mundografic@green…"
+step "PASO 8/9 — Iniciando servicio mundografic@green…"
 systemctl daemon-reload
 systemctl start "mundografic@green"
 systemctl enable "mundografic@green"
@@ -207,10 +248,11 @@ else
 fi
 
 # ── PASO 8: Abrir puerto en firewall ─────────────────────────────────
-step "PASO 8/8 — Configurando firewall…"
+step "PASO 9/9 — Configurando firewall…"
 if command -v ufw &>/dev/null; then
-  ufw allow "$GREEN_PORT"/tcp comment "MundoGrafic green (staging)" || warn "No se pudo abrir el puerto $GREEN_PORT en ufw"
-  info "Puerto $GREEN_PORT abierto en ufw"
+  ufw allow "$GREEN_PORT"/tcp comment "MundoGrafic green backend (staging)" || warn "No se pudo abrir el puerto $GREEN_PORT en ufw"
+  ufw allow 8080/tcp comment "MundoGrafic green frontend (staging)" || warn "No se pudo abrir el puerto 8080 en ufw"
+  info "Puertos $GREEN_PORT y 8080 abiertos en ufw"
 else
   warn "ufw no encontrado. Abre el puerto $GREEN_PORT manualmente si es necesario."
 fi
@@ -221,15 +263,16 @@ echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║   ✓  Setup de Green completado                              ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║   API Green (staging):  http://$SERVER_IP:$GREEN_PORT/api/  "
-echo "║   BD de staging:        $STAGING_DB                         "
-echo "║   Servicio:             mundografic@green                   ║"
+printf "║   App completa (green):  http://%s:8080\n" "$SERVER_IP"
+printf "║   Solo API (green):      http://%s:%s/api/\n" "$SERVER_IP" "$GREEN_PORT"
+echo "║   BD de staging:         $STAGING_DB"
+echo "║   Servicio backend:      mundografic@green                  ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║   Próximos pasos:                                           ║"
-echo "║   1. Prueba la app en: http://$SERVER_IP:$GREEN_PORT        "
-echo "║   2. Si todo OK, corre el script de control y elige        ║"
-echo "║      opción 4 (Promover green → producción)                ║"
-echo "║   3. Para deployar cambios en green: opción 3 del script   ║"
+printf "║   1. Prueba la app en: http://%s:8080\n" "$SERVER_IP"
+echo "║   2. Si todo OK → opción 4 del script de control           ║"
+echo "║      (Promover green → producción)                         ║"
+echo "║   3. Para nuevos deploys → opción 3 del script             ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 info "Logs del servicio: sudo journalctl -u mundografic@green -f"

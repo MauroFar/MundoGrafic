@@ -16,8 +16,8 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/mundografic/%i/backend
 
-# El .env debe existir en el directorio del backend de la instancia
-EnvironmentFile=/opt/mundografic/%i/backend/.env
+# NO usar EnvironmentFile — dotenv carga el .env desde WorkingDirectory automáticamente.
+# Esto evita problemas con caracteres especiales (@, #, etc.) en el parser de systemd.
 
 # Ejecuta el servidor compilado (npm run build debe haberse ejecutado antes)
 ExecStart=/usr/bin/node /opt/mundografic/%i/backend/dist/server.js

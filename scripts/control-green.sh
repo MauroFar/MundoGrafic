@@ -98,22 +98,22 @@ function deploy_to_green() {
   fi
 
   info "Actualizando código en $GREEN_DIR…"
-  cd "$GREEN_DIR"
-  git fetch --all --prune
-  git reset --hard origin/main
+  sudo -u "$REAL_USER" git -C "$GREEN_DIR" fetch --all --prune
+  sudo -u "$REAL_USER" git -C "$GREEN_DIR" reset --hard origin/main
 
   info "Instalando dependencias del frontend…"
-  npm ci --legacy-peer-deps
+  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR' && npm ci --legacy-peer-deps"
 
-  info "Compilando frontend…"
-  npm run build
+  info "Compilando frontend (apunta a backend green :$PORT_GREEN)…"
+  echo "VITE_API_URL=http://$(hostname -I | awk '{print $1}'):$PORT_GREEN" > "$GREEN_DIR/.env"
+  chown "$REAL_USER":"$REAL_USER" "$GREEN_DIR/.env"
+  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR' && npm run build"
 
   info "Instalando dependencias del backend…"
-  cd "$GREEN_DIR/backend"
-  npm ci --legacy-peer-deps
+  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm ci --legacy-peer-deps"
 
   info "Compilando backend (TypeScript)…"
-  npm run build
+  sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm run build"
 
   info "Ejecutando migraciones de BD staging ($STAGING_DB)…"
   run_migrations_green || warn "No se pudieron ejecutar migraciones (revisa manualmente)."
@@ -121,7 +121,15 @@ function deploy_to_green() {
   info "Reiniciando servicio green…"
   sudo systemctl daemon-reload
   sudo systemctl restart "$GREEN_SERVICE"
-  info "Deploy a green completado. Prueba en: http://$(hostname -I | awk '{print $1}'):$PORT_GREEN"
+  sleep 2
+  if systemctl is-active --quiet "$GREEN_SERVICE"; then
+    info "Servicio green activo ✓"
+  else
+    warn "El servicio no arrancó. Revisa: sudo journalctl -u $GREEN_SERVICE -n 30"
+  fi
+  info "Deploy a green completado."
+  info "Prueba la app completa en: http://$(hostname -I | awk '{print $1}'):8080"
+  info "Solo API en:               http://$(hostname -I | awk '{print $1}'):$PORT_GREEN/api/"
 }
 
 # Aplica los archivos SQL de migrations/ a la BD staging

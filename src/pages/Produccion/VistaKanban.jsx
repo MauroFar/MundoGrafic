@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   FaClock, 
@@ -18,6 +18,42 @@ import OrdenDetalleModal from '../../components/OrdenDetalleModal';
 const VistaKanban = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+
+  // Refs para sincronizar scroll horizontal arriba y abajo
+  const scrollTopRef = useRef(null);
+  const scrollBoardRef = useRef(null);
+  const scrollInnerRef = useRef(null);
+  const mirrorInnerRef = useRef(null); // div fantasma que da el ancho a la barra superior
+  const syncingRef = useRef(false);
+
+  // Sincronizar el ancho del espejo directamente en el DOM (sin state → sin delay)
+  useEffect(() => {
+    const syncWidth = () => {
+      if (scrollBoardRef.current && mirrorInnerRef.current) {
+        mirrorInnerRef.current.style.width = scrollBoardRef.current.scrollWidth + 'px';
+      }
+    };
+    syncWidth(); // ejecutar de inmediato
+
+    const observer = new ResizeObserver(syncWidth);
+    if (scrollBoardRef.current) observer.observe(scrollBoardRef.current);
+    if (scrollInnerRef.current)  observer.observe(scrollInnerRef.current);
+    return () => observer.disconnect();
+  }); // sin dependencias → corre tras cada render, siempre en sync
+
+  const handleScrollTop = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollBoardRef.current) scrollBoardRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
+
+  const handleScrollBoard = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollTopRef.current) scrollTopRef.current.scrollLeft = scrollBoardRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
   
   const [ordenes, setOrdenes] = useState({
     pendiente: [],
@@ -553,7 +589,18 @@ const VistaKanban = () => {
 
       {/* Kanban Board */}
       <div className="pb-6">
-        <div className="flex gap-6 overflow-x-auto pb-2">
+        {/* Scrollbar superior sincronizado */}
+        <div
+          ref={scrollTopRef}
+          onScroll={handleScrollTop}
+          className="overflow-x-auto mb-1"
+          style={{ height: '12px' }}
+        >
+          <div ref={mirrorInnerRef} style={{ height: '1px', width: '3000px' }} />
+        </div>
+
+        <div ref={scrollBoardRef} onScroll={handleScrollBoard} className="overflow-x-auto pb-2">
+        <div ref={scrollInnerRef} className="flex gap-6" style={{ width: 'max-content' }}>
         {columnas.map((columna) => {
           const IconoColumna = columna.icono;
           const ordenesColumna = ordenes[columna.id] || [];
@@ -664,7 +711,8 @@ const VistaKanban = () => {
             </div>
           );
         })}
-        </div>
+        </div>{/* fin scrollInnerRef */}
+        </div>{/* fin scrollBoardRef */}
       </div>
 
      
