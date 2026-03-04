@@ -473,22 +473,15 @@ const VistaKanban = () => {
 
   const openOrdenModal = async (ordenOrId) => {
     try {
-      // If caller provided the full order object, use it directly
-      if (ordenOrId && typeof ordenOrId === 'object' && ordenOrId.id) {
-        setOrdenDetalleModal(ordenOrId);
-        setShowOrdenModal(true);
-        return;
-      }
-      // Fallback: if only id provided, try to find it in current state
-      const id = ordenOrId;
-      const allCols = Object.values(ordenes).flat();
-      const found = allCols.find(o => String(o.id) === String(id));
-      if (found) {
-        setOrdenDetalleModal(found);
-        setShowOrdenModal(true);
-        return;
-      }
-      console.warn('Orden no encontrada en estado local, no se realizará fetch adicional');
+      const id = (ordenOrId && typeof ordenOrId === 'object') ? ordenOrId.id : ordenOrId;
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/orden/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Error al cargar detalle de la orden');
+      const data = await response.json();
+      setOrdenDetalleModal(data);
+      setShowOrdenModal(true);
     } catch (e) {
       console.error('Error abriendo modal de orden:', e);
     }
