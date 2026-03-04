@@ -15,11 +15,17 @@ const MainLayout = () => {
     location.pathname.startsWith('/certificados') ||
     location.pathname === '/dashboardGeneral' ||
     location.pathname === '/productosTerminados' ||
+    location.pathname === '/productosEntregados' ||
     location.pathname === '/produccionDiaria';
 
   const [menuVisible, setMenuVisible] = useState(true);
 
-  // Mantener el menú visible por defecto; el usuario lo oculta/activa manualmente.
+  // Restaurar el menú al navegar a una nueva ruta (excepto kanban que lo oculta a propósito)
+  useEffect(() => {
+    if (!location.pathname.startsWith('/produccion/kanban')) {
+      setMenuVisible(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const onToggle = (e) => {

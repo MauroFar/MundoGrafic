@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  FaCheckCircle, FaSearch, FaEye,
-  FaSync, FaTruck, FaBoxes, FaClipboardList, FaShippingFast
+  FaBoxOpen, FaSearch, FaEye, FaEdit, FaSync,
+  FaTruck, FaFileInvoiceDollar, FaCheckDouble, FaClipboardList
 } from 'react-icons/fa';
 import OrdenDetalleModal from '../../components/OrdenDetalleModal';
 
-// Solo órdenes con estado 'liberado' en la tabla estado_orden_digital
-const ESTADOS_TERMINADO = ['liberado'];
+const ESTADOS_ENTREGADO = ['entregado', 'facturado', 'completado'];
 
 const normalizeKey = (s) => {
   if (!s) return '';
@@ -18,13 +17,13 @@ const normalizeKey = (s) => {
 };
 
 const badgeStyle = (key) => {
-  if (key === 'liberado') return 'bg-green-100 text-green-800 border border-green-200';
+  if (key === 'entregado') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
   return 'bg-gray-100 text-gray-700 border border-gray-200';
 };
 
 const badgeLabel = (key, titulo) => {
   if (titulo) return titulo;
-  if (key === 'liberado') return 'Producto Liberado';
+  if (key === 'entregado') return 'Producto Entregado';
   return key || '-';
 };
 
@@ -46,7 +45,7 @@ const formatDate = (d) => {
   catch { return d; }
 };
 
-const ProductosTerminados = () => {
+const ProductosEntregados = () => {
   const navigate = useNavigate();
   const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -60,17 +59,14 @@ const ProductosTerminados = () => {
   const [showModal, setShowModal] = useState(false);
   const [ordenDetalle, setOrdenDetalle] = useState(null);
 
-  // Modal marcar como entregado
-  const [showEntregarModal, setShowEntregarModal] = useState(false);
-  const [ordenParaEntregar, setOrdenParaEntregar] = useState(null);
-  const [marcandoEntregado, setMarcandoEntregado] = useState(false);
-
   const cargarOrdenes = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
+      // Solicitar todos sin límite para poder filtrar por estado
       params.append('limite', '1000');
+      if (busqueda) params.append('busqueda', busqueda);
       if (fechaDesde) params.append('fechaDesde', fechaDesde);
       if (fechaHasta) params.append('fechaHasta', fechaHasta);
 
@@ -85,12 +81,12 @@ const ProductosTerminados = () => {
       const filtrados = arr.filter(
         (o) =>
           normalizeKey(o.tipo_orden) === 'digital' &&
-          ESTADOS_TERMINADO.includes(o.estado_digital_key)
+          ESTADOS_ENTREGADO.includes(o.estado_digital_key)
       );
       setOrdenes(filtrados);
     } catch (err) {
       console.error(err);
-      toast.error(err.message || 'Error al cargar los productos terminados');
+      toast.error(err.message || 'Error al cargar los productos entregados');
     } finally {
       setLoading(false);
     }
@@ -113,37 +109,6 @@ const ProductosTerminados = () => {
     }
   };
 
-  const confirmarEntregar = (orden) => {
-    setOrdenParaEntregar(orden);
-    setShowEntregarModal(true);
-  };
-
-  const marcarComoEntregado = async () => {
-    if (!ordenParaEntregar) return;
-    setMarcandoEntregado(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${ordenParaEntregar.id}/estado`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ estado: 'entregado' })
-      });
-      if (!res.ok) throw new Error('Error al actualizar el estado');
-      toast.success(`Orden ${ordenParaEntregar.numero_orden} marcada como Entregado`);
-      setShowEntregarModal(false);
-      setOrdenParaEntregar(null);
-      // Recargar lista (la orden desaparecerá de aquí y aparecerá en Productos Entregados)
-      cargarOrdenes();
-    } catch (err) {
-      toast.error(err.message || 'Error al marcar como entregado');
-    } finally {
-      setMarcandoEntregado(false);
-    }
-  };
-
   const ordenesFiltradas = ordenes.filter((o) => {
     if (!busqueda) return true;
     const q = busqueda.toLowerCase();
@@ -155,22 +120,23 @@ const ProductosTerminados = () => {
   });
 
   // Stats
-  const totalLiberado     = ordenesFiltradas.filter(o => o.estado_digital_key === 'liberado').length;
-  const totalListoEntrega = 0; // reservado
+  const totalEntregado  = ordenesFiltradas.filter(o => o.estado_digital_key === 'entregado').length;
+  const totalFacturado  = 0; // key 'facturado' no existe aún en BD
+  const totalCompletado = 0; // key 'completado' no existe aún en BD
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50 p-6">
 
       {/* ── Cabecera ── */}
       <div className="mb-6 bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-teal-600 to-emerald-700 px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-white">
             <div className="p-2 bg-white bg-opacity-20 rounded-xl">
-              <FaCheckCircle className="text-2xl" />
+              <FaBoxOpen className="text-2xl" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Productos Liberados</h1>
-              <p className="text-green-100 text-sm mt-0.5">Órdenes digitales con estado Producto Liberado</p>
+              <h1 className="text-2xl font-bold tracking-tight">Productos Entregados</h1>
+              <p className="text-teal-100 text-sm mt-0.5">Órdenes digitales — Entregado / Completado / Facturado</p>
             </div>
           </div>
           <button
@@ -184,22 +150,38 @@ const ProductosTerminados = () => {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <StatCard
-          icon={FaBoxes}
-          label="Total liberados"
+          icon={FaBoxOpen}
+          label="Total registros"
           value={ordenesFiltradas.length}
+          colorBorder="border-teal-500"
+          colorIcon="text-teal-600"
+          colorBg="bg-teal-100"
+        />
+        <StatCard
+          icon={FaTruck}
+          label="Entregados"
+          value={totalEntregado}
+          colorBorder="border-emerald-500"
+          colorIcon="text-emerald-600"
+          colorBg="bg-emerald-100"
+        />
+        <StatCard
+          icon={FaCheckDouble}
+          label="Completados"
+          value={totalCompletado}
           colorBorder="border-green-500"
           colorIcon="text-green-600"
           colorBg="bg-green-100"
         />
         <StatCard
-          icon={FaShippingFast}
-          label="Pendientes de entregar"
-          value={ordenesFiltradas.length}
-          colorBorder="border-emerald-500"
-          colorIcon="text-emerald-600"
-          colorBg="bg-emerald-100"
+          icon={FaFileInvoiceDollar}
+          label="Facturados"
+          value={totalFacturado}
+          colorBorder="border-blue-500"
+          colorIcon="text-blue-600"
+          colorBg="bg-blue-100"
         />
       </div>
 
@@ -213,7 +195,7 @@ const ProductosTerminados = () => {
               placeholder="Buscar por N° orden, cliente o concepto…"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
           <div>
@@ -222,7 +204,7 @@ const ProductosTerminados = () => {
               type="date"
               value={fechaDesde}
               onChange={(e) => setFechaDesde(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
           <div>
@@ -231,14 +213,14 @@ const ProductosTerminados = () => {
               type="date"
               value={fechaHasta}
               onChange={(e) => setFechaHasta(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
         </div>
         <div className="mt-3 flex justify-end">
           <button
             onClick={cargarOrdenes}
-            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Aplicar filtros
           </button>
@@ -259,15 +241,15 @@ const ProductosTerminados = () => {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="flex flex-col items-center gap-3 text-gray-400">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
               <span className="text-sm">Cargando órdenes…</span>
             </div>
           </div>
         ) : ordenesFiltradas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <FaCheckCircle className="text-5xl mb-3 text-green-200" />
-            <p className="text-base font-medium">No hay productos liberados</p>
-            <p className="text-sm mt-1">No se encontraron órdenes digitales con estado Producto Liberado</p>
+            <FaBoxOpen className="text-5xl mb-3 text-teal-200" />
+            <p className="text-base font-medium">No hay productos entregados</p>
+            <p className="text-sm mt-1">No se encontraron órdenes digitales entregadas</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -288,7 +270,7 @@ const ProductosTerminados = () => {
                 {ordenesFiltradas.map((o, i) => (
                   <tr
                     key={o.id}
-                    className={`hover:bg-green-50 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                    className={`hover:bg-teal-50 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
                     onClick={() => abrirDetalle(o.id)}
                   >
                     <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{o.numero_orden || '-'}</td>
@@ -310,8 +292,8 @@ const ProductosTerminados = () => {
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_creacion || o.created_at)}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => abrirDetalle(o.id)} title="Ver detalle" className="p-2 rounded-lg text-green-600 hover:bg-green-100 transition-colors"><FaEye /></button>
-                        <button onClick={() => confirmarEntregar(o)} title="Marcar como Entregado" className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors"><FaTruck /></button>
+                        <button onClick={() => abrirDetalle(o.id)} title="Ver detalle" className="p-2 rounded-lg text-teal-600 hover:bg-teal-100 transition-colors"><FaEye /></button>
+                        <button onClick={() => navigate(`/ordendeTrabajo/editar/${o.id}`)} title="Editar" className="p-2 rounded-lg text-yellow-600 hover:bg-yellow-100 transition-colors"><FaEdit /></button>
                       </div>
                     </td>
                   </tr>
@@ -332,52 +314,8 @@ const ProductosTerminados = () => {
           canEdit={true}
         />
       )}
-
-      {/* ── Modal confirmar entrega ── */}
-      {showEntregarModal && ordenParaEntregar && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-600 to-green-700 px-6 py-4 flex items-center gap-3 text-white">
-              <FaTruck className="text-xl" />
-              <h2 className="text-lg font-bold">Confirmar Entrega</h2>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
-                ¿Marcar la siguiente orden como <strong className="text-emerald-700">Entregado</strong>?
-              </p>
-              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5 space-y-1.5 text-sm">
-                <p><span className="text-gray-500 font-medium">Orden:</span> <strong className="text-gray-800">{ordenParaEntregar.numero_orden}</strong></p>
-                <p><span className="text-gray-500 font-medium">Cliente:</span> <span className="text-gray-700">{ordenParaEntregar.nombre_cliente || '-'}</span></p>
-                <p><span className="text-gray-500 font-medium">Concepto:</span> <span className="text-gray-700">{ordenParaEntregar.concepto || '-'}</span></p>
-              </div>
-              <p className="text-xs text-gray-400 mb-5">
-                La orden pasará automáticamente a <em className="font-medium">Productos Entregados</em>.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowEntregarModal(false); setOrdenParaEntregar(null); }}
-                  disabled={marcandoEntregado}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={marcarComoEntregado}
-                  disabled={marcandoEntregado}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
-                >
-                  {marcandoEntregado
-                    ? <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Procesando…</>
-                    : <><FaTruck /> Confirmar Entrega</>
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default ProductosTerminados;
+export default ProductosEntregados;

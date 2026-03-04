@@ -1015,12 +1015,10 @@ export default (client: any) => {
             certificadoId,
             " (no se pudo leer fila completa)",
           );
-          res
-            .status(201)
-            .json({
-              id: certificadoId,
-              numero_certificado: result.rows[0].numero_certificado,
-            });
+          res.status(201).json({
+            id: certificadoId,
+            numero_certificado: result.rows[0].numero_certificado,
+          });
         }
       } catch (error: any) {
         await client.query("ROLLBACK");

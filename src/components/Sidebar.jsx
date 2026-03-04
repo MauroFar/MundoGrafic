@@ -48,21 +48,14 @@ const Sidebar = () => {
       { path: "/ordendeTrabajo/ver", label: "Ver Órdenes de Trabajo" },
       { path: "/certificados", label: "Certificados Calidad" },
     ],
-    // Submenú de Producción: ahora incluye enlaces a Clientes, Cotizaciones y Ordenes de Trabajo
+    // Submenú de Producción
     produccion: [
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
-      { path: "/produccion/preprensa", label: "Módulo Preprensa" },
-      { path: "/produccion/prensa", label: "Módulo Prensa" },
-      { path: "/produccion/acabados", label: "Módulo Acabados" },
-      { path: "/produccion/calidad", label: "Control de Calidad" },
-      { path: "/produccion/entrega", label: "Empacado y Entrega" },
-      { path: "/produccion/dashboard", label: "Dashboard Producción" },
-      { path: "/dashboardGeneral", label: "Dashboard General" },
-      { path: "/produccionDiaria", label: "Producción Diaria" },
-      { path: "/productosTerminados", label: "Productos Terminados" },
+      { path: "/productosTerminados", label: "Productos Liberados" },
+      { path: "/productosEntregados", label: "Productos Entregados" },
     ],
     // Submenú de Administración
     administracion: [
@@ -88,9 +81,8 @@ const Sidebar = () => {
       location.pathname.startsWith("/produccion") ||
       location.pathname.startsWith("/admin") ||
       location.pathname === "/administracion" ||
-      location.pathname === "/dashboardGeneral" ||
       location.pathname === "/productosTerminados" ||
-      location.pathname === "/produccionDiaria"
+      location.pathname === "/productosEntregados"
     );
   };
 
@@ -103,11 +95,9 @@ const Sidebar = () => {
     }
     if (
       location.pathname.startsWith("/produccion") ||
-      location.pathname === "/dashboardGeneral" ||
       location.pathname === "/productosTerminados" ||
-      location.pathname === "/produccionDiaria"
+      location.pathname === "/productosEntregados"
     ) {
-      // Mostrar todas las opciones de producción sin filtrar por rol
       return menus.produccion;
     }
     // Menú principal - mostrar todo sin filtrar por rol
