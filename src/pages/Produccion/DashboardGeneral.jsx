@@ -22,12 +22,17 @@ const DashboardGeneral = () => {
   useEffect(() => {
     const fetchOrdenes = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/ordenTrabajo/listar`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${apiUrl}/api/ordenTrabajo/listar`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
         const data = await response.json();
-        setOrdenes(data);
+        const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        setOrdenes(arr);
 
         const seguimientoInit = {};
-        data.forEach((orden) => {
+        arr.forEach((orden) => {
           seguimientoInit[orden.id] = JSON.parse(JSON.stringify(areasPorDefecto));
         });
         setSeguimiento(seguimientoInit);
@@ -40,8 +45,9 @@ const DashboardGeneral = () => {
   }, []);
 
   const filtrarOrdenes = (ordenes) => {
-    if (!filtroEstado) return ordenes;
-    return ordenes.filter((orden) => {
+    const lista = Array.isArray(ordenes) ? ordenes : [];
+    if (!filtroEstado) return lista;
+    return lista.filter((orden) => {
       const areas = seguimiento[orden.id] || [];
       return areas.some((area) => area.estado.toLowerCase() === filtroEstado.toLowerCase());
     });
