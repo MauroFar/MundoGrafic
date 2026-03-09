@@ -1110,6 +1110,16 @@ export default (client: any) => {
                 <div class="campo-valor">${orden.email || ''}</div>
               </div>
             </div>
+            <div class="fila">
+              <div class="campo">
+                <div class="campo-label">FECHA CREACIÓN</div>
+                <div class="campo-valor">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' }) : ''}</div>
+              </div>
+              <div class="campo">
+                <div class="campo-label">FECHA ENTREGA</div>
+                <div class="campo-valor">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' }) : ''}</div>
+              </div>
+            </div>
           </div>
         </div>
 
