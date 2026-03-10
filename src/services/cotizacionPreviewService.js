@@ -56,7 +56,7 @@ export const generarVistaPreviaPDF = async (cotizacionId, cotizacionData, detall
       cotizacion = {
         codigo_cotizacion: cotData.codigo_cotizacion,
         fecha: cotData.fecha,
-        nombre_cliente: cotData.nombre_cliente,
+        nombre_cliente: cotData.empresa_cliente || cotData.nombre_cliente,
         contacto: cotData.contacto || null,
         celuar: cotData.celuar || null,
         ruc: cotData.ruc,
