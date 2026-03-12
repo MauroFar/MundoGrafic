@@ -149,11 +149,13 @@ const ReportesTrabajoDiario = () => {
 
       {/* ── Formulario de ingreso ── */}
       {areaId && (
-        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-start">
+        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-5">
+
+          {/* Fila 1: Operador | Proceso | Solicitado por */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 
             {/* Operador */}
-            <div className="md:col-span-1">
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Operador <span className="text-red-500">*</span></label>
               <select
                 className={inputClass("operadorId")}
@@ -170,7 +172,7 @@ const ReportesTrabajoDiario = () => {
             </div>
 
             {/* Proceso */}
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Proceso <span className="text-red-500">*</span></label>
               <input
                 type="text"
@@ -183,7 +185,7 @@ const ReportesTrabajoDiario = () => {
             </div>
 
             {/* Solicitado por */}
-            <div className="md:col-span-1">
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Solicitado por</label>
               <input
                 type="text"
@@ -193,6 +195,10 @@ const ReportesTrabajoDiario = () => {
                 placeholder="Quién lo solicitó"
               />
             </div>
+          </div>
+
+          {/* Fila 2: Hora inicio | Hora final | Fecha | Botón */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 
             {/* Hora inicio */}
             <div>
@@ -228,16 +234,17 @@ const ReportesTrabajoDiario = () => {
                 className="w-full border border-gray-200 bg-gray-100 rounded-md px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
               />
             </div>
-          </div>
 
-          <div className="mt-4">
-            <button
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-md text-sm"
-              onClick={agregarReporte}
-              disabled={guardando}
-            >
-              {guardando ? "Guardando..." : "Agregar registro"}
-            </button>
+            {/* Botón agregar */}
+            <div>
+              <button
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-md text-sm transition-colors"
+                onClick={agregarReporte}
+                disabled={guardando}
+              >
+                {guardando ? "Guardando..." : "Agregar registro"}
+              </button>
+            </div>
           </div>
         </div>
       )}
