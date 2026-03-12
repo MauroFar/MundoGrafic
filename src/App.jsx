@@ -26,6 +26,7 @@ import GestionRoles from "./pages/admin/GestionRoles";
 import GestionAreas from "./pages/admin/GestionAreas";
 import CatalogoProcesos from "./pages/admin/CatalogoProcesos";
 import TiposTrabajo from "./pages/admin/TiposTrabajo";
+import GestionReportes from "./pages/admin/GestionReportes";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
 import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
@@ -207,6 +208,13 @@ function App() {
           <Route path="/admin/tipos-trabajo" element={
             <PrivateRoute allowedRoles={['admin']}>
               <TiposTrabajo />
+            </PrivateRoute>
+          } />
+
+          {/* Gestión de Áreas y Operadores para Reportes */}
+          <Route path="/admin/gestion-reportes" element={
+            <PrivateRoute allowedRoles={['admin']}>
+              <GestionReportes />
             </PrivateRoute>
           } />
 

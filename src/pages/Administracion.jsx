@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUsers, FaCogs, FaBoxes, FaTags, FaUserTag, FaSitemap } from "react-icons/fa";
+import { FaUsers, FaCogs, FaBoxes, FaTags, FaUserTag, FaSitemap, FaClipboardList } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
@@ -74,6 +74,14 @@ const Administracion = () => {
       icono: <FaBoxes />,
       ruta: "/certificados",
       color: "#10b981"
+    },
+    {
+      id: 'gestion-reportes',
+      titulo: "Gestión de Reportes",
+      descripcion: "Administrar áreas y operadores de los Reportes de Trabajo Diario",
+      icono: <FaClipboardList />,
+      ruta: "/admin/gestion-reportes",
+      color: "#f97316"
     }
   ];
 
