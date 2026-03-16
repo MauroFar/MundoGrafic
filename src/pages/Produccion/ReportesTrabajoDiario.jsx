@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildApiUrl } from "../../config/api";
+import { buildApiUrl, API_CONFIG } from "../../config/api";
+import jsPDF from "jspdf";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -187,6 +188,146 @@ const ReportesTrabajoDiario = () => {
       errores[campo] ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"
     }`;
 
+  // ── Generar PDF ─────────────────────────────────────────────────────────────
+  const generarPDF = async () => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const W = doc.internal.pageSize.getWidth(); // 210 mm
+    const areaNombre = areas.find(a => String(a.id) === String(areaId))?.nombre || "";
+    const opNombre   = filtroOperadorId
+      ? operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId))?.nombre || ""
+      : "Todos";
+
+    // ── Logo ──
+    const logoUrl = `${API_CONFIG.BASE_URL}/images/logo-mundografic.png`;
+    try {
+      const resp = await fetch(logoUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const b64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(b64, "PNG", 14, 12, 48, 0); // alto=0 → mantiene proporción
+      }
+    } catch (_) { /* sin logo si falla */ }
+
+    // ── Título (sin fondo) ──
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(15);
+    doc.setFont("helvetica", "bold");
+    doc.text("Reporte de Trabajo Diario", W / 2, 16, { align: "center" });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(110, 110, 110);
+    doc.text(
+      `MundoGrafic — Generado el ${new Date().toLocaleDateString("es-GT", { day: "2-digit", month: "long", year: "numeric" })}`,
+      W / 2, 22, { align: "center" }
+    );
+
+    // Línea divisoria
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.4);
+    doc.line(14, 26, W - 14, 26);
+
+    // ── Info del filtro ──
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.text("Área:", 14, 33);
+    doc.setFont("helvetica", "normal");
+    doc.text(areaNombre, 26, 33);
+    doc.setFont("helvetica", "bold");
+    doc.text("Operador:", 90, 33);
+    doc.setFont("helvetica", "normal");
+    doc.text(opNombre, 110, 33);
+    doc.setFont("helvetica", "bold");
+    doc.text("Fecha:", 14, 39);
+    doc.setFont("helvetica", "normal");
+    doc.text(fechaFiltro || "Todas", 26, 39);
+
+    // ── Tabla ──
+    // Ancho total usable: 210 - 14*2 = 182 mm
+    const cols = [
+      { label: "#",              w: 8  },
+      { label: "Operador",       w: 36 },
+      { label: "Proceso",        w: 58 },
+      { label: "Solicitado por", w: 36 },
+      { label: "H. Inicio",      w: 22 },
+      { label: "H. Final",       w: 22 },
+    ];
+    const totalW = cols.reduce((s, c) => s + c.w, 0); // 182
+
+    let x = 14;
+    let y = 44;
+    const rowH  = 7;
+    const headH = 8;
+
+    // Cabecera
+    doc.setFillColor(239, 246, 255);
+    doc.rect(x, y, totalW, headH, "F");
+    doc.setDrawColor(180, 200, 230);
+    doc.setLineWidth(0.3);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 64, 175);
+    let cx = x;
+    cols.forEach(c => {
+      doc.rect(cx, y, c.w, headH);
+      doc.text(c.label, cx + 2, y + 5.5);
+      cx += c.w;
+    });
+    y += headH;
+
+    // Filas de datos
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 30, 30);
+
+    reportesFiltrados.forEach((d, idx) => {
+      if (y + rowH > doc.internal.pageSize.getHeight() - 15) {
+        doc.addPage();
+        y = 15;
+      }
+      if (idx % 2 === 0) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(14, y, totalW, rowH, "F");
+      }
+      doc.setDrawColor(220, 225, 235);
+      cx = x;
+      const vals = [
+        String(idx + 1),
+        d.operador || "",
+        d.proceso || "",
+        d.solicitado_por || "—",
+        d.inicio || "",
+        d.fin || "",
+      ];
+      cols.forEach((c, i) => {
+        doc.rect(cx, y, c.w, rowH);
+        const txt = String(vals[i]);
+        const maxCh = Math.floor(c.w / 1.85);
+        doc.text(txt.length > maxCh ? txt.slice(0, maxCh - 1) + "…" : txt, cx + 2, y + 4.8);
+        cx += c.w;
+      });
+      y += rowH;
+    });
+
+    // ── Pie de página ──
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      const pH = doc.internal.pageSize.getHeight();
+      doc.text(`Total: ${reportesFiltrados.length} registro${reportesFiltrados.length !== 1 ? "s" : ""}`, 14, pH - 5);
+      doc.text(`Página ${i} de ${pages}`, W - 14, pH - 5, { align: "right" });
+    }
+
+    const nombreArchivo = `reporte_${areaNombre.replace(/\s+/g, "_")}_${fechaFiltro || "todos"}.pdf`;
+    doc.save(nombreArchivo);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -309,9 +450,22 @@ const ReportesTrabajoDiario = () => {
                   <span className="ml-2 text-gray-400 font-normal">— {fechaFiltro}</span>
                 )}
               </span>
-              <span className="text-xs text-gray-400">
-                {reportesFiltrados.length} registro{reportesFiltrados.length !== 1 ? "s" : ""}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">
+                  {reportesFiltrados.length} registro{reportesFiltrados.length !== 1 ? "s" : ""}
+                </span>
+                {reportesFiltrados.length > 0 && (
+                  <button
+                    onClick={generarPDF}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    </svg>
+                    Descargar PDF
+                  </button>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -322,13 +476,12 @@ const ReportesTrabajoDiario = () => {
                     <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora final</th>
-                    <th className="py-3 px-4 text-left font-semibold">Fecha</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {cargando ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                      <td colSpan={5} className="text-center py-10 text-gray-400">
                         <div className="flex items-center justify-center gap-2">
                           <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -340,7 +493,7 @@ const ReportesTrabajoDiario = () => {
                     </tr>
                   ) : reportesFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                      <td colSpan={5} className="text-center py-10 text-gray-400">
                         No hay registros para esta fecha y área.
                       </td>
                     </tr>
@@ -352,7 +505,6 @@ const ReportesTrabajoDiario = () => {
                         <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
                         <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
                         <td className="py-3 px-4 text-gray-600">{d.fin}</td>
-                        <td className="py-3 px-4 text-gray-400 text-xs">{d.fecha ? String(d.fecha).split("T")[0] : "—"}</td>
                       </tr>
                     ))
                   )}
