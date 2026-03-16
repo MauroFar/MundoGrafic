@@ -1,5 +1,5 @@
 // Configuración de la API
-const ENV_BASE_URL = import.meta?.env?.VITE_API_URL;
+const ENV_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Fallback seguro: si no hay VITE_API_URL, intenta usar el mismo host con puerto 3002
 // Ej.: si la app corre en http://192.168.1.50:3001, el backend sería http://192.168.1.50:3002
