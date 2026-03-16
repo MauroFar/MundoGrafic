@@ -18,6 +18,7 @@ const ReportesTrabajoDiario = () => {
 
   // Filtros de tabla
   const [areaId, setAreaId] = useState("");
+  const [filtroOperadorId, setFiltroOperadorId] = useState("");
   const [fechaFiltro, setFechaFiltro] = useState(hoy);
   const [busqueda, setBusqueda] = useState("");
 
@@ -30,6 +31,9 @@ const ReportesTrabajoDiario = () => {
   const [inicio, setInicio] = useState("");
   const [fin, setFin] = useState("");
   const [errores, setErrores] = useState({});
+
+  // Filas pendientes en el modal
+  const [filasPendientes, setFilasPendientes] = useState([]);
 
   // Datos tabla
   const [reportes, setReportes] = useState([]);
@@ -52,6 +56,11 @@ const ReportesTrabajoDiario = () => {
     }).catch(() => setError("Error al cargar catálogos"));
   }, []);
 
+  // Operadores del área seleccionada en la tabla (para el filtro principal)
+  const operadoresDelArea = areaId
+    ? operadores.filter(o => String(o.area_id) === String(areaId))
+    : [];
+
   // Operadores filtrados para el modal según el área elegida en el modal
   const operadoresFiltrados = modalAreaId
     ? operadores.filter(o => String(o.area_id) === String(modalAreaId))
@@ -71,19 +80,25 @@ const ReportesTrabajoDiario = () => {
       .finally(() => setCargando(false));
   }, [areaId, fechaFiltro]);
 
-  // Filtro de búsqueda client-side
+  // Filtro client-side (búsqueda de texto + operador)
   const reportesFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return reportes;
-    const q = busqueda.toLowerCase();
-    return reportes.filter(r =>
-      r.operador?.toLowerCase().includes(q) ||
-      r.proceso?.toLowerCase().includes(q) ||
-      r.solicitado_por?.toLowerCase().includes(q)
-    );
-  }, [reportes, busqueda]);
+    let lista = reportes;
+    if (filtroOperadorId) {
+      lista = lista.filter(r => String(r.operador_id) === String(filtroOperadorId));
+    }
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      lista = lista.filter(r =>
+        r.operador?.toLowerCase().includes(q) ||
+        r.proceso?.toLowerCase().includes(q) ||
+        r.solicitado_por?.toLowerCase().includes(q)
+      );
+    }
+    return lista;
+  }, [reportes, filtroOperadorId, busqueda]);
 
-  // ── Validación ──────────────────────────────────────────────────────────────
-  const validar = () => {
+  // ── Validación fila actual ───────────────────────────────────────────────────
+  const validarFila = () => {
     const e = {};
     if (!modalAreaId)    e.modalAreaId = "Selecciona un área";
     if (!operadorId)     e.operadorId  = "Selecciona un operador";
@@ -95,11 +110,36 @@ const ReportesTrabajoDiario = () => {
     return Object.keys(e).length === 0;
   };
 
+  // ── Añadir fila a la lista pendiente ────────────────────────────────────────
+  const agregarALista = () => {
+    if (!validarFila()) return;
+    const areaNombre = areas.find(a => String(a.id) === String(modalAreaId))?.nombre || "";
+    const opNombre   = operadores.find(o => String(o.id) === String(operadorId))?.nombre || "";
+    setFilasPendientes(prev => [
+      ...prev,
+      {
+        _key: Date.now(),
+        area_id: Number(modalAreaId),
+        areaNombre,
+        operador_id: Number(operadorId),
+        opNombre,
+        proceso: proceso.trim(),
+        solicitado_por: solicitadoPor.trim() || null,
+        inicio,
+        fin,
+      },
+    ]);
+    // Limpiar solo los campos que cambian entre filas; mantener área y operador
+    setProceso(""); setSolicitadoPor(""); setInicio(""); setFin("");
+    setErrores({});
+  };
+
   // ── Cerrar formulario y limpiar ─────────────────────────────────────────────
   const cerrarFormulario = () => {
     setMostrarFormulario(false);
     setModalAreaId(""); setOperadorId(""); setProceso(""); setSolicitadoPor("");
     setInicio(""); setFin(""); setErrores({});
+    setFilasPendientes([]);
   };
 
   const abrirFormulario = () => {
@@ -107,30 +147,33 @@ const ReportesTrabajoDiario = () => {
     setMostrarFormulario(true);
   };
 
-  // ── Agregar reporte ─────────────────────────────────────────────────────────
-  const agregarReporte = async () => {
-    if (!validar()) return;
+  // ── Guardar todas las filas pendientes ──────────────────────────────────────
+  const guardarTodos = async () => {
+    if (filasPendientes.length === 0) return;
     setGuardando(true);
     setError("");
     try {
-      const res = await fetch(buildApiUrl("/api/reportesTrabajo"), {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          area_id: Number(modalAreaId),
-          operador_id: Number(operadorId),
-          proceso: proceso.trim(),
-          solicitado_por: solicitadoPor.trim() || null,
-          inicio,
-          fin,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al guardar");
-      // Recargar tabla si el área del registro coincide con el área visible
-      if (String(modalAreaId) === String(areaId)) {
-        setReportes(prev => [data, ...prev]);
-      }
+      const resultados = await Promise.all(
+        filasPendientes.map(f =>
+          fetch(buildApiUrl("/api/reportesTrabajo"), {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              area_id: f.area_id,
+              operador_id: f.operador_id,
+              proceso: f.proceso,
+              solicitado_por: f.solicitado_por,
+              inicio: f.inicio,
+              fin: f.fin,
+            }),
+          }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+        )
+      );
+      const fallidos = resultados.filter(r => !r.ok);
+      if (fallidos.length > 0) throw new Error(fallidos[0].data?.error || "Error al guardar uno o más registros");
+      // Agregar a la tabla los que coincidan con el área visible
+      const nuevos = resultados.map(r => r.data).filter(d => String(d.area_id) === String(areaId));
+      if (nuevos.length > 0) setReportes(prev => [...nuevos.reverse(), ...prev]);
       cerrarFormulario();
     } catch (e) {
       setError(e.message);
@@ -181,12 +224,12 @@ const ReportesTrabajoDiario = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-6">
 
-        {/* ── Selector de área (desplegable) ── */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        {/* ── Selectores: Área + Operador ── */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
           <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Área de trabajo:</label>
           <select
             value={areaId}
-            onChange={e => { setAreaId(e.target.value); setBusqueda(""); }}
+            onChange={e => { setAreaId(e.target.value); setFiltroOperadorId(""); setBusqueda(""); }}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[200px]"
           >
             <option value="">-- Seleccionar área --</option>
@@ -194,6 +237,22 @@ const ReportesTrabajoDiario = () => {
               <option key={a.id} value={a.id}>{a.nombre}</option>
             ))}
           </select>
+
+          {areaId && (
+            <>
+              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Operador:</label>
+              <select
+                value={filtroOperadorId}
+                onChange={e => setFiltroOperadorId(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[200px]"
+              >
+                <option value="">Todos los operadores</option>
+                {operadoresDelArea.map(o => (
+                  <option key={o.id} value={o.id}>{o.nombre}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
 
         {/* ── Error general ── */}
@@ -304,145 +363,183 @@ const ReportesTrabajoDiario = () => {
         )}
       </div>
 
-      {/* ── Modal: Agregar registro ── */}
+      {/* ── Modal: Agregar registros ── */}
       {mostrarFormulario && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={cerrarFormulario}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cerrarFormulario} />
           {/* Panel */}
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 p-6 z-10">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 z-10 flex flex-col max-h-[90vh]">
 
-            {/* Encabezado */}
-            <div className="flex items-center justify-between mb-5">
+            {/* Encabezado fijo */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">Agregar registro</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Fecha: {hoy}</p>
+                <h2 className="text-lg font-bold text-gray-800">Agregar registros</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Llena los campos y pulsa <span className="font-semibold text-blue-600">Añadir a la lista</span>. Al terminar pulsa <span className="font-semibold text-green-600">Guardar todos</span>.</p>
               </div>
-              <button
-                onClick={cerrarFormulario}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-              >
+              <button onClick={cerrarFormulario} className="text-gray-400 hover:text-gray-600 p-1 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Cuerpo scrolleable */}
+            <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
 
-              {/* Área */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Área <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className={inputClass("modalAreaId")}
-                  value={modalAreaId}
-                  onChange={e => { setModalAreaId(e.target.value); setOperadorId(""); setErrores(p => ({ ...p, modalAreaId: "", operadorId: "" })); }}
-                >
-                  <option value="">-- Seleccionar área --</option>
-                  {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                </select>
-                {errores.modalAreaId && <p className="text-red-500 text-xs mt-1">{errores.modalAreaId}</p>}
-              </div>
+              {/* Formulario nueva fila */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
 
-              {/* Operador */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Operador <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className={inputClass("operadorId")}
-                  value={operadorId}
-                  onChange={e => { setOperadorId(e.target.value); setErrores(p => ({ ...p, operadorId: "" })); }}
-                  disabled={operadoresFiltrados.length === 0}
-                >
-                  <option value="">
-                    {operadoresFiltrados.length === 0 ? "Sin operadores en esta área" : "-- Seleccionar operador --"}
-                  </option>
-                  {operadoresFiltrados.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                </select>
-                {errores.operadorId && <p className="text-red-500 text-xs mt-1">{errores.operadorId}</p>}
-              </div>
-
-              {/* Proceso */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Proceso <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  className={inputClass("proceso")}
-                  value={proceso}
-                  onChange={e => { setProceso(e.target.value); setErrores(p => ({ ...p, proceso: "" })); }}
-                  placeholder="Descripción del proceso"
-                />
-                {errores.proceso && <p className="text-red-500 text-xs mt-1">{errores.proceso}</p>}
-              </div>
-
-              {/* Solicitado por */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Solicitado por</label>
-                <input
-                  type="text"
-                  className={inputClass("solicitadoPor")}
-                  value={solicitadoPor}
-                  onChange={e => setSolicitadoPor(e.target.value)}
-                  placeholder="Quién lo solicitó (opcional)"
-                />
-              </div>
-
-              {/* Horas */}
-              <div className="grid grid-cols-2 gap-4">
+                {/* Área */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Hora inicio <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    className={inputClass("inicio")}
-                    value={inicio}
-                    onChange={e => { setInicio(e.target.value); setErrores(p => ({ ...p, inicio: "", fin: "" })); }}
-                  />
-                  {errores.inicio && <p className="text-red-500 text-xs mt-1">{errores.inicio}</p>}
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Área <span className="text-red-500">*</span></label>
+                  <select
+                    className={inputClass("modalAreaId")}
+                    value={modalAreaId}
+                    onChange={e => { setModalAreaId(e.target.value); setOperadorId(""); setErrores(p => ({ ...p, modalAreaId: "", operadorId: "" })); }}
+                  >
+                    <option value="">-- Seleccionar área --</option>
+                    {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                  </select>
+                  {errores.modalAreaId && <p className="text-red-500 text-xs mt-1">{errores.modalAreaId}</p>}
                 </div>
+
+                {/* Operador */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Hora final <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Operador <span className="text-red-500">*</span></label>
+                  <select
+                    className={inputClass("operadorId")}
+                    value={operadorId}
+                    onChange={e => { setOperadorId(e.target.value); setErrores(p => ({ ...p, operadorId: "" })); }}
+                    disabled={operadoresFiltrados.length === 0}
+                  >
+                    <option value="">{operadoresFiltrados.length === 0 ? "Sin operadores en esta área" : "-- Seleccionar operador --"}</option>
+                    {operadoresFiltrados.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                  </select>
+                  {errores.operadorId && <p className="text-red-500 text-xs mt-1">{errores.operadorId}</p>}
+                </div>
+
+                {/* Proceso */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Proceso <span className="text-red-500">*</span></label>
                   <input
-                    type="time"
-                    className={inputClass("fin")}
-                    value={fin}
-                    onChange={e => { setFin(e.target.value); setErrores(p => ({ ...p, fin: "" })); }}
+                    type="text"
+                    className={inputClass("proceso")}
+                    value={proceso}
+                    onChange={e => { setProceso(e.target.value); setErrores(p => ({ ...p, proceso: "" })); }}
+                    placeholder="Descripción del proceso"
+                    onKeyDown={e => e.key === "Enter" && agregarALista()}
                   />
-                  {errores.fin && <p className="text-red-500 text-xs mt-1">{errores.fin}</p>}
+                  {errores.proceso && <p className="text-red-500 text-xs mt-1">{errores.proceso}</p>}
+                </div>
+
+                {/* Solicitado por */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Solicitado por</label>
+                  <input
+                    type="text"
+                    className={inputClass("solicitadoPor")}
+                    value={solicitadoPor}
+                    onChange={e => setSolicitadoPor(e.target.value)}
+                    placeholder="Quién lo solicitó (opcional)"
+                  />
+                </div>
+
+                {/* Horas + botón añadir */}
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Hora inicio <span className="text-red-500">*</span></label>
+                    <input
+                      type="time"
+                      className={inputClass("inicio")}
+                      value={inicio}
+                      onChange={e => { setInicio(e.target.value); setErrores(p => ({ ...p, inicio: "", fin: "" })); }}
+                    />
+                    {errores.inicio && <p className="text-red-500 text-xs mt-1">{errores.inicio}</p>}
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Hora final <span className="text-red-500">*</span></label>
+                    <input
+                      type="time"
+                      className={inputClass("fin")}
+                      value={fin}
+                      onChange={e => { setFin(e.target.value); setErrores(p => ({ ...p, fin: "" })); }}
+                    />
+                    {errores.fin && <p className="text-red-500 text-xs mt-1">{errores.fin}</p>}
+                  </div>
+                  <button
+                    onClick={agregarALista}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Añadir a la lista
+                  </button>
                 </div>
               </div>
+
+              {/* Lista de filas pendientes */}
+              {filasPendientes.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Pendientes de guardar ({filasPendientes.length})
+                  </p>
+                  <div className="space-y-2">
+                    {filasPendientes.map((f, idx) => (
+                      <div key={f._key} className="flex items-start gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-xs font-bold flex items-center justify-center mt-0.5">{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            <span className="font-semibold text-gray-800">{f.areaNombre}</span>
+                            <span className="text-gray-500">·</span>
+                            <span className="text-gray-700">{f.opNombre}</span>
+                            <span className="text-gray-500">·</span>
+                            <span className="text-gray-600">{f.proceso}</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {f.inicio} – {f.fin}
+                            {f.solicitado_por && <span className="ml-2 text-gray-400">Solicitado por: {f.solicitado_por}</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setFilasPendientes(prev => prev.filter(r => r._key !== f._key))}
+                          className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error modal */}
+              {error && (
+                <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>
+              )}
             </div>
 
-            {/* Error modal */}
-            {error && (
-              <div className="mt-4 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>
-            )}
-
-            {/* Botones */}
-            <div className="flex gap-3 mt-6">
+            {/* Pie fijo */}
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
               <button
                 onClick={cerrarFormulario}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={agregarReporte}
-                disabled={guardando}
-                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+                onClick={guardarTodos}
+                disabled={guardando || filasPendientes.length === 0}
+                className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors"
               >
-                {guardando ? "Guardando..." : "Guardar registro"}
+                {guardando
+                  ? "Guardando..."
+                  : filasPendientes.length === 0
+                    ? "Añade registros a la lista"
+                    : `Guardar ${filasPendientes.length} registro${filasPendientes.length !== 1 ? "s" : ""}`}
               </button>
             </div>
           </div>
