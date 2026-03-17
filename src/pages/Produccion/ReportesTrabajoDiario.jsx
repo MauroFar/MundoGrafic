@@ -131,7 +131,8 @@ const ReportesTrabajoDiario = () => {
       },
     ]);
     // Limpiar solo los campos que cambian entre filas; mantener área y operador
-    setProceso(""); setSolicitadoPor(""); setInicio(""); setFin("");
+    // La hora de inicio del siguiente proceso se pre-llena con la hora final del anterior
+    setProceso(""); setSolicitadoPor(""); setInicio(fin); setFin("");
     setErrores({});
   };
 
@@ -145,6 +146,13 @@ const ReportesTrabajoDiario = () => {
 
   const abrirFormulario = () => {
     setModalAreaId(areaId);
+    // Pre-llenar inicio con la hora final del último proceso guardado en el área
+    const ultimoFin = reportes
+      .map(r => r.fin)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || "";
+    setInicio(ultimoFin);
     setMostrarFormulario(true);
   };
 
