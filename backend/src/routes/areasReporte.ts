@@ -8,7 +8,7 @@ export default (client: any) => {
   router.get("/", authRequired(), async (req: any, res: any) => {
     try {
       const result = await client.query(
-        "SELECT id, nombre, activo FROM areas_reporte ORDER BY nombre ASC",
+        "SELECT id, nombre, activo FROM areas_reporte ORDER BY id ASC",
       );
       res.json(result.rows);
     } catch (error: any) {
