@@ -70,11 +70,9 @@ export default (client: any) => {
         [req.params.id],
       );
       if (parseInt(check.rows[0].count) > 0) {
-        return res
-          .status(400)
-          .json({
-            error: "No se puede eliminar: el área tiene reportes asociados",
-          });
+        return res.status(400).json({
+          error: "No se puede eliminar: el área tiene reportes asociados",
+        });
       }
       await client.query("DELETE FROM areas_reporte WHERE id = $1", [
         req.params.id,
