@@ -42,6 +42,13 @@ const ReportesTrabajoDiario = () => {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
+  // Modal editar
+  const [modalEditar, setModalEditar] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [editForm, setEditForm] = useState({ operador_id: "", proceso: "", solicitado_por: "", inicio: "", fin: "" });
+  const [editErrores, setEditErrores] = useState({});
+  const [guardandoEdit, setGuardandoEdit] = useState(false);
+
   // ── Cargar catálogos al montar ──────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
@@ -174,6 +181,7 @@ const ReportesTrabajoDiario = () => {
               solicitado_por: f.solicitado_por,
               inicio: f.inicio,
               fin: f.fin,
+              fecha: fechaFiltro || hoy,
             }),
           }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         )
@@ -189,6 +197,59 @@ const ReportesTrabajoDiario = () => {
     } finally {
       setGuardando(false);
     }
+  };
+
+  // ── Editar registro ────────────────────────────────────────────────────────
+  const abrirEditar = (r) => {
+    setEditando(r);
+    setEditForm({
+      operador_id: String(r.operador_id),
+      proceso: r.proceso,
+      solicitado_por: r.solicitado_por || "",
+      inicio: r.inicio,
+      fin: r.fin,
+    });
+    setEditErrores({});
+    setModalEditar(true);
+  };
+  const cerrarEditar = () => { setModalEditar(false); setEditando(null); };
+  const guardarEdicion = async () => {
+    const e = {};
+    if (!editForm.operador_id) e.operador_id = "Requerido";
+    if (!editForm.proceso.trim()) e.proceso = "Requerido";
+    if (!editForm.inicio) e.inicio = "Requerido";
+    if (!editForm.fin) e.fin = "Requerido";
+    if (editForm.inicio && editForm.fin && editForm.fin <= editForm.inicio) e.fin = "Debe ser mayor al inicio";
+    if (Object.keys(e).length > 0) return setEditErrores(e);
+    setGuardandoEdit(true);
+    try {
+      const res = await fetch(buildApiUrl(`/api/reportesTrabajo/${editando.id}`), {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          area_id: editando.area_id,
+          operador_id: editForm.operador_id,
+          proceso: editForm.proceso.trim(),
+          solicitado_por: editForm.solicitado_por.trim() || null,
+          inicio: editForm.inicio,
+          fin: editForm.fin,
+          fecha: editando.fecha,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return setEditErrores({ general: data.error });
+      setReportes(prev => prev.map(r => r.id === editando.id ? { ...r, ...data } : r));
+      cerrarEditar();
+    } catch { setEditErrores({ general: "Error de conexión" }); }
+    finally { setGuardandoEdit(false); }
+  };
+  const eliminarReporte = async (id) => {
+    if (!confirm("¿Eliminar este registro?")) return;
+    try {
+      const res = await fetch(buildApiUrl(`/api/reportesTrabajo/${id}`), { method: "DELETE", headers: authHeaders() });
+      if (!res.ok) { const d = await res.json(); return alert(d.error); }
+      setReportes(prev => prev.filter(r => r.id !== id));
+    } catch { alert("Error al eliminar"); }
   };
 
   const inputClass = (campo) =>
@@ -484,12 +545,13 @@ const ReportesTrabajoDiario = () => {
                     <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora final</th>
+                    <th className="py-3 px-4 text-left font-semibold"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {cargando ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">
+                      <td colSpan={6} className="text-center py-10 text-gray-400">
                         <div className="flex items-center justify-center gap-2">
                           <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -501,7 +563,7 @@ const ReportesTrabajoDiario = () => {
                     </tr>
                   ) : reportesFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-10 text-gray-400">
+                      <td colSpan={6} className="text-center py-10 text-gray-400">
                         No hay registros para esta fecha y área.
                       </td>
                     </tr>
@@ -513,6 +575,20 @@ const ReportesTrabajoDiario = () => {
                         <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
                         <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
                         <td className="py-3 px-4 text-gray-600">{d.fin}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -522,6 +598,76 @@ const ReportesTrabajoDiario = () => {
           </div>
         )}
       </div>
+
+      {/* ── Modal: Editar registro ── */}
+      {modalEditar && editando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cerrarEditar} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 z-10">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-800">Editar registro</h2>
+              <button onClick={cerrarEditar} className="text-gray-400 hover:text-gray-600 p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              {/* Operador */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Operador <span className="text-red-500">*</span></label>
+                <select
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.operador_id ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                  value={editForm.operador_id}
+                  onChange={e => setEditForm(p => ({ ...p, operador_id: e.target.value }))}
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {operadores.filter(o => String(o.area_id) === String(editando.area_id)).map(o => (
+                    <option key={o.id} value={o.id}>{o.nombre}</option>
+                  ))}
+                </select>
+                {editErrores.operador_id && <p className="text-red-500 text-xs mt-1">{editErrores.operador_id}</p>}
+              </div>
+              {/* Proceso */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Proceso <span className="text-red-500">*</span></label>
+                <input type="text" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.proceso ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                  value={editForm.proceso} onChange={e => setEditForm(p => ({ ...p, proceso: e.target.value }))} />
+                {editErrores.proceso && <p className="text-red-500 text-xs mt-1">{editErrores.proceso}</p>}
+              </div>
+              {/* Solicitado por */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Solicitado por</label>
+                <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  value={editForm.solicitado_por} onChange={e => setEditForm(p => ({ ...p, solicitado_por: e.target.value }))} />
+              </div>
+              {/* Horas */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Hora inicio <span className="text-red-500">*</span></label>
+                  <input type="time" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.inicio ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                    value={editForm.inicio} onChange={e => setEditForm(p => ({ ...p, inicio: e.target.value }))} />
+                  {editErrores.inicio && <p className="text-red-500 text-xs mt-1">{editErrores.inicio}</p>}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Hora final <span className="text-red-500">*</span></label>
+                  <input type="time" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.fin ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                    value={editForm.fin} onChange={e => setEditForm(p => ({ ...p, fin: e.target.value }))} />
+                  {editErrores.fin && <p className="text-red-500 text-xs mt-1">{editErrores.fin}</p>}
+                </div>
+              </div>
+              {editErrores.general && <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editErrores.general}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button onClick={cerrarEditar} className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancelar</button>
+              <button onClick={guardarEdicion} disabled={guardandoEdit}
+                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors">
+                {guardandoEdit ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal: Agregar registros ── */}
       {mostrarFormulario && (

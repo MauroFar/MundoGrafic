@@ -122,5 +122,67 @@ export default (client: any) => {
     },
   );
 
+  // PUT /api/reportesTrabajo/:id
+  router.put(
+    "/:id",
+    authRequired(),
+    checkPermission(client, "reportes", "editar"),
+    async (req: any, res: any) => {
+      try {
+        const { area_id, operador_id, proceso, solicitado_por, inicio, fin, fecha } = req.body;
+        if (!area_id || !operador_id || !proceso || !inicio || !fin) {
+          return res.status(400).json({ error: "Campos requeridos: area_id, operador_id, proceso, inicio, fin" });
+        }
+        const update = `
+          UPDATE reportes_trabajo_diario
+          SET area_id=$1, operador_id=$2, proceso=$3, solicitado_por=$4, inicio=$5, fin=$6, fecha=$7
+          WHERE id=$8
+          RETURNING id, area_id, operador_id, proceso, solicitado_por,
+                    to_char(inicio, 'HH24:MI') AS inicio,
+                    to_char(fin,   'HH24:MI') AS fin,
+                    fecha, created_at
+        `;
+        const result = await client.query(update, [
+          area_id, operador_id, proceso, solicitado_por || null,
+          inicio, fin,
+          fecha || new Date().toISOString().split("T")[0],
+          req.params.id,
+        ]);
+        if (result.rows.length === 0) return res.status(404).json({ error: "Registro no encontrado" });
+        const row = result.rows[0];
+        const names = await client.query(
+          `SELECT a.nombre AS area, o.nombre AS operador
+           FROM areas_reporte a, operadores_reporte o
+           WHERE a.id = $1 AND o.id = $2`,
+          [area_id, operador_id],
+        );
+        res.json({ ...row, ...names.rows[0] });
+      } catch (error: any) {
+        console.error("Error al editar reporte:", error);
+        res.status(500).json({ error: "Error al editar reporte" });
+      }
+    },
+  );
+
+  // DELETE /api/reportesTrabajo/:id
+  router.delete(
+    "/:id",
+    authRequired(),
+    checkPermission(client, "reportes", "eliminar"),
+    async (req: any, res: any) => {
+      try {
+        const result = await client.query(
+          "DELETE FROM reportes_trabajo_diario WHERE id=$1 RETURNING id",
+          [req.params.id],
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: "Registro no encontrado" });
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("Error al eliminar reporte:", error);
+        res.status(500).json({ error: "Error al eliminar reporte" });
+      }
+    },
+  );
+
   return router;
 };
