@@ -189,9 +189,19 @@ const ReportesTrabajoDiario = () => {
       );
       const fallidos = resultados.filter(r => !r.ok);
       if (fallidos.length > 0) throw new Error(fallidos[0].data?.error || "Error al guardar uno o más registros");
-      // Agregar a la tabla los que coincidan con el área visible
+      // Agregar a la tabla y reordenar igual que el backend: operador ASC, inicio ASC
       const nuevos = resultados.map(r => r.data).filter(d => String(d.area_id) === String(areaId));
-      if (nuevos.length > 0) setReportes(prev => [...nuevos.reverse(), ...prev]);
+      if (nuevos.length > 0) {
+        setReportes(prev => {
+          const combinado = [...prev, ...nuevos];
+          combinado.sort((a, b) => {
+            const cmpOp = (a.operador || "").localeCompare(b.operador || "");
+            if (cmpOp !== 0) return cmpOp;
+            return (a.inicio || "").localeCompare(b.inicio || "");
+          });
+          return combinado;
+        });
+      }
       cerrarFormulario();
     } catch (e) {
       setError(e.message);
@@ -239,7 +249,15 @@ const ReportesTrabajoDiario = () => {
       });
       const data = await res.json();
       if (!res.ok) return setEditErrores({ general: data.error });
-      setReportes(prev => prev.map(r => r.id === editando.id ? { ...r, ...data } : r));
+      setReportes(prev => {
+        const actualizado = prev.map(r => r.id === editando.id ? { ...r, ...data } : r);
+        actualizado.sort((a, b) => {
+          const cmpOp = (a.operador || "").localeCompare(b.operador || "");
+          if (cmpOp !== 0) return cmpOp;
+          return (a.inicio || "").localeCompare(b.inicio || "");
+        });
+        return actualizado;
+      });
       cerrarEditar();
     } catch { setEditErrores({ general: "Error de conexión" }); }
     finally { setGuardandoEdit(false); }
