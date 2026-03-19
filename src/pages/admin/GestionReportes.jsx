@@ -215,14 +215,14 @@ const GestionReportes = () => {
     const res = await fetch(buildApiUrl("/api/areasReporte"), { method: "POST", headers: hdrs(), body: JSON.stringify({ nombre }) });
     const data = await res.json();
     if (!res.ok) return setErrorAreas(data.error);
-    setAreas(prev => [...prev, data].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    setAreas(prev => [...prev, data]);
   };
   const editarArea = async (id, nombre, activo) => {
     setErrorAreas("");
     const res = await fetch(buildApiUrl(`/api/areasReporte/${id}`), { method: "PUT", headers: hdrs(), body: JSON.stringify({ nombre, activo }) });
     const data = await res.json();
     if (!res.ok) return setErrorAreas(data.error);
-    setAreas(prev => prev.map(a => a.id === id ? data : a).sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    setAreas(prev => prev.map(a => a.id === id ? data : a));
   };
   const eliminarArea = async (id) => {
     if (!confirm("¿Eliminar esta área? También afectará a los operadores asociados.")) return;
