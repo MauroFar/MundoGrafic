@@ -48,7 +48,7 @@ export default (client: any) => {
           JOIN areas_reporte      a ON a.id = r.area_id
           JOIN operadores_reporte o ON o.id = r.operador_id
           ${where}
-          ORDER BY r.fecha DESC, r.created_at DESC, r.id DESC
+          ORDER BY r.fecha DESC, r.inicio ASC
         `;
 
         const result = await client.query(query, params);
