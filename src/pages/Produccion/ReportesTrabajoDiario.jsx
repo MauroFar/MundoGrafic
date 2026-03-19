@@ -153,12 +153,13 @@ const ReportesTrabajoDiario = () => {
 
   const abrirFormulario = () => {
     setModalAreaId(areaId);
-    // Pre-llenar inicio con la hora final del último proceso guardado en el área
+    // Pre-llenar inicio con la hora final del último proceso guardado en el área.
+    // Si no hay registros del día (primer registro), arrange a las 08:00.
     const ultimoFin = reportes
       .map(r => r.fin)
       .filter(Boolean)
       .sort()
-      .at(-1) || "";
+      .at(-1) || "08:00";
     setInicio(ultimoFin);
     setMostrarFormulario(true);
   };
