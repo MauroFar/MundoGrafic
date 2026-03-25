@@ -6,7 +6,8 @@ interface ProductoDigital {
   cod_mg: string;
   cod_cliente: string;
   producto: string;
-  avance: string;
+  avance: string;          // mantenido en BD, oculto en UI
+  numero_salida: string;   // por producto (movido desde información técnica)
   gap_horizontal: string;
   medida_ancho: string;
   gap_vertical: string;
@@ -50,8 +51,6 @@ interface FormularioOrdenDigitalProps {
   setCantidadPorRollo: (value: string) => void;
   observaciones: string;
   setObservaciones: (value: string) => void;
-  numeroSalida: string;
-  setNumeroSalida: (value: string) => void;
   espesor: string;
   setEspesor: (value: string) => void;
 }
@@ -85,8 +84,6 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setCantidadPorRollo,
   observaciones,
   setObservaciones,
-  numeroSalida,
-  setNumeroSalida,
   espesor,
   setEspesor,
 }) => {
@@ -436,6 +433,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
         cod_cliente: '',
         producto: '',
         avance: '',
+        numero_salida: '',
         gap_horizontal: '',
         medida_ancho: '',
         gap_vertical: '',
@@ -506,6 +504,15 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               onChange={(e) => actualizarTamanoPapelGlobal('tamano_papel_largo', e.target.value)}
             />
           </div>
+          {/* Imagen de referencia de Salidas compact—inline entre tamaño de papel y el botón */}
+          <div className="flex flex-col items-center">
+            <img
+              src="/img/salidas.png"
+              alt="Referencia de salidas"
+              className="h-12 w-auto rounded shadow-sm object-contain"
+            />
+            <span className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">Ref. salidas (1-4)</span>
+          </div>
           <button
             type="button"
             onClick={agregarProducto}
@@ -523,13 +530,13 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Cod MG</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Cod Cliente</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Producto</th>
-                <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Avance (mm)</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Gap Horizontal (mm)</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Medida Ancho (mm)</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Gap Vertical (mm)</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Medida Alto (mm)</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Cavidad</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Metros Impresos</th>
+                <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Nº Salida</th>
                 <th className="px-2 py-2 text-xs font-semibold text-gray-700 border border-gray-300">Acciones</th>
               </tr>
             </thead>
@@ -590,14 +597,6 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                       <input
                         type="text"
                         className="w-20 px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={producto.avance}
-                        onChange={(e) => actualizarProducto(index, 'avance', e.target.value)}
-                      />
-                    </td>
-                    <td className="px-2 py-2 border border-gray-300">
-                      <input
-                        type="text"
-                        className="w-20 px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         value={producto.gap_horizontal}
                         onChange={(e) => actualizarProducto(index, 'gap_horizontal', e.target.value)}
                       />
@@ -640,6 +639,16 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                         className="w-24 px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         value={producto.metros_impresos}
                         onChange={(e) => actualizarProducto(index, 'metros_impresos', e.target.value)}
+                      />
+                    </td>
+                    <td className="px-2 py-2 border border-gray-300">
+                      <input
+                        type="text"
+                        className="w-16 px-1 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+                        value={producto.numero_salida || ''}
+                        onChange={(e) => actualizarProducto(index, 'numero_salida', e.target.value)}
+                        placeholder="1-4"
+                        maxLength={1}
                       />
                     </td>
                     <td className="px-2 py-2 border border-gray-300 text-center">
@@ -983,32 +992,6 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             />
           </div>
 
-          {/* Número de Salida */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Número de Salida</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={numeroSalida}
-              onChange={(e) => setNumeroSalida(e.target.value)}
-              placeholder="1, 2, 3 o 4"
-              maxLength={1}
-            />
-          </div>
-        </div>
-
-        {/* Imagen de referencia de Salidas */}
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2 text-center">Referencia de Salidas</label>
-          <div className="flex justify-center">
-            <img 
-              src="/img/salidas.png" 
-              alt="Referencia de salidas" 
-              className="max-w-full h-auto rounded shadow-sm"
-              style={{ maxHeight: '120px' }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 text-center mt-2">Ingrese el número de salida (1, 2, 3 o 4) según la imagen</p>
         </div>
 
         {/* Observaciones */}

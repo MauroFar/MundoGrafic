@@ -40,6 +40,8 @@ interface OrdenData {
   facturado?: string;
   // Otros campos generales
   estado?: string;
+  estado_offset_key?: string;
+  estado_digital_key?: string;
   notas_observaciones?: string;
   // Puedes agregar más campos según lo que devuelva tu backend
   detalle?: any;
@@ -171,7 +173,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [terminadosEspeciales, setTerminadosEspeciales] = useState<string>('');
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
-  const [numeroSalida, setNumeroSalida] = useState<string>('');
   const [espesorDigital, setEspesorDigital] = useState<string>('');
 
   // Función para calcular el total de pliegos
@@ -516,8 +517,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
    const productoSeleccionado = location.state && location.state.producto;
    if (ordenData) {
     if (!productoSeleccionado) {
-      setConcepto(ordenData.concepto || '');
-      setCantidad(ordenData.cantidad || '');
+      // concepto y cantidad ahora vienen del primer producto de la lista (productos_offset para offset)
+      const primerProductoOffset = ordenData.detalle?.productos_offset?.[0];
+      setConcepto(primerProductoOffset?.concepto || ordenData.concepto || '');
+      setCantidad(primerProductoOffset?.cantidad ?? ordenData.cantidad ?? '');
     }
     
     // SIEMPRE sincronizar campos técnicos (sin importar si hay producto seleccionado)
@@ -541,7 +544,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
        
       // Sincronizar campos comunes para ambos tipos
       setPrensaSeleccionada(ordenData.detalle?.prensa_seleccionada || '');
-      setNumeroSalida(ordenData.detalle?.numero_salida || '');
       
       // Sincronizar campos específicos de OFFSET
       if (ordenData.tipo_orden === 'offset' || !ordenData.tipo_orden) {
@@ -628,34 +630,39 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
     
     // Sincronizar campos de Responsables del Proceso
-    console.log('🔄 Sincronizando Responsables del Proceso:', {
-      vendedor: ordenData.vendedor,
-      preprensa: ordenData.preprensa,
-      prensa: ordenData.prensa,
-      terminados: ordenData.terminados,
-      facturado: ordenData.facturado,
-      laminado_barnizado: ordenData.laminado_barnizado,
-      troquelado: ordenData.troquelado,
-      liberacion_producto: ordenData.liberacion_producto
+    // Ahora los responsables vienen del detalle (no de orden_trabajo directamente)
+    const detalleResponsables = ordenData.detalle || {};
+    console.log('🔄 Sincronizando Responsables del Proceso desde detalle:', {
+      vendedor: detalleResponsables.vendedor,
+      preprensa: detalleResponsables.preprensa,
+      prensa: detalleResponsables.prensa,
+      terminados: detalleResponsables.terminados,
+      facturado: detalleResponsables.facturado,
+      laminado_barnizado: detalleResponsables.laminado_barnizado,
+      troquelado: detalleResponsables.troquelado,
+      liberacion_producto: detalleResponsables.liberacion_producto
     });
     
-    setVendedor(ordenData.vendedor || '');
-    setPreprensa(ordenData.preprensa || '');
-    setPrensa(ordenData.prensa || '');
-    setTerminados(ordenData.terminados || '');
-    setFacturado(ordenData.facturado || '');
+    setVendedor(detalleResponsables.vendedor || '');
+    setPreprensa(detalleResponsables.preprensa || '');
+    setPrensa(detalleResponsables.prensa || '');
+    setTerminados(detalleResponsables.terminados || '');
+    setFacturado(detalleResponsables.facturado || '');
     
     // Sincronizar cantidades finales de cada responsable
     
     // Sincronizar campos adicionales para orden digital
     if (ordenData.tipo_orden === 'digital') {
-      setLaminadoBarnizado(ordenData.laminado_barnizado || '');
-      setTroquelado(ordenData.troquelado || '');
-      setLiberacionProducto(ordenData.liberacion_producto || '');
+      setLaminadoBarnizado(detalleResponsables.laminado_barnizado || '');
+      setTroquelado(detalleResponsables.troquelado || '');
+      setLiberacionProducto(detalleResponsables.liberacion_producto || '');
     }
     
-    // Sincronizar otros campos generales
-    setEstado(ordenData.estado || 'pendiente');
+    // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
+    const estadoActual = ordenData.tipo_orden === 'digital'
+      ? (ordenData.estado_digital_key || 'en_preprensa')
+      : (ordenData.estado_offset_key || 'pendiente');
+    setEstado(estadoActual);
     setNotasObservaciones(ordenData.notas_observaciones || '');
     
     // Mapear fecha de entrega correctamente para el input tipo date
@@ -880,7 +887,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         terminado_etiqueta: terminadoEtiqueta,
         terminados_especiales: terminadosEspeciales,
         cantidad_por_rollo: cantidadPorRollo,
-        numero_salida: numeroSalida,
         observaciones: observacionesDigital
         ,
         espesor: espesorDigital
@@ -1028,7 +1034,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
             terminado_etiqueta: terminadoEtiqueta,
             terminados_especiales: terminadosEspeciales,
             cantidad_por_rollo: cantidadPorRollo,
-            numero_salida: numeroSalida,
             observaciones: observacionesDigital,
             espesor: espesorDigital
           } : {
@@ -1158,7 +1163,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
           impresion: impresionDigital,
           observaciones: observacionesDigital,
           prensa_seleccionada: prensaSeleccionada,
-          numero_salida: numeroSalida,
           adherencia: adherencia,
           lote_material: loteMaterial,
           lote_produccion: loteProduccion,
@@ -1416,8 +1420,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setCantidadPorRollo={setCantidadPorRollo}
               observaciones={observacionesDigital}
               setObservaciones={setObservacionesDigital}
-              numeroSalida={numeroSalida}
-              setNumeroSalida={setNumeroSalida}
               espesor={espesorDigital}
               setEspesor={setEspesorDigital}
             />
