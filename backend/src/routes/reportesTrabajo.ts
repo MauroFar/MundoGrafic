@@ -129,9 +129,22 @@ export default (client: any) => {
     checkPermission(client, "reportes", "editar"),
     async (req: any, res: any) => {
       try {
-        const { area_id, operador_id, proceso, solicitado_por, inicio, fin, fecha } = req.body;
+        const {
+          area_id,
+          operador_id,
+          proceso,
+          solicitado_por,
+          inicio,
+          fin,
+          fecha,
+        } = req.body;
         if (!area_id || !operador_id || !proceso || !inicio || !fin) {
-          return res.status(400).json({ error: "Campos requeridos: area_id, operador_id, proceso, inicio, fin" });
+          return res
+            .status(400)
+            .json({
+              error:
+                "Campos requeridos: area_id, operador_id, proceso, inicio, fin",
+            });
         }
         const update = `
           UPDATE reportes_trabajo_diario
@@ -143,12 +156,17 @@ export default (client: any) => {
                     fecha, created_at
         `;
         const result = await client.query(update, [
-          area_id, operador_id, proceso, solicitado_por || null,
-          inicio, fin,
+          area_id,
+          operador_id,
+          proceso,
+          solicitado_por || null,
+          inicio,
+          fin,
           fecha || new Date().toISOString().split("T")[0],
           req.params.id,
         ]);
-        if (result.rows.length === 0) return res.status(404).json({ error: "Registro no encontrado" });
+        if (result.rows.length === 0)
+          return res.status(404).json({ error: "Registro no encontrado" });
         const row = result.rows[0];
         const names = await client.query(
           `SELECT a.nombre AS area, o.nombre AS operador
@@ -175,7 +193,8 @@ export default (client: any) => {
           "DELETE FROM reportes_trabajo_diario WHERE id=$1 RETURNING id",
           [req.params.id],
         );
-        if (result.rows.length === 0) return res.status(404).json({ error: "Registro no encontrado" });
+        if (result.rows.length === 0)
+          return res.status(404).json({ error: "Registro no encontrado" });
         res.json({ ok: true });
       } catch (error: any) {
         console.error("Error al eliminar reporte:", error);
