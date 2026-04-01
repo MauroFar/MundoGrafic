@@ -2,6 +2,12 @@ import express from "express";
 const router = express.Router();
 import authRequired from "../middleware/auth";
 import checkAdminRole from "../middleware/checkAdminRole";
+import {
+  ADMIN_PANEL_MODULES,
+  getCrudModuleIds,
+  getCrudModules,
+  isValidCrudModule,
+} from "../config/permissionCatalog";
 
 export default (client: any) => {
   const router = express.Router();
@@ -26,15 +32,7 @@ export default (client: any) => {
           );
           return res.json({
             esAdmin: true,
-            modulos: [
-              "usuarios",
-              "roles",
-              "areas",
-              "catalogo-procesos",
-              "tipos-trabajo",
-              "certificados",
-              "gestion-reportes",
-            ],
+            modulos: ADMIN_PANEL_MODULES,
           });
         }
 
@@ -58,15 +56,7 @@ export default (client: any) => {
           // Admin ve todos los módulos administrativos
           return res.json({
             esAdmin: true,
-            modulos: [
-              "usuarios",
-              "roles",
-              "areas",
-              "catalogo-procesos",
-              "tipos-trabajo",
-              "certificados",
-              "gestion-reportes",
-            ],
+            modulos: ADMIN_PANEL_MODULES,
           });
         }
 
@@ -88,6 +78,16 @@ export default (client: any) => {
         console.error("❌ [Permisos] Error obteniendo módulos:", error);
         res.status(500).json({ error: "Error obteniendo módulos disponibles" });
       }
+    },
+  );
+
+  // Catalogo de modulos CRUD disponibles para administrar permisos
+  router.get(
+    "/catalogo",
+    authRequired(),
+    checkAdminRole(client),
+    async (_req: any, res: any) => {
+      return res.json(getCrudModules());
     },
   );
 
@@ -128,16 +128,7 @@ export default (client: any) => {
 
         // Si es admin, dar todos los permisos
         if (req.user?.rol === "admin") {
-          const modulos = [
-            "clientes",
-            "cotizaciones",
-            "ordenes_trabajo",
-            "produccion",
-            "inventario",
-            "usuarios",
-            "reportes",
-            "certificados",
-          ];
+          const modulos = getCrudModuleIds();
           const permisosAdmin = modulos.map((modulo) => ({
             modulo,
             puede_crear: true,
@@ -167,6 +158,21 @@ export default (client: any) => {
       const { permisos } = req.body; // Array de { modulo, puede_crear, puede_leer, puede_editar, puede_eliminar }
 
       try {
+        if (!Array.isArray(permisos)) {
+          return res.status(400).json({ error: "Formato de permisos invalido" });
+        }
+
+        const invalidModules = permisos
+          .map((permiso: any) => permiso?.modulo)
+          .filter((modulo: string) => !isValidCrudModule(modulo));
+
+        if (invalidModules.length > 0) {
+          return res.status(400).json({
+            error: "Se recibieron modulos no permitidos",
+            modulos_invalidos: Array.from(new Set(invalidModules)),
+          });
+        }
+
         await client.query("BEGIN");
 
         // Eliminar permisos anteriores del usuario

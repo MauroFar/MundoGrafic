@@ -5,18 +5,8 @@ const PermisosModal = ({ usuario, onClose, onSave }) => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const token = localStorage.getItem('token');
 
-  const modulos = [
-    { id: 'clientes', nombre: 'Clientes', descripcion: 'Gestión de clientes' },
-    { id: 'cotizaciones', nombre: 'Cotizaciones', descripcion: 'Crear y gestionar cotizaciones' },
-    { id: 'ordenes_trabajo', nombre: 'Órdenes de Trabajo', descripcion: 'Gestión de órdenes de trabajo' },
-    { id: 'produccion', nombre: 'Producción', descripcion: 'Módulos de producción' },
-    { id: 'inventario', nombre: 'Inventario', descripcion: 'Control de inventario' },
-    { id: 'usuarios', nombre: 'Usuarios', descripcion: 'Gestión de usuarios (solo admin)' },
-    { id: 'reportes', nombre: 'Reportes', descripcion: 'Ver y generar reportes' },
-    { id: 'certificados', nombre: 'Certificados', descripcion: 'Gestión de certificados de calidad' }
-  ];
-
   const [permisos, setPermisos] = useState({});
+  const [modulos, setModulos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -26,16 +16,28 @@ const PermisosModal = ({ usuario, onClose, onSave }) => {
 
   const cargarPermisos = async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/permisos/${usuario.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const [catalogoResponse, permisosResponse] = await Promise.all([
+        fetch(`${apiUrl}/api/permisos/catalogo`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${apiUrl}/api/permisos/${usuario.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (catalogoResponse.status === 403 || permisosResponse.status === 403) {
+        onClose();
+        return;
+      }
+
+      if (catalogoResponse.ok && permisosResponse.ok) {
+        const catalogo = await catalogoResponse.json();
+        const data = await permisosResponse.json();
+        setModulos(catalogo);
         const permisosMap = {};
         
         // Inicializar todos los módulos con permisos en false
-        modulos.forEach(mod => {
+        catalogo.forEach(mod => {
           permisosMap[mod.id] = {
             puede_crear: false,
             puede_leer: false,

@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import authRequired from "../middleware/auth";
+import checkPermission from "../middleware/checkPermission";
 
 const createCliente = (client: any) => {
   // Agregar un middleware de logging
@@ -16,7 +17,7 @@ const createCliente = (client: any) => {
   });
 
   // ✅ Ruta para obtener todos los clientes
-  router.get("/", authRequired(), async (req: any, res: any) => {
+  router.get("/", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
     try {
       console.log('🔍 [Clientes API] Iniciando consulta de clientes...');
       const query = `
@@ -80,7 +81,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para obtener un cliente por ID
-  router.get("/:id", authRequired(), async (req: any, res: any) => {
+  router.get("/:id", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
     const { id } = req.params;
     try {
       console.log(`🔍 [Clientes API] Obteniendo cliente con ID: ${id}`);
@@ -142,7 +143,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para buscar clientes
-  router.get("/buscar", authRequired(), async (req: any, res: any) => {
+  router.get("/buscar", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
     const { q } = req.query;
     // Validar: al menos 2 caracteres y al menos una letra
     if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
@@ -164,7 +165,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para crear un cliente
-  router.post("/", authRequired(), async (req: any, res: any) => {
+  router.post("/", authRequired(), checkPermission(client, 'clientes', 'crear'), async (req: any, res: any) => {
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
     
@@ -267,7 +268,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para actualizar un cliente
-  router.put("/:id", authRequired(), async (req: any, res: any) => {
+  router.put("/:id", authRequired(), checkPermission(client, 'clientes', 'editar'), async (req: any, res: any) => {
     const { id } = req.params;
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
@@ -347,7 +348,7 @@ const createCliente = (client: any) => {
   });
 
   // Ruta para eliminar un cliente
-  router.delete("/:id", authRequired(), async (req: any, res: any) => {
+  router.delete("/:id", authRequired(), checkPermission(client, 'clientes', 'eliminar'), async (req: any, res: any) => {
     const { id } = req.params;
     
     try {

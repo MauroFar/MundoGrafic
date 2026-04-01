@@ -1,8 +1,10 @@
 import React from 'react';
 import { FaLock, FaTimes, FaUserShield } from 'react-icons/fa';
 
-const ModalSinPermisos = ({ isOpen, onClose, accion = 'realizar esta acción', modulo = '' }) => {
+const ModalSinPermisos = ({ isOpen, onClose, accion = 'realizar esta acción', modulo = '', mensaje = '' }) => {
   if (!isOpen) return null;
+
+  const messageText = mensaje || 'Este usuario no tiene permisos para realizar esta accion. Contacte a su administrador.';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -27,7 +29,7 @@ const ModalSinPermisos = ({ isOpen, onClose, accion = 'realizar esta acción', m
         <div className="mb-6">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-gray-700 text-center font-semibold text-lg">
-              No tienes permisos para modificar datos
+              {messageText}
             </p>
           </div>
 

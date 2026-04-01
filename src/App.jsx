@@ -178,49 +178,49 @@ function App() {
           <Route path="*" element={<PageNotFound />} />
 
           <Route path="/admin/usuarios" element={
-            <PrivateRoute requireAdmin={true}>
+            <PrivateRoute requiredModule="usuarios">
               <GestionUsuarios />
             </PrivateRoute>
           } />
 
           {/* Gestión de Roles */}
           <Route path="/admin/roles" element={
-            <PrivateRoute requireAdmin={true}>
+            <PrivateRoute requiredModule="roles">
               <GestionRoles />
             </PrivateRoute>
           } />
 
           {/* Gestión de Áreas */}
           <Route path="/admin/areas" element={
-            <PrivateRoute allowedRoles={['admin']}>
+            <PrivateRoute requiredModule="areas">
               <GestionAreas />
             </PrivateRoute>
           } />
 
           {/* Catálogo de Procesos */}
           <Route path="/admin/catalogo-procesos" element={
-            <PrivateRoute allowedRoles={['admin']}>
+            <PrivateRoute requiredModule="catalogo-procesos">
               <CatalogoProcesos />
             </PrivateRoute>
           } />
 
           {/* Catálogo de Tipos de Trabajo */}
           <Route path="/admin/tipos-trabajo" element={
-            <PrivateRoute allowedRoles={['admin']}>
+            <PrivateRoute requiredModule="tipos-trabajo">
               <TiposTrabajo />
             </PrivateRoute>
           } />
 
           {/* Gestión de Áreas y Operadores para Reportes */}
           <Route path="/admin/gestion-reportes" element={
-            <PrivateRoute allowedRoles={['admin']}>
+            <PrivateRoute requiredModule="gestion-reportes">
               <GestionReportes />
             </PrivateRoute>
           } />
 
           {/* Administración: placeholder para futuras herramientas (solo admin) */}
           <Route path="/administracion" element={
-            <PrivateRoute allowedRoles={['admin']}>
+            <PrivateRoute requireAnyAdminModule={true}>
               <Administracion />
             </PrivateRoute>
           } />

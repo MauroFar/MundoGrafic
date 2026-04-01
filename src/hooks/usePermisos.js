@@ -64,7 +64,7 @@ export const usePermisos = () => {
   // Funciones con validación y modal usando el contexto global
   const verificarYMostrarError = (modulo, accion, nombreAccion) => {
     if (!tienePermiso(modulo, accion)) {
-      mostrarModalSinPermiso(nombreAccion, modulo);
+      mostrarModalSinPermiso(accion, modulo, '', nombreAccion || 'realizar esta accion');
       return false;
     }
     return true;
