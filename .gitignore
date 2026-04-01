@@ -48,6 +48,7 @@ staging/
 # Ignora backups de base de datos
 backups/
 *.sql
+!backend/migrations/*.sql
 
 # Ignora archivos de imágenes subidas por usuarios (uploads)
 **/uploads/*.png
