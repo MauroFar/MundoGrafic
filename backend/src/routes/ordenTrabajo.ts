@@ -450,7 +450,7 @@ export default (client: any) => {
     checkPermission(client, "ordenes_trabajo", "leer"),
     async (req, res): Promise<void> => {
       try {
-        const { busqueda, fechaDesde, fechaHasta, limite } = req.query;
+        const { busqueda, fechaDesde, fechaHasta, limite, tipo_orden } = req.query;
         let query = `
         SELECT ot.id, ot.numero_orden, ot.nombre_cliente, ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion,
                ot.estado_orden_digital_id, eod.key AS estado_digital_key, eod.titulo AS estado_digital_titulo,
@@ -481,6 +481,18 @@ export default (client: any) => {
           params.push(fechaHasta);
           paramCount++;
         }
+
+        if (tipo_orden) {
+          if (String(tipo_orden).toLowerCase() === "digital") {
+            where.push(`ot.tipo_orden = $${paramCount}`);
+            params.push("digital");
+          } else {
+            where.push(`(ot.tipo_orden IS NULL OR ot.tipo_orden <> $${paramCount})`);
+            params.push("digital");
+          }
+          paramCount++;
+        }
+
         if (where.length > 0) {
           query += " WHERE " + where.join(" AND ");
         }

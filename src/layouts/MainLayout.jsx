@@ -3,6 +3,8 @@ import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 
+const SIDEBAR_VISIBILITY_KEY = 'mg_sidebar_visible';
+
 const MainLayout = () => {
   const location = useLocation();
 
@@ -18,14 +20,15 @@ const MainLayout = () => {
     location.pathname === '/productosEntregados' ||
     location.pathname === '/produccionDiaria';
 
-  const [menuVisible, setMenuVisible] = useState(true);
+  const [menuVisible, setMenuVisible] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_VISIBILITY_KEY);
+    if (saved === null) return true;
+    return saved === 'true';
+  });
 
-  // Restaurar el menú al navegar a una nueva ruta (excepto kanban que lo oculta a propósito)
   useEffect(() => {
-    if (!location.pathname.startsWith('/produccion/kanban')) {
-      setMenuVisible(true);
-    }
-  }, [location.pathname]);
+    localStorage.setItem(SIDEBAR_VISIBILITY_KEY, String(menuVisible));
+  }, [menuVisible]);
 
   useEffect(() => {
     const onToggle = (e) => {

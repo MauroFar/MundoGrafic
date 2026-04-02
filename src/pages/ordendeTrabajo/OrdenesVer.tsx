@@ -22,6 +22,7 @@ interface OrdenTrabajo {
 const OrdenesVer: React.FC = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  const [workflowType, setWorkflowType] = useState<'todos' | 'offset' | 'digital'>('todos');
 
   const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
   const [filtros, setFiltros] = useState({
@@ -177,14 +178,18 @@ const OrdenesVer: React.FC = () => {
     // eslint-disable-next-line
   }, []);
 
-  const cargarOrdenes = async (reset = false) => {
+  const cargarOrdenes = async (reset = false, tipoSeleccionado?: 'todos' | 'offset' | 'digital') => {
     setLoading(true);
     try {
+      const tipo = tipoSeleccionado || workflowType;
       const token = localStorage.getItem("token");
       const queryParams = new URLSearchParams();
       if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
       if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
+      if (tipo !== 'todos') {
+        queryParams.append("tipo_orden", tipo);
+      }
       queryParams.append("limite", LIMITE_POR_PAGINA.toString());
       const url = `${apiUrl}/api/ordenTrabajo/listar?${queryParams}`;
       const response = await fetch(url, {
@@ -233,6 +238,12 @@ const OrdenesVer: React.FC = () => {
     });
     setPagina(1);
     cargarOrdenes(true);
+  };
+
+  const handleWorkflowTypeChange = (tipo: 'todos' | 'offset' | 'digital') => {
+    setWorkflowType(tipo);
+    setPagina(1);
+    cargarOrdenes(true, tipo);
   };
 
   const editarOrden = (id: number) => {
@@ -521,20 +532,46 @@ const OrdenesVer: React.FC = () => {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={limpiarFiltros}
-            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Limpiar Filtros
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Buscar
-          </button>
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleWorkflowTypeChange('todos')}
+              className={`px-3 py-2 rounded-md text-sm ${workflowType === 'todos' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => handleWorkflowTypeChange('offset')}
+              className={`px-3 py-2 rounded-md text-sm ${workflowType === 'offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+            >
+              Offset
+            </button>
+            <button
+              type="button"
+              onClick={() => handleWorkflowTypeChange('digital')}
+              className={`px-3 py-2 rounded-md text-sm ${workflowType === 'digital' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+            >
+              Digital
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Limpiar Filtros
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Buscar
+            </button>
+          </div>
         </div>
       </form>
       <div className="overflow-x-auto">
