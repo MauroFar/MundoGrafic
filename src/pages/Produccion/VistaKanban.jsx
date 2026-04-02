@@ -18,6 +18,8 @@ import OrdenDetalleModal from '../../components/OrdenDetalleModal';
 const VistaKanban = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  const QA_STORAGE_KEY = 'mg.qa.gates.v1';
+  const QA_QUEUE_KEY = 'mg.qa.queue.v1';
 
   // Refs para sincronizar scroll horizontal arriba y abajo
   const scrollTopRef = useRef(null);
@@ -63,7 +65,8 @@ const VistaKanban = () => {
     en_control_calidad: [],
     entregado: []
   });
-  
+  const [ordenesPendientes, setOrdenesPendientes] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [draggedItem, setDraggedItem] = useState(null);
   const [filtroResponsable, setFiltroResponsable] = useState('todos');
@@ -78,9 +81,119 @@ const VistaKanban = () => {
     { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay, aliases: ['en acabados','en empacado'] },
     { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] }
   ]);
-  const [workflowType, setWorkflowType] = useState('offset');
+  const [workflowType, setWorkflowType] = useState('digital');
+  const [avisoKanban, setAvisoKanban] = useState('');
   const [showOrdenModal, setShowOrdenModal] = useState(false);
   const [ordenDetalleModal, setOrdenDetalleModal] = useState(null);
+  const [qaGates, setQaGates] = useState({});
+  const [mostrarPrototipoQA, setMostrarPrototipoQA] = useState(true);
+  const [kanbanDebug, setKanbanDebug] = useState({
+    totalRecibidas: 0,
+    totalFiltradas: 0,
+    workflowType: 'offset',
+    conEstadoDigital: 0,
+    sinEstadoDigital: 0,
+  });
+
+  const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
+
+  const getQaState = (ordenId, etapaId) => {
+    return qaGates[gateKey(ordenId, etapaId)] || null;
+  };
+
+  const saveQaState = (ordenId, etapaId, estado, observacion = '') => {
+    setQaGates((prev) => {
+      const updated = {
+        ...prev,
+        [gateKey(ordenId, etapaId)]: {
+          estado,
+          observacion,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const upsertQaQueue = (orden, etapa) => {
+    try {
+      const raw = localStorage.getItem(QA_QUEUE_KEY);
+      const queue = raw ? JSON.parse(raw) : [];
+      const itemId = `${orden.id}:${etapa.id}`;
+      const nextItem = {
+        id: itemId,
+        ordenId: orden.id,
+        numeroOrden: orden.numero_orden,
+        cliente: orden.nombre_cliente,
+        producto: orden.concepto || '',
+        cantidad: orden.cantidad || '',
+        etapaId: etapa.id,
+        etapaTitulo: etapa.titulo,
+        estado: 'pendiente',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const idx = queue.findIndex((q) => q.id === itemId);
+      if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
+      else queue.unshift(nextItem);
+
+      localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
+      window.dispatchEvent(new Event('qa-queue-updated'));
+    } catch (err) {
+      console.error('No se pudo actualizar cola de calidad', err);
+    }
+  };
+
+  const clearQaState = (ordenId, etapaId) => {
+    setQaGates((prev) => {
+      const updated = { ...prev };
+      delete updated[gateKey(ordenId, etapaId)];
+      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const moverOrdenASiguienteColumna = (orden, columnaActualId) => {
+    const idxActual = columnas.findIndex((c) => c.id === columnaActualId);
+    if (idxActual < 0 || idxActual >= columnas.length - 1) return;
+    const siguiente = columnas[idxActual + 1];
+
+    setOrdenes((prev) => {
+      const origen = (prev[columnaActualId] || []).filter((o) => o.id !== orden.id);
+      const destino = [...(prev[siguiente.id] || []), { ...orden, estado: siguiente.id }];
+      return {
+        ...prev,
+        [columnaActualId]: origen,
+        [siguiente.id]: destino,
+      };
+    });
+
+    clearQaState(orden.id, columnaActualId);
+  };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(QA_STORAGE_KEY);
+      if (raw) setQaGates(JSON.parse(raw));
+    } catch (err) {
+      console.error('No se pudo cargar estado de quality gates', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    const refreshQa = () => {
+      try {
+        const raw = localStorage.getItem(QA_STORAGE_KEY);
+        setQaGates(raw ? JSON.parse(raw) : {});
+      } catch {
+        setQaGates({});
+      }
+    };
+    window.addEventListener('qa-gates-updated', refreshQa);
+    return () => window.removeEventListener('qa-gates-updated', refreshQa);
+  }, []);
 
   useEffect(() => {
     const doLoad = async () => {
@@ -272,11 +385,29 @@ const VistaKanban = () => {
       }, {});
       console.debug('📊 Conteo por tipo_orden recibido:', countsByTipo);
       let ordenesFiltradas = allOrdenes.filter(o => {
-        const tipoOrden = (o.tipo_orden || 'offset').toString().toLowerCase();
-        const keep = tipoOrden === workflowType;
-        if (!keep) console.debug(`⛔ Orden ${o.id} filtrada por tipo_orden='${tipoOrden}' (workflowType='${workflowType}')`);
+        const tipoOrdenRaw = (o.tipo_orden || '').toString().toLowerCase().trim();
+        const esDigitalPorEstado = Boolean(o.estado_digital_key) || Boolean(o.estado_orden_digital_id);
+        const tipoInferido = tipoOrdenRaw === 'digital' || esDigitalPorEstado ? 'digital' : 'offset';
+        const keep = tipoInferido === workflowType;
+        if (!keep) {
+          console.debug(
+            `⛔ Orden ${o.id} filtrada (tipo_raw='${tipoOrdenRaw}', tipo_inferido='${tipoInferido}', workflowType='${workflowType}')`,
+          );
+        }
         return keep;
       });
+
+      // Fallback de seguridad: si el filtro por tipo deja la vista vacia pero hay datos,
+      // mostramos todo para evitar pantalla en blanco y facilitar diagnostico.
+      if (ordenesFiltradas.length === 0 && allOrdenes.length > 0) {
+        ordenesFiltradas = allOrdenes;
+        setAvisoKanban('No hubo coincidencias por tipo/estado; se muestran todas las ordenes temporalmente.');
+      } else {
+        setAvisoKanban('');
+      }
+
+      const conEstadoDigital = allOrdenes.filter(o => Boolean(o.estado_digital_key) || Boolean(o.estado_orden_digital_id)).length;
+      const sinEstadoDigital = allOrdenes.filter(o => ((o.tipo_orden || '').toString().toLowerCase().trim() === 'digital') && !o.estado_digital_key && !o.estado_orden_digital_id).length;
       console.debug(`✅ Órdenes tras filtrado por tipo ('${workflowType}'): ${ordenesFiltradas.length} de ${allOrdenes.length}`);
 
       // Filtrar por número de orden si hay búsqueda activa
@@ -286,6 +417,14 @@ const VistaKanban = () => {
           orden.numero_orden?.toLowerCase().includes(busqueda)
         );
       }
+
+      setKanbanDebug({
+        totalRecibidas: allOrdenes.length,
+        totalFiltradas: ordenesFiltradas.length,
+        workflowType,
+        conEstadoDigital,
+        sinEstadoDigital,
+      });
 
       // Agrupar las órdenes por estado utilizando aliases definidos en columnas
       const normalize = (s) => {
@@ -305,9 +444,18 @@ const VistaKanban = () => {
 
       if (ordenesFiltradas && Array.isArray(ordenesFiltradas)) {
         const unmatched = new Set();
+        const pendientes = [];
+        const estadosSinAsignar = new Set(['pendiente', 'por iniciar', 'sin iniciar', '']);
+
         ordenesFiltradas.forEach(orden => {
           const estadoRaw = String(orden.estado || '');
           const estadoNorm = normalize(estadoRaw);
+
+          if (estadosSinAsignar.has(estadoNorm)) {
+            pendientes.push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
+            return;
+          }
+
           let matched = false;
           for (let i = 0; i < colsToUse.length; i++) {
             const col = colsToUse[i];
@@ -338,12 +486,13 @@ const VistaKanban = () => {
             }
           }
           if (!matched) {
-            // if not matched, put into first column and record the state for debugging
-            const firstCol = colsToUse[0];
-            ordenesAgrupadas[firstCol.id].push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
+            // Fallback: si no coincide con ninguna columna, va a pendientes
+            pendientes.push({ ...orden, responsable_actual: orden.vendedor || 'Sin asignar' });
             unmatched.add(estadoRaw);
           }
         });
+
+        setOrdenesPendientes(pendientes);
         if (unmatched.size > 0) console.warn('⚠️ Estados sin match en Kanban (ir a aliases en workflow):', Array.from(unmatched));
       }
 
@@ -351,11 +500,13 @@ const VistaKanban = () => {
       setOrdenes(ordenesAgrupadas);
     } catch (error) {
       console.error('❌ Error al cargar órdenes:', error);
+      setAvisoKanban('No se pudieron cargar ordenes de Kanban. Revisa token/permisos o endpoint.');
       // Mantener las columnas vacías en caso de error
       const colsToUse = colsParam || columnas;
       const empty = {};
       colsToUse.forEach(c => { empty[c.id] = []; });
       setOrdenes(empty);
+      setOrdenesPendientes([]);
     } finally {
       setLoading(false);
     }
@@ -542,6 +693,13 @@ const VistaKanban = () => {
             <div className="flex items-center gap-2">
               {/* (Sidebar toggle moved to Sidebar component) */}
               <button
+                onClick={() => setMostrarPrototipoQA((v) => !v)}
+                className={`px-3 py-2 rounded-md text-sm ${mostrarPrototipoQA ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                title="Mostrar u ocultar controles de prototipo de calidad"
+              >
+                Prototipo QA: {mostrarPrototipoQA ? 'ON' : 'OFF'}
+              </button>
+              <button
                   onClick={async () => { setWorkflowType('offset'); await refreshWorkflowAndOrders('offset'); }}
                 className={`px-3 py-2 rounded-md text-sm ${workflowType==='offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
               >
@@ -582,6 +740,18 @@ const VistaKanban = () => {
 
       {/* Kanban Board */}
       <div className="pb-6">
+        {avisoKanban && (
+          <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {avisoKanban}
+          </div>
+        )}
+        <div className="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+          Debug Kanban: tipo={kanbanDebug.workflowType} | recibidas={kanbanDebug.totalRecibidas} | mostradas={kanbanDebug.totalFiltradas} | con_estado_digital={kanbanDebug.conEstadoDigital} | sin_estado_digital={kanbanDebug.sinEstadoDigital}
+        </div>
+          <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+            Flujo de validacion (prototipo UI): completar etapa, calidad aprueba o rechaza, y luego se envia al siguiente proceso.
+          </div>
+
         {/* Scrollbar superior sincronizado */}
         <div
           ref={scrollTopRef}
@@ -594,6 +764,55 @@ const VistaKanban = () => {
 
         <div ref={scrollBoardRef} onScroll={handleScrollBoard} className="overflow-x-auto pb-2">
         <div ref={scrollInnerRef} className="flex gap-6" style={{ width: 'max-content' }}>
+
+          {/* Columna fija de Pendientes */}
+          <div className="bg-amber-50 rounded-lg p-2 flex-shrink-0" style={{ minWidth: '220px' }}>
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-amber-200">
+              <FaClock className="h-5 w-5 text-amber-600" />
+              <h3 className="font-semibold text-amber-800">Pendientes</h3>
+              <span className="ml-auto px-2 py-1 text-xs font-medium bg-amber-200 text-amber-800 rounded-full">
+                {ordenesPendientes.length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {ordenesPendientes.map((orden) => (
+                <div
+                  key={`pend-${orden.id}`}
+                  onClick={() => openOrdenModal(orden)}
+                  className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 cursor-pointer hover:shadow-md transition-shadow text-sm`}
+                  style={{ lineHeight: '1.05' }}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-semibold text-gray-900">#{orden.numero_orden}</span>
+                    {orden.fecha_entrega && (
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        getUrgenciaTexto(orden.fecha_entrega) === 'VENCIDA' ? 'bg-red-100 text-red-800' :
+                        getUrgenciaTexto(orden.fecha_entrega) === 'HOY' ? 'bg-orange-100 text-orange-800' :
+                        getUrgenciaTexto(orden.fecha_entrega) === 'MAÑANA' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {getUrgenciaTexto(orden.fecha_entrega)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 truncate">{orden.nombre_cliente}</p>
+                  <p className="text-xs text-gray-600 line-clamp-2">{orden.concepto}</p>
+                  {orden.fecha_entrega && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                      <FaCalendarAlt className="h-3 w-3" />
+                      <span>{new Date(orden.fecha_entrega).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {ordenesPendientes.length === 0 && (
+                <div className="text-center py-6 text-gray-400">
+                  <p className="text-sm">No hay órdenes pendientes</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         {columnas.map((columna) => {
           const IconoColumna = columna.icono;
           const ordenesColumna = ordenes[columna.id] || [];
@@ -627,6 +846,32 @@ const VistaKanban = () => {
                     className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 cursor-move hover:shadow-md transition-shadow text-sm`}
                     style={{ lineHeight: '1.05', cursor: 'pointer' }}
                   >
+                    {(() => {
+                      const gate = getQaState(orden.id, columna.id);
+                      const badgeClass = gate?.estado === 'aprobado'
+                        ? 'bg-green-100 text-green-700'
+                        : gate?.estado === 'rechazado'
+                          ? 'bg-red-100 text-red-700'
+                          : gate?.estado === 'pendiente'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-600';
+                      const badgeText = gate?.estado === 'aprobado'
+                        ? 'Calidad: Aprobado'
+                        : gate?.estado === 'rechazado'
+                          ? 'Calidad: Rechazado'
+                          : gate?.estado === 'pendiente'
+                            ? 'Calidad: Pendiente'
+                            : 'Producción';
+
+                      return (
+                        <div className="mb-1">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}>
+                            {badgeText}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     {/* Header de la tarjeta */}
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">
@@ -682,7 +927,7 @@ const VistaKanban = () => {
 
                     {/* Acciones */}
                     <div className="mt-2 pt-2 border-t border-gray-100">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mb-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); navigate(`/produccion/seguimiento/${orden.id}`); }}
                           className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
@@ -690,6 +935,86 @@ const VistaKanban = () => {
                           Seguir
                         </button>
                       </div>
+
+                      {mostrarPrototipoQA && (() => {
+                        const gate = getQaState(orden.id, columna.id);
+                        const idxActual = columnas.findIndex((c) => c.id === columna.id);
+                        const tieneSiguiente = idxActual >= 0 && idxActual < columnas.length - 1;
+                        const puedeEnviar = gate?.estado === 'aprobado' && tieneSiguiente;
+
+                        return (
+                          <div className="grid grid-cols-1 gap-1">
+                            {!gate && tieneSiguiente && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveQaState(orden.id, columna.id, 'pendiente');
+                                  upsertQaQueue(orden, columna);
+                                }}
+                                className="text-[11px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition-colors"
+                              >
+                                Enviar a calidad
+                              </button>
+                            )}
+
+                            {gate?.estado === 'pendiente' && (
+                              <div className="grid grid-cols-1 gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate('/produccion/control-calidad');
+                                  }}
+                                  className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-1 rounded hover:bg-indigo-200 transition-colors"
+                                >
+                                  Ir a Control de Calidad
+                                </button>
+                              </div>
+                            )}
+
+                            {gate?.estado === 'rechazado' && (
+                              <div className="grid grid-cols-1 gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    saveQaState(orden.id, columna.id, 'pendiente');
+                                    upsertQaQueue(orden, columna);
+                                  }}
+                                  className="text-[11px] bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
+                                >
+                                  Reenviar a calidad
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate('/produccion/control-calidad');
+                                  }}
+                                  className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-1 rounded hover:bg-indigo-200 transition-colors"
+                                >
+                                  Ir a Control de Calidad
+                                </button>
+                              </div>
+                            )}
+
+                            {tieneSiguiente && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!puedeEnviar) return;
+                                  moverOrdenASiguienteColumna(orden, columna.id);
+                                }}
+                                disabled={!puedeEnviar}
+                                className={`text-[11px] px-2 py-1 rounded transition-colors ${
+                                  puedeEnviar
+                                    ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                              >
+                                Enviar al siguiente proceso
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -708,7 +1033,6 @@ const VistaKanban = () => {
         </div>{/* fin scrollBoardRef */}
       </div>
 
-     
     </div>
   );
 };

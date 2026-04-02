@@ -45,11 +45,93 @@ interface OrdenData {
   notas_observaciones?: string;
   // Puedes agregar más campos según lo que devuelva tu backend
   detalle?: any;
+  trazabilidad_proceso?: any;
   telefono?: string;
   email?: string;
   contacto?: string;
   fecha_entrega?: string; // Nuevo campo para la fecha de entrega
 }
+
+type TrazabilidadProcesoItem = {
+  fecha_inicio: string;
+  hora_inicio: string;
+  fecha_fin: string;
+  hora_fin: string;
+  cantidad: string;
+  observaciones: string;
+  firma: string;
+  estado_etapa: string;
+  resultado_control: string;
+  motivo_no_conformidad: string;
+  accion_correctiva: string;
+  turno: string;
+  maquina_equipo: string;
+  unidad_medida: string;
+  lote_version_arte: string;
+  cierre_qa_responsable: string;
+  cierre_qa_fecha: string;
+  cierre_qa_hora: string;
+};
+
+type TrazabilidadProceso = {
+  preprensa: TrazabilidadProcesoItem;
+  impresion: TrazabilidadProcesoItem;
+  laminado: TrazabilidadProcesoItem;
+  troquelado: TrazabilidadProcesoItem;
+  terminados: TrazabilidadProcesoItem;
+  liberacion_producto: TrazabilidadProcesoItem;
+};
+
+const crearTrazabilidadVacia = (): TrazabilidadProcesoItem => ({
+  fecha_inicio: '',
+  hora_inicio: '',
+  fecha_fin: '',
+  hora_fin: '',
+  cantidad: '',
+  observaciones: '',
+  firma: '',
+  estado_etapa: 'pendiente',
+  resultado_control: 'pendiente',
+  motivo_no_conformidad: '',
+  accion_correctiva: '',
+  turno: '',
+  maquina_equipo: '',
+  unidad_medida: '',
+  lote_version_arte: '',
+  cierre_qa_responsable: '',
+  cierre_qa_fecha: '',
+  cierre_qa_hora: '',
+});
+
+const crearTrazabilidadProcesoVacia = (): TrazabilidadProceso => ({
+  preprensa: crearTrazabilidadVacia(),
+  impresion: crearTrazabilidadVacia(),
+  laminado: crearTrazabilidadVacia(),
+  troquelado: crearTrazabilidadVacia(),
+  terminados: crearTrazabilidadVacia(),
+  liberacion_producto: crearTrazabilidadVacia(),
+});
+
+const normalizarTrazabilidadProceso = (valor: any): TrazabilidadProceso => {
+  if (!valor) return crearTrazabilidadProcesoVacia();
+  const base = crearTrazabilidadProcesoVacia();
+  const safe = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  return {
+    preprensa: { ...base.preprensa, ...(safe.preprensa || {}) },
+    impresion: { ...base.impresion, ...(safe.impresion || {}) },
+    laminado: { ...base.laminado, ...(safe.laminado || {}) },
+    troquelado: { ...base.troquelado, ...(safe.troquelado || {}) },
+    terminados: { ...base.terminados, ...(safe.terminados || {}) },
+    liberacion_producto: { ...base.liberacion_producto, ...(safe.liberacion_producto || {}) },
+  };
+};
 
 // Tipos para los parámetros de la URL
 // interface Params {
@@ -174,6 +256,21 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
   const [espesorDigital, setEspesorDigital] = useState<string>('');
+  const [trazabilidadProceso, setTrazabilidadProceso] = useState<TrazabilidadProceso>(crearTrazabilidadProcesoVacia());
+
+  const actualizarCampoTrazabilidad = (
+    proceso: keyof TrazabilidadProceso,
+    campo: keyof TrazabilidadProcesoItem,
+    valor: string,
+  ) => {
+    setTrazabilidadProceso((prev) => ({
+      ...prev,
+      [proceso]: {
+        ...prev[proceso],
+        [campo]: valor,
+      },
+    }));
+  };
 
   // Función para calcular el total de pliegos
   const calcularTotalPliegos = () => {
@@ -273,6 +370,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const VENDEDORES_FIJOS = ['HENRY','GUSTAVO','JUAN CARLOS','OSCAR','XAVIER','GEOVANNY','MARCO','ANDRES'];
   const PREPRENSA_OPTIONS = ['ROBINSON','GEOVANNY','ANDRES'];
   const OPERACIONES_OPTIONS = ['FERNANDO','ROBINSON','GEOVANNY','CRISTIAN','WILLIAM','JUAN DAVID'];
+  const ESTADOS_ETAPA_OPTIONS = ['pendiente', 'en_proceso', 'finalizado', 'rechazado'];
+  const RESULTADO_CONTROL_OPTIONS = ['pendiente', 'aprobado', 'condicionado', 'rechazado'];
+  const TURNOS_OPTIONS = ['Mañana', 'Tarde', 'Noche'];
   // Mantener por compatibilidad si se usa en otros lugares
   const RESPONSABLES_FIJOS = [...new Set([...PREPRENSA_OPTIONS, ...OPERACIONES_OPTIONS, 'DAVID'])];
 
@@ -340,6 +440,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setLaminadoBarnizado('');
       setTroquelado('');
       setLiberacionProducto('');
+      setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales
        // Limpiar nuevos campos
                setMaterial('');
@@ -657,6 +758,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTroquelado(detalleResponsables.troquelado || '');
       setLiberacionProducto(detalleResponsables.liberacion_producto || '');
     }
+    setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
     const estadoActual = ordenData.tipo_orden === 'digital'
@@ -889,7 +991,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         cantidad_por_rollo: cantidadPorRollo,
         observaciones: observacionesDigital
         ,
-        espesor: espesorDigital
+        espesor: espesorDigital,
+        trazabilidad_proceso: trazabilidadProceso
       } : {
         // Datos específicos de offset
         material: material,
@@ -906,7 +1009,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         instrucciones_acabados: instruccionesAcabados,
         instrucciones_empacado: instruccionesEmpacado,
         observaciones: observaciones,
-        prensa_seleccionada: prensaSeleccionada
+        prensa_seleccionada: prensaSeleccionada,
+        trazabilidad_proceso: trazabilidadProceso
       }
     };
     
@@ -1035,7 +1139,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
             terminados_especiales: terminadosEspeciales,
             cantidad_por_rollo: cantidadPorRollo,
             observaciones: observacionesDigital,
-            espesor: espesorDigital
+            espesor: espesorDigital,
+            trazabilidad_proceso: trazabilidadProceso
           } : {
             // Datos específicos de offset
             material: material,
@@ -1052,7 +1157,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
             instrucciones_acabados: instruccionesAcabados,
             instrucciones_empacado: instruccionesEmpacado,
             observaciones: observaciones,
-            prensa_seleccionada: prensaSeleccionada
+            prensa_seleccionada: prensaSeleccionada,
+            trazabilidad_proceso: trazabilidadProceso
           }
         }),
       });
@@ -1174,7 +1280,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
           cantidad_por_rollo: cantidadPorRollo,
           productos_digital: productosDigital
           ,
-          espesor: espesorDigital
+          espesor: espesorDigital,
+          trazabilidad_proceso: trazabilidadProceso
         } : {
           // Detalle offset
           material: material,
@@ -1190,7 +1297,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
           instrucciones_acabados: instruccionesAcabados,
           instrucciones_empacado: instruccionesEmpacado,
           observaciones: observaciones,
-          prensa_seleccionada: prensaSeleccionada
+          prensa_seleccionada: prensaSeleccionada,
+          trazabilidad_proceso: trazabilidadProceso
         }
       };
       
@@ -1468,134 +1576,449 @@ const OrdendeTrabajoEditar: React.FC = () => {
             </h3>
             
             {tipoOrdenSeleccionado === 'digital' ? (
-              // Responsables para orden DIGITAL sin cantidad final
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
-                  <EditableCombo
-                    value={vendedor}
-                    onChange={setVendedor}
-                    options={vendedoresList.map(v => v.nombre)}
-                    placeholder="-- Seleccione vendedor --"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+                    <EditableCombo
+                      value={vendedor}
+                      onChange={setVendedor}
+                      options={vendedoresList.map(v => v.nombre)}
+                      placeholder="-- Seleccione vendedor --"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Facturado</label>
+                    <input
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
+                      type="text"
+                      value={facturado}
+                      onChange={e => setFacturado(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Pre-prensa</label>
-                  <EditableCombo
-                    value={preprensa}
-                    onChange={setPreprensa}
-                    options={PREPRENSA_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-2 py-2 border">Proceso</th>
+                        <th className="px-2 py-2 border">Responsable</th>
+                        <th className="px-2 py-2 border">Fecha Inicio</th>
+                        <th className="px-2 py-2 border">Hora Inicio</th>
+                        <th className="px-2 py-2 border">Fecha Fin</th>
+                        <th className="px-2 py-2 border">Hora Fin</th>
+                        <th className="px-2 py-2 border">Cantidad</th>
+                        <th className="px-2 py-2 border">Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { key: 'preprensa', label: 'Pre-prensa', responsable: preprensa, setResponsable: setPreprensa, options: PREPRENSA_OPTIONS },
+                        { key: 'impresion', label: 'Impresión', responsable: prensa, setResponsable: setPrensa, options: OPERACIONES_OPTIONS },
+                        { key: 'laminado', label: 'Laminado/Barnizado', responsable: laminadoBarnizado, setResponsable: setLaminadoBarnizado, options: OPERACIONES_OPTIONS },
+                        { key: 'troquelado', label: 'Troquelado', responsable: troquelado, setResponsable: setTroquelado, options: OPERACIONES_OPTIONS },
+                        { key: 'terminados', label: 'Terminados', responsable: terminados, setResponsable: setTerminados, options: OPERACIONES_OPTIONS },
+                      ].map((proceso) => (
+                        <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
+                          <td className="px-2 py-2 border font-medium">{proceso.label}</td>
+                          <td className="px-2 py-2 border min-w-[180px]">
+                            <EditableCombo
+                              value={proceso.responsable}
+                              onChange={proceso.setResponsable}
+                              options={proceso.options}
+                              placeholder="-- Seleccione --"
+                            />
+                          </td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cantidad} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cantidad', e.target.value)} /></td>
+                          <td className="px-2 py-2 border min-w-[220px]"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].observaciones} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'observaciones', e.target.value)} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Impresión</label>
-                  <EditableCombo
-                    value={prensa}
-                    onChange={setPrensa}
-                    options={OPERACIONES_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
+                <div className="border border-gray-200 rounded-lg p-3">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Liberacion de Producto</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Responsable</label>
+                      <EditableCombo
+                        value={liberacionProducto}
+                        onChange={setLiberacionProducto}
+                        options={OPERACIONES_OPTIONS}
+                        placeholder="-- Seleccione --"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
+                      <input
+                        className="w-full border rounded px-2 py-1"
+                        type="date"
+                        value={trazabilidadProceso.liberacion_producto.fecha_inicio}
+                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_inicio', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Hora</label>
+                      <input
+                        className="w-full border rounded px-2 py-1"
+                        type="time"
+                        value={trazabilidadProceso.liberacion_producto.hora_inicio}
+                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_inicio', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+                      <input
+                        className="w-full border rounded px-2 py-1"
+                        type="text"
+                        value={trazabilidadProceso.liberacion_producto.cantidad}
+                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'cantidad', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Observaciones</label>
+                      <input
+                        className="w-full border rounded px-2 py-1"
+                        type="text"
+                        value={trazabilidadProceso.liberacion_producto.observaciones}
+                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'observaciones', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Firma</label>
+                      <input
+                        className="w-full border rounded px-2 py-1"
+                        type="text"
+                        value={trazabilidadProceso.liberacion_producto.firma}
+                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'firma', e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Laminado/Barnizado</label>
-                  <EditableCombo
-                    value={laminadoBarnizado}
-                    onChange={setLaminadoBarnizado}
-                    options={OPERACIONES_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Troquelado</label>
-                  <EditableCombo
-                    value={troquelado}
-                    onChange={setTroquelado}
-                    options={OPERACIONES_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
-                  <EditableCombo
-                    value={terminados}
-                    onChange={setTerminados}
-                    options={OPERACIONES_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Liberación Producto</label>
-                  <EditableCombo
-                    value={liberacionProducto}
-                    onChange={setLiberacionProducto}
-                    options={OPERACIONES_OPTIONS}
-                    placeholder="-- Seleccione --"
-                  />
-                </div>
+                {false && <div className="border border-blue-200 rounded-lg p-3 bg-blue-50/40">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Calidad y Auditoría por Proceso</h4>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'preprensa', label: 'Pre-prensa', responsable: preprensa },
+                      { key: 'impresion', label: 'Impresión', responsable: prensa },
+                      { key: 'laminado', label: 'Laminado/Barnizado', responsable: laminadoBarnizado },
+                      { key: 'troquelado', label: 'Troquelado', responsable: troquelado },
+                      { key: 'terminados', label: 'Terminados', responsable: terminados },
+                      { key: 'liberacion_producto', label: 'Liberación de Producto', responsable: liberacionProducto },
+                    ].map((proceso) => (
+                      <div key={proceso.key} className="border border-blue-100 rounded-md bg-white p-3">
+                        <div className="text-xs font-semibold text-blue-700 mb-2">
+                          {proceso.label} - Responsable: {proceso.responsable || 'Sin asignar'}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Estado de Etapa</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].estado_etapa}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'estado_etapa', e.target.value)}
+                            >
+                              {ESTADOS_ETAPA_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Resultado de Control</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].resultado_control}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'resultado_control', e.target.value)}
+                            >
+                              {RESULTADO_CONTROL_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Turno</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].turno}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'turno', e.target.value)}
+                            >
+                              <option value="">-- Seleccione --</option>
+                              {TURNOS_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Máquina/Equipo</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].maquina_equipo}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'maquina_equipo', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Unidad de Medida</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              placeholder="unidades, metros, kg"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].unidad_medida}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'unidad_medida', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Lote/Versión de Arte</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].lote_version_arte}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'lote_version_arte', e.target.value)}
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Motivo de No Conformidad</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].motivo_no_conformidad}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'motivo_no_conformidad', e.target.value)}
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Acción Correctiva</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].accion_correctiva}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'accion_correctiva', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Responsable</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_responsable}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_responsable', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Fecha</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="date"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_fecha}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_fecha', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Hora</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="time"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_hora}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_hora', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>}
               </div>
             ) : (
-              // Responsables para orden OFFSET (mantener los campos originales)
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Vendedor</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                    type="text" 
-                    placeholder="Nombre" 
-                    value={vendedor} 
-                    onChange={e => setVendedor(e.target.value)} 
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+                    <input
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
+                      type="text"
+                      value={vendedor}
+                      onChange={e => setVendedor(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Facturado</label>
+                    <input
+                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
+                      type="text"
+                      value={facturado}
+                      onChange={e => setFacturado(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Preprensa</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={preprensa} 
-                    onChange={e => setPreprensa(e.target.value)} 
-                  />
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-2 py-2 border">Proceso</th>
+                        <th className="px-2 py-2 border">Responsable</th>
+                        <th className="px-2 py-2 border">Fecha Inicio</th>
+                        <th className="px-2 py-2 border">Hora Inicio</th>
+                        <th className="px-2 py-2 border">Fecha Fin</th>
+                        <th className="px-2 py-2 border">Hora Fin</th>
+                        <th className="px-2 py-2 border">Cantidad</th>
+                        <th className="px-2 py-2 border">Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { key: 'preprensa', label: 'Preprensa', responsable: preprensa, setResponsable: setPreprensa },
+                        { key: 'impresion', label: 'Impresión', responsable: prensa, setResponsable: setPrensa },
+                        { key: 'terminados', label: 'Terminados', responsable: terminados, setResponsable: setTerminados },
+                      ].map((proceso) => (
+                        <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
+                          <td className="px-2 py-2 border font-medium">{proceso.label}</td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={proceso.responsable} onChange={e => proceso.setResponsable(e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cantidad} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cantidad', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].observaciones} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'observaciones', e.target.value)} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Prensa</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={prensa} 
-                    onChange={e => setPrensa(e.target.value)} 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Terminados</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                    type="text" 
-                    placeholder="Responsable" 
-                    value={terminados} 
-                    onChange={e => setTerminados(e.target.value)} 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Facturado</label>
-                  <input 
-                    className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 text-center" 
-                    type="text" 
-                    value={facturado} 
-                    onChange={e => setFacturado(e.target.value)} 
-                  />
-                </div>
+                {false && <div className="border border-blue-200 rounded-lg p-3 bg-blue-50/40">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Calidad y Auditoría por Proceso</h4>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'preprensa', label: 'Preprensa', responsable: preprensa },
+                      { key: 'impresion', label: 'Impresión', responsable: prensa },
+                      { key: 'terminados', label: 'Terminados', responsable: terminados },
+                    ].map((proceso) => (
+                      <div key={proceso.key} className="border border-blue-100 rounded-md bg-white p-3">
+                        <div className="text-xs font-semibold text-blue-700 mb-2">
+                          {proceso.label} - Responsable: {proceso.responsable || 'Sin asignar'}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Estado de Etapa</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].estado_etapa}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'estado_etapa', e.target.value)}
+                            >
+                              {ESTADOS_ETAPA_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Resultado de Control</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].resultado_control}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'resultado_control', e.target.value)}
+                            >
+                              {RESULTADO_CONTROL_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Turno</label>
+                            <select
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].turno}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'turno', e.target.value)}
+                            >
+                              <option value="">-- Seleccione --</option>
+                              {TURNOS_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Máquina/Equipo</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].maquina_equipo}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'maquina_equipo', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Unidad de Medida</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].unidad_medida}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'unidad_medida', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Lote/Versión de Arte</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].lote_version_arte}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'lote_version_arte', e.target.value)}
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Motivo de No Conformidad</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].motivo_no_conformidad}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'motivo_no_conformidad', e.target.value)}
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Acción Correctiva</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].accion_correctiva}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'accion_correctiva', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Responsable</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_responsable}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_responsable', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Fecha</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="date"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_fecha}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_fecha', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cierre QA Hora</label>
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="time"
+                              value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cierre_qa_hora}
+                              onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cierre_qa_hora', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>}
               </div>
             )}
           </div>

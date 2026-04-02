@@ -477,9 +477,19 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
         {/* container ref used to adjust textarea heights for producto field */}
         <div ref={productosContainerRef}>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-2 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-800">
-            Información del Trabajo
-          </h3>
+          <div className="flex items-center gap-3 min-w-0">
+            <h3 className="text-lg font-bold text-gray-800 whitespace-nowrap">
+              Información del Trabajo
+            </h3>
+            <div className="flex items-center gap-2 overflow-hidden rounded border border-gray-200 bg-gray-50 px-2 py-1">
+              <img
+                src="/img/salidas.png"
+                alt="Referencia de salidas"
+                className="-my-1 h-12 w-auto max-w-none object-contain"
+              />
+              <span className="text-xs text-gray-500 whitespace-nowrap">Ref. salidas (1-4)</span>
+            </div>
+          </div>
           {/* Tamaño de papel en la misma fila */}
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-700 whitespace-nowrap">Tamaño papel:</span>
@@ -503,15 +513,6 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               value={tamanoPapelLargo}
               onChange={(e) => actualizarTamanoPapelGlobal('tamano_papel_largo', e.target.value)}
             />
-          </div>
-          {/* Imagen de referencia de Salidas compact—inline entre tamaño de papel y el botón */}
-          <div className="flex flex-col items-center">
-            <img
-              src="/img/salidas.png"
-              alt="Referencia de salidas"
-              className="h-12 w-auto rounded shadow-sm object-contain"
-            />
-            <span className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">Ref. salidas (1-4)</span>
           </div>
           <button
             type="button"

@@ -1,0 +1,77 @@
+          table_name           |            column_name             |          data_type          | is_nullable 
+-------------------------------+------------------------------------+-----------------------------+-------------
+ detalle_orden_trabajo_digital | id                                 | integer                     | NO
+ detalle_orden_trabajo_digital | orden_trabajo_id                   | integer                     | NO
+ detalle_orden_trabajo_digital | adherencia                         | character varying           | YES
+ detalle_orden_trabajo_digital | lote_material                      | character varying           | YES
+ detalle_orden_trabajo_digital | lote_produccion                    | character varying           | YES
+ detalle_orden_trabajo_digital | tipo_impresion                     | character varying           | YES
+ detalle_orden_trabajo_digital | troquel                            | character varying           | YES
+ detalle_orden_trabajo_digital | codigo_troquel                     | character varying           | YES
+ detalle_orden_trabajo_digital | terminado_etiqueta                 | character varying           | YES
+ detalle_orden_trabajo_digital | terminados_especiales              | character varying           | YES
+ detalle_orden_trabajo_digital | cantidad_por_rollo                 | character varying           | YES
+ detalle_orden_trabajo_digital | created_at                         | timestamp without time zone | YES
+ detalle_orden_trabajo_digital | updated_at                         | timestamp without time zone | YES
+ detalle_orden_trabajo_digital | proveedor_material                 | text                        | YES
+ detalle_orden_trabajo_digital | espesor                            | character varying           | YES
+ detalle_orden_trabajo_digital | material                           | text                        | YES
+ detalle_orden_trabajo_digital | impresion                          | character varying           | YES
+ detalle_orden_trabajo_digital | observaciones                      | text                        | YES
+ detalle_orden_trabajo_digital | numero_salida                      | character varying           | YES
+ detalle_orden_trabajo_digital | vendedor                           | character varying           | YES
+ detalle_orden_trabajo_digital | preprensa                          | character varying           | YES
+ detalle_orden_trabajo_digital | prensa                             | character varying           | YES
+ detalle_orden_trabajo_digital | laminado_barnizado                 | character varying           | YES
+ detalle_orden_trabajo_digital | troquelado                         | character varying           | YES
+ detalle_orden_trabajo_digital | terminados                         | character varying           | YES
+ detalle_orden_trabajo_digital | facturado                          | character varying           | YES
+ detalle_orden_trabajo_digital | liberacion_producto                | character varying           | YES
+ detalle_orden_trabajo_digital | vendedor_cantidad_final            | character varying           | YES
+ detalle_orden_trabajo_digital | preprensa_cantidad_final           | character varying           | YES
+ detalle_orden_trabajo_digital | prensa_cantidad_final              | character varying           | YES
+ detalle_orden_trabajo_digital | laminado_barnizado_cantidad_final  | character varying           | YES
+ detalle_orden_trabajo_digital | troquelado_cantidad_final          | character varying           | YES
+ detalle_orden_trabajo_digital | terminados_cantidad_final          | character varying           | YES
+ detalle_orden_trabajo_digital | liberacion_producto_cantidad_final | character varying           | YES
+ orden_trabajo                 | id                                 | integer                     | NO
+ orden_trabajo                 | numero_orden                       | character varying           | NO
+ orden_trabajo                 | nombre_cliente                     | character varying           | NO
+ orden_trabajo                 | contacto                           | text                        | YES
+ orden_trabajo                 | email                              | character varying           | YES
+ orden_trabajo                 | telefono                           | character varying           | YES
+ orden_trabajo                 | fecha_creacion                     | date                        | YES
+ orden_trabajo                 | fecha_entrega                      | date                        | YES
+ orden_trabajo                 | notas_observaciones                | text                        | YES
+ orden_trabajo                 | id_cotizacion                      | integer                     | YES
+ orden_trabajo                 | id_detalle_cotizacion              | integer                     | YES
+ orden_trabajo                 | created_at                         | timestamp with time zone    | NO
+ orden_trabajo                 | updated_at                         | timestamp with time zone    | NO
+ orden_trabajo                 | created_by                         | integer                     | NO
+ orden_trabajo                 | responsable_id                     | integer                     | YES
+ orden_trabajo                 | updated_by                         | integer                     | YES
+ orden_trabajo                 | tipo_orden                         | character varying           | YES
+ orden_trabajo                 | orden_compra                       | character varying           | YES
+ orden_trabajo                 | estado_orden_digital_id            | integer                     | YES
+ orden_trabajo                 | estado_orden_offset_id             | integer                     | YES
+ productos_orden_digital       | id                                 | integer                     | NO
+ productos_orden_digital       | orden_trabajo_id                   | integer                     | NO
+ productos_orden_digital       | cantidad                           | character varying           | YES
+ productos_orden_digital       | cod_mg                             | character varying           | YES
+ productos_orden_digital       | cod_cliente                        | character varying           | YES
+ productos_orden_digital       | producto                           | character varying           | YES
+ productos_orden_digital       | avance                             | character varying           | YES
+ productos_orden_digital       | medida_ancho                       | character varying           | YES
+ productos_orden_digital       | medida_alto                        | character varying           | YES
+ productos_orden_digital       | cavidad                            | character varying           | YES
+ productos_orden_digital       | metros_impresos                    | character varying           | YES
+ productos_orden_digital       | orden                              | integer                     | YES
+ productos_orden_digital       | created_at                         | timestamp without time zone | YES
+ productos_orden_digital       | updated_at                         | timestamp without time zone | YES
+ productos_orden_digital       | gap_horizontal                     | text                        | YES
+ productos_orden_digital       | gap_vertical                       | text                        | YES
+ productos_orden_digital       | tamano_papel_ancho                 | text                        | YES
+ productos_orden_digital       | tamano_papel_largo                 | text                        | YES
+ productos_orden_digital       | numero_salida                      | character varying           | YES
+(73 rows)
+

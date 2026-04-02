@@ -675,29 +675,10 @@ const OrdenesVer: React.FC = () => {
                                 <button
                                   className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
                                   onClick={() => navigate('/produccion/kanban')}
-                                  title="Ver estado en producción"
+                                  title="Vista Kanban"
                                 >
                                   <FaTasks />
-                                  <span className="text-xs mt-1 text-gray-600">Ver Estado</span>
-                                </button>
-                                <button
-                                  className="p-2 text-yellow-600 hover:bg-yellow-100 rounded flex flex-col items-center"
-                                  onClick={() => {
-                                      const tipo = (orden.tipo_orden || '').toString().toLowerCase();
-                                      let initial = '';
-                                      if (tipo === 'digital') {
-                                        initial = orden.estado_digital_key || (orden.estado ? orden.estado.toString().toLowerCase().replace(/\s+/g, '_') : '');
-                                      } else {
-                                        const raw2 = orden.estado || '';
-                                        initial = raw2.toString().toLowerCase().replace(/\s+/g, '_');
-                                      }
-                                      setModalActualizarEstadoId(orden.id);
-                                      setEstadoSeleccionado(initial);
-                                    }}
-                                  title="Actualizar Estado"
-                                >
-                                  <FaSync />
-                                  <span className="text-xs mt-1 text-gray-600">Actualizar Estado</span>
+                                  <span className="text-xs mt-1 text-gray-600">Vista Kanban</span>
                                 </button>
                                 <button
                                   className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"

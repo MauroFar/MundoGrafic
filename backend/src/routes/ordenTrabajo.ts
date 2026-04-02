@@ -183,6 +183,7 @@ export default (client: any) => {
       const observaciones = detalle?.observaciones;
       const prensaSeleccionada = detalle?.prensa_seleccionada;
       const numeroSalida = detalle?.numero_salida;
+      const trazabilidadProceso = detalle?.trazabilidad_proceso;
 
       // Campos específicos para órdenes digitales
       const adherencia = detalle?.adherencia;
@@ -259,12 +260,13 @@ export default (client: any) => {
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
             proveedor_material, espesor,
-            material, impresion, observaciones, numero_salida, prensa_seleccionada,
+            material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, laminado_barnizado, troquelado, terminados, facturado, liberacion_producto,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
             laminado_barnizado_cantidad_final, troquelado_cantidad_final,
-            terminados_cantidad_final, liberacion_producto_cantidad_final
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
+            terminados_cantidad_final, liberacion_producto_cantidad_final,
+            trazabilidad_proceso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32::jsonb)
         `,
             [
               ordenId,
@@ -283,7 +285,6 @@ export default (client: any) => {
               impresion || null,
               observaciones || null,
               numeroSalida || null,
-              prensaSeleccionada || null,
               vendedor || null,
               preprensa || null,
               prensa || null,
@@ -299,6 +300,7 @@ export default (client: any) => {
               troquelado_cantidad_final || null,
               terminados_cantidad_final || null,
               liberacion_producto_cantidad_final || null,
+              trazabilidadProceso ? JSON.stringify(trazabilidadProceso) : null,
             ],
           );
 
@@ -353,8 +355,9 @@ export default (client: any) => {
             instrucciones_acabados, instrucciones_empacado, prensa_seleccionada,
             material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, terminados, facturado,
-            vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+            vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final,
+            trazabilidad_proceso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb)
         `,
             [
               ordenId,
@@ -382,6 +385,7 @@ export default (client: any) => {
               preprensa_cantidad_final || null,
               prensa_cantidad_final || null,
               terminados_cantidad_final || null,
+              trazabilidadProceso ? JSON.stringify(trazabilidadProceso) : null,
             ],
           );
 
@@ -700,6 +704,7 @@ export default (client: any) => {
       const observaciones = detalle?.observaciones;
       const prensaSeleccionada = detalle?.prensa_seleccionada;
       const numeroSalida = detalle?.numero_salida;
+      const trazabilidadProceso = detalle?.trazabilidad_proceso;
 
       // Campos específicos para órdenes digitales
       const adherencia = detalle?.adherencia;
@@ -762,22 +767,24 @@ export default (client: any) => {
             orden_trabajo_id, adherencia, lote_material, lote_produccion, tipo_impresion,
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
             proveedor_material, espesor,
-            material, impresion, observaciones, numero_salida, prensa_seleccionada,
+            material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, laminado_barnizado, troquelado, terminados, facturado, liberacion_producto,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
             laminado_barnizado_cantidad_final, troquelado_cantidad_final,
-            terminados_cantidad_final, liberacion_producto_cantidad_final
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32)
+            terminados_cantidad_final, liberacion_producto_cantidad_final,
+            trazabilidad_proceso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32::jsonb)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             adherencia = $2, lote_material = $3, lote_produccion = $4, tipo_impresion = $5,
             troquel = $6, codigo_troquel = $7, terminado_etiqueta = $8, terminados_especiales = $9,
             cantidad_por_rollo = $10, proveedor_material = $11, espesor = $12,
-            material = $13, impresion = $14, observaciones = $15, numero_salida = $16, prensa_seleccionada = $17,
-            vendedor = $18, preprensa = $19, prensa = $20, laminado_barnizado = $21, troquelado = $22,
-            terminados = $23, facturado = $24, liberacion_producto = $25,
-            vendedor_cantidad_final = $26, preprensa_cantidad_final = $27, prensa_cantidad_final = $28,
-            laminado_barnizado_cantidad_final = $29, troquelado_cantidad_final = $30,
-            terminados_cantidad_final = $31, liberacion_producto_cantidad_final = $32,
+            material = $13, impresion = $14, observaciones = $15, numero_salida = $16,
+            vendedor = $17, preprensa = $18, prensa = $19, laminado_barnizado = $20, troquelado = $21,
+            terminados = $22, facturado = $23, liberacion_producto = $24,
+            vendedor_cantidad_final = $25, preprensa_cantidad_final = $26, prensa_cantidad_final = $27,
+            laminado_barnizado_cantidad_final = $28, troquelado_cantidad_final = $29,
+            terminados_cantidad_final = $30, liberacion_producto_cantidad_final = $31,
+            trazabilidad_proceso = $32::jsonb,
             updated_at = CURRENT_TIMESTAMP
         `,
             [
@@ -797,7 +804,6 @@ export default (client: any) => {
               impresion || null,
               observaciones || null,
               numeroSalida || null,
-              prensaSeleccionada || null,
               vendedor || null,
               preprensa || null,
               prensa || null,
@@ -813,6 +819,7 @@ export default (client: any) => {
               troquelado_cantidad_final || null,
               terminados_cantidad_final || null,
               liberacion_producto_cantidad_final || null,
+              trazabilidadProceso ? JSON.stringify(trazabilidadProceso) : null,
             ],
           );
 
@@ -869,8 +876,9 @@ export default (client: any) => {
             instrucciones_acabados, instrucciones_empacado, prensa_seleccionada,
             material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, terminados, facturado,
-            vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+            vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final,
+            trazabilidad_proceso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             corte_material = $2, cantidad_pliegos_compra = $3, exceso = $4, total_pliegos = $5,
             tamano = $6, tamano_abierto_1 = $7, tamano_cerrado_1 = $8,
@@ -880,6 +888,7 @@ export default (client: any) => {
             vendedor = $17, preprensa = $18, prensa = $19, terminados = $20, facturado = $21,
             vendedor_cantidad_final = $22, preprensa_cantidad_final = $23,
             prensa_cantidad_final = $24, terminados_cantidad_final = $25,
+            trazabilidad_proceso = $26::jsonb,
             updated_at = CURRENT_TIMESTAMP
         `,
             [
@@ -908,6 +917,7 @@ export default (client: any) => {
               preprensa_cantidad_final || null,
               prensa_cantidad_final || null,
               terminados_cantidad_final || null,
+              trazabilidadProceso ? JSON.stringify(trazabilidadProceso) : null,
             ],
           );
 
@@ -1026,6 +1036,112 @@ export default (client: any) => {
   // FUNCIONES AUXILIARES PARA GENERAR PDFs
   // ============================================
 
+  const parseTrazabilidadProceso = (raw: any) => {
+    const base = {
+      preprensa: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      impresion: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      laminado: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      troquelado: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      terminados: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      liberacion_producto: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+    };
+
+    if (!raw) return base;
+
+    let parsed = raw;
+    if (typeof raw === "string") {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = {};
+      }
+    }
+
+    return {
+      preprensa: { ...base.preprensa, ...(parsed?.preprensa || {}) },
+      impresion: { ...base.impresion, ...(parsed?.impresion || {}) },
+      laminado: { ...base.laminado, ...(parsed?.laminado || {}) },
+      troquelado: { ...base.troquelado, ...(parsed?.troquelado || {}) },
+      terminados: { ...base.terminados, ...(parsed?.terminados || {}) },
+      liberacion_producto: {
+        ...base.liberacion_producto,
+        ...(parsed?.liberacion_producto || {}),
+      },
+    };
+  };
+
+  const buildTrazabilidadRows = (detalle: any, procesos: any[]) => {
+    const trazabilidad = parseTrazabilidadProceso(detalle?.trazabilidad_proceso);
+
+    return procesos
+      .map((p: any) => {
+        const t = trazabilidad[p.key] || {};
+        const cantidad = t.cantidad || p.cantidadFinal || "";
+        return `
+          <tr>
+            <td class="traza-celda traza-proceso">${p.titulo}</td>
+            <td class="traza-celda">${p.responsable || ""}</td>
+            <td class="traza-celda">${t.fecha_inicio || ""}</td>
+            <td class="traza-celda">${t.hora_inicio || ""}</td>
+            <td class="traza-celda">${t.fecha_fin || ""}</td>
+            <td class="traza-celda">${t.hora_fin || ""}</td>
+            <td class="traza-celda">${cantidad || ""}</td>
+            <td class="traza-celda traza-observaciones">${t.observaciones || ""}</td>
+            <td class="traza-celda traza-firma"></td>
+          </tr>
+        `;
+      })
+      .join("");
+  };
+
   /**
    * Genera HTML para PDF de orden OFFSET
    */
@@ -1035,6 +1151,29 @@ export default (client: any) => {
     logoBase64: string,
     salidaImagenBase64: string,
   ): string {
+    const trazabilidad = parseTrazabilidadProceso(detalle?.trazabilidad_proceso);
+    const liberacionTrazabilidad = trazabilidad.liberacion_producto || {};
+    const filasTrazabilidad = buildTrazabilidadRows(detalle, [
+      {
+        key: "preprensa",
+        titulo: "PREPRENSA",
+        responsable: detalle.preprensa,
+        cantidadFinal: detalle.preprensa_cantidad_final,
+      },
+      {
+        key: "impresion",
+        titulo: "IMPRESION",
+        responsable: detalle.prensa,
+        cantidadFinal: detalle.prensa_cantidad_final,
+      },
+      {
+        key: "terminados",
+        titulo: "TERMINADOS",
+        responsable: detalle.terminados,
+        cantidadFinal: detalle.terminados_cantidad_final,
+      },
+    ]);
+
     return `
       <!DOCTYPE html>
       <html>
@@ -1059,6 +1198,12 @@ export default (client: any) => {
           .responsable { flex: 1; text-align: center; border: 1px solid #ddd; padding: 3px; }
           .responsable-titulo { font-size: 7px; color: #666; margin-bottom: 1px; font-weight: bold; }
           .responsable-nombre { font-size: 8px; font-weight: bold; }
+          .page-break { page-break-before: always; break-before: page; }
+          .traza-tabla { width: 100%; border-collapse: collapse; }
+          .traza-celda { border: 1px solid #d7d7d7; padding: 4px; font-size: 8px; vertical-align: top; }
+          .traza-header { background: #f3f4f6; font-weight: bold; text-align: center; }
+          .traza-proceso { font-weight: bold; white-space: nowrap; }
+          .traza-observaciones { min-width: 150px; }
         </style>
       </head>
       <body>
@@ -1212,31 +1357,59 @@ export default (client: any) => {
           </div>
         </div>
 
-        <div class="seccion">
+        <div class="seccion page-break">
           <div class="seccion-titulo">Responsables del Proceso</div>
           <div class="seccion-contenido">
-            <div class="responsables">
-              <div class="responsable">
-                <div class="responsable-titulo">VENDEDOR</div>
-                <div class="responsable-nombre">${detalle.vendedor || ""}</div>
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">PREPRENSA</div>
-                <div class="responsable-nombre">${detalle.preprensa || ""}</div>
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">OFFSET</div>
-                <div class="responsable-nombre">${detalle.prensa || ""}</div>
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">TERMINADOS</div>
-                <div class="responsable-nombre">${detalle.terminados || ""}</div>
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">FACTURADO</div>
-                <div class="responsable-nombre">${detalle.facturado || ""}</div>
-              </div>
+            <div class="fila" style="margin-bottom: 6px;">
+              <div class="campo"><div class="campo-label">VENDEDOR</div><div class="campo-valor">${detalle.vendedor || ""}</div></div>
+              <div class="campo"><div class="campo-label">FACTURADO</div><div class="campo-valor">${detalle.facturado || ""}</div></div>
             </div>
+            <table class="traza-tabla">
+              <thead>
+                <tr>
+                  <th class="traza-celda traza-header">Proceso</th>
+                  <th class="traza-celda traza-header">Responsable</th>
+                  <th class="traza-celda traza-header">Fecha Inicio</th>
+                  <th class="traza-celda traza-header">Hora Inicio</th>
+                  <th class="traza-celda traza-header">Fecha Fin</th>
+                  <th class="traza-celda traza-header">Hora Fin</th>
+                  <th class="traza-celda traza-header">Cantidad</th>
+                  <th class="traza-celda traza-header">Observaciones</th>
+                  <th class="traza-celda traza-header">Firma</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasTrazabilidad}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">📦 LIBERACIÓN PRODUCTO</div>
+          <div class="seccion-contenido">
+            <table class="traza-tabla">
+              <thead>
+                <tr>
+                  <th class="traza-celda traza-header">Responsable</th>
+                  <th class="traza-celda traza-header">Fecha</th>
+                  <th class="traza-celda traza-header">Hora</th>
+                  <th class="traza-celda traza-header">Cantidad</th>
+                  <th class="traza-celda traza-header">Observaciones</th>
+                  <th class="traza-celda traza-header">Firma</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="traza-celda">${detalle.liberacion_producto || ""}</td>
+                  <td class="traza-celda" style="min-width: 80px;">${liberacionTrazabilidad.fecha_inicio || ""}</td>
+                  <td class="traza-celda" style="min-width: 60px;">${liberacionTrazabilidad.hora_inicio || ""}</td>
+                  <td class="traza-celda">${liberacionTrazabilidad.cantidad || detalle.liberacion_producto_cantidad_final || ""}</td>
+                  <td class="traza-celda traza-observaciones">${liberacionTrazabilidad.observaciones || ""}</td>
+                  <td class="traza-celda traza-firma">${liberacionTrazabilidad.firma || ""}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </body>
@@ -1253,6 +1426,8 @@ export default (client: any) => {
     logoBase64: string,
     salidaImagenBase64: string,
   ): string {
+    const trazabilidad = parseTrazabilidadProceso(detalle?.trazabilidad_proceso);
+    const liberacionTrazabilidad = trazabilidad.liberacion_producto || {};
     // Parsear productos digitales si existen
     let productos: any[] = [];
     try {
@@ -1289,6 +1464,39 @@ export default (client: any) => {
       )
       .join("");
 
+    const filasTrazabilidad = buildTrazabilidadRows(detalle, [
+      {
+        key: "preprensa",
+        titulo: "PRE-PRENSA",
+        responsable: detalle.preprensa,
+        cantidadFinal: detalle.preprensa_cantidad_final,
+      },
+      {
+        key: "impresion",
+        titulo: "IMPRESION",
+        responsable: detalle.prensa,
+        cantidadFinal: detalle.prensa_cantidad_final,
+      },
+      {
+        key: "laminado",
+        titulo: "LAMINADO/BARNIZADO",
+        responsable: detalle.laminado_barnizado,
+        cantidadFinal: detalle.laminado_barnizado_cantidad_final,
+      },
+      {
+        key: "troquelado",
+        titulo: "TROQUELADO",
+        responsable: detalle.troquelado,
+        cantidadFinal: detalle.troquelado_cantidad_final,
+      },
+      {
+        key: "terminados",
+        titulo: "TERMINADOS",
+        responsable: detalle.terminados,
+        cantidadFinal: detalle.terminados_cantidad_final,
+      },
+    ]);
+
     return `
       <!DOCTYPE html>
       <html>
@@ -1304,6 +1512,10 @@ export default (client: any) => {
           .titulo { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
           .seccion { margin-bottom: 12px; border: 1px solid #ddd; page-break-inside: avoid; }
           .seccion-titulo { background: #f0f0f0; padding: 6px 10px; font-weight: bold; font-size: 11px; border-bottom: 1px solid #ddd; }
+          .seccion-titulo-productos { display: flex; align-items: center; justify-content: space-between; gap: 10px; overflow: hidden; }
+          .seccion-titulo-texto { flex: 1; }
+          .seccion-titulo-referencia { display: flex; align-items: center; gap: 8px; font-size: 8px; color: #555; font-weight: normal; }
+          .seccion-titulo-referencia img { height: 34px; width: auto; margin: -6px 0; border: 1px solid #ccc; border-radius: 3px; background: #fff; }
           .seccion-contenido { padding: 10px; }
           .fila { display: flex; gap: 10px; margin-bottom: 6px; }
           .campo { flex: 1; }
@@ -1317,6 +1529,13 @@ export default (client: any) => {
           .responsable-titulo { font-size: 8px; color: #666; margin-bottom: 3px; font-weight: bold; }
           .responsable-nombre { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
           .responsable-cantidad { font-size: 9px; color: #333; font-weight: bold; border-top: 1px dashed #ddd; padding-top: 4px; margin-top: 4px; }
+          .page-break { page-break-before: always; break-before: page; }
+          .traza-tabla { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          .traza-celda { border: 1px solid #d7d7d7; padding: 5px; font-size: 9px; vertical-align: top; }
+          .traza-header { background: #f3f4f6; font-weight: bold; text-align: center; }
+          .traza-proceso { font-weight: bold; white-space: nowrap; }
+          .traza-observaciones { min-width: 160px; }
+          .traza-firma { min-width: 60px; height: 30px; }
           /* Estilos compactos para la sección de referencia de número de salida */
           /* Variables para ajustar fácilmente la altura/espaciado de la sección de referencia
              - Cambia las variables abajo para hacer la sección más ancha (altura) o más angosta. */
@@ -1401,7 +1620,14 @@ export default (client: any) => {
         </div>
 
         <div class="seccion">
-          <div class="seccion-titulo">📦 INFORMACIÓN DEL TRABAJO - PRODUCTOS</div>
+          <div class="seccion-titulo seccion-titulo-productos">
+            <span class="seccion-titulo-texto">📦 INFORMACIÓN DEL TRABAJO - PRODUCTOS</span>
+            ${salidaImagenBase64 ? `
+            <div class="seccion-titulo-referencia">
+              <img src="${salidaImagenBase64}" alt="Referencia de Salidas" />
+              <span>Ref. N&deg; de Salida (1&ndash;4)</span>
+            </div>` : ""}
+          </div>
           <div class="seccion-contenido">
             <table class="tabla-productos">
               <thead>
@@ -1424,11 +1650,6 @@ export default (client: any) => {
                 ${filasProductos || '<tr><td colspan="12" class="tabla-celda">No hay productos registrados</td></tr>'}
               </tbody>
             </table>
-            ${salidaImagenBase64 ? `
-            <div style="display:flex; align-items:center; gap:12px; margin-top:8px; padding:6px 8px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
-              <img src="${salidaImagenBase64}" alt="Referencia de Salidas" style="height:40px; width:auto; border:1px solid #ccc; border-radius:3px;" />
-              <span style="font-size:9px; color:#555;">Ref. N&deg; de Salida (1&ndash;4) &mdash; ver columna N&deg; Salida por producto</span>
-            </div>` : ''}
           </div>
         </div>
 
@@ -1506,46 +1727,59 @@ export default (client: any) => {
           </div>
         </div>
 
-        <div class="seccion">
+        <div class="seccion page-break">
           <div class="seccion-titulo">👥 RESPONSABLES DEL PROCESO</div>
           <div class="seccion-contenido">
-            <div class="responsables">
-              <div class="responsable">
-                <div class="responsable-titulo">VENDEDOR</div>
-                <div class="responsable-nombre">${detalle.vendedor || ""}</div>
-                ${detalle.vendedor_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.vendedor_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">PRE-PRENSA</div>
-                <div class="responsable-nombre">${detalle.preprensa || ""}</div>
-                ${detalle.preprensa_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.preprensa_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">IMPRESIÓN</div>
-                <div class="responsable-nombre">${detalle.prensa || ""}</div>
-                ${detalle.prensa_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.prensa_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">LAMINADO/BARNIZADO</div>
-                <div class="responsable-nombre">${detalle.laminado_barnizado || ""}</div>
-                ${detalle.laminado_barnizado_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.laminado_barnizado_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">TROQUELADO</div>
-                <div class="responsable-nombre">${detalle.troquelado || ""}</div>
-                ${detalle.troquelado_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.troquelado_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">TERMINADOS</div>
-                <div class="responsable-nombre">${detalle.terminados || ""}</div>
-                ${detalle.terminados_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.terminados_cantidad_final}</div>` : ""}
-              </div>
-              <div class="responsable">
-                <div class="responsable-titulo">LIBERACIÓN PRODUCTO</div>
-                <div class="responsable-nombre">${detalle.liberacion_producto || ""}</div>
-                ${detalle.liberacion_producto_cantidad_final ? `<div class="responsable-cantidad">Cant. Final: ${detalle.liberacion_producto_cantidad_final}</div>` : ""}
-              </div>
+            <div class="fila" style="margin-bottom: 6px;">
+              <div class="campo"><div class="campo-label">VENDEDOR</div><div class="campo-valor">${detalle.vendedor || ""}</div></div>
+              <div class="campo"><div class="campo-label">FACTURADO</div><div class="campo-valor">${detalle.facturado || ""}</div></div>
             </div>
+            <table class="traza-tabla">
+              <thead>
+                <tr>
+                  <th class="traza-celda traza-header">Proceso</th>
+                  <th class="traza-celda traza-header">Responsable</th>
+                  <th class="traza-celda traza-header">Fecha Inicio</th>
+                  <th class="traza-celda traza-header">Hora Inicio</th>
+                  <th class="traza-celda traza-header">Fecha Fin</th>
+                  <th class="traza-celda traza-header">Hora Fin</th>
+                  <th class="traza-celda traza-header">Cantidad</th>
+                  <th class="traza-celda traza-header">Observaciones</th>
+                  <th class="traza-celda traza-header">Firma</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasTrazabilidad}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <div class="seccion-titulo">📦 LIBERACIÓN PRODUCTO</div>
+          <div class="seccion-contenido">
+            <table class="traza-tabla">
+              <thead>
+                <tr>
+                  <th class="traza-celda traza-header">Responsable</th>
+                  <th class="traza-celda traza-header">Fecha</th>
+                  <th class="traza-celda traza-header">Hora</th>
+                  <th class="traza-celda traza-header">Cantidad</th>
+                  <th class="traza-celda traza-header">Observaciones</th>
+                  <th class="traza-celda traza-header">Firma</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="traza-celda">${detalle.liberacion_producto || ""}</td>
+                  <td class="traza-celda" style="min-width: 80px;">${liberacionTrazabilidad.fecha_inicio || ""}</td>
+                  <td class="traza-celda" style="min-width: 60px;">${liberacionTrazabilidad.hora_inicio || ""}</td>
+                  <td class="traza-celda">${liberacionTrazabilidad.cantidad || detalle.liberacion_producto_cantidad_final || ""}</td>
+                  <td class="traza-celda traza-observaciones">${liberacionTrazabilidad.observaciones || ""}</td>
+                  <td class="traza-celda traza-firma">${liberacionTrazabilidad.firma || ""}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </body>
@@ -1899,9 +2133,9 @@ export default (client: any) => {
           dot.instrucciones_acabados,
           dot.instrucciones_empacado,
           dot.observaciones,
-          dot.prensa_seleccionada,
+          NULL::text AS prensa_seleccionada,
           (SELECT concepto FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS concepto,
-          (SELECT cantidad FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
+          (SELECT cantidad::text FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
           ot.created_at,
           ot.updated_at
         FROM orden_trabajo ot
@@ -1938,9 +2172,9 @@ export default (client: any) => {
           ot.tipo_orden,
           dtd.material,
           NULL::text AS corte_material,
-          NULL::int  AS cantidad_pliegos_compra,
-          NULL::int  AS exceso,
-          NULL::int  AS total_pliegos,
+          NULL::varchar AS cantidad_pliegos_compra,
+          NULL::varchar AS exceso,
+          NULL::varchar AS total_pliegos,
           NULL::text AS tamano,
           NULL::text AS tamano_abierto_1,
           NULL::text AS tamano_cerrado_1,
@@ -1949,7 +2183,7 @@ export default (client: any) => {
           NULL::text AS instrucciones_acabados,
           NULL::text AS instrucciones_empacado,
           dtd.observaciones,
-          dtd.prensa_seleccionada,
+          NULL::text AS prensa_seleccionada,
           (SELECT producto FROM productos_orden_digital WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS concepto,
           (SELECT cantidad  FROM productos_orden_digital WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
           ot.created_at,

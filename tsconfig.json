@@ -27,7 +27,7 @@
 
     /* Modules */
     "module": "ESNext",                                 /* Vite recomienda ESNext para módulos. */
-    "moduleResolution": "Node",                         /* Resolución de módulos estándar para Node. */
+    "moduleResolution": "Bundler",                      /* Resolución recomendada para Vite/TS moderno. */
     // "rootDir": "./",                                  /* Specify the root folder within your source files. */
     // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     // "paths": {},                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
@@ -43,7 +43,7 @@
     // "customConditions": [],                           /* Conditions to set in addition to the resolver-specific defaults when resolving imports. */
     // "noUncheckedSideEffectImports": true,             /* Check side effect imports. */
     "resolveJsonModule": true,                            /* Permite importar archivos .json. */
-    // "allowArbitraryExtensions": true,                 /* Enable importing files with any extension, provided a declaration file is present. */
+    "allowArbitraryExtensions": true,                  /* Enable importing files with any extension, provided a declaration file is present. */
     "noEmit": true,                                       /* No emite archivos JS al compilar. */
 
     /* JavaScript Support */
@@ -110,6 +110,7 @@
     "skipLibCheck": true,                                /* Skip type checking all .d.ts files. */
 
     /* Type Definitions */
-    "typeRoots": ["./src/types", "./node_modules/@types"]  /* Incluir tipos personalizados del proyecto */
+    "typeRoots": ["./src/types", "./node_modules/@types"],  /* Incluir tipos personalizados del proyecto */
+    "ignoreDeprecations": "5.0"
   }
 }
