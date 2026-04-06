@@ -2904,5 +2904,325 @@ export default (client: any) => {
     }
   });
 
+  // ==================== EJECUCIÓN DE ETAPA ====================
+
+  /**
+   * POST /produccion/:id/ejecucion
+   * Guarda el registro de ejecución que el operario llena antes de enviar a calidad.
+   * Si ya existe un registro para esa orden+etapa, lo actualiza (upsert).
+   */
+  router.post(
+    "/produccion/:id/ejecucion",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      const {
+        etapa_id,
+        etapa_titulo,
+        operario,
+        fecha_inicio,
+        hora_inicio,
+        fecha_fin,
+        hora_fin,
+        datos_etapa,
+        reproceso,
+        motivo_reproceso,
+        observaciones,
+      } = req.body;
+
+      if (!etapa_id || !operario) {
+        return res
+          .status(400)
+          .json({ error: "etapa_id y operario son obligatorios" });
+      }
+
+      try {
+        const result = await client.query(
+          `INSERT INTO ejecucion_etapa
+            (orden_trabajo_id, etapa_id, etapa_titulo, operario,
+             fecha_inicio, hora_inicio, fecha_fin, hora_fin,
+             datos_etapa, reproceso, motivo_reproceso, observaciones,
+             created_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+           ON CONFLICT (orden_trabajo_id, etapa_id)
+           DO UPDATE SET
+             etapa_titulo     = EXCLUDED.etapa_titulo,
+             operario         = EXCLUDED.operario,
+             fecha_inicio     = EXCLUDED.fecha_inicio,
+             hora_inicio      = EXCLUDED.hora_inicio,
+             fecha_fin        = EXCLUDED.fecha_fin,
+             hora_fin         = EXCLUDED.hora_fin,
+             datos_etapa      = EXCLUDED.datos_etapa,
+             reproceso        = EXCLUDED.reproceso,
+             motivo_reproceso = EXCLUDED.motivo_reproceso,
+             observaciones    = EXCLUDED.observaciones,
+             updated_at       = NOW()
+           RETURNING *`,
+          [
+            ordenId,
+            etapa_id,
+            etapa_titulo || null,
+            operario,
+            fecha_inicio || null,
+            hora_inicio || null,
+            fecha_fin || null,
+            hora_fin || null,
+            JSON.stringify(datos_etapa || {}),
+            reproceso ?? false,
+            motivo_reproceso || null,
+            observaciones || null,
+            req.user?.nombre || req.user?.email || null,
+          ],
+        );
+        res.json({ success: true, ejecucion: result.rows[0] });
+      } catch (err: any) {
+        console.error("Error guardando ejecución de etapa:", err);
+        res.status(500).json({ error: "Error al guardar registro de ejecución" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/:id/ejecucion
+   * Retorna todos los registros de ejecución de una orden.
+   */
+  router.get(
+    "/produccion/:id/ejecucion",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      try {
+        const result = await client.query(
+          `SELECT * FROM ejecucion_etapa
+           WHERE orden_trabajo_id = $1
+           ORDER BY created_at DESC`,
+          [ordenId],
+        );
+        res.json({ ejecuciones: result.rows });
+      } catch (err: any) {
+        console.error("Error obteniendo ejecuciones:", err);
+        res.status(500).json({ error: "Error al obtener registros de ejecución" });
+      }
+    },
+  );
+
+  // ==================== QA GATES ====================
+
+  /**
+   * POST /produccion/:id/qa
+   * Crea un gate de calidad para la orden + etapa indicadas.
+   * Vincula automáticamente el registro de ejecución si existe.
+   * Si ya hay un gate pendiente para esa orden+etapa, no crea uno nuevo.
+   */
+  router.post(
+    "/produccion/:id/qa",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      const { etapa_id, etapa_titulo } = req.body;
+
+      if (!etapa_id) {
+        return res.status(400).json({ error: "etapa_id es obligatorio" });
+      }
+
+      try {
+        // Obtener el último intento para incrementar
+        const intentoRes = await client.query(
+          `SELECT COALESCE(MAX(intento),0) AS max_intento
+           FROM qa_gate
+           WHERE orden_trabajo_id = $1 AND etapa_id = $2`,
+          [ordenId, etapa_id],
+        );
+        const nuevoIntento = (intentoRes.rows[0]?.max_intento ?? 0) + 1;
+
+        // Buscar ejecución registrada para vincular
+        const ejRes = await client.query(
+          `SELECT id FROM ejecucion_etapa
+           WHERE orden_trabajo_id = $1 AND etapa_id = $2
+           LIMIT 1`,
+          [ordenId, etapa_id],
+        );
+        const ejecucionId = ejRes.rows[0]?.id || null;
+
+        const result = await client.query(
+          `INSERT INTO qa_gate
+            (orden_trabajo_id, etapa_id, etapa_titulo, intento,
+             estado, ejecucion_etapa_id, created_by)
+           VALUES ($1,$2,$3,$4,'pendiente',$5,$6)
+           RETURNING *`,
+          [
+            ordenId,
+            etapa_id,
+            etapa_titulo || null,
+            nuevoIntento,
+            ejecucionId,
+            req.user?.nombre || req.user?.email || null,
+          ],
+        );
+        res.status(201).json({ success: true, gate: result.rows[0] });
+      } catch (err: any) {
+        console.error("Error creando QA gate:", err);
+        res.status(500).json({ error: "Error al crear gate de calidad" });
+      }
+    },
+  );
+
+  /**
+   * PUT /produccion/:id/qa/:gateId
+   * Actualiza el gate: aprueba, rechaza o guarda campos del inspector.
+   */
+  router.put(
+    "/produccion/:id/qa/:gateId",
+    authRequired(),
+    async (req: any, res: any) => {
+      const gateId = parseInt(req.params.gateId, 10);
+      const {
+        estado,
+        resultado_control,
+        inspector,
+        turno,
+        maquina_equipo,
+        unidad_medida,
+        lote_version_arte,
+        motivo_no_conformidad,
+        accion_correctiva,
+        observaciones,
+        cierre_qa_responsable,
+        cierre_qa_fecha,
+        cierre_qa_hora,
+      } = req.body;
+
+      try {
+        const result = await client.query(
+          `UPDATE qa_gate SET
+             estado                = COALESCE($1, estado),
+             resultado_control     = COALESCE($2, resultado_control),
+             inspector             = COALESCE($3, inspector),
+             turno                 = COALESCE($4, turno),
+             maquina_equipo        = COALESCE($5, maquina_equipo),
+             unidad_medida         = COALESCE($6, unidad_medida),
+             lote_version_arte     = COALESCE($7, lote_version_arte),
+             motivo_no_conformidad = COALESCE($8, motivo_no_conformidad),
+             accion_correctiva     = COALESCE($9, accion_correctiva),
+             observaciones         = COALESCE($10, observaciones),
+             cierre_qa_responsable = COALESCE($11, cierre_qa_responsable),
+             cierre_qa_fecha       = COALESCE($12, cierre_qa_fecha),
+             cierre_qa_hora        = COALESCE($13, cierre_qa_hora),
+             updated_by            = $14
+           WHERE id = $15
+           RETURNING *`,
+          [
+            estado || null,
+            resultado_control || null,
+            inspector || null,
+            turno || null,
+            maquina_equipo || null,
+            unidad_medida || null,
+            lote_version_arte || null,
+            motivo_no_conformidad || null,
+            accion_correctiva || null,
+            observaciones || null,
+            cierre_qa_responsable || null,
+            cierre_qa_fecha || null,
+            cierre_qa_hora || null,
+            req.user?.nombre || req.user?.email || null,
+            gateId,
+          ],
+        );
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: "Gate no encontrado" });
+        }
+        res.json({ success: true, gate: result.rows[0] });
+      } catch (err: any) {
+        console.error("Error actualizando QA gate:", err);
+        res.status(500).json({ error: "Error al actualizar gate de calidad" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/:id/qa
+   * Retorna todos los gates de una orden (historial de revisiones por etapa).
+   */
+  router.get(
+    "/produccion/:id/qa",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      try {
+        const result = await client.query(
+          `SELECT qg.*, ee.operario, ee.datos_etapa, ee.reproceso, ee.observaciones AS obs_operario
+           FROM qa_gate qg
+           LEFT JOIN ejecucion_etapa ee ON ee.id = qg.ejecucion_etapa_id
+           WHERE qg.orden_trabajo_id = $1
+           ORDER BY qg.etapa_id, qg.intento`,
+          [ordenId],
+        );
+        res.json({ gates: result.rows });
+      } catch (err: any) {
+        console.error("Error obteniendo QA gates:", err);
+        res.status(500).json({ error: "Error al obtener gates de calidad" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/qa/pendientes
+   * Lista todas las órdenes en cola de calidad (estado = 'pendiente').
+   * Usa la vista v_qa_pendientes definida en la migración 006.
+   */
+  router.get(
+    "/produccion/qa/pendientes",
+    authRequired(),
+    async (req: any, res: any) => {
+      try {
+        const result = await client.query(
+          `SELECT
+             qg.id                   AS qa_gate_id,
+             qg.orden_trabajo_id,
+             ot.numero_orden,
+             cl.nombre               AS nombre_cliente,
+             ot.concepto,
+             qg.etapa_id,
+             qg.etapa_titulo,
+             qg.intento,
+             qg.estado               AS estado_qa,
+             qg.resultado_control,
+             qg.inspector,
+             qg.turno,
+             qg.maquina_equipo,
+             qg.unidad_medida,
+             qg.lote_version_arte,
+             qg.motivo_no_conformidad,
+             qg.accion_correctiva,
+             qg.observaciones,
+             qg.cierre_qa_responsable,
+             qg.cierre_qa_fecha,
+             qg.cierre_qa_hora,
+             qg.created_at           AS ingreso_qa,
+             ee.operario,
+             ee.fecha_inicio,
+             ee.hora_inicio,
+             ee.fecha_fin,
+             ee.hora_fin,
+             ee.datos_etapa,
+             ee.reproceso,
+             ee.motivo_reproceso,
+             ee.observaciones        AS obs_operario
+           FROM qa_gate qg
+           JOIN orden_trabajo ot   ON ot.id = qg.orden_trabajo_id
+           LEFT JOIN clientes cl   ON cl.id = ot.cliente_id
+           LEFT JOIN ejecucion_etapa ee ON ee.id = qg.ejecucion_etapa_id
+           WHERE qg.estado = 'pendiente'
+           ORDER BY qg.created_at DESC`,
+        );
+        res.json({ pendientes: result.rows });
+      } catch (err: any) {
+        console.error("Error obteniendo QA pendientes:", err);
+        res.status(500).json({ error: "Error al obtener cola de calidad" });
+      }
+    },
+  );
+
   return router;
 };

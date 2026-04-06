@@ -14,6 +14,7 @@ import {
   FaTimes
 } from 'react-icons/fa';
 import OrdenDetalleModal from '../../components/OrdenDetalleModal';
+import ModalRegistroEjecucion from './ModalRegistroEjecucion';
 
 const VistaKanban = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -86,7 +87,8 @@ const VistaKanban = () => {
   const [showOrdenModal, setShowOrdenModal] = useState(false);
   const [ordenDetalleModal, setOrdenDetalleModal] = useState(null);
   const [qaGates, setQaGates] = useState({});
-  const [mostrarPrototipoQA, setMostrarPrototipoQA] = useState(true);
+  const [selectorProcesoAbierto, setSelectorProcesoAbierto] = useState(null); // key = `${ordenId}:${columnaId}`
+  const [registroEjecucion, setRegistroEjecucion] = useState(null); // { orden, etapa }
   const [kanbanDebug, setKanbanDebug] = useState({
     totalRecibidas: 0,
     totalFiltradas: 0,
@@ -102,47 +104,46 @@ const VistaKanban = () => {
   };
 
   const saveQaState = (ordenId, etapaId, estado, observacion = '') => {
+    // Actualizar caché local para reflejar inmediatamente en la UI
     setQaGates((prev) => {
       const updated = {
         ...prev,
-        [gateKey(ordenId, etapaId)]: {
-          estado,
-          observacion,
-          updatedAt: new Date().toISOString(),
-        },
+        [gateKey(ordenId, etapaId)]: { estado, observacion, updatedAt: new Date().toISOString() },
       };
       localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
   };
 
-  const upsertQaQueue = (orden, etapa) => {
+  const upsertQaQueue = async (orden, etapa) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ etapa_id: etapa.id, etapa_titulo: etapa.titulo }),
+      });
+    } catch (err) {
+      console.error('No se pudo crear QA gate en backend', err);
+    }
+    // Mantener caché local para compatibilidad con GestionCalidadKanban mientras migramos
     try {
       const raw = localStorage.getItem(QA_QUEUE_KEY);
       const queue = raw ? JSON.parse(raw) : [];
       const itemId = `${orden.id}:${etapa.id}`;
       const nextItem = {
-        id: itemId,
-        ordenId: orden.id,
-        numeroOrden: orden.numero_orden,
-        cliente: orden.nombre_cliente,
-        producto: orden.concepto || '',
-        cantidad: orden.cantidad || '',
-        etapaId: etapa.id,
-        etapaTitulo: etapa.titulo,
-        estado: 'pendiente',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        id: itemId, ordenId: orden.id, numeroOrden: orden.numero_orden,
+        cliente: orden.nombre_cliente, producto: orden.concepto || '',
+        cantidad: orden.cantidad || '', etapaId: etapa.id, etapaTitulo: etapa.titulo,
+        estado: 'pendiente', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
-
       const idx = queue.findIndex((q) => q.id === itemId);
       if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
       else queue.unshift(nextItem);
-
       localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
       window.dispatchEvent(new Event('qa-queue-updated'));
     } catch (err) {
-      console.error('No se pudo actualizar cola de calidad', err);
+      console.error('Error actualizando caché QA', err);
     }
   };
 
@@ -158,19 +159,31 @@ const VistaKanban = () => {
   const moverOrdenASiguienteColumna = (orden, columnaActualId) => {
     const idxActual = columnas.findIndex((c) => c.id === columnaActualId);
     if (idxActual < 0 || idxActual >= columnas.length - 1) return;
-    const siguiente = columnas[idxActual + 1];
+    moverOrdenAColumna(orden, columnaActualId, columnas[idxActual + 1].id);
+  };
 
+  const moverOrdenAColumna = (orden, columnaOrigenId, columnaDestinoId) => {
+    if (columnaOrigenId === columnaDestinoId) return;
     setOrdenes((prev) => {
-      const origen = (prev[columnaActualId] || []).filter((o) => o.id !== orden.id);
-      const destino = [...(prev[siguiente.id] || []), { ...orden, estado: siguiente.id }];
+      const origen = (prev[columnaOrigenId] || []).filter((o) => o.id !== orden.id);
+      const destino = [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }];
       return {
         ...prev,
-        [columnaActualId]: origen,
-        [siguiente.id]: destino,
+        [columnaOrigenId]: origen,
+        [columnaDestinoId]: destino,
       };
     });
+    clearQaState(orden.id, columnaOrigenId);
+    setSelectorProcesoAbierto(null);
+  };
 
-    clearQaState(orden.id, columnaActualId);
+  const moverPendienteAColumna = (orden, columnaDestinoId) => {
+    setOrdenesPendientes((prev) => prev.filter((o) => o.id !== orden.id));
+    setOrdenes((prev) => ({
+      ...prev,
+      [columnaDestinoId]: [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }],
+    }));
+    setSelectorProcesoAbierto(null);
   };
 
   useEffect(() => {
@@ -181,6 +194,13 @@ const VistaKanban = () => {
       console.error('No se pudo cargar estado de quality gates', err);
     }
   }, []);
+
+  useEffect(() => {
+    if (!selectorProcesoAbierto) return;
+    const cerrar = () => setSelectorProcesoAbierto(null);
+    window.addEventListener('click', cerrar);
+    return () => window.removeEventListener('click', cerrar);
+  }, [selectorProcesoAbierto]);
 
   useEffect(() => {
     const refreshQa = () => {
@@ -692,13 +712,7 @@ const VistaKanban = () => {
             
             <div className="flex items-center gap-2">
               {/* (Sidebar toggle moved to Sidebar component) */}
-              <button
-                onClick={() => setMostrarPrototipoQA((v) => !v)}
-                className={`px-3 py-2 rounded-md text-sm ${mostrarPrototipoQA ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
-                title="Mostrar u ocultar controles de prototipo de calidad"
-              >
-                Prototipo QA: {mostrarPrototipoQA ? 'ON' : 'OFF'}
-              </button>
+
               <button
                   onClick={async () => { setWorkflowType('offset'); await refreshWorkflowAndOrders('offset'); }}
                 className={`px-3 py-2 rounded-md text-sm ${workflowType==='offset' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
@@ -803,6 +817,46 @@ const VistaKanban = () => {
                       <span>{new Date(orden.fecha_entrega).toLocaleDateString()}</span>
                     </div>
                   )}
+                  {/* Botón enviar a proceso desde Pendientes */}
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    {(() => {
+                      const selectorKey = `pend:${orden.id}`;
+                      const selectorAbierto = selectorProcesoAbierto === selectorKey;
+                      return (
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectorProcesoAbierto(selectorAbierto ? null : selectorKey);
+                            }}
+                            className="w-full text-[11px] px-2 py-1 rounded bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors flex items-center justify-between gap-1"
+                          >
+                            <span>Enviar a proceso</span>
+                            <span>{selectorAbierto ? '▲' : '▼'}</span>
+                          </button>
+                          {selectorAbierto && (
+                            <div
+                              className="absolute left-0 top-full mt-1 z-50 w-full min-w-max bg-white border border-gray-200 rounded shadow-lg py-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {columnas.map((etapa) => (
+                                <button
+                                  key={etapa.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moverPendienteAColumna(orden, etapa.id);
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors"
+                                >
+                                  {etapa.titulo}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               ))}
               {ordenesPendientes.length === 0 && (
@@ -936,7 +990,7 @@ const VistaKanban = () => {
                         </button>
                       </div>
 
-                      {mostrarPrototipoQA && (() => {
+                      {(() => {
                         const gate = getQaState(orden.id, columna.id);
                         const idxActual = columnas.findIndex((c) => c.id === columna.id);
                         const tieneSiguiente = idxActual >= 0 && idxActual < columnas.length - 1;
@@ -948,8 +1002,7 @@ const VistaKanban = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  saveQaState(orden.id, columna.id, 'pendiente');
-                                  upsertQaQueue(orden, columna);
+                                  setRegistroEjecucion({ orden, etapa: columna });
                                 }}
                                 className="text-[11px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition-colors"
                               >
@@ -976,8 +1029,7 @@ const VistaKanban = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    saveQaState(orden.id, columna.id, 'pendiente');
-                                    upsertQaQueue(orden, columna);
+                                    setRegistroEjecucion({ orden, etapa: columna });
                                   }}
                                   className="text-[11px] bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
                                 >
@@ -995,23 +1047,50 @@ const VistaKanban = () => {
                               </div>
                             )}
 
-                            {tieneSiguiente && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!puedeEnviar) return;
-                                  moverOrdenASiguienteColumna(orden, columna.id);
-                                }}
-                                disabled={!puedeEnviar}
-                                className={`text-[11px] px-2 py-1 rounded transition-colors ${
-                                  puedeEnviar
-                                    ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                }`}
-                              >
-                                Enviar al siguiente proceso
-                              </button>
-                            )}
+                            {tieneSiguiente && (() => {
+                              const selectorKey = `${orden.id}:${columna.id}`;
+                              const selectorAbierto = selectorProcesoAbierto === selectorKey;
+                              const etapasDestino = columnas.filter((c) => c.id !== columna.id);
+                              return (
+                                <div className="relative">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!puedeEnviar) return;
+                                      setSelectorProcesoAbierto(selectorAbierto ? null : selectorKey);
+                                    }}
+                                    disabled={!puedeEnviar}
+                                    className={`w-full text-[11px] px-2 py-1 rounded transition-colors flex items-center justify-between gap-1 ${
+                                      puedeEnviar
+                                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                  >
+                                    <span>Enviar a proceso</span>
+                                    <span>{selectorAbierto ? '▲' : '▼'}</span>
+                                  </button>
+                                  {selectorAbierto && (
+                                    <div
+                                      className="absolute left-0 top-full mt-1 z-50 w-full min-w-max bg-white border border-gray-200 rounded shadow-lg py-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {etapasDestino.map((etapa) => (
+                                        <button
+                                          key={etapa.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            moverOrdenAColumna(orden, columna.id, etapa.id);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                                        >
+                                          {etapa.titulo}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })()}
@@ -1032,6 +1111,20 @@ const VistaKanban = () => {
         </div>{/* fin scrollInnerRef */}
         </div>{/* fin scrollBoardRef */}
       </div>
+
+      {registroEjecucion && (
+        <ModalRegistroEjecucion
+          orden={registroEjecucion.orden}
+          etapa={registroEjecucion.etapa}
+          onConfirmar={async (ejecucionGuardada) => {
+            const { orden, etapa } = registroEjecucion;
+            saveQaState(orden.id, etapa.id, 'pendiente');
+            await upsertQaQueue(orden, etapa);
+            setRegistroEjecucion(null);
+          }}
+          onCancelar={() => setRegistroEjecucion(null)}
+        />
+      )}
 
     </div>
   );

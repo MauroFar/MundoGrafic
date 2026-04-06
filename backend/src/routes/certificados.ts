@@ -664,11 +664,9 @@ export default (client: any) => {
           producto_cod_mg ||
           req.body.producto_cod_mg ||
           null;
-        const materialVal =
-          req.body.material ||
-          producto_descripcion ||
-          req.body.producto_descripcion ||
-          null;
+        // material viene explícito desde el frontend; NO hacer fallback a producto_descripcion
+        // para evitar que el tipo de terminado sobreescriba el material
+        const materialVal = req.body.material || null;
         const descripcionVal =
           req.body.descripcion ||
           producto_descripcion ||
@@ -1059,11 +1057,8 @@ export default (client: any) => {
           producto_cod_mg ||
           req.body.producto_cod_mg ||
           null;
-        const materialValUp =
-          req.body.material ||
-          producto_descripcion ||
-          req.body.producto_descripcion ||
-          null;
+        // material viene explícito desde el frontend; NO hacer fallback a producto_descripcion
+        const materialValUp = req.body.material || null;
         const descripcionValUp =
           req.body.descripcion ||
           producto_descripcion ||
