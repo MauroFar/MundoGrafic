@@ -151,8 +151,7 @@ SELECT
   qg.id                   AS qa_gate_id,
   qg.orden_trabajo_id,
   ot.numero_orden,
-  cl.nombre               AS nombre_cliente,
-  ot.concepto,
+  ot.nombre_cliente,
   qg.etapa_id,
   qg.etapa_titulo,
   qg.intento,
@@ -172,7 +171,6 @@ SELECT
   ee.observaciones        AS obs_operario
 FROM qa_gate qg
 JOIN orden_trabajo ot   ON ot.id = qg.orden_trabajo_id
-LEFT JOIN clientes cl   ON cl.id = ot.cliente_id
 LEFT JOIN ejecucion_etapa ee ON ee.id = qg.ejecucion_etapa_id
 ORDER BY qg.created_at DESC;
 

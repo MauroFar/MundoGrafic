@@ -3145,7 +3145,78 @@ export default (client: any) => {
         if (result.rows.length === 0) {
           return res.status(404).json({ error: "Gate no encontrado" });
         }
-        res.json({ success: true, gate: result.rows[0] });
+
+        const gate = result.rows[0];
+
+        // Cuando QA aprueba → avanzar la orden al siguiente estado del Kanban
+        if (estado === "aprobado") {
+          try {
+            // Progresión de etapas (sirve para offset y digital)
+            const PROGRESION: Record<string, string> = {
+              pendiente:         "en_preprensa",
+              en_preprensa:      "en_prensa",
+              en_prensa:         "laminado",
+              laminado:          "troquelado",
+              troquelado:        "terminados",
+              terminados:        "en_control_calidad",
+              en_control_calidad:"entregado",
+            };
+            const etapaActual = gate.etapa_id as string;
+            const siguienteEtapa = PROGRESION[etapaActual];
+
+            if (siguienteEtapa) {
+              // Determinar tipo de orden
+              const tipoRes = await client.query(
+                `SELECT tipo_orden FROM orden_trabajo WHERE id = $1`,
+                [gate.orden_trabajo_id],
+              );
+              const tipoOrden = (tipoRes.rows[0]?.tipo_orden || "offset").toLowerCase();
+
+              if (tipoOrden === "digital") {
+                // Buscar el id del siguiente estado digital por key
+                const estadoRes = await client.query(
+                  `SELECT id FROM estado_orden_digital WHERE activo = TRUE AND key = $1 LIMIT 1`,
+                  [siguienteEtapa],
+                );
+                const estadoId = estadoRes.rows[0]?.id;
+                if (estadoId) {
+                  await client.query(
+                    `UPDATE orden_trabajo SET estado_orden_digital_id = $1, updated_at = NOW() WHERE id = $2`,
+                    [estadoId, gate.orden_trabajo_id],
+                  );
+                  await client.query(
+                    `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+                     VALUES ($1, $2, $3, $4)`,
+                    [gate.orden_trabajo_id, estadoId, req.user?.id || null, `QA aprobado por ${req.user?.nombre || 'inspector'}`],
+                  ).catch(() => {});
+                }
+              } else {
+                // Buscar el id del siguiente estado offset por key
+                const estadoRes = await client.query(
+                  `SELECT id FROM estado_orden_offset WHERE activo = TRUE AND key = $1 LIMIT 1`,
+                  [siguienteEtapa],
+                );
+                const estadoId = estadoRes.rows[0]?.id;
+                if (estadoId) {
+                  await client.query(
+                    `UPDATE orden_trabajo SET estado_orden_offset_id = $1, updated_at = NOW() WHERE id = $2`,
+                    [estadoId, gate.orden_trabajo_id],
+                  );
+                  await client.query(
+                    `INSERT INTO estado_orden_offset_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+                     VALUES ($1, $2, $3, $4)`,
+                    [gate.orden_trabajo_id, estadoId, req.user?.id || null, `QA aprobado por ${req.user?.nombre || 'inspector'}`],
+                  ).catch(() => {});
+                }
+              }
+            }
+          } catch (advanceErr) {
+            // No fallar si el avance de estado falla — el gate ya quedó aprobado
+            console.warn("No se pudo avanzar estado de orden tras aprobación QA:", advanceErr);
+          }
+        }
+
+        res.json({ success: true, gate });
       } catch (err: any) {
         console.error("Error actualizando QA gate:", err);
         res.status(500).json({ error: "Error al actualizar gate de calidad" });
@@ -3194,8 +3265,7 @@ export default (client: any) => {
              qg.id                   AS qa_gate_id,
              qg.orden_trabajo_id,
              ot.numero_orden,
-             cl.nombre               AS nombre_cliente,
-             ot.concepto,
+             ot.nombre_cliente,
              qg.etapa_id,
              qg.etapa_titulo,
              qg.intento,
@@ -3224,7 +3294,6 @@ export default (client: any) => {
              ee.observaciones        AS obs_operario
            FROM qa_gate qg
            JOIN orden_trabajo ot   ON ot.id = qg.orden_trabajo_id
-           LEFT JOIN clientes cl   ON cl.id = ot.cliente_id
            LEFT JOIN ejecucion_etapa ee ON ee.id = qg.ejecucion_etapa_id
            WHERE qg.estado = 'pendiente'
            ORDER BY qg.created_at DESC`,
