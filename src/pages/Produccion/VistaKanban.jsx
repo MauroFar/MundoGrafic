@@ -162,8 +162,9 @@ const VistaKanban = () => {
     moverOrdenAColumna(orden, columnaActualId, columnas[idxActual + 1].id);
   };
 
-  const moverOrdenAColumna = (orden, columnaOrigenId, columnaDestinoId) => {
+  const moverOrdenAColumna = async (orden, columnaOrigenId, columnaDestinoId) => {
     if (columnaOrigenId === columnaDestinoId) return;
+    // Actualizar UI de inmediato (optimistic update)
     setOrdenes((prev) => {
       const origen = (prev[columnaOrigenId] || []).filter((o) => o.id !== orden.id);
       const destino = [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }];
@@ -175,15 +176,54 @@ const VistaKanban = () => {
     });
     clearQaState(orden.id, columnaOrigenId);
     setSelectorProcesoAbierto(null);
+    // Persistir en BD
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: columnaDestinoId }),
+      });
+      if (!response.ok) throw new Error('Error al actualizar estado');
+    } catch (error) {
+      console.error('Error al persistir estado en BD:', error);
+      // Revertir UI si falló
+      setOrdenes((prev) => {
+        const destino = (prev[columnaDestinoId] || []).filter((o) => o.id !== orden.id);
+        const origen = [...(prev[columnaOrigenId] || []), { ...orden, estado: columnaOrigenId }];
+        return { ...prev, [columnaOrigenId]: origen, [columnaDestinoId]: destino };
+      });
+      alert('Error al guardar el cambio de estado. Intenta de nuevo.');
+    }
   };
 
-  const moverPendienteAColumna = (orden, columnaDestinoId) => {
+  const moverPendienteAColumna = async (orden, columnaDestinoId) => {
+    // Actualizar UI de inmediato (optimistic update)
     setOrdenesPendientes((prev) => prev.filter((o) => o.id !== orden.id));
     setOrdenes((prev) => ({
       ...prev,
       [columnaDestinoId]: [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }],
     }));
     setSelectorProcesoAbierto(null);
+    // Persistir en BD
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: columnaDestinoId }),
+      });
+      if (!response.ok) throw new Error('Error al actualizar estado');
+    } catch (error) {
+      console.error('Error al persistir estado en BD:', error);
+      // Revertir UI si falló
+      setOrdenesPendientes((prev) => [...prev, orden]);
+      setOrdenes((prev) => ({
+        ...prev,
+        [columnaDestinoId]: (prev[columnaDestinoId] || []).filter((o) => o.id !== orden.id),
+      }));
+      alert('Error al guardar el cambio de estado. Intenta de nuevo.');
+    }
   };
 
   useEffect(() => {

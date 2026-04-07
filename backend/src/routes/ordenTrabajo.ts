@@ -2042,11 +2042,24 @@ export default (client: any) => {
 
         let result: any;
         if (tipoOrden === "digital") {
-          // Para digital, no cambiamos el estado aquí (se maneja desde produccion/:id/estado)
-          result = await client.query(
-            `UPDATE orden_trabajo SET updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
-            [id],
+          // Asignar el primer estado digital (menor orden) para que quede persistido en BD
+          const estadoDigitalRes = await client.query(
+            `SELECT id FROM estado_orden_digital WHERE activo = TRUE ORDER BY orden ASC LIMIT 1`,
           );
+          const estadoDigitalId = estadoDigitalRes.rows[0]?.id;
+          result = await client.query(
+            `UPDATE orden_trabajo SET estado_orden_digital_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+            [estadoDigitalId, id],
+          );
+          // Registrar en historial
+          if (estadoDigitalId) {
+            await client
+              .query(
+                `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`,
+                [id, estadoDigitalId, req.user?.id || null, "Enviada a producción"],
+              )
+              .catch(() => {});
+          }
         } else {
           // Para offset, poner estado = pendiente
           const estadoRes = await client.query(
