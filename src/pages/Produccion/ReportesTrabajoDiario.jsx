@@ -368,21 +368,13 @@ const ReportesTrabajoDiario = () => {
     y += headH;
 
     // Filas de datos
+    const lineH = 4.2; // alto de cada línea de texto en mm
+    const cellPadV = 2.5; // padding vertical dentro de celda
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(30, 30, 30);
 
     reportesFiltrados.forEach((d, idx) => {
-      if (y + rowH > doc.internal.pageSize.getHeight() - 15) {
-        doc.addPage();
-        y = 15;
-      }
-      if (idx % 2 === 0) {
-        doc.setFillColor(249, 250, 251);
-        doc.rect(14, y, totalW, rowH, "F");
-      }
-      doc.setDrawColor(220, 225, 235);
-      cx = x;
       const vals = [
         String(idx + 1),
         d.operador || "",
@@ -391,14 +383,37 @@ const ReportesTrabajoDiario = () => {
         d.inicio || "",
         d.fin || "",
       ];
-      cols.forEach((c, i) => {
-        doc.rect(cx, y, c.w, rowH);
+
+      // Calcular las líneas de texto de cada celda respetando el ancho
+      const cellLines = cols.map((c, i) => {
         const txt = String(vals[i]);
-        const maxCh = Math.floor(c.w / 1.85);
-        doc.text(txt.length > maxCh ? txt.slice(0, maxCh - 1) + "…" : txt, cx + 2, y + 4.8);
+        return doc.splitTextToSize(txt, c.w - 4); // 2mm padding c/lado
+      });
+
+      // La altura de la fila la determina la celda con más líneas
+      const maxLines = Math.max(...cellLines.map(l => l.length));
+      const dynRowH = Math.max(rowH, cellPadV * 2 + maxLines * lineH);
+
+      // Salto de página si no cabe la fila completa
+      if (y + dynRowH > doc.internal.pageSize.getHeight() - 15) {
+        doc.addPage();
+        y = 15;
+      }
+
+      // Fondo alternado
+      if (idx % 2 === 0) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(14, y, totalW, dynRowH, "F");
+      }
+
+      doc.setDrawColor(220, 225, 235);
+      cx = x;
+      cols.forEach((c, i) => {
+        doc.rect(cx, y, c.w, dynRowH);
+        doc.text(cellLines[i], cx + 2, y + cellPadV + lineH * 0.85);
         cx += c.w;
       });
-      y += rowH;
+      y += dynRowH;
     });
 
     // ── Pie de página ──

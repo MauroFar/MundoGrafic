@@ -3148,73 +3148,9 @@ export default (client: any) => {
 
         const gate = result.rows[0];
 
-        // Cuando QA aprueba → avanzar la orden al siguiente estado del Kanban
-        if (estado === "aprobado") {
-          try {
-            // Progresión de etapas (sirve para offset y digital)
-            const PROGRESION: Record<string, string> = {
-              pendiente:         "en_preprensa",
-              en_preprensa:      "en_prensa",
-              en_prensa:         "laminado",
-              laminado:          "troquelado",
-              troquelado:        "terminados",
-              terminados:        "en_control_calidad",
-              en_control_calidad:"entregado",
-            };
-            const etapaActual = gate.etapa_id as string;
-            const siguienteEtapa = PROGRESION[etapaActual];
-
-            if (siguienteEtapa) {
-              // Determinar tipo de orden
-              const tipoRes = await client.query(
-                `SELECT tipo_orden FROM orden_trabajo WHERE id = $1`,
-                [gate.orden_trabajo_id],
-              );
-              const tipoOrden = (tipoRes.rows[0]?.tipo_orden || "offset").toLowerCase();
-
-              if (tipoOrden === "digital") {
-                // Buscar el id del siguiente estado digital por key
-                const estadoRes = await client.query(
-                  `SELECT id FROM estado_orden_digital WHERE activo = TRUE AND key = $1 LIMIT 1`,
-                  [siguienteEtapa],
-                );
-                const estadoId = estadoRes.rows[0]?.id;
-                if (estadoId) {
-                  await client.query(
-                    `UPDATE orden_trabajo SET estado_orden_digital_id = $1, updated_at = NOW() WHERE id = $2`,
-                    [estadoId, gate.orden_trabajo_id],
-                  );
-                  await client.query(
-                    `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota)
-                     VALUES ($1, $2, $3, $4)`,
-                    [gate.orden_trabajo_id, estadoId, req.user?.id || null, `QA aprobado por ${req.user?.nombre || 'inspector'}`],
-                  ).catch(() => {});
-                }
-              } else {
-                // Buscar el id del siguiente estado offset por key
-                const estadoRes = await client.query(
-                  `SELECT id FROM estado_orden_offset WHERE activo = TRUE AND key = $1 LIMIT 1`,
-                  [siguienteEtapa],
-                );
-                const estadoId = estadoRes.rows[0]?.id;
-                if (estadoId) {
-                  await client.query(
-                    `UPDATE orden_trabajo SET estado_orden_offset_id = $1, updated_at = NOW() WHERE id = $2`,
-                    [estadoId, gate.orden_trabajo_id],
-                  );
-                  await client.query(
-                    `INSERT INTO estado_orden_offset_historial (orden_trabajo_id, estado_id, usuario_id, nota)
-                     VALUES ($1, $2, $3, $4)`,
-                    [gate.orden_trabajo_id, estadoId, req.user?.id || null, `QA aprobado por ${req.user?.nombre || 'inspector'}`],
-                  ).catch(() => {});
-                }
-              }
-            }
-          } catch (advanceErr) {
-            // No fallar si el avance de estado falla — el gate ya quedó aprobado
-            console.warn("No se pudo avanzar estado de orden tras aprobación QA:", advanceErr);
-          }
-        }
+        // El avance al siguiente estado del Kanban lo realiza el operario
+        // manualmente desde la vista Kanban una vez que ve "Calidad Aprobada".
+        // No se avanza de forma automática al aprobar.
 
         res.json({ success: true, gate });
       } catch (err: any) {
@@ -3246,6 +3182,146 @@ export default (client: any) => {
       } catch (err: any) {
         console.error("Error obteniendo QA gates:", err);
         res.status(500).json({ error: "Error al obtener gates de calidad" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/qa/historial
+   * Retorna gates QA resueltos (aprobado/rechazado/condicionado) con filtros opcionales.
+   * Query params: desde, hasta, estado, inspector, etapa_id, page, limit
+   */
+  router.get(
+    "/produccion/qa/historial",
+    authRequired(),
+    async (req: any, res: any) => {
+      try {
+        const {
+          desde,
+          hasta,
+          estado,
+          inspector,
+          etapa_id,
+          page = "1",
+          limit = "50",
+        } = req.query as Record<string, string>;
+
+        const pageNum   = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum  = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+        const offset    = (pageNum - 1) * limitNum;
+
+        const conditions: string[] = ["qg.estado <> 'pendiente'"];
+        const params: any[]        = [];
+        let   idx                  = 1;
+
+        if (desde) {
+          conditions.push(`qg.updated_at >= $${idx++}::date`);
+          params.push(desde);
+        }
+        if (hasta) {
+          conditions.push(`qg.updated_at < ($${idx++}::date + interval '1 day')`);
+          params.push(hasta);
+        }
+        if (estado && ["aprobado", "rechazado", "condicionado"].includes(estado)) {
+          conditions.push(`qg.estado = $${idx++}`);
+          params.push(estado);
+        }
+        if (inspector) {
+          conditions.push(`qg.inspector ILIKE $${idx++}`);
+          params.push(`%${inspector}%`);
+        }
+        if (etapa_id) {
+          conditions.push(`qg.etapa_id = $${idx++}`);
+          params.push(etapa_id);
+        }
+
+        const where = conditions.join(" AND ");
+
+        // Total para paginación
+        const countRes = await client.query(
+          `SELECT COUNT(*) AS total
+           FROM qa_gate qg
+           WHERE ${where}`,
+          params,
+        );
+        const total = parseInt(countRes.rows[0]?.total || "0", 10);
+
+        // Datos paginados
+        const dataRes = await client.query(
+          `SELECT
+             qg.id                    AS qa_gate_id,
+             qg.orden_trabajo_id,
+             ot.numero_orden,
+             ot.nombre_cliente,
+             ot.tipo_orden,
+             qg.etapa_id,
+             qg.etapa_titulo,
+             qg.intento,
+             qg.estado                AS estado_qa,
+             qg.resultado_control,
+             qg.inspector,
+             qg.turno,
+             qg.maquina_equipo,
+             qg.unidad_medida,
+             qg.lote_version_arte,
+             qg.motivo_no_conformidad,
+             qg.accion_correctiva,
+             qg.observaciones,
+             qg.cierre_qa_responsable,
+             qg.cierre_qa_fecha,
+             qg.cierre_qa_hora,
+             qg.created_at            AS ingreso_qa,
+             qg.updated_at            AS resolucion_qa,
+             EXTRACT(EPOCH FROM (qg.updated_at - qg.created_at)) / 60 AS minutos_resolucion,
+             ee.operario,
+             ee.fecha_inicio,
+             ee.hora_inicio,
+             ee.fecha_fin,
+             ee.hora_fin,
+             ee.datos_etapa,
+             ee.reproceso,
+             ee.motivo_reproceso,
+             ee.observaciones         AS obs_operario,
+             qg.updated_by            AS resuelto_por
+           FROM qa_gate qg
+           JOIN orden_trabajo ot   ON ot.id = qg.orden_trabajo_id
+           LEFT JOIN ejecucion_etapa ee ON ee.id = qg.ejecucion_etapa_id
+           WHERE ${where}
+           ORDER BY qg.updated_at DESC
+           LIMIT $${idx++} OFFSET $${idx++}`,
+          [...params, limitNum, offset],
+        );
+
+        // KPIs del período consultado (o de hoy si no hay filtro de fecha)
+        const kpiSince = desde || new Date().toISOString().split("T")[0];
+        const kpiRes = await client.query(
+          `SELECT
+             COUNT(*) FILTER (WHERE estado = 'pendiente')    AS pendientes,
+             COUNT(*) FILTER (WHERE estado = 'aprobado')     AS aprobados,
+             COUNT(*) FILTER (WHERE estado = 'rechazado')    AS rechazados,
+             COUNT(*) FILTER (WHERE estado = 'condicionado') AS condicionados,
+             ROUND(
+               COUNT(*) FILTER (WHERE estado = 'aprobado') * 100.0
+               / NULLIF(COUNT(*) FILTER (WHERE estado <> 'pendiente'), 0), 1
+             ) AS tasa_aprobacion,
+             ROUND(AVG(
+               EXTRACT(EPOCH FROM (updated_at - created_at)) / 60
+             ) FILTER (WHERE estado <> 'pendiente'), 1) AS avg_minutos_resolucion
+           FROM qa_gate
+           WHERE created_at >= $1::date`,
+          [kpiSince],
+        );
+
+        res.json({
+          historial: dataRes.rows,
+          total,
+          page:  pageNum,
+          limit: limitNum,
+          kpis:  kpiRes.rows[0] || {},
+        });
+      } catch (err: any) {
+        console.error("Error obteniendo historial QA:", err);
+        res.status(500).json({ error: "Error al obtener historial de calidad" });
       }
     },
   );

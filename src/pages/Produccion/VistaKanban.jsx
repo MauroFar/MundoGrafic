@@ -942,24 +942,20 @@ const VistaKanban = () => {
                   >
                     {(() => {
                       const gate = getQaState(orden.id, columna.id);
-                      const badgeClass = gate?.estado === 'aprobado'
-                        ? 'bg-green-100 text-green-700'
-                        : gate?.estado === 'rechazado'
-                          ? 'bg-red-100 text-red-700'
-                          : gate?.estado === 'pendiente'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-600';
-                      const badgeText = gate?.estado === 'aprobado'
-                        ? 'Calidad: Aprobado'
-                        : gate?.estado === 'rechazado'
-                          ? 'Calidad: Rechazado'
-                          : gate?.estado === 'pendiente'
-                            ? 'Calidad: Pendiente'
-                            : 'Producción';
-
+                      if (!gate) return null;
+                      const badgeClass =
+                        gate.estado === 'aprobado'    ? 'bg-green-100 text-green-700'  :
+                        gate.estado === 'rechazado'   ? 'bg-red-100 text-red-700'      :
+                        gate.estado === 'condicionado'? 'bg-orange-100 text-orange-700':
+                                                        'bg-yellow-100 text-yellow-800';
+                      const badgeText =
+                        gate.estado === 'aprobado'    ? '✓ Calidad aprobada'           :
+                        gate.estado === 'rechazado'   ? '✗ Calidad rechazada'          :
+                        gate.estado === 'condicionado'? '⚠ Calidad condicionada'       :
+                                                        '⏳ Enviado a calidad';
                       return (
                         <div className="mb-1">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>
                             {badgeText}
                           </span>
                         </div>
@@ -1051,16 +1047,8 @@ const VistaKanban = () => {
                             )}
 
                             {gate?.estado === 'pendiente' && (
-                              <div className="grid grid-cols-1 gap-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate('/produccion/control-calidad');
-                                  }}
-                                  className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-1 rounded hover:bg-indigo-200 transition-colors"
-                                >
-                                  Ir a Control de Calidad
-                                </button>
+                              <div className="text-[11px] text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 text-center leading-snug">
+                                Esperando aprobación de calidad
                               </div>
                             )}
 
@@ -1075,14 +1063,19 @@ const VistaKanban = () => {
                                 >
                                   Reenviar a calidad
                                 </button>
+                              </div>
+                            )}
+
+                            {gate?.estado === 'condicionado' && (
+                              <div className="grid grid-cols-1 gap-1">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigate('/produccion/control-calidad');
+                                    setRegistroEjecucion({ orden, etapa: columna });
                                   }}
-                                  className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-1 rounded hover:bg-indigo-200 transition-colors"
+                                  className="text-[11px] bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
                                 >
-                                  Ir a Control de Calidad
+                                  Reenviar a calidad
                                 </button>
                               </div>
                             )}
