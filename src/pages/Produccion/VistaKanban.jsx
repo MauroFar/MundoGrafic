@@ -458,14 +458,7 @@ const VistaKanban = () => {
         return keep;
       });
 
-      // Fallback de seguridad: si el filtro por tipo deja la vista vacia pero hay datos,
-      // mostramos todo para evitar pantalla en blanco y facilitar diagnostico.
-      if (ordenesFiltradas.length === 0 && allOrdenes.length > 0) {
-        ordenesFiltradas = allOrdenes;
-        setAvisoKanban('No hubo coincidencias por tipo/estado; se muestran todas las ordenes temporalmente.');
-      } else {
-        setAvisoKanban('');
-      }
+      setAvisoKanban('');
 
       const conEstadoDigital = allOrdenes.filter(o => Boolean(o.estado_digital_key) || Boolean(o.estado_orden_digital_id)).length;
       const sinEstadoDigital = allOrdenes.filter(o => ((o.tipo_orden || '').toString().toLowerCase().trim() === 'digital') && !o.estado_digital_key && !o.estado_orden_digital_id).length;
