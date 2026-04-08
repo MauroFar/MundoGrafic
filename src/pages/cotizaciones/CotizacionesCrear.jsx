@@ -506,7 +506,8 @@ function CotizacionesCrear() {
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
       try {
         const buscarClienteResponse = await fetch(
-          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
         
         let clientesEncontrados = [];
@@ -738,7 +739,8 @@ function CotizacionesCrear() {
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
       try {
         const buscarClienteResponse = await fetch(
-          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`
+          `${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(nombreCliente)}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
         );
         
         let clientesEncontrados = [];
@@ -1399,20 +1401,7 @@ function CotizacionesCrear() {
     }
   };
 
-  // Cargar celular del ejecutivo autenticado
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed?.celular) {
-          setCeluar(parsed.celular);
-          // Dejar el check desmarcado por defecto, pero mostrar el número
-          setUsarCeluar(false);
-        }
-      }
-    } catch (_) {}
-  }, []);
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -1595,6 +1584,8 @@ function CotizacionesCrear() {
                           key={vendedor.id}
                           onClick={() => {
                             setNombreEjecutivo(vendedor.nombre);
+                            setCeluar(vendedor.celular || '');
+                            setUsarCeluar(!!vendedor.celular);
                             setMostrarVendedores(false);
                           }}
                           className="px-4 py-2 hover:bg-blue-100 cursor-pointer text-sm"

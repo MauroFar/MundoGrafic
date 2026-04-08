@@ -2042,9 +2042,9 @@ export default (client: any) => {
 
         let result: any;
         if (tipoOrden === "digital") {
-          // Asignar el primer estado digital (menor orden) para que quede persistido en BD
+          // Asignar estado 'pendiente' digital (orden=0) para que aparezca en la columna Pendientes del Kanban
           const estadoDigitalRes = await client.query(
-            `SELECT id FROM estado_orden_digital WHERE activo = TRUE ORDER BY orden ASC LIMIT 1`,
+            `SELECT id FROM estado_orden_digital WHERE key = 'pendiente' AND activo = TRUE LIMIT 1`,
           );
           const estadoDigitalId = estadoDigitalRes.rows[0]?.id;
           result = await client.query(
@@ -2237,8 +2237,9 @@ export default (client: any) => {
 
         if (tipo === "digital") {
           // Traer desde la tabla `estado_orden_digital` los estados ordenados
+          // Excluir 'pendiente' porque va a la columna fija de Pendientes del Kanban
           const q = await client.query(
-            `SELECT id, key, titulo, orden, color, activo FROM estado_orden_digital WHERE activo = TRUE ORDER BY orden ASC`,
+            `SELECT id, key, titulo, orden, color, activo FROM estado_orden_digital WHERE activo = TRUE AND key <> 'pendiente' ORDER BY orden ASC`,
           );
           const workflow = q.rows.map((r: any) => ({
             id: r.key,
@@ -3182,6 +3183,101 @@ export default (client: any) => {
       } catch (err: any) {
         console.error("Error obteniendo QA gates:", err);
         res.status(500).json({ error: "Error al obtener gates de calidad" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/:id/trazabilidad
+   * Devuelve la trazabilidad completa de una orden:
+   *   - Datos generales de la orden
+   *   - Por cada etapa con ejecución registrada: operario, tiempos, datos_etapa, reproceso
+   *   - Por cada etapa: todos los qa_gates (intentos) con resultado del inspector
+   */
+  router.get(
+    "/produccion/:id/trazabilidad",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      if (isNaN(ordenId)) {
+        return res.status(400).json({ error: "ID de orden inválido" });
+      }
+      try {
+        // 1. Datos generales de la orden
+        const ordenResult = await client.query(
+          `SELECT ot.id, ot.numero_orden, ot.nombre_cliente, ot.notas_observaciones,
+                  ot.tipo_orden, ot.fecha_entrega, ot.created_at,
+                  eod.key  AS estado_digital_key,  eod.titulo  AS estado_digital_titulo,
+                  eoo.key  AS estado_offset_key,   eoo.titulo  AS estado_offset_titulo
+           FROM orden_trabajo ot
+           LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+           LEFT JOIN estado_orden_offset  eoo ON ot.estado_orden_offset_id  = eoo.id
+           WHERE ot.id = $1`,
+          [ordenId],
+        );
+        if (ordenResult.rows.length === 0) {
+          return res.status(404).json({ error: "Orden no encontrada" });
+        }
+        const orden = ordenResult.rows[0];
+
+        // 2. Registros de ejecución (uno por etapa)
+        const ejecResult = await client.query(
+          `SELECT id, etapa_id, etapa_titulo, operario,
+                  fecha_inicio, hora_inicio, fecha_fin, hora_fin,
+                  datos_etapa, reproceso, motivo_reproceso, observaciones,
+                  created_at, updated_at, created_by
+           FROM ejecucion_etapa
+           WHERE orden_trabajo_id = $1
+           ORDER BY created_at ASC`,
+          [ordenId],
+        );
+
+        // 3. Todos los qa_gates de la orden (todos los intentos)
+        const gatesResult = await client.query(
+          `SELECT qg.id, qg.etapa_id, qg.etapa_titulo, qg.intento,
+                  qg.estado, qg.resultado_control, qg.inspector, qg.turno,
+                  qg.maquina_equipo, qg.unidad_medida, qg.lote_version_arte,
+                  qg.motivo_no_conformidad, qg.accion_correctiva,
+                  qg.observaciones, qg.cierre_qa_responsable,
+                  qg.cierre_qa_fecha, qg.cierre_qa_hora,
+                  qg.created_at, qg.updated_at
+           FROM qa_gate qg
+           WHERE qg.orden_trabajo_id = $1
+           ORDER BY qg.etapa_id, qg.intento ASC`,
+          [ordenId],
+        );
+
+        // 4. Combinar: construir una lista de etapas con su ejecucion + gates
+        //    Usamos un Map para mantener el orden de aparición
+        const etapasMap = new Map<string, any>();
+
+        for (const ejec of ejecResult.rows) {
+          etapasMap.set(ejec.etapa_id, {
+            etapa_id: ejec.etapa_id,
+            etapa_titulo: ejec.etapa_titulo,
+            ejecucion: ejec,
+            qa_gates: [],
+          });
+        }
+        for (const gate of gatesResult.rows) {
+          if (!etapasMap.has(gate.etapa_id)) {
+            etapasMap.set(gate.etapa_id, {
+              etapa_id: gate.etapa_id,
+              etapa_titulo: gate.etapa_titulo,
+              ejecucion: null,
+              qa_gates: [],
+            });
+          }
+          etapasMap.get(gate.etapa_id).qa_gates.push(gate);
+        }
+
+        res.json({
+          orden,
+          etapas: Array.from(etapasMap.values()),
+        });
+      } catch (err: any) {
+        console.error("Error obteniendo trazabilidad:", err);
+        res.status(500).json({ error: "Error al obtener trazabilidad" });
       }
     },
   );

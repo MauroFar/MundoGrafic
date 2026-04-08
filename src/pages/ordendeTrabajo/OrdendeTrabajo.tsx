@@ -785,7 +785,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
     const estadoActual = ordenData.tipo_orden === 'digital'
-      ? (ordenData.estado_digital_key || 'en_preprensa')
+      ? (ordenData.estado_digital_key || 'pendiente')
       : (ordenData.estado_offset_key || 'pendiente');
     setEstado(estadoActual);
     setNotasObservaciones(ordenData.notas_observaciones || '');

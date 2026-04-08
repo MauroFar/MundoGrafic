@@ -88,6 +88,7 @@ const VistaKanban = () => {
   const [ordenDetalleModal, setOrdenDetalleModal] = useState(null);
   const [qaGates, setQaGates] = useState({});
   const [selectorProcesoAbierto, setSelectorProcesoAbierto] = useState(null); // key = `${ordenId}:${columnaId}`
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
   const [registroEjecucion, setRegistroEjecucion] = useState(null); // { orden, etapa }
   const [kanbanDebug, setKanbanDebug] = useState({
     totalRecibidas: 0,
@@ -799,12 +800,7 @@ const VistaKanban = () => {
             {avisoKanban}
           </div>
         )}
-        <div className="mb-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-          Debug Kanban: tipo={kanbanDebug.workflowType} | recibidas={kanbanDebug.totalRecibidas} | mostradas={kanbanDebug.totalFiltradas} | con_estado_digital={kanbanDebug.conEstadoDigital} | sin_estado_digital={kanbanDebug.sinEstadoDigital}
-        </div>
-          <div className="mb-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-            Flujo de validacion (prototipo UI): completar etapa, calidad aprueba o rechaza, y luego se envia al siguiente proceso.
-          </div>
+
 
         {/* Scrollbar superior sincronizado */}
         <div
@@ -857,8 +853,16 @@ const VistaKanban = () => {
                       <span>{new Date(orden.fecha_entrega).toLocaleDateString()}</span>
                     </div>
                   )}
-                  {/* Botón enviar a proceso desde Pendientes */}
+                  {/* Botón Seguir + enviar a proceso desde Pendientes */}
                   <div className="mt-2 pt-2 border-t border-gray-100">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/produccion/seguimiento/${orden.id}`); }}
+                      className="w-full mb-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
+                    >
+                      Ver trazabilidad
+                    </button>
+                  </div>
+                  <div className="mt-1 border-t border-gray-100 pt-1">
                     {(() => {
                       const selectorKey = `pend:${orden.id}`;
                       const selectorAbierto = selectorProcesoAbierto === selectorKey;
@@ -867,6 +871,10 @@ const VistaKanban = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!selectorAbierto) {
+                                const r = e.currentTarget.getBoundingClientRect();
+                                setDropdownCoords({ top: r.bottom + 4, left: r.left, width: r.width });
+                              }
                               setSelectorProcesoAbierto(selectorAbierto ? null : selectorKey);
                             }}
                             className="w-full text-[11px] px-2 py-1 rounded bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors flex items-center justify-between gap-1"
@@ -876,7 +884,8 @@ const VistaKanban = () => {
                           </button>
                           {selectorAbierto && (
                             <div
-                              className="absolute left-0 top-full mt-1 z-50 w-full min-w-max bg-white border border-gray-200 rounded shadow-lg py-1"
+                              className="fixed z-[9999] bg-white border border-gray-200 rounded shadow-lg py-1"
+                              style={{ top: dropdownCoords.top, left: dropdownCoords.left, minWidth: dropdownCoords.width }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               {columnas.map((etapa) => (
@@ -999,6 +1008,23 @@ const VistaKanban = () => {
                       </p>
                     </div>
 
+                    {/* Trazabilidad rápida */}
+                    {(() => {
+                      const gates = Object.entries(qaGates)
+                        .filter(([k]) => k.startsWith(`${orden.id}:`))
+                        .map(([, v]) => v);
+                      if (gates.length === 0) return null;
+                      const aprobadas  = gates.filter(g => g.estado === 'aprobado').length;
+                      const rechazadas = gates.filter(g => g.estado === 'rechazado').length;
+                      return (
+                        <div className="mb-1 flex items-center gap-1 flex-wrap">
+                          <span className="text-[11px] text-gray-500">Calidad:</span>
+                          {aprobadas  > 0 && <span className="text-[11px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">{aprobadas} ✓</span>}
+                          {rechazadas > 0 && <span className="text-[11px] bg-red-100 text-red-700 rounded-full px-1.5 py-0.5">{rechazadas} ✗</span>}
+                        </div>
+                      );
+                    })()}
+
                     {/* Información adicional */}
                     <div className="space-y-1 text-xs text-gray-500">
                       {orden.responsable_actual && (
@@ -1022,7 +1048,7 @@ const VistaKanban = () => {
                           onClick={(e) => { e.stopPropagation(); navigate(`/produccion/seguimiento/${orden.id}`); }}
                           className="flex-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
                         >
-                          Seguir
+                          Ver trazabilidad
                         </button>
                       </div>
 
@@ -1083,13 +1109,18 @@ const VistaKanban = () => {
                             {tieneSiguiente && (() => {
                               const selectorKey = `${orden.id}:${columna.id}`;
                               const selectorAbierto = selectorProcesoAbierto === selectorKey;
-                              const etapasDestino = columnas.filter((c) => c.id !== columna.id);
+                              // Solo mostrar etapas POSTERIORES a la actual (no permite retroceder)
+                              const etapasDestino = columnas.filter((_, i) => i > idxActual);
                               return (
                                 <div className="relative">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (!puedeEnviar) return;
+                                      if (!selectorAbierto) {
+                                        const r = e.currentTarget.getBoundingClientRect();
+                                        setDropdownCoords({ top: r.bottom + 4, left: r.left, width: r.width });
+                                      }
                                       setSelectorProcesoAbierto(selectorAbierto ? null : selectorKey);
                                     }}
                                     disabled={!puedeEnviar}
@@ -1104,21 +1135,36 @@ const VistaKanban = () => {
                                   </button>
                                   {selectorAbierto && (
                                     <div
-                                      className="absolute left-0 top-full mt-1 z-50 w-full min-w-max bg-white border border-gray-200 rounded shadow-lg py-1"
+                                      className="fixed z-[9999] bg-white border border-gray-200 rounded shadow-lg py-1"
+                                      style={{ top: dropdownCoords.top, left: dropdownCoords.left, minWidth: dropdownCoords.width }}
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {etapasDestino.map((etapa) => (
-                                        <button
-                                          key={etapa.id}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            moverOrdenAColumna(orden, columna.id, etapa.id);
-                                          }}
-                                          className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
-                                        >
-                                          {etapa.titulo}
-                                        </button>
-                                      ))}
+                                      {etapasDestino.map((etapa) => {
+                                        const yaProcessado = Boolean(getQaState(orden.id, etapa.id));
+                                        return (
+                                          <button
+                                            key={etapa.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (yaProcessado) return;
+                                              moverOrdenAColumna(orden, columna.id, etapa.id);
+                                            }}
+                                            disabled={yaProcessado}
+                                            title={yaProcessado ? 'Esta etapa ya fue procesada' : undefined}
+                                            className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors flex items-center justify-between gap-2 ${
+                                              yaProcessado
+                                                ? 'text-gray-400 cursor-not-allowed bg-gray-50 line-through'
+                                                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800'
+                                            }`}
+                                          >
+                                            <span>{etapa.titulo}</span>
+                                            {yaProcessado && <span className="text-[10px] text-gray-400 no-underline" style={{textDecoration:'none'}}>ya procesado</span>}
+                                          </button>
+                                        );
+                                      })}
+                                      {etapasDestino.length === 0 && (
+                                        <div className="px-3 py-2 text-[11px] text-gray-400">No hay etapas siguientes</div>
+                                      )}
                                     </div>
                                   )}
                                 </div>

@@ -58,6 +58,10 @@ const Sidebar = () => {
       { path: "/productosTerminados", label: "Productos Liberados" },
       { path: "/productosEntregados", label: "Productos Entregados" },
     ],
+    // Submenú de Trazabilidad (se muestra al estar en /produccion/seguimiento/:id)
+    trazabilidad: [
+      { path: "/produccion/kanban", label: "← Volver al Kanban" },
+    ],
     // Submenú de Administración
     administracion: [
       { path: "/admin/usuarios", label: "Gestión de Usuarios" },
@@ -93,6 +97,9 @@ const Sidebar = () => {
     if (location.pathname.startsWith("/ordendeTrabajo") || location.pathname.startsWith("/certificados")) return menus.ordenTrabajo;
     if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
       return menus.administracion;
+    }
+    if (location.pathname.startsWith("/produccion/seguimiento")) {
+      return menus.trazabilidad;
     }
     if (
       location.pathname.startsWith("/produccion") ||

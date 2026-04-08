@@ -80,6 +80,28 @@ const createCliente = (client: any) => {
     }
   });
 
+  // Ruta para buscar clientes
+  router.get("/buscar", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
+    const { q } = req.query;
+    // Validar: al menos 2 caracteres y al menos una letra
+    if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
+      return res.json([]); // No sugerencias si no cumple
+    }
+    try {
+      const query = `
+        SELECT id, nombre_cliente, empresa_cliente, email_cliente
+        FROM clientes
+        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1 OR empresa_cliente ILIKE $1
+        ORDER BY empresa_cliente ASC, nombre_cliente ASC
+        LIMIT 10
+      `;
+      const result = await client.query(query, [`%${q}%`]);
+      res.json(result.rows);
+    } catch (error: any) {
+      res.status(500).json({ error: 'Error al buscar clientes', details: error.message });
+    }
+  });
+
   // Ruta para obtener un cliente por ID
   router.get("/:id", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
     const { id } = req.params;
@@ -139,28 +161,6 @@ const createCliente = (client: any) => {
     } catch (error: any) {
       console.error('❌ [Clientes API] Error al obtener cliente:', error);
       res.status(500).json({ error: 'Error al obtener cliente', details: error.message });
-    }
-  });
-
-  // Ruta para buscar clientes
-  router.get("/buscar", authRequired(), checkPermission(client, 'clientes', 'leer'), async (req: any, res: any) => {
-    const { q } = req.query;
-    // Validar: al menos 2 caracteres y al menos una letra
-    if (!q || q.trim().length < 2 || !/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(q)) {
-      return res.json([]); // No sugerencias si no cumple
-    }
-    try {
-      const query = `
-        SELECT id, nombre_cliente, empresa_cliente, email_cliente
-        FROM clientes
-        WHERE nombre_cliente ILIKE $1 OR email_cliente ILIKE $1 OR empresa_cliente ILIKE $1
-        ORDER BY empresa_cliente ASC, nombre_cliente ASC
-        LIMIT 10
-      `;
-      const result = await client.query(query, [`%${q}%`]);
-      res.json(result.rows);
-    } catch (error: any) {
-      res.status(500).json({ error: 'Error al buscar clientes', details: error.message });
     }
   });
 

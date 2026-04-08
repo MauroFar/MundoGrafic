@@ -29,6 +29,7 @@ import CatalogoProcesos from "./pages/admin/CatalogoProcesos";
 import TiposTrabajo from "./pages/admin/TiposTrabajo";
 import GestionReportes from "./pages/admin/GestionReportes";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
+import SeguimientoOrden from "./pages/Produccion/SeguimientoOrden";
 import Administracion from "./pages/Administracion";
 import MainLayout from "./layouts/MainLayout";
 import ClientesVer from "./pages/clientes/ClientesVer";
@@ -115,6 +116,11 @@ function App() {
           <Route path="/produccion/control-calidad" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <GestionCalidadKanban />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/seguimiento/:id" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <SeguimientoOrden />
             </PrivateRoute>
           } />
           <Route path="/productosTerminados" element={
