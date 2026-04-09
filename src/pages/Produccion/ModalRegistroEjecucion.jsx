@@ -19,7 +19,7 @@ const camposPorEtapa = {
   laminado: [
     { key: 'maquina',             label: 'Máquina',                   type: 'text' },
     { key: 'tipo_laminado',       label: 'Tipo de laminado / barniz', type: 'text' },
-    { key: 'temperatura',         label: 'Temperatura (°C)',          type: 'text' },
+    { key: 'lote_barnizado',      label: 'Lote barnizado',            type: 'text' },
     { key: 'velocidad',           label: 'Velocidad (m/min)',         type: 'text' },
   ],
   troquelado: [
@@ -30,12 +30,15 @@ const camposPorEtapa = {
   terminados: [
     { key: 'tipo_acabado',        label: 'Tipo de acabado',           type: 'text' },
     { key: 'cantidad_procesada',  label: 'Cantidad procesada',        type: 'number' },
+    { key: 'cantidad_revisada',   label: 'Cantidad revisada',         type: 'number' },
     { key: 'tipo_empaque',        label: 'Tipo de empaque',           type: 'text' },
   ],
 };
 
 const camposComunes = [
-  { key: 'operario', label: 'Operario responsable', type: 'text', required: true },
+  { key: 'operario',          label: 'Operario responsable',  type: 'text',   required: true },
+  { key: 'cantidad_recibida', label: 'Cantidad recibida',     type: 'number' },
+  { key: 'cantidad_entregada',label: 'Cantidad entregada',    type: 'number' },
 ];
 
 const camposCierre = [
@@ -64,7 +67,7 @@ const etiquetaEtapa = (etapaId) => {
   return mapa[etapaId] || etapaId;
 };
 
-const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaInicioEtapa, horaInicioEtapa, fechaFinEtapa, horaFinEtapa }) => {
+const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaInicioEtapa, horaInicioEtapa, cantidadRecibida }) => {
   const camposEtapa     = camposPorEtapa[etapa?.id] || [];
   const todosLosCampos  = [...camposComunes, ...camposEtapa, ...camposCierre];
 
@@ -72,10 +75,9 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaIn
     const base = valorInicial(todosLosCampos);
     return {
       ...base,
-      fecha_inicio: fechaInicioEtapa || ahoraFecha(),
-      hora_inicio:  horaInicioEtapa  || ahoraHora(),
-      fecha_fin:    fechaFinEtapa    || '',
-      hora_fin:     horaFinEtapa     || '',
+      fecha_inicio:      fechaInicioEtapa || ahoraFecha(),
+      hora_inicio:       horaInicioEtapa  || ahoraHora(),
+      cantidad_recibida: cantidadRecibida || '',
     };
   });
 
@@ -84,13 +86,12 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaIn
     const base = valorInicial(todosLosCampos);
     setForm({
       ...base,
-      fecha_inicio: fechaInicioEtapa || ahoraFecha(),
-      hora_inicio:  horaInicioEtapa  || ahoraHora(),
-      fecha_fin:    fechaFinEtapa    || '',
-      hora_fin:     horaFinEtapa     || '',
+      fecha_inicio:      fechaInicioEtapa || ahoraFecha(),
+      hora_inicio:       horaInicioEtapa  || ahoraHora(),
+      cantidad_recibida: cantidadRecibida || '',
     });
     // eslint-disable-next-line
-  }, [etapa?.id, fechaInicioEtapa, horaInicioEtapa, fechaFinEtapa, horaFinEtapa]);
+  }, [etapa?.id, fechaInicioEtapa, horaInicioEtapa, cantidadRecibida]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -104,17 +105,20 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaIn
     const camposEtapaKeys = new Set((camposPorEtapa[etapa?.id] || []).map((c) => c.key));
     const datos_etapa = {};
     const body = {
-      etapa_id:        etapa.id,
-      etapa_titulo:    etapa.titulo,
-      operario:        form.operario,
-      fecha_inicio:    form.fecha_inicio || null,
-      hora_inicio:     form.hora_inicio  || null,
-      fecha_fin:       form.fecha_fin    || null,
-      hora_fin:        form.hora_fin     || null,
-      reproceso:       !!form.reproceso,
-      motivo_reproceso: form.reproceso ? (form.motivo_reproceso || null) : null,
-      observaciones:   form.observaciones || null,
+      etapa_id:          etapa.id,
+      etapa_titulo:      etapa.titulo,
+      operario:          form.operario,
+      fecha_inicio:      form.fecha_inicio || null,
+      hora_inicio:       form.hora_inicio  || null,
+      fecha_fin:         null,
+      hora_fin:          null,
+      reproceso:         !!form.reproceso,
+      motivo_reproceso:  form.reproceso ? (form.motivo_reproceso || null) : null,
+      observaciones:     form.observaciones || null,
     };
+    // Guardar cantidades en datos_etapa (JSONB) para no requerir migración
+    datos_etapa.cantidad_recibida  = form.cantidad_recibida  || null;
+    datos_etapa.cantidad_entregada = form.cantidad_entregada || null;
     camposEtapaKeys.forEach((k) => { datos_etapa[k] = form[k]; });
     body.datos_etapa = datos_etapa;
 
@@ -130,7 +134,7 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaIn
         throw new Error(err.error || 'Error al guardar');
       }
       const data = await res.json();
-      onConfirmar(data.ejecucion);
+      onConfirmar(data.ejecucion, form.cantidad_entregada || null);
     } catch (e) {
       console.error('Error guardando registro de ejecución:', e);
       alert(`No se pudo guardar el registro: ${e.message}`);
@@ -268,33 +272,10 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaIn
                   className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
               )}
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Fecha fin
-                {fechaFinEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
-              </label>
-              {fechaFinEtapa ? (
-                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
-                  {form.fecha_fin}
-                </div>
-              ) : (
-                <input type="date" value={form.fecha_fin} onChange={(e) => set('fecha_fin', e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Hora fin
-                {horaFinEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
-              </label>
-              {horaFinEtapa ? (
-                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
-                  {form.hora_fin}
-                </div>
-              ) : (
-                <input type="time" value={form.hora_fin} onChange={(e) => set('hora_fin', e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-              )}
+            <div className="col-span-2">
+              <p className="text-xs text-gray-400 italic">
+                La fecha y hora de fin se registran automáticamente al confirmar el envío al siguiente proceso.
+              </p>
             </div>
           </div>
 

@@ -30,10 +30,7 @@ const etiquetasCampos = {
 const defaultForm = () => ({
   resultado_control: 'pendiente',
   inspector: '',
-  turno: '',
-  maquina_equipo: '',
   unidad_medida: '',
-  lote_version_arte: '',
   motivo_no_conformidad: '',
   accion_correctiva: '',
   observaciones: '',
@@ -233,6 +230,7 @@ const GestionCalidadKanban = () => {
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
   const [form,       setForm]       = useState(defaultForm());
+  const [pendingDecision, setPendingDecision] = useState(null); // 'aprobado' | 'rechazado' | 'condicionado' | null
 
   // ── Historial ──
   const [vista,            setVista]            = useState('cola');
@@ -317,10 +315,10 @@ const GestionCalidadKanban = () => {
     setForm({
       resultado_control:     selected.resultado_control     || 'pendiente',
       inspector:             selected.inspector             || '',
-      turno:                 selected.turno                 || '',
-      maquina_equipo:        selected.maquina_equipo        || '',
       unidad_medida:         selected.unidad_medida         || '',
-      lote_version_arte:     selected.lote_version_arte     || '',
+      lote_version_arte:     '',
+      turno:                 '',
+      maquina_equipo:        '',
       motivo_no_conformidad: selected.motivo_no_conformidad || '',
       accion_correctiva:     selected.accion_correctiva     || '',
       observaciones:         selected.observaciones         || '',
@@ -527,23 +525,8 @@ const GestionCalidadKanban = () => {
                       <input className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" type="text" value={form.inspector} onChange={(e) => setField('inspector', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Turno</label>
-                      <select className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" value={form.turno} onChange={(e) => setField('turno', e.target.value)}>
-                        <option value="">-- Seleccione --</option>
-                        {TURNOS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Máquina / Equipo</label>
-                      <input className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" type="text" value={form.maquina_equipo} onChange={(e) => setField('maquina_equipo', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Unidad de medida</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Metros revisados</label>
                       <input className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" type="text" value={form.unidad_medida} onChange={(e) => setField('unidad_medida', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Lote / versión de arte</label>
-                      <input className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" type="text" value={form.lote_version_arte} onChange={(e) => setField('lote_version_arte', e.target.value)} />
                     </div>
                     <div className="md:col-span-3">
                       <label className="block text-xs font-medium text-gray-700 mb-1">Motivo de no conformidad</label>
@@ -572,15 +555,15 @@ const GestionCalidadKanban = () => {
                   </div>
 
                   <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-                    <button onClick={() => resolver('aprobado')} disabled={saving}
+                    <button onClick={() => setPendingDecision('aprobado')} disabled={saving}
                       className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 font-medium shadow-sm">
-                      <FaCheckCircle /> {saving ? 'Guardando...' : 'Aprobar'}
+                      <FaCheckCircle /> Aprobar
                     </button>
-                    <button onClick={() => resolver('rechazado')} disabled={saving}
+                    <button onClick={() => setPendingDecision('rechazado')} disabled={saving}
                       className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium shadow-sm">
-                      <FaTimesCircle /> {saving ? 'Guardando...' : 'Rechazar'}
+                      <FaTimesCircle /> Rechazar
                     </button>
-                    <button onClick={() => resolver('condicionado')} disabled={saving}
+                    <button onClick={() => setPendingDecision('condicionado')} disabled={saving}
                       className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 font-medium border border-orange-200">
                       <FaExclamationTriangle /> Condicionar
                     </button>
@@ -779,6 +762,66 @@ const GestionCalidadKanban = () => {
       )}
 
       {detalleItem && <DetalleHistorialModal item={detalleItem} onClose={() => setDetalleItem(null)} />}
+
+      {/* Modal de confirmación de decisión QA */}
+      {pendingDecision && selected && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+            <div className={`px-6 py-4 border-b rounded-t-xl ${
+              pendingDecision === 'aprobado'    ? 'bg-green-50 border-green-200' :
+              pendingDecision === 'rechazado'   ? 'bg-red-50 border-red-200'    :
+              'bg-orange-50 border-orange-200'
+            }`}>
+              <h3 className={`text-base font-semibold ${
+                pendingDecision === 'aprobado'    ? 'text-green-800' :
+                pendingDecision === 'rechazado'   ? 'text-red-800'   :
+                'text-orange-800'
+              }`}>
+                {pendingDecision === 'aprobado'    ? '✓ Confirmar aprobación' :
+                 pendingDecision === 'rechazado'   ? '✗ Confirmar rechazo'    :
+                 '⚠ Confirmar condicionado'}
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                OT <span className="font-semibold text-gray-700">#{selected.numero_orden}</span>
+                {' · '}{selected.etapa_titulo}
+              </p>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-700">
+                {pendingDecision === 'aprobado'
+                  ? 'La etapa quedará aprobada y el operario podrá avanzar al siguiente proceso.'
+                  : pendingDecision === 'rechazado'
+                  ? 'La etapa quedará rechazada y el operario deberá reiniciar el proceso.'
+                  : 'La etapa quedará condicionada con observaciones para continuar.'}
+              </p>
+              {pendingDecision !== 'aprobado' && !form.motivo_no_conformidad && (
+                <p className="mt-2 text-xs text-orange-600 italic">
+                  Considera completar el motivo de no conformidad antes de continuar.
+                </p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setPendingDecision(null)}
+                className="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setPendingDecision(null); resolver(pendingDecision); }}
+                disabled={saving}
+                className={`flex-1 px-4 py-2 text-sm rounded-lg font-semibold text-white transition-colors disabled:opacity-50 ${
+                  pendingDecision === 'aprobado'    ? 'bg-green-600 hover:bg-green-700' :
+                  pendingDecision === 'rechazado'   ? 'bg-red-600 hover:bg-red-700'    :
+                  'bg-orange-500 hover:bg-orange-600'
+                }`}
+              >
+                {saving ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

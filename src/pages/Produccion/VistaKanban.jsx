@@ -172,6 +172,12 @@ const VistaKanban = () => {
     all[key] = { ...all[key], [`${tipo}_fecha`]: fecha, [`${tipo}_hora`]: hora };
     localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
   };
+  const saveCantidadEntregada = (ordenId, etapaId, cantidad) => {
+    const all = getAllTimestamps();
+    const key = `${ordenId}:${etapaId}`;
+    all[key] = { ...all[key], cantidad_entregada: cantidad };
+    localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
+  };
   const getTimestamp = (ordenId, etapaId) =>
     getAllTimestamps()[`${ordenId}:${etapaId}`] || {};
   // ─────────────────────────────────────────────────────────────────────────
@@ -246,9 +252,16 @@ const VistaKanban = () => {
     const { orden, columnaOrigenId, columnaDestinoId, esPendiente } = confirmacionProceso;
     // Guardar inicio para la etapa destino
     saveTimestamp(orden.id, columnaDestinoId, 'inicio', fecha, hora);
-    // Guardar fin para la etapa origen (si no viene de pendientes)
+    // Guardar fin para la etapa origen (si no viene de pendientes) y actualizar backend
     if (!esPendiente && columnaOrigenId) {
       saveTimestamp(orden.id, columnaOrigenId, 'fin', fecha, hora);
+      // Actualizar fecha_fin/hora_fin en el registro de ejecución de la etapa origen
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/ejecucion/${columnaOrigenId}/fin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fecha_fin: fecha, hora_fin: hora }),
+      }).catch((err) => console.error('Error actualizando fin de etapa:', err));
     }
     setConfirmacionProceso(null);
     if (esPendiente) {
@@ -654,6 +667,30 @@ const VistaKanban = () => {
 
       console.log('✅ Órdenes agrupadas:', ordenesAgrupadas);
       setOrdenes(ordenesAgrupadas);
+
+      // ── Sincronizar qaGates desde el backend (fuente de verdad) ─────────
+      // Esto evita que el localStorage tenga gates 'aprobado' de órdenes antiguas
+      // que contaminen nuevas órdenes con el mismo ID o datos sucios.
+      try {
+        const gatesRes = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/qa/estados`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (gatesRes.ok) {
+          const gatesData = await gatesRes.json();
+          const gatesFromBackend = {};
+          (gatesData.gates || []).forEach((g) => {
+            gatesFromBackend[`${g.orden_trabajo_id}:${g.etapa_id}`] = {
+              estado: g.estado,
+              updatedAt: g.updated_at,
+            };
+          });
+          localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(gatesFromBackend));
+          setQaGates(gatesFromBackend);
+        }
+      } catch (err) {
+        console.warn('No se pudo sincronizar gates QA desde backend:', err);
+      }
+      // ────────────────────────────────────────────────────────────────────
     } catch (error) {
       console.error('❌ Error al cargar órdenes:', error);
       setAvisoKanban('No se pudieron cargar ordenes de Kanban. Revisa token/permisos o endpoint.');
@@ -1286,23 +1323,30 @@ const VistaKanban = () => {
         </div>{/* fin scrollBoardRef */}
       </div>
 
-      {registroEjecucion && (
-        <ModalRegistroEjecucion
-          orden={registroEjecucion.orden}
-          etapa={registroEjecucion.etapa}
-          fechaInicioEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).inicio_fecha}
-          horaInicioEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).inicio_hora}
-          fechaFinEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).fin_fecha}
-          horaFinEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).fin_hora}
-          onConfirmar={async (ejecucionGuardada) => {
-            const { orden, etapa } = registroEjecucion;
-            saveQaState(orden.id, etapa.id, 'pendiente');
-            await upsertQaQueue(orden, etapa);
-            setRegistroEjecucion(null);
-          }}
-          onCancelar={() => setRegistroEjecucion(null)}
-        />
-      )}
+      {registroEjecucion && (() => {
+        const { orden, etapa } = registroEjecucion;
+        const idxEtapa = columnas.findIndex((c) => c.id === etapa.id);
+        const etapaAnterior = idxEtapa > 0 ? columnas[idxEtapa - 1] : null;
+        const cantRecibida = etapaAnterior
+          ? getTimestamp(orden.id, etapaAnterior.id).cantidad_entregada
+          : null;
+        return (
+          <ModalRegistroEjecucion
+            orden={orden}
+            etapa={etapa}
+            fechaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_fecha}
+            horaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_hora}
+            cantidadRecibida={cantRecibida}
+            onConfirmar={async (ejecucionGuardada, cantidadEntregada) => {
+              saveCantidadEntregada(orden.id, etapa.id, cantidadEntregada);
+              saveQaState(orden.id, etapa.id, 'pendiente');
+              await upsertQaQueue(orden, etapa);
+              setRegistroEjecucion(null);
+            }}
+            onCancelar={() => setRegistroEjecucion(null)}
+          />
+        );
+      })()}
 
       <ModalConfirmacionProceso
         datos={confirmacionProceso}

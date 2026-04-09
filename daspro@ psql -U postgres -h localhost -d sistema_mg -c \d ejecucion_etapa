@@ -1,0 +1,32 @@
+                                           Table "public.ejecucion_etapa"
+      Column      |            Type             | Collation | Nullable |                   Default                   
+------------------+-----------------------------+-----------+----------+---------------------------------------------
+ id               | bigint                      |           | not null | nextval('ejecucion_etapa_id_seq'::regclass)
+ orden_trabajo_id | bigint                      |           | not null | 
+ etapa_id         | character varying(40)       |           | not null | 
+ etapa_titulo     | character varying(120)      |           |          | 
+ operario         | character varying(150)      |           | not null | 
+ fecha_inicio     | date                        |           |          | 
+ hora_inicio      | time without time zone      |           |          | 
+ fecha_fin        | date                        |           |          | 
+ hora_fin         | time without time zone      |           |          | 
+ datos_etapa      | jsonb                       |           | not null | '{}'::jsonb
+ reproceso        | boolean                     |           | not null | false
+ motivo_reproceso | text                        |           |          | 
+ observaciones    | text                        |           |          | 
+ created_at       | timestamp without time zone |           | not null | now()
+ updated_at       | timestamp without time zone |           | not null | now()
+ created_by       | character varying(120)      |           |          | 
+Indexes:
+    "ejecucion_etapa_pkey" PRIMARY KEY, btree (id)
+    "idx_ejecucion_created_at" btree (created_at)
+    "idx_ejecucion_etapa_id" btree (etapa_id)
+    "idx_ejecucion_orden_trabajo_id" btree (orden_trabajo_id)
+    "uq_ejecucion_orden_etapa" UNIQUE CONSTRAINT, btree (orden_trabajo_id, etapa_id)
+Foreign-key constraints:
+    "ejecucion_etapa_orden_trabajo_id_fkey" FOREIGN KEY (orden_trabajo_id) REFERENCES orden_trabajo(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "qa_gate" CONSTRAINT "qa_gate_ejecucion_etapa_id_fkey" FOREIGN KEY (ejecucion_etapa_id) REFERENCES ejecucion_etapa(id) ON DELETE SET NULL
+Triggers:
+    trg_ejecucion_etapa_updated_at BEFORE UPDATE ON ejecucion_etapa FOR EACH ROW EXECUTE FUNCTION fn_ejecucion_etapa_set_updated_at()
+

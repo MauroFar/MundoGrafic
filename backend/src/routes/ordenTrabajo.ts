@@ -3024,6 +3024,42 @@ export default (client: any) => {
     },
   );
 
+  /**
+   * PATCH /produccion/:id/ejecucion/:etapa_id/fin
+   * Actualiza únicamente fecha_fin y hora_fin de un registro de ejecución existente.
+   * Se llama automáticamente cuando la orden avanza al siguiente proceso.
+   */
+  router.patch(
+    "/produccion/:id/ejecucion/:etapa_id/fin",
+    authRequired(),
+    async (req: any, res: any) => {
+      const ordenId = parseInt(req.params.id, 10);
+      const etapaId = req.params.etapa_id;
+      const { fecha_fin, hora_fin } = req.body;
+
+      if (!fecha_fin || !hora_fin) {
+        return res.status(400).json({ error: "fecha_fin y hora_fin son obligatorios" });
+      }
+
+      try {
+        const result = await client.query(
+          `UPDATE ejecucion_etapa
+           SET fecha_fin = $1, hora_fin = $2, updated_at = NOW()
+           WHERE orden_trabajo_id = $3 AND etapa_id = $4
+           RETURNING *`,
+          [fecha_fin, hora_fin, ordenId, etapaId],
+        );
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: "No se encontró registro de ejecución para esa etapa" });
+        }
+        res.json({ success: true, ejecucion: result.rows[0] });
+      } catch (err: any) {
+        console.error("Error actualizando fin de ejecución:", err);
+        res.status(500).json({ error: "Error al actualizar fecha de fin" });
+      }
+    },
+  );
+
   // ==================== QA GATES ====================
 
   /**
@@ -3483,6 +3519,33 @@ export default (client: any) => {
       } catch (err: any) {
         console.error("Error obteniendo QA pendientes:", err);
         res.status(500).json({ error: "Error al obtener cola de calidad" });
+      }
+    },
+  );
+
+  /**
+   * GET /produccion/qa/estados
+   * Retorna el último estado de qa_gate por orden+etapa (para sincronizar el Kanban desde backend).
+   * Solo devuelve gates de órdenes activas en producción.
+   */
+  router.get(
+    "/produccion/qa/estados",
+    authRequired(),
+    async (_req: any, res: any) => {
+      try {
+        const result = await client.query(
+          `SELECT DISTINCT ON (orden_trabajo_id, etapa_id)
+             orden_trabajo_id,
+             etapa_id,
+             estado,
+             updated_at
+           FROM qa_gate
+           ORDER BY orden_trabajo_id, etapa_id, updated_at DESC`,
+        );
+        res.json({ gates: result.rows });
+      } catch (err: any) {
+        console.error("Error obteniendo estados QA:", err);
+        res.status(500).json({ error: "Error al obtener estados de calidad" });
       }
     },
   );
