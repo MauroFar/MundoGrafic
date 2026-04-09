@@ -69,6 +69,7 @@ const OrdenesVer: React.FC = () => {
     if (!estado) return false;
     const key = normalizeKey(estado);
     const estadosProduccion = [
+      'pendiente',
       'en_produccion',
       'en_proceso',
       'en_preprensa',
@@ -410,8 +411,18 @@ const OrdenesVer: React.FC = () => {
       const data = await response.json();
       
       // Actualizar el estado de la orden localmente para reflejar el cambio inmediato
-      // Guardamos la clave normalizada sin acentos para que las funciones de UI la reconozcan
-      setOrdenes(prev => prev.map(orden => orden.id === id ? { ...orden, estado: "en_produccion" } : orden));
+      setOrdenes(prev => prev.map(o => {
+        if (o.id !== id) return o;
+        const esDigital = (o.tipo_orden || '').toLowerCase() === 'digital';
+        return {
+          ...o,
+          estado: 'pendiente',
+          ...(esDigital
+            ? { estado_digital_key: 'pendiente', estado_orden_digital_id: -1 }
+            : { estado_offset_key: 'pendiente', estado_orden_offset_id: -1 }
+          )
+        };
+      }));
       setProduccionEnviada(prev => ({ ...prev, [id]: true }));
       setModalProduccionId(null);
       

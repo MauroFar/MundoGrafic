@@ -16,11 +16,71 @@ import {
 import OrdenDetalleModal from '../../components/OrdenDetalleModal';
 import ModalRegistroEjecucion from './ModalRegistroEjecucion';
 
+// ─── Modal de confirmación al enviar a proceso ───────────────────────────────
+const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
+  if (!datos) return null;
+  const { etapaTitulo, fecha, hora } = datos;
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-base font-semibold text-gray-900">Confirmar envío a proceso</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            OT <span className="font-semibold text-gray-700">#{datos.orden?.numero_orden}</span>
+            {datos.orden?.nombre_cliente && <span> · {datos.orden.nombre_cliente}</span>}
+          </p>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Proceso destino</label>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-blue-800">
+              {etapaTitulo}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de inicio</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">
+                {fecha}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Hora de inicio</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">
+                {hora}
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 italic">
+            Esta fecha y hora quedarán registradas como inicio de la etapa en el formulario de calidad.
+          </p>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onCancelar}
+            className="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirmar(fecha, hora)}
+            className="flex-1 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold transition-colors"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const VistaKanban = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
   const QA_STORAGE_KEY = 'mg.qa.gates.v1';
   const QA_QUEUE_KEY = 'mg.qa.queue.v1';
+  const ETAPA_TIMESTAMPS_KEY = 'mg.etapa.timestamps.v1';
 
   // Refs para sincronizar scroll horizontal arriba y abajo
   const scrollTopRef = useRef(null);
@@ -90,6 +150,7 @@ const VistaKanban = () => {
   const [selectorProcesoAbierto, setSelectorProcesoAbierto] = useState(null); // key = `${ordenId}:${columnaId}`
   const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
   const [registroEjecucion, setRegistroEjecucion] = useState(null); // { orden, etapa }
+  const [confirmacionProceso, setConfirmacionProceso] = useState(null); // { orden, columnaOrigenId, columnaDestinoId, esPendiente, etapaTitulo, fecha, hora }
   const [kanbanDebug, setKanbanDebug] = useState({
     totalRecibidas: 0,
     totalFiltradas: 0,
@@ -99,6 +160,21 @@ const VistaKanban = () => {
   });
 
   const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
+
+  // ── Timestamps de inicio/fin por etapa (persistidos en localStorage) ──────
+  const getAllTimestamps = () => {
+    try { return JSON.parse(localStorage.getItem(ETAPA_TIMESTAMPS_KEY) || '{}'); }
+    catch { return {}; }
+  };
+  const saveTimestamp = (ordenId, etapaId, tipo, fecha, hora) => {
+    const all = getAllTimestamps();
+    const key = `${ordenId}:${etapaId}`;
+    all[key] = { ...all[key], [`${tipo}_fecha`]: fecha, [`${tipo}_hora`]: hora };
+    localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
+  };
+  const getTimestamp = (ordenId, etapaId) =>
+    getAllTimestamps()[`${ordenId}:${etapaId}`] || {};
+  // ─────────────────────────────────────────────────────────────────────────
 
   const getQaState = (ordenId, etapaId) => {
     return qaGates[gateKey(ordenId, etapaId)] || null;
@@ -156,6 +232,32 @@ const VistaKanban = () => {
       return updated;
     });
   };
+
+  // ── Handler del modal de confirmación de proceso ─────────────────────────
+  const abrirConfirmacionProceso = (orden, columnaOrigenId, columnaDestinoId, etapaTitulo, esPendiente) => {
+    const now = new Date();
+    const fecha = now.toISOString().slice(0, 10);
+    const hora  = now.toTimeString().slice(0, 5);
+    setSelectorProcesoAbierto(null);
+    setConfirmacionProceso({ orden, columnaOrigenId, columnaDestinoId, etapaTitulo, esPendiente, fecha, hora });
+  };
+
+  const handleConfirmarProceso = (fecha, hora) => {
+    const { orden, columnaOrigenId, columnaDestinoId, esPendiente } = confirmacionProceso;
+    // Guardar inicio para la etapa destino
+    saveTimestamp(orden.id, columnaDestinoId, 'inicio', fecha, hora);
+    // Guardar fin para la etapa origen (si no viene de pendientes)
+    if (!esPendiente && columnaOrigenId) {
+      saveTimestamp(orden.id, columnaOrigenId, 'fin', fecha, hora);
+    }
+    setConfirmacionProceso(null);
+    if (esPendiente) {
+      moverPendienteAColumna(orden, columnaDestinoId);
+    } else {
+      moverOrdenAColumna(orden, columnaOrigenId, columnaDestinoId);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const moverOrdenASiguienteColumna = (orden, columnaActualId) => {
     const idxActual = columnas.findIndex((c) => c.id === columnaActualId);
@@ -886,7 +988,7 @@ const VistaKanban = () => {
                                   key={etapa.id}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    moverPendienteAColumna(orden, etapa.id);
+                                    abrirConfirmacionProceso(orden, null, etapa.id, etapa.titulo, true);
                                   }}
                                   className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors"
                                 >
@@ -1140,7 +1242,7 @@ const VistaKanban = () => {
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               if (yaProcessado) return;
-                                              moverOrdenAColumna(orden, columna.id, etapa.id);
+                                              abrirConfirmacionProceso(orden, columna.id, etapa.id, etapa.titulo, false);
                                             }}
                                             disabled={yaProcessado}
                                             title={yaProcessado ? 'Esta etapa ya fue procesada' : undefined}
@@ -1188,6 +1290,10 @@ const VistaKanban = () => {
         <ModalRegistroEjecucion
           orden={registroEjecucion.orden}
           etapa={registroEjecucion.etapa}
+          fechaInicioEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).inicio_fecha}
+          horaInicioEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).inicio_hora}
+          fechaFinEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).fin_fecha}
+          horaFinEtapa={getTimestamp(registroEjecucion.orden.id, registroEjecucion.etapa.id).fin_hora}
           onConfirmar={async (ejecucionGuardada) => {
             const { orden, etapa } = registroEjecucion;
             saveQaState(orden.id, etapa.id, 'pendiente');
@@ -1197,6 +1303,12 @@ const VistaKanban = () => {
           onCancelar={() => setRegistroEjecucion(null)}
         />
       )}
+
+      <ModalConfirmacionProceso
+        datos={confirmacionProceso}
+        onConfirmar={handleConfirmarProceso}
+        onCancelar={() => setConfirmacionProceso(null)}
+      />
 
     </div>
   );

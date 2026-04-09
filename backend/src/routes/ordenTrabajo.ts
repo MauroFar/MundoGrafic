@@ -2138,6 +2138,8 @@ export default (client: any) => {
           dot.cantidad_pliegos_compra,
           dot.exceso,
           dot.total_pliegos,
+          NULL::text AS lote_material,
+          NULL::text AS lote_produccion,
           dot.tamano,
           dot.tamano_abierto_1,
           dot.tamano_cerrado_1,
@@ -2188,6 +2190,8 @@ export default (client: any) => {
           NULL::varchar AS cantidad_pliegos_compra,
           NULL::varchar AS exceso,
           NULL::varchar AS total_pliegos,
+          dtd.lote_material,
+          dtd.lote_produccion,
           NULL::text AS tamano,
           NULL::text AS tamano_abierto_1,
           NULL::text AS tamano_cerrado_1,
@@ -3298,6 +3302,7 @@ export default (client: any) => {
           estado,
           inspector,
           etapa_id,
+          numero_orden,
           page = "1",
           limit = "50",
         } = req.query as Record<string, string>;
@@ -3329,6 +3334,10 @@ export default (client: any) => {
         if (etapa_id) {
           conditions.push(`qg.etapa_id = $${idx++}`);
           params.push(etapa_id);
+        }
+        if (numero_orden) {
+          conditions.push(`ot.numero_orden::text ILIKE $${idx++}`);
+          params.push(`%${numero_orden}%`);
         }
 
         const where = conditions.join(" AND ");

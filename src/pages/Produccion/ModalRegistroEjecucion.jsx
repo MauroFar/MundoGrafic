@@ -5,8 +5,6 @@ const apiUrl = import.meta.env.VITE_API_URL;
 // Campos dinámicos por etapa
 const camposPorEtapa = {
   en_preprensa: [
-    { key: 'archivo_arte',        label: 'Archivo / versión de arte', type: 'text' },
-    { key: 'resolucion',          label: 'Resolución (dpi)',          type: 'text' },
     { key: 'prueba_color',        label: 'Prueba de color aprobada',  type: 'checkbox' },
     { key: 'aprobado_por',        label: 'Aprobado por',              type: 'text' },
   ],
@@ -37,11 +35,7 @@ const camposPorEtapa = {
 };
 
 const camposComunes = [
-  { key: 'operario',      label: 'Operario responsable', type: 'text', required: true },
-  { key: 'fecha_inicio',  label: 'Fecha inicio',         type: 'date' },
-  { key: 'hora_inicio',   label: 'Hora inicio',          type: 'time' },
-  { key: 'fecha_fin',     label: 'Fecha fin',            type: 'date' },
-  { key: 'hora_fin',      label: 'Hora fin',             type: 'time' },
+  { key: 'operario', label: 'Operario responsable', type: 'text', required: true },
 ];
 
 const camposCierre = [
@@ -70,26 +64,33 @@ const etiquetaEtapa = (etapaId) => {
   return mapa[etapaId] || etapaId;
 };
 
-const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar }) => {
+const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar, fechaInicioEtapa, horaInicioEtapa, fechaFinEtapa, horaFinEtapa }) => {
   const camposEtapa     = camposPorEtapa[etapa?.id] || [];
   const todosLosCampos  = [...camposComunes, ...camposEtapa, ...camposCierre];
 
   const [form, setForm] = useState(() => {
     const base = valorInicial(todosLosCampos);
-    // pre-rellenar fecha/hora actuales
     return {
       ...base,
-      fecha_inicio: ahoraFecha(),
-      hora_inicio:  ahoraHora(),
+      fecha_inicio: fechaInicioEtapa || ahoraFecha(),
+      hora_inicio:  horaInicioEtapa  || ahoraHora(),
+      fecha_fin:    fechaFinEtapa    || '',
+      hora_fin:     horaFinEtapa     || '',
     };
   });
 
-  // recargar si cambia la etapa
+  // recargar si cambia la etapa o los timestamps
   useEffect(() => {
     const base = valorInicial(todosLosCampos);
-    setForm({ ...base, fecha_inicio: ahoraFecha(), hora_inicio: ahoraHora() });
+    setForm({
+      ...base,
+      fecha_inicio: fechaInicioEtapa || ahoraFecha(),
+      hora_inicio:  horaInicioEtapa  || ahoraHora(),
+      fecha_fin:    fechaFinEtapa    || '',
+      hora_fin:     horaFinEtapa     || '',
+    });
     // eslint-disable-next-line
-  }, [etapa?.id]);
+  }, [etapa?.id, fechaInicioEtapa, horaInicioEtapa, fechaFinEtapa, horaFinEtapa]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -209,6 +210,94 @@ const ModalRegistroEjecucion = ({ orden, etapa, onConfirmar, onCancelar }) => {
 
         {/* Cuerpo con scroll */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {/* Sección: datos de la orden (solo lectura) */}
+          {(orden?.material || orden?.lote_material || orden?.lote_produccion) && (
+            <>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos de la orden</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Material</label>
+                  <div className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700">
+                    {orden?.material || <span className="text-gray-400 italic">No registrado</span>}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Lote material</label>
+                  <div className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700">
+                    {orden?.lote_material || <span className="text-gray-400 italic">No registrado</span>}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Lote producción</label>
+                  <div className="w-full rounded border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700">
+                    {orden?.lote_produccion || <span className="text-gray-400 italic">No registrado</span>}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Sección: tiempos de la etapa (read-only, vienen del modal de confirmación) */}
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tiempos de la etapa</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Fecha inicio
+                {fechaInicioEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
+              </label>
+              {fechaInicioEtapa ? (
+                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
+                  {form.fecha_inicio}
+                </div>
+              ) : (
+                <input type="date" value={form.fecha_inicio} onChange={(e) => set('fecha_inicio', e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Hora inicio
+                {horaInicioEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
+              </label>
+              {horaInicioEtapa ? (
+                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
+                  {form.hora_inicio}
+                </div>
+              ) : (
+                <input type="time" value={form.hora_inicio} onChange={(e) => set('hora_inicio', e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Fecha fin
+                {fechaFinEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
+              </label>
+              {fechaFinEtapa ? (
+                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
+                  {form.fecha_fin}
+                </div>
+              ) : (
+                <input type="date" value={form.fecha_fin} onChange={(e) => set('fecha_fin', e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Hora fin
+                {horaFinEtapa && <span className="ml-1 text-green-600 font-normal">(auto)</span>}
+              </label>
+              {horaFinEtapa ? (
+                <div className="w-full rounded border border-green-200 bg-green-50 px-3 py-1.5 text-sm text-gray-700 font-mono">
+                  {form.hora_fin}
+                </div>
+              ) : (
+                <input type="time" value={form.hora_fin} onChange={(e) => set('hora_fin', e.target.value)}
+                  className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              )}
+            </div>
+          </div>
+
           {/* Sección: datos generales */}
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos generales</p>
           <div className="grid grid-cols-2 gap-3">

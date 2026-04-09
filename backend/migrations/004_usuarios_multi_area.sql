@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_areas_area_id ON usuarios_areas(area_id)
 -- 3) Asegurar maximo una area principal por usuario
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_areas_principal
   ON usuarios_areas(usuario_id)
-  WHERE es_principal = TRUE;
+  WHERE es_principal = TRUE;  
 
 -- 4) Backfill: copiar area_id actual de usuarios a la tabla puente
 INSERT INTO usuarios_areas (usuario_id, area_id, es_principal)

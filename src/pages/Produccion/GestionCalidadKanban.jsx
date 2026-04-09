@@ -48,6 +48,7 @@ const defaultHistorialFiltros = () => ({
   estado: '',
   inspector: '',
   etapa_id: '',
+  numero_orden: '',
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -243,6 +244,7 @@ const GestionCalidadKanban = () => {
   const [filtros,          setFiltros]          = useState(defaultHistorialFiltros());
   const [filtrosAplicados, setFiltrosAplicados] = useState(defaultHistorialFiltros());
   const [detalleItem,      setDetalleItem]      = useState(null);
+  const [expandedOrdenes,  setExpandedOrdenes]  = useState(new Set());
 
   const HIST_LIMIT = 20;
   const timerRef   = useRef(null);
@@ -271,11 +273,12 @@ const GestionCalidadKanban = () => {
     try {
       const token  = localStorage.getItem('token');
       const params = new URLSearchParams({ page: String(page), limit: String(HIST_LIMIT) });
-      if (filtrosActivos.desde)     params.set('desde',     filtrosActivos.desde);
-      if (filtrosActivos.hasta)     params.set('hasta',     filtrosActivos.hasta);
-      if (filtrosActivos.estado)    params.set('estado',    filtrosActivos.estado);
-      if (filtrosActivos.inspector) params.set('inspector', filtrosActivos.inspector);
-      if (filtrosActivos.etapa_id)  params.set('etapa_id',  filtrosActivos.etapa_id);
+      if (filtrosActivos.desde)         params.set('desde',         filtrosActivos.desde);
+      if (filtrosActivos.hasta)         params.set('hasta',         filtrosActivos.hasta);
+      if (filtrosActivos.estado)        params.set('estado',        filtrosActivos.estado);
+      if (filtrosActivos.inspector)     params.set('inspector',     filtrosActivos.inspector);
+      if (filtrosActivos.etapa_id)      params.set('etapa_id',      filtrosActivos.etapa_id);
+      if (filtrosActivos.numero_orden)  params.set('numero_orden',  filtrosActivos.numero_orden);
       const res = await fetch(
         `${apiUrl}/api/ordenTrabajo/produccion/qa/historial?${params}`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -520,12 +523,6 @@ const GestionCalidadKanban = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Resultado de control</label>
-                      <select className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" value={form.resultado_control} onChange={(e) => setField('resultado_control', e.target.value)}>
-                        {RESULTADO_CONTROL_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </div>
-                    <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Inspector</label>
                       <input className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm" type="text" value={form.inspector} onChange={(e) => setField('inspector', e.target.value)} />
                     </div>
@@ -620,7 +617,12 @@ const GestionCalidadKanban = () => {
               <FaFilter className="text-gray-400 text-xs" />
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filtros</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">N° Orden</label>
+                <input type="text" placeholder="Ej: 42" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+                  value={filtros.numero_orden} onChange={(e) => setFiltros((p) => ({ ...p, numero_orden: e.target.value }))} />
+              </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Desde</label>
                 <input type="date" className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
@@ -669,50 +671,93 @@ const GestionCalidadKanban = () => {
               <div className="py-12 text-center text-gray-400 text-sm">Cargando historial...</div>
             ) : historial.length === 0 ? (
               <div className="py-12 text-center text-gray-400 text-sm">No hay registros con los filtros aplicados.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                      <th className="px-4 py-3 text-left">Orden</th>
-                      <th className="px-4 py-3 text-left">Cliente</th>
-                      <th className="px-4 py-3 text-left">Etapa</th>
-                      <th className="px-4 py-3 text-left">Estado</th>
-                      <th className="px-4 py-3 text-left">Inspector</th>
-                      <th className="px-4 py-3 text-left">Turno</th>
-                      <th className="px-4 py-3 text-left">Tiempo</th>
-                      <th className="px-4 py-3 text-left">Resuelto</th>
-                      <th className="px-4 py-3 text-left">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {historial.map((item) => (
-                      <tr key={item.qa_gate_id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-gray-800">
-                          #{item.numero_orden}
-                          {item.intento > 1 && <span className="ml-1 text-orange-500 text-xs" title={`Reintento #${item.intento}`}>×{item.intento}</span>}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 max-w-[150px] truncate">{item.nombre_cliente || '-'}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.etapa_titulo || item.etapa_id}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${estadoBadge(item.estado_qa)}`}>{item.estado_qa}</span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{item.inspector || '-'}</td>
-                        <td className="px-4 py-3 text-gray-600">{item.turno || '-'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{fmtMinutos(item.minutos_resolucion)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtFecha(item.resolucion_qa)}</td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => setDetalleItem(item)}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline">
-                            Ver detalle
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            ) : (() => {
+              // Agrupar por número de orden
+              const grupos = historial.reduce((acc, item) => {
+                const key = item.numero_orden;
+                if (!acc[key]) acc[key] = { numero_orden: item.numero_orden, nombre_cliente: item.nombre_cliente, gates: [] };
+                acc[key].gates.push(item);
+                return acc;
+              }, {});
+              const ordenesAgrupadas = Object.values(grupos);
+
+              return (
+                <div className="divide-y divide-gray-100">
+                  {ordenesAgrupadas.map((grupo) => {
+                    const abierto = expandedOrdenes.has(grupo.numero_orden);
+                    const toggleOrden = () => setExpandedOrdenes((prev) => {
+                      const next = new Set(prev);
+                      abierto ? next.delete(grupo.numero_orden) : next.add(grupo.numero_orden);
+                      return next;
+                    });
+                    const estados = grupo.gates.map(g => g.estado_qa);
+                    const tieneRechazado = estados.includes('rechazado');
+                    const tieneCondicionado = estados.includes('condicionado');
+                    const todosAprobados = estados.every(e => e === 'aprobado');
+                    const resumenColor = tieneRechazado ? 'bg-red-100 text-red-700' : tieneCondicionado ? 'bg-orange-100 text-orange-700' : todosAprobados ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+                    const resumenTexto = tieneRechazado ? 'Con rechazos' : tieneCondicionado ? 'Condicionado' : todosAprobados ? 'Aprobado' : 'Pendiente';
+
+                    return (
+                      <div key={grupo.numero_orden}>
+                        {/* Fila de la orden — clic para expandir */}
+                        <button
+                          onClick={toggleOrden}
+                          className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <span className={`text-gray-400 text-xs transition-transform ${abierto ? 'rotate-90' : ''}`}>▶</span>
+                          <span className="font-semibold text-gray-800 text-sm">#{grupo.numero_orden}</span>
+                          <span className="text-gray-500 text-sm flex-1">{grupo.nombre_cliente || '-'}</span>
+                          <span className="text-xs text-gray-400">{grupo.gates.length} etapa{grupo.gates.length !== 1 ? 's' : ''}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${resumenColor}`}>{resumenTexto}</span>
+                        </button>
+
+                        {/* Detalle expandido */}
+                        {abierto && (
+                          <div className="bg-gray-50 border-t border-gray-100 px-4 pb-3">
+                            <table className="min-w-full text-sm mt-2">
+                              <thead>
+                                <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                                  <th className="py-2 pr-4 text-left">Etapa</th>
+                                  <th className="py-2 pr-4 text-left">Estado</th>
+                                  <th className="py-2 pr-4 text-left">Inspector</th>
+                                  <th className="py-2 pr-4 text-left">Turno</th>
+                                  <th className="py-2 pr-4 text-left">Tiempo</th>
+                                  <th className="py-2 pr-4 text-left">Resuelto</th>
+                                  <th className="py-2 text-left">Detalle</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {grupo.gates.map((item) => (
+                                  <tr key={item.qa_gate_id} className="hover:bg-white transition-colors">
+                                    <td className="py-2 pr-4 text-gray-700">
+                                      {item.etapa_titulo || item.etapa_id}
+                                      {item.intento > 1 && <span className="ml-1 text-orange-500 text-xs">×{item.intento}</span>}
+                                    </td>
+                                    <td className="py-2 pr-4">
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${estadoBadge(item.estado_qa)}`}>{item.estado_qa}</span>
+                                    </td>
+                                    <td className="py-2 pr-4 text-gray-600">{item.inspector || '-'}</td>
+                                    <td className="py-2 pr-4 text-gray-600">{item.turno || '-'}</td>
+                                    <td className="py-2 pr-4 text-gray-500 text-xs">{fmtMinutos(item.minutos_resolucion)}</td>
+                                    <td className="py-2 pr-4 text-gray-500 text-xs whitespace-nowrap">{fmtFecha(item.resolucion_qa)}</td>
+                                    <td className="py-2">
+                                      <button onClick={() => setDetalleItem(item)}
+                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline">
+                                        Ver
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {totalPaginas > 1 && (
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
