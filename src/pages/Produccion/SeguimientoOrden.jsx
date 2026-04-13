@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 import {
   FaArrowLeft, FaCheckCircle, FaTimesCircle, FaExclamationCircle,
   FaClock, FaUser, FaCalendarAlt, FaTools, FaClipboardCheck,
-  FaRedo, FaInfoCircle,
+  FaRedo, FaInfoCircle, FaFilePdf,
 } from 'react-icons/fa';
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -247,6 +248,199 @@ export default function SeguimientoOrden() {
   const estadoTitulo = orden.estado_digital_titulo || orden.estado_offset_titulo || '—';
   const etapasConDatos = etapas.filter(e => e.ejecucion || (e.qa_gates && e.qa_gates.length > 0));
 
+  const handleDescargarPDF = () => {
+    try {
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      const contentW = pageW - (margin * 2);
+      let y = 14;
+
+      const writeText = (text, x, yPos, opts = {}) => {
+        const {
+          size = 10,
+          style = 'normal',
+          color = [30, 41, 59],
+          align = 'left',
+          maxWidth,
+        } = opts;
+        doc.setFont('helvetica', style);
+        doc.setFontSize(size);
+        doc.setTextColor(color[0], color[1], color[2]);
+        if (maxWidth) {
+          const lines = doc.splitTextToSize(text || '—', maxWidth);
+          doc.text(lines, x, yPos, { align });
+          return lines.length * (size * 0.38);
+        }
+        doc.text(text || '—', x, yPos, { align });
+        return size * 0.38;
+      };
+
+      const ensureSpace = (needed = 12) => {
+        if (y + needed > pageH - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
+      const kv = (label, value, xLabel, xValue, yPos) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`${label}:`, xLabel, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        const lines = doc.splitTextToSize(value || '—', contentW - (xValue - margin));
+        doc.text(lines, xValue, yPos);
+        return Math.max(4.2, lines.length * 3.9);
+      };
+
+      const estadoLabelAuditoria = (estado) => {
+        if (estado === 'aprobado') return 'APROBADO';
+        if (estado === 'rechazado') return 'RECHAZADO';
+        if (estado === 'condicionado') return 'CONDICIONADO';
+        return 'PENDIENTE';
+      };
+
+      // Encabezado de documento (blanco y negro, sin fondo)
+      doc.setDrawColor(31, 41, 55);
+      doc.roundedRect(margin, y, contentW, 18, 2, 2, 'S');
+      writeText('REPORTE DE TRAZABILIDAD DE PRODUCCION', margin + 4, y + 7, { size: 12, style: 'bold', color: [0, 0, 0] });
+      writeText('Formato de control para auditoria interna y calidad', margin + 4, y + 13, { size: 8.5, color: [55, 65, 81] });
+      writeText(`Emitido: ${new Date().toLocaleString('es-GT')}`, pageW - margin - 2, y + 13, { size: 8.5, color: [55, 65, 81], align: 'right' });
+      y += 24;
+
+      // Identificacion de la orden
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(margin, y, contentW, 30, 2, 2, 'S');
+      y += 5;
+      y += kv('Orden', orden.numero_orden || `#${orden.id}`, margin + 2, margin + 34, y);
+      y += kv('Cliente', orden.nombre_cliente || '—', margin + 2, margin + 34, y);
+      y += kv('Tipo de orden', orden.tipo_orden || '—', margin + 2, margin + 34, y);
+      y += kv('Estado actual', `${estadoTitulo} (${estadoKey})`, margin + 2, margin + 34, y);
+      if (orden.fecha_entrega) y += kv('Fecha de entrega', fmtFecha(orden.fecha_entrega), margin + 2, margin + 34, y);
+      y += 4;
+
+      // Resumen de auditoria
+      const totalEtapas = etapasConDatos.length;
+      const aprobadas = etapasConDatos.filter(e => e.qa_gates?.some(g => g.estado === 'aprobado')).length;
+      const rechazadas = etapasConDatos.filter(e => e.qa_gates?.some(g => g.estado === 'rechazado')).length;
+      const conReproceso = etapasConDatos.filter(e => e.qa_gates?.length > 1).length;
+      const colaboradores = [...new Set(etapasConDatos.map(e => e.ejecucion?.operario).filter(Boolean))];
+
+      ensureSpace(28);
+      doc.setDrawColor(156, 163, 175);
+      doc.roundedRect(margin, y, contentW, 22, 2, 2, 'S');
+      writeText('Resumen de cumplimiento', margin + 3, y + 5, { size: 10, style: 'bold', color: [0, 0, 0] });
+      writeText(`Etapas registradas: ${totalEtapas}`, margin + 3, y + 11, { size: 8.5 });
+      writeText(`Etapas con aprobacion QA: ${aprobadas}`, margin + 52, y + 11, { size: 8.5 });
+      writeText(`Etapas con rechazo: ${rechazadas}`, margin + 108, y + 11, { size: 8.5 });
+      writeText(`Reprocesos detectados: ${conReproceso}`, margin + 150, y + 11, { size: 8.5 });
+      writeText(`Colaboradores: ${colaboradores.length ? colaboradores.join(', ') : '—'}`, margin + 3, y + 17, { size: 8.5, maxWidth: contentW - 6 });
+      y += 28;
+
+      // Secciones por etapa
+      etapasConDatos.forEach((etapa, index) => {
+        ensureSpace(20);
+
+        doc.setDrawColor(55, 65, 81);
+        doc.roundedRect(margin, y, contentW, 8, 1.5, 1.5, 'S');
+        writeText(`${index + 1}. ${etapa.etapa_titulo || etapa.etapa_id}`, margin + 3, y + 5.4, { size: 9.5, style: 'bold', color: [0, 0, 0] });
+        y += 11;
+
+        if (etapa.ejecucion) {
+          ensureSpace(18);
+          writeText('Registro de ejecucion operativa', margin, y, { size: 9, style: 'bold', color: [15, 23, 42] });
+          y += 5;
+          y += kv('Operario', etapa.ejecucion.operario || '—', margin, margin + 26, y);
+          y += kv('Inicio', `${fmtFecha(etapa.ejecucion.fecha_inicio)} ${etapa.ejecucion.hora_inicio || ''}`.trim(), margin, margin + 26, y);
+          y += kv('Fin', `${fmtFecha(etapa.ejecucion.fecha_fin)} ${etapa.ejecucion.hora_fin || ''}`.trim(), margin, margin + 26, y);
+          y += kv('Registro creado por', etapa.ejecucion.created_by || '—', margin, margin + 42, y);
+
+          const datosEtapa = etapa.ejecucion.datos_etapa || {};
+          const datosEntries = Object.entries(datosEtapa).filter(([, v]) => v !== null && v !== '' && v !== undefined);
+          if (datosEntries.length) {
+            ensureSpace(12);
+            writeText('Detalle tecnico de etapa', margin, y, { size: 8.8, style: 'bold', color: [51, 65, 85] });
+            y += 4.5;
+            datosEntries.forEach(([k, v]) => {
+              ensureSpace(6);
+              const label = campos_etapa_labels[k] || k;
+              y += kv(label, String(v), margin + 2, margin + 36, y);
+            });
+          }
+
+          if (etapa.ejecucion.reproceso || etapa.ejecucion.motivo_reproceso || etapa.ejecucion.observaciones) {
+            ensureSpace(12);
+            writeText('Observaciones operativas', margin, y, { size: 8.8, style: 'bold', color: [51, 65, 85] });
+            y += 4.5;
+            y += kv('Reproceso', etapa.ejecucion.reproceso ? 'SI' : 'NO', margin + 2, margin + 28, y);
+            if (etapa.ejecucion.motivo_reproceso) {
+              y += kv('Motivo reproceso', etapa.ejecucion.motivo_reproceso, margin + 2, margin + 28, y);
+            }
+            if (etapa.ejecucion.observaciones) {
+              y += kv('Observaciones', etapa.ejecucion.observaciones, margin + 2, margin + 28, y);
+            }
+          }
+        } else {
+          ensureSpace(8);
+          writeText('Sin registro de ejecucion del operario en esta etapa.', margin, y, { size: 8.5, color: [100, 116, 139] });
+          y += 5;
+        }
+
+        ensureSpace(10);
+        writeText('Control de calidad (QA)', margin, y, { size: 9, style: 'bold', color: [15, 23, 42] });
+        y += 5;
+
+        if (etapa.qa_gates && etapa.qa_gates.length) {
+          etapa.qa_gates.forEach((gate) => {
+            ensureSpace(24);
+            doc.setDrawColor(226, 232, 240);
+            doc.line(margin, y, pageW - margin, y);
+            y += 4;
+            writeText(`Revision QA - Intento ${gate.intento || '—'}`, margin, y, { size: 8.8, style: 'bold', color: [30, 41, 59] });
+            y += 4;
+            y += kv('Intento', String(gate.intento || '—'), margin + 2, margin + 24, y);
+            y += kv('Resultado', estadoLabelAuditoria(gate.estado), margin + 2, margin + 24, y);
+            y += kv('Fecha revision', fmtDatetime(gate.updated_at), margin + 2, margin + 24, y);
+            y += kv('Inspector', gate.inspector || '—', margin + 2, margin + 24, y);
+            y += kv('Turno', gate.turno || '—', margin + 2, margin + 24, y);
+            y += kv('Maquina/equipo', gate.maquina_equipo || '—', margin + 2, margin + 36, y);
+            y += kv('Lote/arte', gate.lote_version_arte || '—', margin + 2, margin + 24, y);
+            y += kv('Unidad', gate.unidad_medida || '—', margin + 2, margin + 24, y);
+            if (gate.motivo_no_conformidad) y += kv('No conformidad', gate.motivo_no_conformidad, margin + 2, margin + 35, y);
+            if (gate.accion_correctiva) y += kv('Accion correctiva', gate.accion_correctiva, margin + 2, margin + 35, y);
+            if (gate.observaciones) y += kv('Observaciones QA', gate.observaciones, margin + 2, margin + 35, y);
+            if (gate.cierre_qa_responsable || gate.cierre_qa_fecha || gate.cierre_qa_hora) {
+              y += kv('Cierre QA', `${gate.cierre_qa_responsable || '—'} · ${fmtFecha(gate.cierre_qa_fecha)} ${gate.cierre_qa_hora || ''}`.trim(), margin + 2, margin + 24, y);
+            }
+            y += 2;
+          });
+        } else {
+          writeText('Sin revisiones QA registradas para esta etapa.', margin, y, { size: 8.5, color: [100, 116, 139] });
+          y += 6;
+        }
+
+        y += 2;
+      });
+
+      // Pie de firma de auditoria
+      ensureSpace(20);
+      doc.setDrawColor(203, 213, 225);
+      doc.line(margin + 5, pageH - 20, margin + 65, pageH - 20);
+      doc.line(pageW - margin - 65, pageH - 20, pageW - margin - 5, pageH - 20);
+      writeText('Responsable de produccion', margin + 10, pageH - 16, { size: 8, color: [71, 85, 105] });
+      writeText('Responsable de calidad', pageW - margin - 60, pageH - 16, { size: 8, color: [71, 85, 105] });
+
+      const safeOrden = (orden.numero_orden || `orden_${orden.id}`).toString().replace(/[^a-zA-Z0-9_-]/g, '_');
+      doc.save(`trazabilidad_${safeOrden}.pdf`);
+    } catch (e) {
+      console.error('Error generando PDF de trazabilidad:', e);
+      alert('No se pudo generar el PDF de trazabilidad.');
+    }
+  };
+
   // KPIs rápidos
   const totalEtapas    = etapasConDatos.length;
   const aprobadas      = etapasConDatos.filter(e => e.qa_gates?.some(g => g.estado === 'aprobado')).length;
@@ -258,12 +452,21 @@ export default function SeguimientoOrden() {
     <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="mb-5">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mb-3"
-        >
-          <FaArrowLeft className="w-3 h-3" /> Volver al Kanban
-        </button>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            <FaArrowLeft className="w-3 h-3" /> Volver al Kanban
+          </button>
+          <button
+            onClick={handleDescargarPDF}
+            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
+            title="Descargar informe PDF de trazabilidad"
+          >
+            <FaFilePdf className="w-4 h-4" /> Descargar PDF
+          </button>
+        </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">

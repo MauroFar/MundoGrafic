@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   FaCheckCircle, FaSearch, FaEye,
-  FaSync, FaTruck, FaBoxes, FaClipboardList, FaShippingFast
+  FaSync, FaBoxes, FaClipboardList, FaShippingFast
 } from 'react-icons/fa';
 import OrdenDetalleModal from '../../components/OrdenDetalleModal';
+import ModalRegistroEjecucion from './ModalRegistroEjecucion';
 
 // Solo órdenes con estado 'liberado' en la tabla estado_orden_digital
 const ESTADOS_TERMINADO = ['liberado'];
+
+const QA_STORAGE_KEY = 'mg.qa.gates.v1';
+const QA_QUEUE_KEY = 'mg.qa.queue.v1';
+const ETAPA_TIMESTAMPS_KEY = 'mg.etapa.timestamps.v1';
+
+const ETAPA_LIBERADO = { id: 'liberado', titulo: 'Producto Liberado' };
+const ETAPA_ENTREGADO = { id: 'entregado', titulo: 'Producto Entregado' };
 
 const normalizeKey = (s) => {
   if (!s) return '';
@@ -46,6 +54,59 @@ const formatDate = (d) => {
   catch { return d; }
 };
 
+const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
+  if (!datos) return null;
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-base font-semibold text-gray-900">Confirmar envío a proceso</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            OT <span className="font-semibold text-gray-700">#{datos.orden?.numero_orden}</span>
+            {datos.orden?.nombre_cliente && <span> · {datos.orden.nombre_cliente}</span>}
+          </p>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Proceso destino</label>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-blue-800">
+              {datos.etapaTitulo}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de inicio</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">
+                {datos.fecha}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Hora de inicio</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-mono">
+                {datos.hora}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onCancelar}
+            className="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirmar(datos.fecha, datos.hora)}
+            className="flex-1 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold transition-colors"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProductosTerminados = () => {
   const navigate = useNavigate();
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -56,14 +117,113 @@ const ProductosTerminados = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
+  const [qaGates, setQaGates] = useState({});
+  const [registroEjecucion, setRegistroEjecucion] = useState(null);
+  const [confirmacionProceso, setConfirmacionProceso] = useState(null);
+
   // Modal detalle
   const [showModal, setShowModal] = useState(false);
   const [ordenDetalle, setOrdenDetalle] = useState(null);
 
-  // Modal marcar como entregado
-  const [showEntregarModal, setShowEntregarModal] = useState(false);
-  const [ordenParaEntregar, setOrdenParaEntregar] = useState(null);
-  const [marcandoEntregado, setMarcandoEntregado] = useState(false);
+  const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
+
+  const getAllTimestamps = () => {
+    try { return JSON.parse(localStorage.getItem(ETAPA_TIMESTAMPS_KEY) || '{}'); }
+    catch { return {}; }
+  };
+
+  const getTimestamp = (ordenId, etapaId) => getAllTimestamps()[`${ordenId}:${etapaId}`] || {};
+
+  const saveTimestamp = (ordenId, etapaId, tipo, fecha, hora) => {
+    const all = getAllTimestamps();
+    const key = `${ordenId}:${etapaId}`;
+    all[key] = { ...all[key], [`${tipo}_fecha`]: fecha, [`${tipo}_hora`]: hora };
+    localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
+  };
+
+  const saveCantidadEntregada = (ordenId, etapaId, cantidad) => {
+    const all = getAllTimestamps();
+    const key = `${ordenId}:${etapaId}`;
+    all[key] = { ...all[key], cantidad_entregada: cantidad };
+    localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
+  };
+
+  const loadQaFromBackend = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/qa/estados`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const gates = {};
+      (json.gates || []).forEach((g) => {
+        gates[`${g.orden_trabajo_id}:${g.etapa_id}`] = { estado: g.estado, updatedAt: g.updated_at };
+      });
+      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(gates));
+      setQaGates(gates);
+    } catch (err) {
+      console.error('No se pudieron cargar estados de QA', err);
+      try {
+        const raw = localStorage.getItem(QA_STORAGE_KEY);
+        setQaGates(raw ? JSON.parse(raw) : {});
+      } catch {
+        setQaGates({});
+      }
+    }
+  };
+
+  const getQaState = (ordenId, etapaId) => qaGates[gateKey(ordenId, etapaId)] || null;
+
+  const saveQaState = (ordenId, etapaId, estado, observacion = '') => {
+    setQaGates((prev) => {
+      const updated = {
+        ...prev,
+        [gateKey(ordenId, etapaId)]: { estado, observacion, updatedAt: new Date().toISOString() },
+      };
+      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const upsertQaQueue = async (orden, etapa) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ etapa_id: etapa.id, etapa_titulo: etapa.titulo }),
+      });
+    } catch (err) {
+      console.error('No se pudo crear QA gate en backend', err);
+    }
+
+    try {
+      const raw = localStorage.getItem(QA_QUEUE_KEY);
+      const queue = raw ? JSON.parse(raw) : [];
+      const itemId = `${orden.id}:${etapa.id}`;
+      const nextItem = {
+        id: itemId,
+        ordenId: orden.id,
+        numeroOrden: orden.numero_orden,
+        cliente: orden.nombre_cliente,
+        producto: orden.concepto || '',
+        cantidad: orden.cantidad || '',
+        etapaId: etapa.id,
+        etapaTitulo: etapa.titulo,
+        estado: 'pendiente',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const idx = queue.findIndex((q) => q.id === itemId);
+      if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
+      else queue.unshift(nextItem);
+      localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
+      window.dispatchEvent(new Event('qa-queue-updated'));
+    } catch (err) {
+      console.error('Error actualizando caché QA', err);
+    }
+  };
 
   const cargarOrdenes = async () => {
     setLoading(true);
@@ -81,7 +241,6 @@ const ProductosTerminados = () => {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
 
-      // Solo órdenes digitales — filtra por estado_digital_key (tabla estado_orden_digital)
       const filtrados = arr.filter(
         (o) =>
           normalizeKey(o.tipo_orden) === 'digital' &&
@@ -96,7 +255,16 @@ const ProductosTerminados = () => {
     }
   };
 
-  useEffect(() => { cargarOrdenes(); }, []);
+  useEffect(() => {
+    cargarOrdenes();
+    loadQaFromBackend();
+  }, []);
+
+  useEffect(() => {
+    const refreshQa = () => { loadQaFromBackend(); };
+    window.addEventListener('qa-gates-updated', refreshQa);
+    return () => window.removeEventListener('qa-gates-updated', refreshQa);
+  }, []);
 
   const abrirDetalle = async (id) => {
     try {
@@ -113,34 +281,46 @@ const ProductosTerminados = () => {
     }
   };
 
-  const confirmarEntregar = (orden) => {
-    setOrdenParaEntregar(orden);
-    setShowEntregarModal(true);
+  const abrirConfirmacionProceso = (orden) => {
+    const now = new Date();
+    setConfirmacionProceso({
+      orden,
+      etapaTitulo: ETAPA_ENTREGADO.titulo,
+      fecha: now.toISOString().slice(0, 10),
+      hora: now.toTimeString().slice(0, 5),
+    });
   };
 
-  const marcarComoEntregado = async () => {
-    if (!ordenParaEntregar) return;
-    setMarcandoEntregado(true);
+  const confirmarEnvioAProceso = async (fecha, hora) => {
+    if (!confirmacionProceso?.orden) return;
+    const orden = confirmacionProceso.orden;
+
     try {
+      saveTimestamp(orden.id, ETAPA_ENTREGADO.id, 'inicio', fecha, hora);
+      saveTimestamp(orden.id, ETAPA_LIBERADO.id, 'fin', fecha, hora);
+
       const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${ordenParaEntregar.id}/estado`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ estado: 'entregado' })
+
+      await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/ejecucion/${ETAPA_LIBERADO.id}/fin`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fecha_fin: fecha, hora_fin: hora }),
       });
-      if (!res.ok) throw new Error('Error al actualizar el estado');
-      toast.success(`Orden ${ordenParaEntregar.numero_orden} marcada como Entregado`);
-      setShowEntregarModal(false);
-      setOrdenParaEntregar(null);
-      // Recargar lista (la orden desaparecerá de aquí y aparecerá en Productos Entregados)
-      cargarOrdenes();
+
+      const resEstado = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: ETAPA_ENTREGADO.id })
+      });
+      if (!resEstado.ok) throw new Error('Error al actualizar estado a entregado');
+
+      setConfirmacionProceso(null);
+      toast.success(`Orden ${orden.numero_orden} enviada a ${ETAPA_ENTREGADO.titulo}`);
+      await cargarOrdenes();
+      await loadQaFromBackend();
     } catch (err) {
-      toast.error(err.message || 'Error al marcar como entregado');
-    } finally {
-      setMarcandoEntregado(false);
+      console.error(err);
+      toast.error(err.message || 'No se pudo enviar la orden a proceso');
     }
   };
 
@@ -154,14 +334,9 @@ const ProductosTerminados = () => {
     );
   });
 
-  // Stats
-  const totalLiberado     = ordenesFiltradas.filter(o => o.estado_digital_key === 'liberado').length;
-  const totalListoEntrega = 0; // reservado
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 p-6">
 
-      {/* ── Cabecera ── */}
       <div className="mb-6 bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-white">
@@ -174,7 +349,7 @@ const ProductosTerminados = () => {
             </div>
           </div>
           <button
-            onClick={cargarOrdenes}
+            onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
             className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
           >
             <FaSync className={loading ? 'animate-spin' : ''} />
@@ -183,7 +358,6 @@ const ProductosTerminados = () => {
         </div>
       </div>
 
-      {/* ── Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <StatCard
           icon={FaBoxes}
@@ -203,7 +377,6 @@ const ProductosTerminados = () => {
         />
       </div>
 
-      {/* ── Filtros ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="relative">
@@ -237,7 +410,7 @@ const ProductosTerminados = () => {
         </div>
         <div className="mt-3 flex justify-end">
           <button
-            onClick={cargarOrdenes}
+            onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
             className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Aplicar filtros
@@ -245,7 +418,6 @@ const ProductosTerminados = () => {
         </div>
       </div>
 
-      {/* ── Tabla ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
           <span className="text-sm font-semibold text-gray-600">
@@ -285,44 +457,104 @@ const ProductosTerminados = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {ordenesFiltradas.map((o, i) => (
-                  <tr
-                    key={o.id}
-                    className={`hover:bg-green-50 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
-                    onClick={() => abrirDetalle(o.id)}
-                  >
-                    <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{o.numero_orden || '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        o.tipo_orden === 'digital' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {o.tipo_orden === 'digital' ? 'Digital' : 'Offset'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{o.nombre_cliente || '-'}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-xs"><span className="block truncate">{o.concepto || '-'}</span></td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeStyle(o.estado_digital_key)}`}>
-                        {badgeLabel(o.estado_digital_key, o.estado_digital_titulo)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_entrega)}</td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_creacion || o.created_at)}</td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => abrirDetalle(o.id)} title="Ver detalle" className="p-2 rounded-lg text-green-600 hover:bg-green-100 transition-colors"><FaEye /></button>
-                        <button onClick={() => confirmarEntregar(o)} title="Marcar como Entregado" className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors"><FaTruck /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {ordenesFiltradas.map((o, i) => {
+                  const gate = getQaState(o.id, ETAPA_LIBERADO.id);
+                  const puedeEnviarProceso = gate?.estado === 'aprobado';
+                  return (
+                    <tr
+                      key={o.id}
+                      className={`hover:bg-green-50 cursor-pointer transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                      onClick={() => abrirDetalle(o.id)}
+                    >
+                      <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{o.numero_orden || '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          o.tipo_orden === 'digital' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {o.tipo_orden === 'digital' ? 'Digital' : 'Offset'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{o.nombre_cliente || '-'}</td>
+                      <td className="px-4 py-3 text-gray-600 max-w-xs"><span className="block truncate">{o.concepto || '-'}</span></td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeStyle(o.estado_digital_key)}`}>
+                            {badgeLabel(o.estado_digital_key, o.estado_digital_titulo)}
+                          </span>
+                          {gate && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                              gate.estado === 'aprobado' ? 'bg-green-100 text-green-700' :
+                              gate.estado === 'rechazado' ? 'bg-red-100 text-red-700' :
+                              gate.estado === 'condicionado' ? 'bg-orange-100 text-orange-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {gate.estado === 'aprobado' ? 'Calidad aprobada' :
+                               gate.estado === 'rechazado' ? 'Calidad rechazada' :
+                               gate.estado === 'condicionado' ? 'Calidad condicionada' :
+                               'Enviado a calidad'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_entrega)}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_creacion || o.created_at)}</td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-stretch justify-center gap-1 min-w-[165px]">
+                          <button
+                            onClick={() => navigate(`/produccion/seguimiento/${o.id}`)}
+                            className="px-2 py-1 rounded-lg text-[11px] bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                          >
+                            Ver trazabilidad
+                          </button>
+
+                          {!gate && (
+                            <button
+                              onClick={() => setRegistroEjecucion({ orden: o, etapa: ETAPA_LIBERADO })}
+                              className="px-2 py-1 rounded-lg text-[11px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
+                            >
+                              Enviar a calidad
+                            </button>
+                          )}
+
+                          {(gate?.estado === 'rechazado' || gate?.estado === 'condicionado') && (
+                            <button
+                              onClick={() => setRegistroEjecucion({ orden: o, etapa: ETAPA_LIBERADO })}
+                              className="px-2 py-1 rounded-lg text-[11px] bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors"
+                            >
+                              Reenviar a calidad
+                            </button>
+                          )}
+
+                          {gate?.estado === 'pendiente' && (
+                            <div className="px-2 py-1 rounded-lg text-[11px] text-yellow-700 bg-yellow-50 border border-yellow-200 text-center leading-snug">
+                              Esperando aprobación de calidad
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => abrirConfirmacionProceso(o)}
+                            disabled={!puedeEnviarProceso}
+                            className={`px-2 py-1 rounded-lg text-[11px] transition-colors ${
+                              puedeEnviarProceso
+                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            Enviar a proceso
+                          </button>
+
+                          <button onClick={() => abrirDetalle(o.id)} title="Ver detalle" className="px-2 py-1 rounded-lg text-[11px] bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"><FaEye /> Ver detalle</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* ── Modal detalle ── */}
       {showModal && (
         <OrdenDetalleModal
           ordenDetalle={ordenDetalle}
@@ -333,49 +565,32 @@ const ProductosTerminados = () => {
         />
       )}
 
-      {/* ── Modal confirmar entrega ── */}
-      {showEntregarModal && ordenParaEntregar && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-600 to-green-700 px-6 py-4 flex items-center gap-3 text-white">
-              <FaTruck className="text-xl" />
-              <h2 className="text-lg font-bold">Confirmar Entrega</h2>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
-                ¿Marcar la siguiente orden como <strong className="text-emerald-700">Entregado</strong>?
-              </p>
-              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5 space-y-1.5 text-sm">
-                <p><span className="text-gray-500 font-medium">Orden:</span> <strong className="text-gray-800">{ordenParaEntregar.numero_orden}</strong></p>
-                <p><span className="text-gray-500 font-medium">Cliente:</span> <span className="text-gray-700">{ordenParaEntregar.nombre_cliente || '-'}</span></p>
-                <p><span className="text-gray-500 font-medium">Concepto:</span> <span className="text-gray-700">{ordenParaEntregar.concepto || '-'}</span></p>
-              </div>
-              <p className="text-xs text-gray-400 mb-5">
-                La orden pasará automáticamente a <em className="font-medium">Productos Entregados</em>.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowEntregarModal(false); setOrdenParaEntregar(null); }}
-                  disabled={marcandoEntregado}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-700 font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={marcarComoEntregado}
-                  disabled={marcandoEntregado}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
-                >
-                  {marcandoEntregado
-                    ? <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Procesando…</>
-                    : <><FaTruck /> Confirmar Entrega</>
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {registroEjecucion && (() => {
+        const { orden, etapa } = registroEjecucion;
+        const cantRecibida = getTimestamp(orden.id, 'terminados').cantidad_entregada || null;
+        return (
+          <ModalRegistroEjecucion
+            orden={orden}
+            etapa={etapa}
+            fechaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_fecha}
+            horaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_hora}
+            cantidadRecibida={cantRecibida}
+            onConfirmar={async (_ejecucionGuardada, cantidadEntregada) => {
+              saveCantidadEntregada(orden.id, etapa.id, cantidadEntregada);
+              saveQaState(orden.id, etapa.id, 'pendiente');
+              await upsertQaQueue(orden, etapa);
+              setRegistroEjecucion(null);
+            }}
+            onCancelar={() => setRegistroEjecucion(null)}
+          />
+        );
+      })()}
+
+      <ModalConfirmacionProceso
+        datos={confirmacionProceso}
+        onConfirmar={confirmarEnvioAProceso}
+        onCancelar={() => setConfirmacionProceso(null)}
+      />
     </div>
   );
 };

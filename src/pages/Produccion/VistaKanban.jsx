@@ -161,6 +161,12 @@ const VistaKanban = () => {
 
   const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
 
+  // En workflow digital ocultamos estas columnas en la vista Kanban,
+  // pero se mantienen en el flujo interno para no romper transiciones/QA.
+  const columnasVisibles = workflowType === 'digital'
+    ? columnas.filter((c) => !['liberado', 'entregado'].includes(c.id))
+    : columnas;
+
   // ── Timestamps de inicio/fin por etapa (persistidos en localStorage) ──────
   const getAllTimestamps = () => {
     try { return JSON.parse(localStorage.getItem(ETAPA_TIMESTAMPS_KEY) || '{}'); }
@@ -1020,7 +1026,7 @@ const VistaKanban = () => {
                               style={{ top: dropdownCoords.top, left: dropdownCoords.left, minWidth: dropdownCoords.width }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {columnas.map((etapa) => (
+                              {columnasVisibles.map((etapa) => (
                                 <button
                                   key={etapa.id}
                                   onClick={(e) => {
@@ -1048,7 +1054,7 @@ const VistaKanban = () => {
             </div>
           </div>
 
-        {columnas.map((columna) => {
+        {columnasVisibles.map((columna) => {
           const IconoColumna = columna.icono;
           const ordenesColumna = ordenes[columna.id] || [];
           return (
