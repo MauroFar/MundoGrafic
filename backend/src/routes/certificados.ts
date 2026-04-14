@@ -182,7 +182,7 @@ export default (client: any) => {
                     <div class="small">${certificado.lote || ""}</div>
                   </div>
                   <div class="box" style="flex:1;">
-                    <div class="label">LOTE DE DESPACHO</div>
+                    <div class="label">NÚMERO DE DESPACHO</div>
                     <div class="small right-small">${certificado.lote_despacho || ""}</div>
                   </div>
                 </div>

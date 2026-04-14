@@ -1362,7 +1362,6 @@ export default (client: any) => {
           <div class="seccion-contenido">
             <div class="fila" style="margin-bottom: 6px;">
               <div class="campo"><div class="campo-label">VENDEDOR</div><div class="campo-valor">${detalle.vendedor || ""}</div></div>
-              <div class="campo"><div class="campo-label">FACTURADO</div><div class="campo-valor">${detalle.facturado || ""}</div></div>
             </div>
             <table class="traza-tabla">
               <thead>
@@ -1732,7 +1731,6 @@ export default (client: any) => {
           <div class="seccion-contenido">
             <div class="fila" style="margin-bottom: 6px;">
               <div class="campo"><div class="campo-label">VENDEDOR</div><div class="campo-valor">${detalle.vendedor || ""}</div></div>
-              <div class="campo"><div class="campo-label">FACTURADO</div><div class="campo-valor">${detalle.facturado || ""}</div></div>
             </div>
             <table class="traza-tabla">
               <thead>
@@ -3108,6 +3106,43 @@ export default (client: any) => {
       }
 
       try {
+        // No permitir el flujo normal de QA para órdenes ya entregadas/facturadas.
+        // Si se requiere, debe usarse una reapertura controlada con trazabilidad.
+        const ordenEstadoRes = await client.query(
+          `SELECT ot.id, ot.tipo_orden, eod.key AS estado_digital_key, eoo.key AS estado_offset_key
+           FROM orden_trabajo ot
+           LEFT JOIN estado_orden_digital eod ON eod.id = ot.estado_orden_digital_id
+           LEFT JOIN estado_orden_offset eoo ON eoo.id = ot.estado_orden_offset_id
+           WHERE ot.id = $1
+           LIMIT 1`,
+          [ordenId],
+        );
+
+        if (ordenEstadoRes.rows.length === 0) {
+          return res.status(404).json({ error: "Orden no encontrada" });
+        }
+
+        const ordenEstado = ordenEstadoRes.rows[0];
+        const esDigital =
+          String(ordenEstado.tipo_orden || "")
+            .toLowerCase()
+            .trim() === "digital";
+        const estadoActualKey = normalizeString(
+          esDigital
+            ? ordenEstado.estado_digital_key
+            : ordenEstado.estado_offset_key,
+        );
+        const esTerminalEntrega = ["entregado", "facturado"].includes(
+          estadoActualKey,
+        );
+
+        if (esTerminalEntrega) {
+          return res.status(409).json({
+            error:
+              "La orden ya esta entregada/facturada. Para calidad posterior use un flujo de reapertura autorizado.",
+          });
+        }
+
         // Obtener el último intento para incrementar
         const intentoRes = await client.query(
           `SELECT COALESCE(MAX(intento),0) AS max_intento

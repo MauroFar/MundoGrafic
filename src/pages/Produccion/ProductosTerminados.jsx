@@ -189,39 +189,48 @@ const ProductosTerminados = () => {
   const upsertQaQueue = async (orden, etapa) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ etapa_id: etapa.id, etapa_titulo: etapa.titulo }),
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'No se pudo crear el gate de calidad');
+      }
+
+      try {
+        const raw = localStorage.getItem(QA_QUEUE_KEY);
+        const queue = raw ? JSON.parse(raw) : [];
+        const itemId = `${orden.id}:${etapa.id}`;
+        const nextItem = {
+          id: itemId,
+          ordenId: orden.id,
+          numeroOrden: orden.numero_orden,
+          cliente: orden.nombre_cliente,
+          producto: orden.concepto || '',
+          cantidad: orden.cantidad || '',
+          etapaId: etapa.id,
+          etapaTitulo: etapa.titulo,
+          estado: 'pendiente',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const idx = queue.findIndex((q) => q.id === itemId);
+        if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
+        else queue.unshift(nextItem);
+        localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
+        window.dispatchEvent(new Event('qa-queue-updated'));
+      } catch (err) {
+        console.error('Error actualizando caché QA', err);
+      }
+
+      return true;
     } catch (err) {
       console.error('No se pudo crear QA gate en backend', err);
-    }
-
-    try {
-      const raw = localStorage.getItem(QA_QUEUE_KEY);
-      const queue = raw ? JSON.parse(raw) : [];
-      const itemId = `${orden.id}:${etapa.id}`;
-      const nextItem = {
-        id: itemId,
-        ordenId: orden.id,
-        numeroOrden: orden.numero_orden,
-        cliente: orden.nombre_cliente,
-        producto: orden.concepto || '',
-        cantidad: orden.cantidad || '',
-        etapaId: etapa.id,
-        etapaTitulo: etapa.titulo,
-        estado: 'pendiente',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const idx = queue.findIndex((q) => q.id === itemId);
-      if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
-      else queue.unshift(nextItem);
-      localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
-      window.dispatchEvent(new Event('qa-queue-updated'));
-    } catch (err) {
-      console.error('Error actualizando caché QA', err);
+      toast.error(err.message || 'No se pudo enviar a calidad');
+      return false;
     }
   };
 
@@ -577,8 +586,9 @@ const ProductosTerminados = () => {
             cantidadRecibida={cantRecibida}
             onConfirmar={async (_ejecucionGuardada, cantidadEntregada) => {
               saveCantidadEntregada(orden.id, etapa.id, cantidadEntregada);
+              const gateCreado = await upsertQaQueue(orden, etapa);
+              if (!gateCreado) return;
               saveQaState(orden.id, etapa.id, 'pendiente');
-              await upsertQaQueue(orden, etapa);
               setRegistroEjecucion(null);
             }}
             onCancelar={() => setRegistroEjecucion(null)}

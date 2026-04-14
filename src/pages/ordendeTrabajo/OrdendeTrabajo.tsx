@@ -38,7 +38,6 @@ interface OrdenData {
   preprensa?: string;
   prensa?: string;
   terminados?: string;
-  facturado?: string;
   // Otros campos generales
   estado?: string;
   estado_offset_key?: string;
@@ -198,7 +197,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [preprensa, setPreprensa] = useState<string>('');
   const [prensa, setPrensa] = useState<string>('');
   const [terminados, setTerminados] = useState<string>('');
-  const [facturado, setFacturado] = useState<string>('');
   
   // Estados adicionales para responsables de orden DIGITAL
   const [laminadoBarnizado, setLaminadoBarnizado] = useState<string>('');
@@ -458,7 +456,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setPreprensa('');
       setPrensa('');
       setTerminados('');
-      setFacturado('');
       // Limpiar campos adicionales responsables digital
       setLaminadoBarnizado('');
       setTroquelado('');
@@ -761,7 +758,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       preprensa: detalleResponsables.preprensa,
       prensa: detalleResponsables.prensa,
       terminados: detalleResponsables.terminados,
-      facturado: detalleResponsables.facturado,
       laminado_barnizado: detalleResponsables.laminado_barnizado,
       troquelado: detalleResponsables.troquelado,
       liberacion_producto: detalleResponsables.liberacion_producto
@@ -771,7 +767,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setPreprensa(detalleResponsables.preprensa || '');
     setPrensa(detalleResponsables.prensa || '');
     setTerminados(detalleResponsables.terminados || '');
-    setFacturado(detalleResponsables.facturado || '');
     
     // Sincronizar cantidades finales de cada responsable
     
@@ -985,7 +980,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       preprensa,
       prensa,
       terminados,
-      facturado,
       // Campos adicionales para orden digital
       ...(tipoOrdenSeleccionado === 'digital' && {
         laminado_barnizado: laminadoBarnizado,
@@ -1136,7 +1130,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
           preprensa,
           prensa,
           terminados,
-          facturado,
           // Campos adicionales para orden digital
           ...(tipoOrdenSeleccionado === 'digital' && {
             laminado_barnizado: laminadoBarnizado,
@@ -1274,7 +1267,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         preprensa,
         prensa,
         terminados,
-        facturado,
         tipo_orden: tipoOrdenSeleccionado,
         // Campos adicionales para orden digital
         ...(tipoOrdenSeleccionado === 'digital' && {
@@ -1610,15 +1602,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                       placeholder="-- Seleccione vendedor --"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Facturado</label>
-                    <input
-                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
-                      type="text"
-                      value={facturado}
-                      onChange={e => setFacturado(e.target.value)}
-                    />
-                  </div>
                 </div>
 
                 <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -1867,15 +1850,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
                       type="text"
                       value={vendedor}
                       onChange={e => setVendedor(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Facturado</label>
-                    <input
-                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
-                      type="text"
-                      value={facturado}
-                      onChange={e => setFacturado(e.target.value)}
                     />
                   </div>
                 </div>

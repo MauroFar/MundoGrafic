@@ -156,7 +156,7 @@ const CertificadoDetalleModal: React.FC<Props> = ({ certificado, onClose, onEdit
               <Field label="Cantidad Despachada" value={certificado.cantidad_despachada} />
               <Field label="Tamaño (cm)" value={certificado.tamano_cm} />
               <Field label="Lote" value={certificado.lote} />
-              <Field label="Lote de Despacho" value={certificado.lote_despacho} />
+              <Field label="Número de Despacho" value={certificado.lote_despacho} />
               <Field label="Inspeccionado por" value={certificado.inspeccionado_por} />
             </div>
           </div>

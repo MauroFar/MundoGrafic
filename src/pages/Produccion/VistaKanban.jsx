@@ -161,6 +161,27 @@ const VistaKanban = () => {
 
   const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
 
+  const normalizeEstadoKey = (value) => {
+    if (!value) return '';
+    return value
+      .toString()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[_\s]+/g, '_');
+  };
+
+  const esEstadoTerminalEntrega = (orden, columnaId) => {
+    const estadoDigital = normalizeEstadoKey(orden?.estado_digital_key);
+    const estadoOffset = normalizeEstadoKey(orden?.estado_offset_key);
+    const estadoGeneral = normalizeEstadoKey(orden?.estado);
+    const estadoColumna = normalizeEstadoKey(columnaId);
+    return [estadoDigital, estadoOffset, estadoGeneral, estadoColumna].some((k) =>
+      ['entregado', 'facturado'].includes(k),
+    );
+  };
+
   // En workflow digital ocultamos estas columnas en la vista Kanban,
   // pero se mantienen en el flujo interno para no romper transiciones/QA.
   const columnasVisibles = workflowType === 'digital'
@@ -207,32 +228,41 @@ const VistaKanban = () => {
   const upsertQaQueue = async (orden, etapa) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ etapa_id: etapa.id, etapa_titulo: etapa.titulo }),
       });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'No se pudo crear el gate de calidad');
+      }
+
+      // Mantener caché local para compatibilidad con GestionCalidadKanban mientras migramos
+      try {
+        const raw = localStorage.getItem(QA_QUEUE_KEY);
+        const queue = raw ? JSON.parse(raw) : [];
+        const itemId = `${orden.id}:${etapa.id}`;
+        const nextItem = {
+          id: itemId, ordenId: orden.id, numeroOrden: orden.numero_orden,
+          cliente: orden.nombre_cliente, producto: orden.concepto || '',
+          cantidad: orden.cantidad || '', etapaId: etapa.id, etapaTitulo: etapa.titulo,
+          estado: 'pendiente', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        const idx = queue.findIndex((q) => q.id === itemId);
+        if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
+        else queue.unshift(nextItem);
+        localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
+        window.dispatchEvent(new Event('qa-queue-updated'));
+      } catch (err) {
+        console.error('Error actualizando caché QA', err);
+      }
+
+      return true;
     } catch (err) {
       console.error('No se pudo crear QA gate en backend', err);
-    }
-    // Mantener caché local para compatibilidad con GestionCalidadKanban mientras migramos
-    try {
-      const raw = localStorage.getItem(QA_QUEUE_KEY);
-      const queue = raw ? JSON.parse(raw) : [];
-      const itemId = `${orden.id}:${etapa.id}`;
-      const nextItem = {
-        id: itemId, ordenId: orden.id, numeroOrden: orden.numero_orden,
-        cliente: orden.nombre_cliente, producto: orden.concepto || '',
-        cantidad: orden.cantidad || '', etapaId: etapa.id, etapaTitulo: etapa.titulo,
-        estado: 'pendiente', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      };
-      const idx = queue.findIndex((q) => q.id === itemId);
-      if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
-      else queue.unshift(nextItem);
-      localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
-      window.dispatchEvent(new Event('qa-queue-updated'));
-    } catch (err) {
-      console.error('Error actualizando caché QA', err);
+      return false;
     }
   };
 
@@ -1193,7 +1223,8 @@ const VistaKanban = () => {
                       {(() => {
                         const gate = getQaState(orden.id, columna.id);
                         const idxActual = columnas.findIndex((c) => c.id === columna.id);
-                        const tieneSiguiente = idxActual >= 0 && idxActual < columnas.length - 1;
+                        const ordenEntregada = esEstadoTerminalEntrega(orden, columna.id);
+                        const tieneSiguiente = !ordenEntregada && idxActual >= 0 && idxActual < columnas.length - 1;
                         const puedeEnviar = gate?.estado === 'aprobado' && tieneSiguiente;
 
                         return (
@@ -1216,7 +1247,7 @@ const VistaKanban = () => {
                               </div>
                             )}
 
-                            {gate?.estado === 'rechazado' && (
+                            {gate?.estado === 'rechazado' && tieneSiguiente && (
                               <div className="grid grid-cols-1 gap-1">
                                 <button
                                   onClick={(e) => {
@@ -1230,7 +1261,7 @@ const VistaKanban = () => {
                               </div>
                             )}
 
-                            {gate?.estado === 'condicionado' && (
+                            {gate?.estado === 'condicionado' && tieneSiguiente && (
                               <div className="grid grid-cols-1 gap-1">
                                 <button
                                   onClick={(e) => {
@@ -1345,8 +1376,9 @@ const VistaKanban = () => {
             cantidadRecibida={cantRecibida}
             onConfirmar={async (ejecucionGuardada, cantidadEntregada) => {
               saveCantidadEntregada(orden.id, etapa.id, cantidadEntregada);
+              const gateCreado = await upsertQaQueue(orden, etapa);
+              if (!gateCreado) return;
               saveQaState(orden.id, etapa.id, 'pendiente');
-              await upsertQaQueue(orden, etapa);
               setRegistroEjecucion(null);
             }}
             onCancelar={() => setRegistroEjecucion(null)}
