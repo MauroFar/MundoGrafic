@@ -2042,24 +2042,52 @@ export default (client: any) => {
 
         let result: any;
         if (tipoOrden === "digital") {
-          // Asignar estado 'pendiente' digital (orden=0) para que aparezca en la columna Pendientes del Kanban
+          // Garantizar que exista y esté activo el estado base 'pendiente' para digital.
+          // En staging puede faltar y antes quedaba estado_orden_digital_id = NULL silenciosamente.
           const estadoDigitalRes = await client.query(
-            `SELECT id FROM estado_orden_digital WHERE key = 'pendiente' AND activo = TRUE LIMIT 1`,
+            `
+            WITH existente AS (
+              SELECT id FROM estado_orden_digital WHERE key = 'pendiente' LIMIT 1
+            ),
+            insertado AS (
+              INSERT INTO estado_orden_digital (key, titulo, orden, color, activo)
+              SELECT 'pendiente', 'Pendiente', 0, '#6b7280', TRUE
+              WHERE NOT EXISTS (SELECT 1 FROM existente)
+              RETURNING id
+            )
+            SELECT id FROM insertado
+            UNION ALL
+            SELECT id FROM existente
+            LIMIT 1
+            `,
           );
           const estadoDigitalId = estadoDigitalRes.rows[0]?.id;
+          if (!estadoDigitalId) {
+            return res.status(500).json({
+              success: false,
+              error:
+                "No se pudo inicializar el estado digital pendiente. Revisa catalogo estado_orden_digital.",
+            });
+          }
+
+          // Si existia inactivo, lo activamos para que aparezca en flujo/validaciones.
+          await client.query(
+            `UPDATE estado_orden_digital SET activo = TRUE WHERE id = $1`,
+            [estadoDigitalId],
+          );
+
           result = await client.query(
             `UPDATE orden_trabajo SET estado_orden_digital_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
             [estadoDigitalId, id],
           );
+
           // Registrar en historial
-          if (estadoDigitalId) {
-            await client
-              .query(
-                `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`,
-                [id, estadoDigitalId, req.user?.id || null, "Enviada a producción"],
-              )
-              .catch(() => {});
-          }
+          await client
+            .query(
+              `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`,
+              [id, estadoDigitalId, req.user?.id || null, "Enviada a producción"],
+            )
+            .catch(() => {});
         } else {
           // Para offset, poner estado = pendiente
           const estadoRes = await client.query(
