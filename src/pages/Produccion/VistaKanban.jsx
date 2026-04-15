@@ -319,7 +319,7 @@ const VistaKanban = () => {
     // Actualizar UI de inmediato (optimistic update)
     setOrdenes((prev) => {
       const origen = (prev[columnaOrigenId] || []).filter((o) => o.id !== orden.id);
-      const destino = [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }];
+      const destino = [{ ...orden, estado: columnaDestinoId }, ...(prev[columnaDestinoId] || [])];
       return {
         ...prev,
         [columnaOrigenId]: origen,
@@ -342,7 +342,7 @@ const VistaKanban = () => {
       // Revertir UI si falló
       setOrdenes((prev) => {
         const destino = (prev[columnaDestinoId] || []).filter((o) => o.id !== orden.id);
-        const origen = [...(prev[columnaOrigenId] || []), { ...orden, estado: columnaOrigenId }];
+        const origen = [{ ...orden, estado: columnaOrigenId }, ...(prev[columnaOrigenId] || [])];
         return { ...prev, [columnaOrigenId]: origen, [columnaDestinoId]: destino };
       });
       alert('Error al guardar el cambio de estado. Intenta de nuevo.');
@@ -354,7 +354,7 @@ const VistaKanban = () => {
     setOrdenesPendientes((prev) => prev.filter((o) => o.id !== orden.id));
     setOrdenes((prev) => ({
       ...prev,
-      [columnaDestinoId]: [...(prev[columnaDestinoId] || []), { ...orden, estado: columnaDestinoId }],
+      [columnaDestinoId]: [{ ...orden, estado: columnaDestinoId }, ...(prev[columnaDestinoId] || [])],
     }));
     setSelectorProcesoAbierto(null);
     // Persistir en BD
@@ -697,6 +697,11 @@ const VistaKanban = () => {
           }
         });
 
+        // Ordenar de más reciente a más antiguo (mayor id primero)
+        pendientes.sort((a, b) => (b.id || 0) - (a.id || 0));
+        Object.keys(ordenesAgrupadas).forEach((k) => {
+          ordenesAgrupadas[k].sort((a, b) => (b.id || 0) - (a.id || 0));
+        });
         setOrdenesPendientes(pendientes);
         if (unmatched.size > 0) console.warn('⚠️ Estados sin match en Kanban (ir a aliases en workflow):', Array.from(unmatched));
       }
