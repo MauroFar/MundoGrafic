@@ -8,6 +8,64 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`,
 });
 
+const normalizeTimeDraft = (raw) => {
+  const value = String(raw || "").replace(/[^\d:]/g, "");
+  if (value.includes(":")) {
+    const [h = "", m = ""] = value.split(":");
+    const hh = h.slice(0, 2);
+    const mm = m.slice(0, 2);
+    return m.length > 0 ? `${hh}:${mm}` : hh;
+  }
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+
+const to24hTime = (raw) => {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+
+  let hh = "";
+  let mm = "";
+
+  const withColon = value.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (withColon) {
+    hh = withColon[1];
+    mm = withColon[2];
+  } else {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length === 3) {
+      hh = digits.slice(0, 1);
+      mm = digits.slice(1);
+    } else if (digits.length === 4) {
+      hh = digits.slice(0, 2);
+      mm = digits.slice(2);
+    } else {
+      return "";
+    }
+  }
+
+  const h = Number(hh);
+  const m = Number(mm);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return "";
+  if (h < 0 || h > 23 || m < 0 || m > 59) return "";
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const TimeInput24 = ({ value, onChange, className }) => (
+  <input
+    type="text"
+    inputMode="numeric"
+    autoComplete="off"
+    placeholder="HH:mm"
+    className={className}
+    value={value}
+    onChange={(e) => onChange(normalizeTimeDraft(e.target.value))}
+    onBlur={(e) => onChange(to24hTime(e.target.value))}
+    pattern="^([01]\\d|2[0-3]):([0-5]\\d)$"
+    title="Formato 24 horas (HH:mm)"
+  />
+);
+
 const ReportesTrabajoDiario = () => {
   const navigate = useNavigate();
 
@@ -432,7 +490,7 @@ const ReportesTrabajoDiario = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" lang="es-EC">
 
       {/* ── Header sticky ── */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
@@ -691,14 +749,20 @@ const ReportesTrabajoDiario = () => {
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Hora inicio <span className="text-red-500">*</span></label>
-                  <input type="time" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.inicio ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
-                    value={editForm.inicio} onChange={e => setEditForm(p => ({ ...p, inicio: e.target.value }))} />
+                  <TimeInput24
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.inicio ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                    value={editForm.inicio}
+                    onChange={(v) => setEditForm(p => ({ ...p, inicio: v }))}
+                  />
                   {editErrores.inicio && <p className="text-red-500 text-xs mt-1">{editErrores.inicio}</p>}
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Hora final <span className="text-red-500">*</span></label>
-                  <input type="time" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.fin ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
-                    value={editForm.fin} onChange={e => setEditForm(p => ({ ...p, fin: e.target.value }))} />
+                  <TimeInput24
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${editErrores.fin ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"}`}
+                    value={editForm.fin}
+                    onChange={(v) => setEditForm(p => ({ ...p, fin: v }))}
+                  />
                   {editErrores.fin && <p className="text-red-500 text-xs mt-1">{editErrores.fin}</p>}
                 </div>
               </div>
@@ -801,21 +865,19 @@ const ReportesTrabajoDiario = () => {
                 <div className="flex flex-col sm:flex-row gap-3 items-end">
                   <div className="flex-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Hora inicio <span className="text-red-500">*</span></label>
-                    <input
-                      type="time"
+                    <TimeInput24
                       className={inputClass("inicio")}
                       value={inicio}
-                      onChange={e => { setInicio(e.target.value); setErrores(p => ({ ...p, inicio: "", fin: "" })); }}
+                      onChange={(v) => { setInicio(v); setErrores(p => ({ ...p, inicio: "", fin: "" })); }}
                     />
                     {errores.inicio && <p className="text-red-500 text-xs mt-1">{errores.inicio}</p>}
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Hora final <span className="text-red-500">*</span></label>
-                    <input
-                      type="time"
+                    <TimeInput24
                       className={inputClass("fin")}
                       value={fin}
-                      onChange={e => { setFin(e.target.value); setErrores(p => ({ ...p, fin: "" })); }}
+                      onChange={(v) => { setFin(v); setErrores(p => ({ ...p, fin: "" })); }}
                     />
                     {errores.fin && <p className="text-red-500 text-xs mt-1">{errores.fin}</p>}
                   </div>

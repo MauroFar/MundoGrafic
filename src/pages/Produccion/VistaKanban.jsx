@@ -1113,16 +1113,18 @@ const VistaKanban = () => {
 
               {/* Tarjetas de órdenes */}
               <div className="space-y-2">
-                {ordenesColumna.map((orden) => (
+                {ordenesColumna.map((orden) => {
+                  const esEntregada = esEstadoTerminalEntrega(orden, columna.id);
+                  return (
                   <div
                     key={orden.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, orden)}
-                    onClick={() => openOrdenModal(orden)}
-                    className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 cursor-move hover:shadow-md transition-shadow text-sm`}
-                    style={{ lineHeight: '1.05', cursor: 'pointer' }}
+                    draggable={!esEntregada}
+                    onDragStart={!esEntregada ? (e) => handleDragStart(e, orden) : undefined}
+                    onClick={!esEntregada ? () => openOrdenModal(orden) : undefined}
+                    className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 ${esEntregada ? 'cursor-default' : 'cursor-pointer hover:shadow-md'} transition-shadow text-sm`}
+                    style={{ lineHeight: '1.05' }}
                   >
-                    {(() => {
+                    {!esEntregada && (() => {
                       const gate = getQaState(orden.id, columna.id);
                       if (!gate) return null;
                       const badgeClass =
@@ -1159,12 +1161,14 @@ const VistaKanban = () => {
                           </span>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openOrdenModal(orden); }}
-                        className="text-gray-400 hover:text-gray-600 text-xs"
-                      >
-                        <FaEye className="h-4 w-4" />
-                      </button>
+                      {!esEntregada && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openOrdenModal(orden); }}
+                          className="text-gray-400 hover:text-gray-600 text-xs"
+                        >
+                          <FaEye className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Cliente */}
@@ -1180,25 +1184,6 @@ const VistaKanban = () => {
                         {orden.concepto}
                       </p>
                     </div>
-
-                    {/* Trazabilidad rápida */}
-                    {(() => {
-                      const gates = Object.entries(qaGates)
-                        .filter(([k]) => k.startsWith(`${orden.id}:`))
-                        .map(([, v]) => v);
-                      if (gates.length === 0) return null;
-                      const aprobadas  = gates.filter(g => g.estado === 'aprobado').length;
-                      const rechazadas = gates.filter(g => g.estado === 'rechazado').length;
-                      return (
-                        <div className="mb-1 flex items-center gap-1 flex-wrap">
-                          <span className="text-[11px] text-gray-500">Calidad:</span>
-                          {aprobadas  > 0 && <span className="text-[11px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">{aprobadas} ✓</span>}
-                          {rechazadas > 0 && <span className="text-[11px] bg-red-100 text-red-700 rounded-full px-1.5 py-0.5">{rechazadas} ✗</span>}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Información adicional */}
                     <div className="space-y-1 text-xs text-gray-500">
                       {orden.responsable_actual && (
                         <div className="flex items-center gap-1">
@@ -1225,7 +1210,7 @@ const VistaKanban = () => {
                         </button>
                       </div>
 
-                      {(() => {
+                      {!esEntregada && (() => {
                         const gate = getQaState(orden.id, columna.id);
                         const idxActual = columnas.findIndex((c) => c.id === columna.id);
                         const ordenEntregada = esEstadoTerminalEntrega(orden, columna.id);
@@ -1349,7 +1334,8 @@ const VistaKanban = () => {
                       })()}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 
                 {/* Mensaje cuando no hay órdenes */}
                 {ordenesColumna.length === 0 && (
@@ -1396,7 +1382,6 @@ const VistaKanban = () => {
         onConfirmar={handleConfirmarProceso}
         onCancelar={() => setConfirmacionProceso(null)}
       />
-
     </div>
   );
 };
