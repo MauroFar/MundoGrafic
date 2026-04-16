@@ -17,6 +17,9 @@ interface OrdenTrabajo {
   estado_orden_digital_id?: number;
   estado_digital_key?: string;
   estado_digital_titulo?: string;
+  estado_offset_key?: string;
+  estado_offset_titulo?: string;
+  enviada_produccion?: boolean;
 }
 
 const OrdenesVer: React.FC = () => {
@@ -86,6 +89,17 @@ const OrdenesVer: React.FC = () => {
       'liberado'
     ];
     return estadosProduccion.includes(key);
+  };
+
+  const estaBloqueadaPorProduccion = (orden: OrdenTrabajo | any): boolean => {
+    if (Boolean(orden?.enviada_produccion)) return true;
+    if (orden?.id && produccionEnviada[orden.id]) return true;
+
+    if ((orden?.tipo_orden || '').toLowerCase() === 'digital' && orden?.estado_digital_key) {
+      return esEstadoProduccion(orden.estado_digital_key);
+    }
+
+    return esEstadoProduccion(orden?.estado);
   };
 
   // Función para obtener el estilo del badge según el estado
@@ -258,6 +272,10 @@ const OrdenesVer: React.FC = () => {
     
     // Buscar la orden para mostrar información en el modal
     const orden = ordenes.find(o => o.id === id);
+    if (orden && estaBloqueadaPorProduccion(orden)) {
+      toast.info('Esta orden ya fue enviada a producción y no se puede eliminar.');
+      return;
+    }
     setOrdenToDelete(orden || null);
     setShowDeleteModal(true);
   };
@@ -417,6 +435,7 @@ const OrdenesVer: React.FC = () => {
         return {
           ...o,
           estado: 'pendiente',
+          enviada_produccion: true,
           ...(esDigital
             ? { estado_digital_key: 'pendiente', estado_orden_digital_id: -1 }
             : { estado_offset_key: 'pendiente', estado_orden_offset_id: -1 }
@@ -652,7 +671,7 @@ const OrdenesVer: React.FC = () => {
                           <span className="text-xs mt-1 text-gray-600">Editar</span>
                         </button>
                       )}
-                      {puedeEliminar('ordenes_trabajo') && !esEstadoProduccion(orden.estado) && (
+                      {puedeEliminar('ordenes_trabajo') && !estaBloqueadaPorProduccion(orden) && (
                         <button
                           className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                           onClick={() => eliminarOrden(orden.id)}
@@ -876,6 +895,12 @@ const OrdenesVer: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
             <h3 className="text-lg font-semibold mb-2 text-green-700">¿Enviar esta orden a producción?</h3>
+            <p className="text-sm text-gray-700">
+              Orden:{' '}
+              <span className="font-semibold text-gray-900">
+                {ordenes.find((o) => o.id === modalProduccionId)?.numero_orden || `#${modalProduccionId}`}
+              </span>
+            </p>
             <div className="flex justify-center gap-4 mt-4">
               <button
                 className="bg-green-600 text-white px-4 py-2 rounded"

@@ -71,6 +71,30 @@ export default (client: any) => {
     return null;
   }
 
+  async function ordenFueEnviadaAProduccion(ordenId: string | number): Promise<boolean> {
+    const result = await client.query(
+      `SELECT (
+         EXISTS (
+           SELECT 1
+           FROM estado_orden_digital_historial eodh
+           WHERE eodh.orden_trabajo_id = $1
+             AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+             AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+         )
+         OR EXISTS (
+           SELECT 1
+           FROM estado_orden_offset_historial eooh
+           WHERE eooh.orden_trabajo_id = $1
+             AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+             AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+         )
+       ) AS bloqueada`,
+      [ordenId],
+    );
+
+    return Boolean(result.rows[0]?.bloqueada);
+  }
+
   // Obtener datos del cliente de una cotización
   router.get(
     "/datosCotizacion/:id",
@@ -456,9 +480,42 @@ export default (client: any) => {
       try {
         const { busqueda, fechaDesde, fechaHasta, limite, tipo_orden } = req.query;
         let query = `
-        SELECT ot.id, ot.numero_orden, ot.nombre_cliente, ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion,
+        SELECT ot.id, ot.numero_orden, ot.nombre_cliente,
+               COALESCE(
+                 (
+                   SELECT pod.producto
+                   FROM productos_orden_digital pod
+                   WHERE pod.orden_trabajo_id = ot.id
+                   ORDER BY pod.orden ASC
+                   LIMIT 1
+                 ),
+                 (
+                   SELECT poo.concepto
+                   FROM productos_orden_offset poo
+                   WHERE poo.orden_trabajo_id = ot.id
+                   ORDER BY poo.orden ASC
+                   LIMIT 1
+                 )
+               ) AS concepto,
+               ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion,
                ot.estado_orden_digital_id, eod.key AS estado_digital_key, eod.titulo AS estado_digital_titulo,
-               ot.estado_orden_offset_id, eoo.key AS estado_offset_key, eoo.titulo AS estado_offset_titulo
+               ot.estado_orden_offset_id, eoo.key AS estado_offset_key, eoo.titulo AS estado_offset_titulo,
+               (
+                 EXISTS (
+                   SELECT 1
+                   FROM estado_orden_digital_historial eodh
+                   WHERE eodh.orden_trabajo_id = ot.id
+                     AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+                     AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+                 )
+                 OR EXISTS (
+                   SELECT 1
+                   FROM estado_orden_offset_historial eooh
+                   WHERE eooh.orden_trabajo_id = ot.id
+                     AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+                     AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+                 )
+               ) AS enviada_produccion
         FROM orden_trabajo ot
         LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
         LEFT JOIN estado_orden_offset eoo ON ot.estado_orden_offset_id = eoo.id
@@ -579,7 +636,23 @@ export default (client: any) => {
          u1.nombre as created_by_nombre,
          u2.nombre as updated_by_nombre,
          eod.key  AS estado_digital_key,  eod.titulo  AS estado_digital_titulo,
-         eoo.key  AS estado_offset_key,   eoo.titulo  AS estado_offset_titulo
+         eoo.key  AS estado_offset_key,   eoo.titulo  AS estado_offset_titulo,
+         (
+           EXISTS (
+             SELECT 1
+             FROM estado_orden_digital_historial eodh
+             WHERE eodh.orden_trabajo_id = ot.id
+               AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+               AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM estado_orden_offset_historial eooh
+             WHERE eooh.orden_trabajo_id = ot.id
+               AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+               AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+           )
+         ) AS enviada_produccion
          FROM orden_trabajo ot
          LEFT JOIN cotizaciones c ON ot.id_cotizacion = c.id
          LEFT JOIN clientes cl ON c.cliente_id = cl.id
@@ -719,6 +792,15 @@ export default (client: any) => {
       const productosDigital = detalle?.productos_digital;
 
       try {
+        const bloqueada = await ordenFueEnviadaAProduccion(id);
+        if (bloqueada) {
+          res.status(409).json({
+            error:
+              "No se puede actualizar la orden porque ya fue enviada a producción. Usa 'Crear como Nueva' para generar una nueva orden basada en esta.",
+          });
+          return;
+        }
+
         await client.query("BEGIN");
         // Actualizar datos generales (solo columnas que existen en el nuevo esquema)
         const result = await client.query(
@@ -1013,6 +1095,15 @@ export default (client: any) => {
     async (req, res): Promise<void> => {
       const { id } = req.params;
       try {
+        const bloqueada = await ordenFueEnviadaAProduccion(id);
+        if (bloqueada) {
+          res.status(409).json({
+            error:
+              "No se puede eliminar la orden porque ya fue enviada a producción.",
+          });
+          return;
+        }
+
         const result = await client.query(
           "DELETE FROM orden_trabajo WHERE id = $1 RETURNING *",
           [id],

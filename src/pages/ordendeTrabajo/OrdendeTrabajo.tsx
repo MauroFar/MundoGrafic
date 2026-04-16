@@ -42,6 +42,7 @@ interface OrdenData {
   estado?: string;
   estado_offset_key?: string;
   estado_digital_key?: string;
+  enviada_produccion?: boolean;
   notas_observaciones?: string;
   // Puedes agregar más campos según lo que devuelva tu backend
   detalle?: any;
@@ -236,6 +237,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const ordenBloqueadaProduccion = Boolean(ordenId && ordenData?.enviada_produccion);
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
   const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'offset' | 'digital'
 
@@ -1072,6 +1074,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Función para mostrar modal de confirmación de actualización
   const confirmarActualizacion = () => {
+    if (ordenBloqueadaProduccion) {
+      toast.info('Esta orden ya fue enviada a producción y no se puede actualizar. Usa Crear como Nueva.');
+      return;
+    }
     setShowConfirmUpdateModal(true);
   };
   // Función para ejecutar la actualización después de confirmar
@@ -1079,6 +1085,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setShowConfirmUpdateModal(false);
     console.log('🚀 FRONTEND - Iniciando actualización de orden');
     console.log('📋 FRONTEND - ordenId:', ordenId);
+
+    if (ordenBloqueadaProduccion) {
+      toast.info('Esta orden ya fue enviada a producción y no se puede actualizar. Usa Crear como Nueva.');
+      return;
+    }
     
     // Validar permisos ANTES de continuar
     if (!verificarYMostrarError('ordenes_trabajo', 'editar', 'actualizar esta orden de trabajo')) {
@@ -2046,8 +2057,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+                      className={`text-white px-6 py-2 rounded transition-colors ${ordenBloqueadaProduccion ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
                       onClick={confirmarActualizacion}
+                      disabled={ordenBloqueadaProduccion}
+                      title={ordenBloqueadaProduccion ? 'No se puede actualizar: esta orden ya fue enviada a producción' : 'Actualizar Orden'}
                     >
                       Actualizar Orden
                     </button>
