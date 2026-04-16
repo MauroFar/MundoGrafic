@@ -209,6 +209,26 @@ export default function SeguimientoOrden() {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  const cargarLogoDataUrl = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/images/logo-mundografic.png`);
+      if (!response.ok) return '';
+      const blob = await response.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return typeof dataUrl === 'string' ? dataUrl : '';
+    } catch {
+      return '';
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -248,14 +268,14 @@ export default function SeguimientoOrden() {
   const estadoTitulo = orden.estado_digital_titulo || orden.estado_offset_titulo || '—';
   const etapasConDatos = etapas.filter(e => e.ejecucion || (e.qa_gates && e.qa_gates.length > 0));
 
-  const handleDescargarPDF = () => {
-    try {
+    const construirPDFTrazabilidad = async () => {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const margin = 12;
       const contentW = pageW - (margin * 2);
       let y = 14;
+      const logoDataUrl = await cargarLogoDataUrl();
 
       const writeText = (text, x, yPos, opts = {}) => {
         const {
@@ -284,15 +304,22 @@ export default function SeguimientoOrden() {
         }
       };
 
-      const kv = (label, value, xLabel, xValue, yPos) => {
+      const kv = (label, value, _xLabel, _xValue, yPos) => {
+        // Columnas fijas para mantener alineacion vertical uniforme
+        const labelColX = margin + 2;
+        const labelColW = 42;
+        const valueColX = labelColX + labelColW + 4;
+
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(71, 85, 105);
-        doc.text(`${label}:`, xLabel, yPos);
+        doc.text(`${label}:`, labelColX, yPos);
+
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(15, 23, 42);
-        const lines = doc.splitTextToSize(value || '—', contentW - (xValue - margin));
-        doc.text(lines, xValue, yPos);
+        const lines = doc.splitTextToSize(value || '—', contentW - (valueColX - margin));
+        doc.text(lines, valueColX, yPos);
+
         return Math.max(4.2, lines.length * 3.9);
       };
 
@@ -306,8 +333,12 @@ export default function SeguimientoOrden() {
       // Encabezado de documento (blanco y negro, sin fondo)
       doc.setDrawColor(31, 41, 55);
       doc.roundedRect(margin, y, contentW, 18, 2, 2, 'S');
-      writeText('REPORTE DE TRAZABILIDAD DE PRODUCCION', margin + 4, y + 7, { size: 12, style: 'bold', color: [0, 0, 0] });
-      writeText('Formato de control para auditoria interna y calidad', margin + 4, y + 13, { size: 8.5, color: [55, 65, 81] });
+      if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'PNG', margin + 2, y + 2, 23, 11);
+      }
+      const headerX = logoDataUrl ? margin + 28 : margin + 4;
+      writeText('REPORTE DE TRAZABILIDAD DE PRODUCCION', headerX, y + 7, { size: 12, style: 'bold', color: [0, 0, 0] });
+      writeText('Formato de control para auditoria interna y calidad', headerX, y + 13, { size: 8.5, color: [55, 65, 81] });
       writeText(`Emitido: ${new Date().toLocaleString('es-GT')}`, pageW - margin - 2, y + 13, { size: 8.5, color: [55, 65, 81], align: 'right' });
       y += 24;
 
@@ -433,12 +464,27 @@ export default function SeguimientoOrden() {
       writeText('Responsable de produccion', margin + 10, pageH - 16, { size: 8, color: [71, 85, 105] });
       writeText('Responsable de calidad', pageW - margin - 60, pageH - 16, { size: 8, color: [71, 85, 105] });
 
-      const safeOrden = (orden.numero_orden || `orden_${orden.id}`).toString().replace(/[^a-zA-Z0-9_-]/g, '_');
-      doc.save(`trazabilidad_${safeOrden}.pdf`);
+      return doc;
+  };
+
+  const handleVerPDFImprimir = async () => {
+    try {
+      setPreviewLoading(true);
+      const doc = await construirPDFTrazabilidad();
+      const dataUri = doc.output('datauristring');
+      setPreviewUrl(dataUri || '');
+      setShowPreview(true);
     } catch (e) {
-      console.error('Error generando PDF de trazabilidad:', e);
-      alert('No se pudo generar el PDF de trazabilidad.');
+      console.error('Error generando vista previa PDF de trazabilidad:', e);
+      alert('No se pudo generar la vista previa del PDF.');
+    } finally {
+      setPreviewLoading(false);
     }
+  };
+
+  const cerrarPreview = () => {
+    setShowPreview(false);
+    setPreviewUrl('');
   };
 
   // KPIs rápidos
@@ -460,11 +506,11 @@ export default function SeguimientoOrden() {
             <FaArrowLeft className="w-3 h-3" /> Volver al Kanban
           </button>
           <button
-            onClick={handleDescargarPDF}
-            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
-            title="Descargar informe PDF de trazabilidad"
+            onClick={handleVerPDFImprimir}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-colors"
+            title="Ver PDF e imprimir"
           >
-            <FaFilePdf className="w-4 h-4" /> Descargar PDF
+            <FaFilePdf className="w-4 h-4" /> Ver PDF/Imprimir
           </button>
         </div>
 
@@ -546,6 +592,40 @@ export default function SeguimientoOrden() {
               isLast={i === etapasConDatos.length - 1}
             />
           ))}
+        </div>
+      )}
+
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
+              <button
+                onClick={cerrarPreview}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewLoading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Generando vista previa...</p>
+                  </div>
+                </div>
+              ) : (
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
