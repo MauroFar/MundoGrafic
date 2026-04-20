@@ -34,6 +34,19 @@ echo "📁 Desplegando archivos..."
 sudo mkdir -p /var/www/mundografic
 sudo rsync -a --delete dist/ /var/www/mundografic/
 
+# Actualizar configuración de Nginx para evitar cache viejo en clientes
+echo "🌐 Actualizando configuración de Nginx..."
+sudo cp backend/deploy/nginx_mundografic_site.conf /etc/nginx/sites-available/mundografic
+sudo ln -sfn /etc/nginx/sites-available/mundografic /etc/nginx/sites-enabled/mundografic
+if [ ! -f /etc/nginx/conf.d/mundografic_upstream.conf ]; then
+        echo "🧭 Creando upstream inicial de nginx apuntando a producción..."
+        sudo tee /etc/nginx/conf.d/mundografic_upstream.conf > /dev/null <<EOF
+upstream mundografic_backends {
+    server 127.0.0.1:3002 max_fails=3 fail_timeout=5s;
+}
+EOF
+fi
+
 # Establecer permisos correctos
 echo "🔐 Estableciendo permisos..."
 sudo chown -R www-data:www-data /var/www/mundografic
@@ -70,6 +83,8 @@ sudo systemctl status mundografic-backend --no-pager -l
 
 echo ""
 echo "Nginx:"
+sudo nginx -t
+sudo systemctl reload nginx
 sudo systemctl status nginx --no-pager -l
 
 echo ""
