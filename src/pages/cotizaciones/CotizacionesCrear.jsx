@@ -2634,16 +2634,52 @@ function CotizacionesCrear() {
           </div>
         )}
 
-        {/* Modal de Clientes */}
-        <button
-          type="button"
-          onClick={agregarFila}
-          className="fixed bottom-6 right-6 z-40 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
-          title="Agregar producto en cualquier momento"
-        >
-          <i className="fas fa-plus"></i>
-          <span className="hidden sm:inline">Agregar Producto</span>
-        </button>
+        <div className="fixed bottom-6 right-6 z-40 flex flex-row flex-wrap justify-end gap-3 max-w-[calc(100vw-3rem)]">
+          <button
+            type="button"
+            onClick={generarVistaPrevia}
+            disabled={previewLoading}
+            className="px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
+            title="Abrir vista previa del PDF"
+          >
+            <FaEye />
+            <span className="hidden sm:inline">{previewLoading ? 'Generando...' : 'Vista Previa PDF'}</span>
+          </button>
+
+          {id && (
+            <button
+              type="button"
+              onClick={handleGuardarComoNueva}
+              disabled={isSaving}
+              className="px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
+              title="Guardar esta cotización como nueva"
+            >
+              <FaSave />
+              <span className="hidden sm:inline">Guardar como Nueva</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleGuardarTodo}
+            disabled={isSaving}
+            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
+            title={id ? 'Actualizar cotización' : 'Guardar cotización'}
+          >
+            <FaSave />
+            <span className="hidden sm:inline">{id ? 'Actualizar Cotización' : 'Guardar Cotización'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={agregarFila}
+            className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
+            title="Agregar producto en cualquier momento"
+          >
+            <i className="fas fa-plus"></i>
+            <span className="hidden sm:inline">Agregar Producto</span>
+          </button>
+        </div>
 
         {/* Modal de Clientes */}
         {showClientesModal && (
