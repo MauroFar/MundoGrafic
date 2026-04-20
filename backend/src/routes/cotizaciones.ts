@@ -531,7 +531,7 @@ body {
 
 .campoPie label {
   font-weight: bold;
-  color: #666;
+  color: #000;
   min-width: 140px;
   margin-right: 10px;
 }
@@ -541,7 +541,7 @@ body {
 }
 
 .campoPie span, .campoPie input {
-  color: #666;
+  color: #000;
 }
 
 .pie-derecha .campoPie {
