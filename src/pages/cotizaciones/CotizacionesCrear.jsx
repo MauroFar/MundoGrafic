@@ -37,6 +37,7 @@ function CotizacionesCrear() {
   const [observaciones, setObservaciones] = useState("");
   const [numeroCotizacion, setNumeroCotizacion] = useState("Nueva cotización");
   const textareaRefs = useRef([]);
+  const selectionRangesRef = useRef({});
   const filaRefs = useRef([]); // Refs para hacer scroll automático a nuevas filas
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -69,8 +70,11 @@ function CotizacionesCrear() {
   const [contacto, setContacto] = useState("");
   const [usarCeluar, setUsarCeluar] = useState(false);
   const [boldStates, setBoldStates] = useState([]); // Estado para rastrear si el cursor está en texto en negrita
+  const [underlineStates, setUnderlineStates] = useState([]); // Estado para rastrear si el cursor está en texto subrayado
+  const [colorStates, setColorStates] = useState([]); // Color activo por fila
   const [celuar, setCeluar] = useState("");
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
+  const [mostrarTotales, setMostrarTotales] = useState(true); // Mostrar subtotal/iva/descuento/total por defecto
   const [vendedores, setVendedores] = useState([]);
   const [esVendedor, setEsVendedor] = useState(false);
   const [mostrarVendedores, setMostrarVendedores] = useState(false);
@@ -85,9 +89,65 @@ function CotizacionesCrear() {
   const [showProcesosModal, setShowProcesosModal] = useState(false);
   const [filaEditandoProcesos, setFilaEditandoProcesos] = useState(null);
 
+  const normalizarDecimalInput = (valor) => {
+    if (valor === null || valor === undefined || valor === "") return "";
+    const numero = Number(valor);
+    if (Number.isNaN(numero)) return "";
+
+    // Mantener al menos 2 decimales y hasta 6 sin agregar separadores de miles.
+    const fijo = numero.toFixed(6);
+    const [parteEntera, parteDecimal = ""] = fijo.split(".");
+    const decimalesSinCeros = parteDecimal.replace(/0+$/, "");
+    const parteDecimalFinal = decimalesSinCeros.length >= 2
+      ? decimalesSinCeros
+      : parteDecimal.slice(0, 2);
+
+    return `${parteEntera}.${parteDecimalFinal}`;
+  };
+
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
   const vendedoresDropdownRef = useRef(null);
+
+  const saveSelectionForRow = (rowIndex) => {
+    const editorElement = textareaRefs.current[rowIndex];
+    const selection = window.getSelection();
+    if (!editorElement || !selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    if (editorElement.contains(range.startContainer) && editorElement.contains(range.endContainer)) {
+      selectionRangesRef.current[rowIndex] = range.cloneRange();
+    }
+  };
+
+  const restoreSelectionForRow = (rowIndex) => {
+    const editorElement = textareaRefs.current[rowIndex];
+    const savedRange = selectionRangesRef.current[rowIndex];
+    if (!editorElement || !savedRange) return false;
+
+    editorElement.focus();
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    selection.removeAllRanges();
+    selection.addRange(savedRange);
+    return true;
+  };
+
+  const applyActiveColorAtCaret = (rowIndex) => {
+    const activeColor = colorStates[rowIndex];
+    const editorElement = textareaRefs.current[rowIndex];
+    const selection = window.getSelection();
+    if (!activeColor || !editorElement || !selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const isInsideEditor = editorElement.contains(range.startContainer) && editorElement.contains(range.endContainer);
+
+    // Solo forzamos color cuando es caret (sin selección) para no recolorear texto seleccionado accidentalmente.
+    if (isInsideEditor && range.collapsed) {
+      document.execCommand('foreColor', false, activeColor);
+    }
+  };
 
   useEffect(() => {
     if (showSuccessModal && successModalRef.current) {
@@ -217,10 +277,10 @@ function CotizacionesCrear() {
       // Actualizar el estado con los datos completos
       setFecha(cotizacionData.fecha ? cotizacionData.fecha.split('T')[0] : today);
       setNumeroCotizacion(cotizacionData.codigo_cotizacion || "");
-      setTxtTiempoEntrega(cotizacionData.tiempo_entrega || "5 días hábiles");
-      setFormaPago(cotizacionData.forma_pago || "50% anticipo, 50% contra entrega");
-      setValidezProforma(cotizacionData.validez_proforma || "15 días");
-      setObservaciones(cotizacionData.observaciones || "");
+      setTxtTiempoEntrega(cotizacionData.tiempo_entrega ?? "5 días hábiles");
+      setFormaPago(cotizacionData.forma_pago ?? "50% anticipo, 50% contra entrega");
+      setValidezProforma(cotizacionData.validez_proforma ?? "15 días");
+      setObservaciones(cotizacionData.observaciones ?? "");
       
       // Configurar el ejecutivo
       setNombreEjecutivo(cotizacionData.nombre_ejecutivo || localStorage.getItem('nombre') || "");
@@ -267,6 +327,14 @@ function CotizacionesCrear() {
       }
 
       // Establecer los detalles de la cotización y calcular totales
+      const cotizacionSinTotales = (
+        cotizacionData.subtotal == null &&
+        cotizacionData.iva == null &&
+        cotizacionData.descuento == null &&
+        cotizacionData.total == null
+      );
+      setMostrarTotales(!cotizacionSinTotales);
+
       if (detallesData && detallesData.length > 0) {
         const filasActualizadas = detallesData.map(detalle => {
           // Asegurarnos de que los valores sean números válidos
@@ -291,7 +359,7 @@ function CotizacionesCrear() {
           return {
             cantidad,
             detalle: detalle.detalle || "",
-            valor_unitario: valorUnitario,
+            valor_unitario: normalizarDecimalInput(valorUnitario),
             valor_total: valorTotal,
             imagenes: imagenes,
             alineacion_imagenes: detalle.alineacion_imagenes || 'horizontal',
@@ -315,11 +383,13 @@ function CotizacionesCrear() {
 
         setSubtotal(subtotalCalculado);
         setIva(ivaCalculado);
+        setDescuento(parseFloat(cotizacionData.descuento) || 0);
         setTotal(totalCalculado);
       } else {
         // Si no hay detalles, usar los valores de la cotización
         setSubtotal(parseFloat(cotizacionData.subtotal) || 0);
         setIva(parseFloat(cotizacionData.iva) || 0);
+        setDescuento(parseFloat(cotizacionData.descuento) || 0);
         setTotal(parseFloat(cotizacionData.total) || 0);
         setFilas([]);
       }
@@ -573,16 +643,17 @@ function CotizacionesCrear() {
       // 3. Preparar los datos de la cotización
       const cotizacionData = {
         fecha: fecha || new Date().toISOString().split('T')[0],
-        subtotal: parseFloat(subtotal) || 0,
-        iva: parseFloat(iva) || 0,
-        descuento: parseFloat(descuento) || 0,
-        total: parseFloat(total) || 0,
+        subtotal: mostrarTotales ? (parseFloat(subtotal) || 0) : null,
+        iva: mostrarTotales ? (parseFloat(iva) || 0) : null,
+        descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
+        total: mostrarTotales ? (parseFloat(total) || 0) : null,
+        mostrar_totales: mostrarTotales,
         ruc_id: selectedRuc?.id || null,
         cliente_id: clienteId || null,
-        tiempo_entrega: TxttiempoEntrega || "5 días hábiles",
-        forma_pago: formaPago || "50% anticipo, 50% contra entrega",
-        validez_proforma: validezProforma || "15 días",
-        observaciones: observaciones || "",
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones,
         nombre_ejecutivo: nombreEjecutivo || "",
         contacto: usarContacto && contacto ? contacto : null,
         celuar: usarCeluar && celuar ? celuar : null
@@ -792,7 +863,7 @@ function CotizacionesCrear() {
       {
         cantidad: 1,
         detalle: detalleInicial,
-        valor_unitario: 0,
+        valor_unitario: '0.00',
         valor_total: 0,
         imagenes: [],  // Array vacío para múltiples imágenes
         alineacion_imagenes: 'horizontal',  // Alineación por defecto (horizontal/vertical)
@@ -834,7 +905,7 @@ function CotizacionesCrear() {
         ...nuevasFilas[filaEditandoProcesos],
         cantidad: itemData.cantidad,
         detalle: `${itemData.tipo_trabajo} - ${itemData.descripcion}\nTamaño: C:${itemData.tamano_cerrado} / A:${itemData.tamano_abierto}`,
-        valor_unitario: itemData.precio_unitario,
+        valor_unitario: normalizarDecimalInput(itemData.precio_unitario),
         valor_total: itemData.total,
         // Guardar datos adicionales para referencia
         tipo_trabajo: itemData.tipo_trabajo,
@@ -1054,11 +1125,10 @@ function CotizacionesCrear() {
 
   // Función auxiliar para formatear números de manera segura
   const formatearNumero = (numero) => {
-    if (numero === null || numero === undefined || numero === '') return "0";
+    if (numero === null || numero === undefined || numero === '') return "0.00";
     const n = Number(numero);
-    if (isNaN(n)) return "0";
-    // Mostrar hasta 6 decimales sin forzar 2 decimales
-    return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+    if (isNaN(n)) return "0.00";
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
   };
 
   // Función auxiliar para formatear número de cotización de manera segura
@@ -1084,6 +1154,14 @@ function CotizacionesCrear() {
     const nuevasFilas = [...filas];
     nuevasFilas[index].valor_unitario = value;
     nuevasFilas[index].valor_total = calcularTotalFila(nuevasFilas[index].cantidad, value);
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+  };
+
+  const normalizarValorUnitarioFila = (index) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index].valor_unitario = normalizarDecimalInput(nuevasFilas[index].valor_unitario);
+    nuevasFilas[index].valor_total = calcularTotalFila(nuevasFilas[index].cantidad, nuevasFilas[index].valor_unitario);
     setFilas(nuevasFilas);
     calcularTotales(nuevasFilas);
   };
@@ -1138,10 +1216,11 @@ function CotizacionesCrear() {
         contacto: usarContacto && contacto ? contacto : null,
         celuar: celuar || null,
         ruc: selectedRuc.ruc,
-        subtotal: subtotal,
-        iva: iva,
-        descuento: descuento,
-        total: total,
+        subtotal: mostrarTotales ? subtotal : null,
+        iva: mostrarTotales ? iva : null,
+        descuento: mostrarTotales ? descuento : null,
+        total: mostrarTotales ? total : null,
+        mostrar_totales: mostrarTotales,
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
@@ -1250,17 +1329,18 @@ function CotizacionesCrear() {
       // 3. Crear la nueva cotización con todas las relaciones
       const cotizacionData = {
         fecha: fecha || new Date().toISOString().split('T')[0],
-        subtotal: parseFloat(subtotal) || 0,
-        iva: parseFloat(iva) || 0,
-        descuento: parseFloat(descuento) || 0,
-        total: parseFloat(total) || 0,
+        subtotal: mostrarTotales ? (parseFloat(subtotal) || 0) : null,
+        iva: mostrarTotales ? (parseFloat(iva) || 0) : null,
+        descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
+        total: mostrarTotales ? (parseFloat(total) || 0) : null,
+        mostrar_totales: mostrarTotales,
         ruc_id: selectedRuc?.id || null,
         cliente_id: clienteId || null,
         // numero_cotizacion se asignará automáticamente por la base de datos
-        tiempo_entrega: TxttiempoEntrega || "5 días hábiles",
-        forma_pago: formaPago || "50% anticipo, 50% contra entrega",
-        validez_proforma: validezProforma || "15 días",
-        observaciones: observaciones || "",
+        tiempo_entrega: TxttiempoEntrega,
+        forma_pago: formaPago,
+        validez_proforma: validezProforma,
+        observaciones: observaciones,
         nombre_ejecutivo: nombreEjecutivo || "",
         contacto: usarContacto && contacto ? contacto : null,
         celuar: celuar || null
@@ -1681,7 +1761,8 @@ function CotizacionesCrear() {
                     </td>
                     <td className="border border-gray-300 px-4 py-2 align-top">
                       {/* Botón de negrita */}
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-col items-center gap-1">
                         <button
                           type="button"
                           onMouseDown={(e) => {
@@ -1716,6 +1797,117 @@ function CotizacionesCrear() {
                           <strong>B</strong>
                         </button>
                         <span className="text-xs text-gray-600 font-bold">Negrita</span>
+                        </div>
+
+                        {/* Botón de subrayado */}
+                        <div className="flex flex-col items-center gap-1">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            const editorElement = textareaRefs.current[index];
+                            if (editorElement) {
+                              editorElement.focus();
+                              document.execCommand('underline', false, null);
+                              const nuevasFilas = [...filas];
+                              nuevasFilas[index].detalle = editorElement.innerHTML;
+                              setFilas(nuevasFilas);
+                              setTimeout(() => {
+                                const isUnderline = document.queryCommandState('underline');
+                                const newUnderlineStates = [...underlineStates];
+                                newUnderlineStates[index] = isUnderline;
+                                setUnderlineStates(newUnderlineStates);
+                              }, 10);
+                            }
+                          }}
+                          className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
+                            underlineStates[index]
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                          title="Selecciona texto y haz click para subrayar"
+                        >
+                          <i className="fas fa-underline"></i>
+                          <u>U</u>
+                        </button>
+                        <span className="text-xs text-gray-600 underline">Subrayado</span>
+                        </div>
+
+                        {/* Panel de colores */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {[
+                            { color: '#000000', label: 'Negro' },
+                            { color: '#1e40af', label: 'Azul' },
+                            { color: '#dc2626', label: 'Rojo' },
+                            { color: '#16a34a', label: 'Verde' },
+                            { color: '#9333ea', label: 'Morado' },
+                            { color: '#ea580c', label: 'Naranja' },
+                            { color: '#0891b2', label: 'Celeste' },
+                            { color: '#be185d', label: 'Rosa' },
+                          ].map(({ color, label }) => (
+                            <button
+                              key={color}
+                              type="button"
+                              title={label}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                const editorElement = textareaRefs.current[index];
+                                if (editorElement) {
+                                  editorElement.focus();
+                                  document.execCommand('foreColor', false, color);
+                                  const nuevasFilas = [...filas];
+                                  nuevasFilas[index].detalle = editorElement.innerHTML;
+                                  setFilas(nuevasFilas);
+                                  const newColorStates = [...colorStates];
+                                  newColorStates[index] = color;
+                                  setColorStates(newColorStates);
+                                }
+                              }}
+                              className="w-5 h-5 rounded-full transition-all flex-shrink-0"
+                              style={{
+                                backgroundColor: color,
+                                border: colorStates[index] === color
+                                  ? '3px solid #1d4ed8'
+                                  : '2px solid transparent',
+                                boxShadow: colorStates[index] === color
+                                  ? '0 0 0 2px white, 0 0 0 4px #1d4ed8'
+                                  : 'none',
+                                transform: colorStates[index] === color ? 'scale(1.25)' : 'scale(1)',
+                              }}
+                            />
+                          ))}
+                          {/* Color personalizado */}
+                          <label
+                            title="Color personalizado"
+                            className="w-5 h-5 rounded-full border-2 border-dashed border-gray-400 cursor-pointer flex items-center justify-center overflow-hidden hover:scale-110 transition-transform"
+                            style={{ flexShrink: 0 }}
+                            onMouseDown={() => saveSelectionForRow(index)}
+                          >
+                            <input
+                              type="color"
+                              className="opacity-0 absolute w-0 h-0"
+                              onChange={(e) => {
+                                const color = e.target.value;
+                                const editorElement = textareaRefs.current[index];
+                                if (editorElement) {
+                                  const restored = restoreSelectionForRow(index);
+                                  if (!restored) {
+                                    editorElement.focus();
+                                  }
+                                  document.execCommand('foreColor', false, color);
+                                  const nuevasFilas = [...filas];
+                                  nuevasFilas[index].detalle = editorElement.innerHTML;
+                                  setFilas(nuevasFilas);
+                                  const newColorStates = [...colorStates];
+                                  newColorStates[index] = color;
+                                  setColorStates(newColorStates);
+                                  saveSelectionForRow(index);
+                                }
+                              }}
+                            />
+                            <i className="fas fa-palette text-gray-500" style={{ fontSize: '10px' }}></i>
+                          </label>
+                        </div>
                       </div>
                       
                       <div
@@ -1727,6 +1919,12 @@ function CotizacionesCrear() {
                           }
                         }}
                         contentEditable
+                        spellCheck={false}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        data-gramm="false"
+                        data-gramm_editor="false"
+                        data-enable-grammarly="false"
                         suppressContentEditableWarning
                         onInput={(e) => {
                           const nuevasFilas = [...filas];
@@ -1734,25 +1932,47 @@ function CotizacionesCrear() {
                           setFilas(nuevasFilas);
                         }}
                         onKeyUp={() => {
+                          saveSelectionForRow(index);
+                          applyActiveColorAtCaret(index);
                           // Detectar si el cursor está en texto en negrita
                           const isBold = document.queryCommandState('bold');
                           const newBoldStates = [...boldStates];
                           newBoldStates[index] = isBold;
                           setBoldStates(newBoldStates);
+                          const isUnderline = document.queryCommandState('underline');
+                          const newUnderlineStatesK = [...underlineStates];
+                          newUnderlineStatesK[index] = isUnderline;
+                          setUnderlineStates(newUnderlineStatesK);
                         }}
                         onMouseUp={() => {
+                          saveSelectionForRow(index);
+                          applyActiveColorAtCaret(index);
                           // Detectar si la selección está en texto en negrita
                           const isBold = document.queryCommandState('bold');
                           const newBoldStates = [...boldStates];
                           newBoldStates[index] = isBold;
                           setBoldStates(newBoldStates);
+                          const isUnderline = document.queryCommandState('underline');
+                          const newUnderlineStatesM = [...underlineStates];
+                          newUnderlineStatesM[index] = isUnderline;
+                          setUnderlineStates(newUnderlineStatesM);
                         }}
                         onClick={() => {
+                          saveSelectionForRow(index);
+                          applyActiveColorAtCaret(index);
                           // Detectar si el click está en texto en negrita
                           const isBold = document.queryCommandState('bold');
                           const newBoldStates = [...boldStates];
                           newBoldStates[index] = isBold;
                           setBoldStates(newBoldStates);
+                          const isUnderline = document.queryCommandState('underline');
+                          const newUnderlineStatesC = [...underlineStates];
+                          newUnderlineStatesC[index] = isUnderline;
+                          setUnderlineStates(newUnderlineStatesC);
+                        }}
+                        onFocus={() => {
+                          saveSelectionForRow(index);
+                          applyActiveColorAtCaret(index);
                         }}
                         className="w-full border border-gray-300 rounded-md p-2 overflow-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}
@@ -1956,6 +2176,7 @@ function CotizacionesCrear() {
                         type="number"
                         value={fila.valor_unitario}
                         onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
+                        onBlur={() => normalizarValorUnitarioFila(index)}
                         onWheel={(e) => e.target.blur()}
                         className="w-32 border border-gray-300 rounded-md p-2 text-right"
                         min="0"
@@ -2026,8 +2247,23 @@ function CotizacionesCrear() {
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="desactivar-totales"
+                  checked={!mostrarTotales}
+                  onChange={(e) => setMostrarTotales(!e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="desactivar-totales" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Desactivar Totales
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-              <span className="text-lg font-semibold">${formatearNumero(subtotal)}</span>
+              <span className="text-lg font-semibold">{mostrarTotales ? `$${formatearNumero(subtotal)}` : ''}</span>
             </div>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
@@ -2036,26 +2272,28 @@ function CotizacionesCrear() {
                   id="aplicar-iva"
                   checked={aplicarIva}
                   onChange={(e) => setAplicarIva(e.target.checked)}
+                  disabled={!mostrarTotales}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="aplicar-iva" className="text-sm font-medium text-gray-700 cursor-pointer">
                   IVA 15%:
                 </label>
               </div>
-              <span className="text-lg font-semibold">${formatearNumero(iva)}</span>
+              <span className="text-lg font-semibold">{mostrarTotales ? `$${formatearNumero(iva)}` : ''}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Descuento:</span>
               <input
                 type="number"
-                value={descuento}
+                value={mostrarTotales ? descuento : ''}
                 onChange={(e) => setDescuento(e.target.value)}
+                disabled={!mostrarTotales}
                 className="w-32 border border-gray-300 rounded-md p-2 text-right"
               />
             </div>
             <div className="flex justify-between items-center border-t pt-4">
               <span className="text-lg font-bold text-gray-900">Total:</span>
-              <span className="text-2xl font-bold text-gray-900">${formatearNumero(total)}</span>
+              <span className="text-2xl font-bold text-gray-900">{mostrarTotales ? `$${formatearNumero(total)}` : ''}</span>
             </div>
           </div>
         </div>
@@ -2395,6 +2633,17 @@ function CotizacionesCrear() {
             </div>
           </div>
         )}
+
+        {/* Modal de Clientes */}
+        <button
+          type="button"
+          onClick={agregarFila}
+          className="fixed bottom-6 right-6 z-40 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
+          title="Agregar producto en cualquier momento"
+        >
+          <i className="fas fa-plus"></i>
+          <span className="hidden sm:inline">Agregar Producto</span>
+        </button>
 
         {/* Modal de Clientes */}
         {showClientesModal && (

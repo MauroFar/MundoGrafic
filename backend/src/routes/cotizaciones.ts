@@ -141,6 +141,11 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
     logoBase64 = '';
   }
 
+  const mostrarTotales = (
+    cotizacion.mostrar_totales !== false &&
+    !(cotizacion.subtotal == null && cotizacion.iva == null && cotizacion.descuento == null && cotizacion.total == null)
+  );
+
   return `
     <!DOCTYPE html>
     <html>
@@ -287,7 +292,7 @@ body {
 .cotizacion-section {
   text-align: right;
   min-width: 200px;
-}
+} 
 
 .cotizacion-box {
   font-size: 20px;
@@ -415,7 +420,7 @@ body {
 }
 
 .tabla-cotizacion td {
-  padding: 8px;
+  padding: 6px 8px;
   font-size: 13px;
   border: none;
   position: relative;
@@ -686,7 +691,7 @@ body {
 }
 
 .detalle-texto {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   white-space: pre-line; /* respeta \n como saltos de línea en HTML/PDF */
   word-break: break-word; /* evita desbordes si hay palabras largas */
 }
@@ -697,14 +702,14 @@ body {
 
 .tabla-cotizacion td {
   vertical-align: top;
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .tabla-cotizacion td.col-cant,
 .tabla-cotizacion td.col-unitario,
 .tabla-cotizacion td.col-total {
   vertical-align: top;
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
       </style>
@@ -869,7 +874,7 @@ body {
                       </div>
                     </td>
                     <td class="col-unitario">
-                      ${Number(d.valor_unitario).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 6 })}
+                      ${Number(d.valor_unitario).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                     </td>
                     <td class="col-total">${Number(d.valor_total).toFixed(2)}</td>
                   </tr>
@@ -884,37 +889,37 @@ body {
             <div class="pie-izquierda">
               <div class="campoPie">
                 <label>Tiempo De Entrega:</label>
-                <span>${cotizacion.tiempo_entrega || 'No especificado'}</span>
+                <span>${cotizacion.tiempo_entrega ?? ''}</span>
               </div>
               <div class="campoPie">
                 <label>Forma De Pago:</label>
-                <span>${cotizacion.forma_pago || 'No especificado'}</span>
+                <span>${cotizacion.forma_pago ?? ''}</span>
               </div>
               <div class="campoPie">
                 <label>Validez Proforma:</label>
-                <span>${cotizacion.validez_proforma || 'No especificado'}</span>
+                <span>${cotizacion.validez_proforma ?? ''}</span>
               </div>
               <div class="campoPie">
                 <label>Observaciones:</label>
-                <span>${cotizacion.observaciones || 'Sin observaciones'}</span>
+                <span>${cotizacion.observaciones ?? ''}</span>
               </div>
             </div>
             <div class="pie-derecha">
               <div class="campoPie">
                 <label>SUBTOTAL</label>
-                <span>  ${Number(cotizacion.subtotal).toFixed(2)}</span>
+                <span>${mostrarTotales ? `$${Number(cotizacion.subtotal).toFixed(2)}` : ''}</span>
               </div>
               <div class="campoPie">
                 <label>IVA 15%</label>
-                <span>${Number(cotizacion.iva).toFixed(2)}</span>
+                <span>${mostrarTotales ? `$${Number(cotizacion.iva).toFixed(2)}` : ''}</span>
               </div>
               <div class="campoPie">
                 <label>DESCUENTO</label>
-                <span>${Number(cotizacion.descuento).toFixed(2)}</span>
+                <span>${mostrarTotales ? `$${Number(cotizacion.descuento).toFixed(2)}` : ''}</span>
               </div>
               <div class="campoPie campoTotal">
                 <label>TOTAL</label>
-                <span>${Number(cotizacion.total).toFixed(2)}</span>
+                <span>${mostrarTotales ? `$${Number(cotizacion.total).toFixed(2)}` : ''}</span>
               </div>
             </div>
           </div>
@@ -1123,7 +1128,7 @@ const CotizacionDatos = (client: any) => {
           c.total,
           r.ruc,
           r.descripcion as ruc_descripcion,
-          u.nombre as nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, u.nombre) as nombre_ejecutivo,
           c.created_at,
           c.created_by,
           c.updated_by,
@@ -1224,7 +1229,7 @@ const CotizacionDatos = (client: any) => {
           cl.email_cliente,
           r.ruc,
           r.descripcion as ruc_descripcion,
-          u.nombre as nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, u.nombre) as nombre_ejecutivo,
           u1.nombre as created_by_nombre,
           u2.nombre as updated_by_nombre
         FROM cotizaciones c
@@ -1415,7 +1420,7 @@ const CotizacionDatos = (client: any) => {
           c.total,
           cl.nombre_cliente,
           cl.empresa_cliente,
-          u.nombre AS nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, u.nombre) AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,
           c.tiempo_entrega,
@@ -1557,7 +1562,7 @@ const CotizacionDatos = (client: any) => {
           c.usuario_id,
           cl.nombre_cliente,
           cl.empresa_cliente,
-          u.nombre AS nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, u.nombre) AS nombre_ejecutivo,
           r.ruc,
           r.descripcion AS ruc_descripcion,
           c.tiempo_entrega,
