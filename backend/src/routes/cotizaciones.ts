@@ -365,7 +365,7 @@ body {
   position: relative;
   margin-top: 5px;
   margin-bottom: 0;
-  flex: 1;
+  flex: 1 0 auto;
 }
 
 .tabla-cotizacion {
@@ -501,6 +501,9 @@ body {
 .cotizaciones-footer {
   left: 15mm;
   right: 15mm;
+  margin-top: auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .pie-cotizacion {
@@ -710,33 +713,6 @@ body {
 .tabla-cotizacion td.col-total {
   vertical-align: top;
   padding-top: 6px;
-}
-
-/* Reglas de paginacion para PDF cuando hay muchos productos */
-@media print {
-  html,
-  body,
-  .cotizaciones-container {
-    height: auto !important;
-  }
-
-  .cotizaciones-container,
-  .contenido-principal,
-  .tabla-container {
-    display: block !important;
-  }
-
-  .cotizaciones-footer {
-    margin-top: 10px;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .pie-cotizacion,
-  .pie-pagina {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
 }
 
       </style>
