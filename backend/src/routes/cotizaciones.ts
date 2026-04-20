@@ -712,6 +712,33 @@ body {
   padding-top: 6px;
 }
 
+/* Reglas de paginacion para PDF cuando hay muchos productos */
+@media print {
+  html,
+  body,
+  .cotizaciones-container {
+    height: auto !important;
+  }
+
+  .cotizaciones-container,
+  .contenido-principal,
+  .tabla-container {
+    display: block !important;
+  }
+
+  .cotizaciones-footer {
+    margin-top: 10px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pie-cotizacion,
+  .pie-pagina {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
       </style>
     </head>
     <body>
