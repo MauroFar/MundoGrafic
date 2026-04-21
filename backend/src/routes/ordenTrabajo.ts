@@ -718,6 +718,138 @@ export default (client: any) => {
         delete orden.telefono_cliente;
         delete orden.email_cliente;
         delete orden.direccion_cliente;
+
+        const envioProduccionRes = await client.query(
+          `
+          SELECT created_at, usuario
+          FROM (
+            SELECT COALESCE(
+                     (to_jsonb(eodh)->>'created_at')::timestamptz,
+                     (to_jsonb(eodh)->>'fecha_cambio')::timestamptz,
+                     (to_jsonb(eodh)->>'fecha')::timestamptz
+                   ) AS created_at,
+                   COALESCE(u.nombre, 'Sistema') AS usuario
+            FROM estado_orden_digital_historial eodh
+            LEFT JOIN usuarios u ON u.id = eodh.usuario_id
+            WHERE eodh.orden_trabajo_id = $1
+              AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+
+            UNION ALL
+
+            SELECT COALESCE(
+                     (to_jsonb(eooh)->>'created_at')::timestamptz,
+                     (to_jsonb(eooh)->>'fecha_cambio')::timestamptz,
+                     (to_jsonb(eooh)->>'fecha')::timestamptz
+                   ) AS created_at,
+                   COALESCE(u.nombre, 'Sistema') AS usuario
+            FROM estado_orden_offset_historial eooh
+            LEFT JOIN usuarios u ON u.id = eooh.usuario_id
+            WHERE eooh.orden_trabajo_id = $1
+              AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+          ) h
+          ORDER BY created_at ASC
+          LIMIT 1
+          `,
+          [id],
+        );
+
+        const aprobacionArtesRes = await client.query(
+          `
+          SELECT created_at, usuario
+          FROM (
+            SELECT COALESCE(
+                     (to_jsonb(eodh)->>'created_at')::timestamptz,
+                     (to_jsonb(eodh)->>'fecha_cambio')::timestamptz,
+                     (to_jsonb(eodh)->>'fecha')::timestamptz
+                   ) AS created_at,
+                   COALESCE(u.nombre, 'Sistema') AS usuario
+            FROM estado_orden_digital_historial eodh
+            LEFT JOIN usuarios u ON u.id = eodh.usuario_id
+            WHERE eodh.orden_trabajo_id = $1
+              AND lower(coalesce(eodh.nota, '')) LIKE '%artes%'
+              AND lower(coalesce(eodh.nota, '')) LIKE '%aprob%'
+
+            UNION ALL
+
+            SELECT COALESCE(
+                     (to_jsonb(eooh)->>'created_at')::timestamptz,
+                     (to_jsonb(eooh)->>'fecha_cambio')::timestamptz,
+                     (to_jsonb(eooh)->>'fecha')::timestamptz
+                   ) AS created_at,
+                   COALESCE(u.nombre, 'Sistema') AS usuario
+            FROM estado_orden_offset_historial eooh
+            LEFT JOIN usuarios u ON u.id = eooh.usuario_id
+            WHERE eooh.orden_trabajo_id = $1
+              AND lower(coalesce(eooh.nota, '')) LIKE '%artes%'
+              AND lower(coalesce(eooh.nota, '')) LIKE '%aprob%'
+          ) h
+          ORDER BY created_at ASC
+          LIMIT 1
+          `,
+          [id],
+        );
+
+        const inicioProcesoRes = await client.query(
+          `
+          SELECT created_at, created_by, etapa_titulo, fecha_inicio, hora_inicio
+          FROM ejecucion_etapa
+          WHERE orden_trabajo_id = $1
+          ORDER BY created_at ASC
+          LIMIT 1
+          `,
+          [id],
+        );
+
+        const trazabilidadGeneral: any[] = [];
+        trazabilidadGeneral.push({
+          evento: orden.artes_aprobados
+            ? "Orden creada (con artes aprobados)"
+            : "Orden creada (sin artes aprobados)",
+          fecha_hora: orden.created_at,
+          usuario: orden.created_by_nombre || "Sistema",
+        });
+
+        const aprobacionArtes = aprobacionArtesRes.rows[0];
+        if (aprobacionArtes) {
+          trazabilidadGeneral.push({
+            evento: "Artes aprobados",
+            fecha_hora: aprobacionArtes.created_at,
+            usuario: aprobacionArtes.usuario,
+          });
+        } else if (orden.artes_aprobados && orden.updated_at) {
+          trazabilidadGeneral.push({
+            evento: "Artes aprobados (registro inferido por auditoría)",
+            fecha_hora: orden.updated_at,
+            usuario: orden.updated_by_nombre || "Sistema",
+          });
+        }
+
+        const envioProduccion = envioProduccionRes.rows[0];
+        if (envioProduccion) {
+          trazabilidadGeneral.push({
+            evento: "Orden enviada a producción",
+            fecha_hora: envioProduccion.created_at,
+            usuario: envioProduccion.usuario,
+          });
+        }
+
+        const inicioProceso = inicioProcesoRes.rows[0];
+        if (inicioProceso) {
+          trazabilidadGeneral.push({
+            evento: `Inicio de proceso en producción${inicioProceso.etapa_titulo ? ` (${inicioProceso.etapa_titulo})` : ""}`,
+            fecha_hora: inicioProceso.created_at,
+            usuario: inicioProceso.created_by || "Sistema",
+            fecha_inicio: inicioProceso.fecha_inicio,
+            hora_inicio: inicioProceso.hora_inicio,
+          });
+        }
+
+        orden.trazabilidad_general = trazabilidadGeneral.sort((a, b) =>
+          new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime(),
+        );
+
         res.json(orden);
       } catch (error: any) {
         const err = error as Error;
@@ -2150,7 +2282,8 @@ export default (client: any) => {
                  updated_by = $2,
                  updated_at = CURRENT_TIMESTAMP
            WHERE id = $3
-           RETURNING id, numero_orden, artes_aprobados, fecha_entrega`,
+           RETURNING id, numero_orden, artes_aprobados, fecha_entrega,
+                     tipo_orden, estado_orden_digital_id, estado_orden_offset_id`,
           [fecha_entrega, req.user?.id || null, id],
         );
 
@@ -2158,10 +2291,36 @@ export default (client: any) => {
           return res.status(404).json({ error: "Orden no encontrada" });
         }
 
+        const ordenAprobada = result.rows[0];
+        const esDigital = (ordenAprobada.tipo_orden || "offset").toLowerCase() === "digital";
+
+        try {
+          if (esDigital && ordenAprobada.estado_orden_digital_id) {
+            await client.query(
+              `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+               VALUES ($1, $2, $3, $4)`,
+              [id, ordenAprobada.estado_orden_digital_id, req.user?.id || null, "Artes aprobados"],
+            );
+          } else if (!esDigital && ordenAprobada.estado_orden_offset_id) {
+            await client.query(
+              `INSERT INTO estado_orden_offset_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+               VALUES ($1, $2, $3, $4)`,
+              [id, ordenAprobada.estado_orden_offset_id, req.user?.id || null, "Artes aprobados"],
+            );
+          }
+        } catch (histErr) {
+          console.warn("No se pudo registrar historial de aprobación de artes:", histErr);
+        }
+
         return res.json({
           success: true,
           message: "Artes aprobados correctamente",
-          orden: result.rows[0],
+          orden: {
+            id: ordenAprobada.id,
+            numero_orden: ordenAprobada.numero_orden,
+            artes_aprobados: ordenAprobada.artes_aprobados,
+            fecha_entrega: ordenAprobada.fecha_entrega,
+          },
         });
       } catch (error: any) {
         console.error("Error al aprobar artes:", error);

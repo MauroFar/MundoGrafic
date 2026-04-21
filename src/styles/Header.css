@@ -325,3 +325,58 @@
     max-width: calc(100vw - 16px);
   }
 }
+
+/* Estilos para modo oscuro */
+html.dark .header-topbar {
+  background: #1a1a1a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .user-dropdown,
+html.dark .messages-dropdown,
+html.dark .notifications-dropdown {
+  background: #2d2d2d;
+  color: #e0e0e0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+html.dark .messages-title,
+html.dark .notifications-title {
+  background: #333;
+  border-bottom-color: #444;
+  color: #e0e0e0;
+}
+
+html.dark .dropdown-item {
+  color: #e0e0e0;
+}
+
+html.dark .dropdown-item:hover {
+  background: #3a3a3a;
+}
+
+html.dark .messages-user-item {
+  border-bottom-color: #444;
+}
+
+html.dark .messages-user-name,
+html.dark .notification-title {
+  color: #e0e0e0;
+}
+
+html.dark .messages-user-email,
+html.dark .messages-user-rol,
+html.dark .notification-body {
+  color: #a0a0a0;
+}
+
+html.dark .notification-date,
+html.dark .messages-empty,
+html.dark .messages-loading,
+html.dark .messages-error {
+  color: #888;
+}
+
+html.dark .messages-error {
+  color: #ff6b6b;
+}

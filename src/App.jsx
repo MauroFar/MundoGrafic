@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { PermisosProvider } from "./context/PermisosContext";
+import { useTheme } from "./hooks/useTheme";
 import PrivateRoute from "./components/PrivateRoute";
 import ToastNotificaciones from "./components/ToastNotificaciones";
 
@@ -37,6 +38,9 @@ import ClientesCrear from "./pages/clientes/ClientesCrear";
 import CotizacionItems from "./pages/cotizaciones/CotizacionItems";
 
 function App() {
+  // Inicializar el tema desde localStorage
+  useTheme();
+
   return (
     <PermisosProvider>
       <Router>

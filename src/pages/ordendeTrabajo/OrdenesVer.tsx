@@ -1623,6 +1623,32 @@ const OrdenesVer: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {Array.isArray(ordenDetalle.trazabilidad_general) && ordenDetalle.trazabilidad_general.length > 0 && (
+                  <div className="mt-5">
+                    <label className="text-sm text-gray-600 block mb-3 font-semibold">Trazabilidad del flujo</label>
+                    <div className="space-y-3">
+                      {ordenDetalle.trazabilidad_general.map((item: any, idx: number) => (
+                        <div key={`${item.evento}-${idx}`} className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-gray-900">{item.evento || 'Evento'}</p>
+                            <p className="text-xs text-gray-500">
+                              {item.fecha_hora
+                                ? new Date(item.fecha_hora).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
+                                : 'Fecha no disponible'}
+                            </p>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">Responsable: {item.usuario || 'Sistema'}</p>
+                          {(item.fecha_inicio || item.hora_inicio) && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              Inicio operativo: {item.fecha_inicio || 'N/A'} {item.hora_inicio || ''}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── BOTONES DE ACCIÓN ── */}

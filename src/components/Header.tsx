@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTheme } from "../hooks/useTheme";
 import "../styles/Header.css";
 
 interface Usuario {
@@ -25,6 +26,7 @@ const Header: React.FC = () => {
   const settingsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
   const showMenuButton = location.pathname !== '/' && location.pathname !== '/welcome';
   const nombre = localStorage.getItem("nombre") || "Usuario";
   const rol = localStorage.getItem("rol") || "";
@@ -104,6 +106,17 @@ const Header: React.FC = () => {
         )}
       </div>
       <div className="header-right">
+        {/* Toggle Tema */}
+        <button 
+          className="icon-btn theme-toggle-btn" 
+          title={`Cambiar a modo ${theme === 'light' ? 'oscuro' : 'claro'}`}
+          onClick={toggleTheme}
+        >
+          <span role="img" aria-label={`modo ${theme}`}>
+            {theme === 'light' ? '🌙' : '☀️'}
+          </span>
+        </button>
+        {/* lassName="header-right">
         {/* Notificaciones */}
         <div className="notifications-menu-wrapper" ref={notificationsRef}>
           <button className="icon-btn notification-btn" title="Notificaciones" onClick={() => setNotificationsOpen((v) => !v)}>
