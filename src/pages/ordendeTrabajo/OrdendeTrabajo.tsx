@@ -228,6 +228,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmUpdateModal, setShowConfirmUpdateModal] = useState(false);
   const [showConfirmCreateNewModal, setShowConfirmCreateNewModal] = useState(false);
+  const [showConfirmSinArtesModal, setShowConfirmSinArtesModal] = useState(false);
+  const [accionPendienteSinArtes, setAccionPendienteSinArtes] = useState<'crear' | 'crear_nueva' | null>(null);
   const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
   const [idDetalleCotizacion, setIdDetalleCotizacion] = useState<number | null>(null);
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -795,7 +797,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
       : (ordenData.estado_offset_key || 'pendiente');
     setEstado(estadoActual);
     setNotasObservaciones(ordenData.notas_observaciones || '');
-    setArtesAprobados(Boolean(ordenData.artes_aprobados ?? ordenData.fecha_entrega));
+    const artesRaw = (ordenData as any).artes_aprobados;
+    const artesAprobadosNormalizado =
+      artesRaw === true ||
+      artesRaw === 'true' ||
+      artesRaw === 1 ||
+      artesRaw === '1';
+    setArtesAprobados(artesAprobadosNormalizado);
     
     // Mapear fecha de entrega correctamente para el input tipo date
     if (ordenData.fecha_entrega) {
@@ -941,7 +949,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   };
 
   // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
-  const crearOrdenTrabajo = async () => {
+  const crearOrdenTrabajo = async (forzarSinArtes = false) => {
     console.log('🚀 FRONTEND - Iniciando creación de orden');
     console.log('🔍 FRONTEND - Verificando que la función se ejecute');
     
@@ -955,6 +963,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.log('❌ FRONTEND - Errores de validación:', errores);
       setValidationErrors(errores);
       setShowValidationModal(true);
+      return;
+    }
+
+    if (!forzarSinArtes && !artesAprobados) {
+      setAccionPendienteSinArtes('crear');
+      setShowConfirmSinArtesModal(true);
       return;
     }
     
@@ -1228,7 +1242,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   };
 
   // Función para ejecutar la creación como nueva después de confirmar
-  const ejecutarCrearComoNueva = async () => {
+  const ejecutarCrearComoNueva = async (forzarSinArtes = false) => {
     setShowConfirmCreateNewModal(false);
     console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
     console.log('📋 FRONTEND - ordenId actual:', ordenId);
@@ -1243,6 +1257,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.log('❌ FRONTEND - Errores de validación:', errores);
       setValidationErrors(errores);
       setShowValidationModal(true);
+      return;
+    }
+
+    if (!forzarSinArtes && !artesAprobados) {
+      setAccionPendienteSinArtes('crear_nueva');
+      setShowConfirmSinArtesModal(true);
       return;
     }
 
@@ -1379,6 +1399,33 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.error('❌ FRONTEND - Error en catch:', error);
       alert("Ocurrió un error al crear la nueva orden de trabajo.");
     }
+  };
+
+  const confirmarCreacionSinArtes = async () => {
+    const accion = accionPendienteSinArtes;
+    setShowConfirmSinArtesModal(false);
+    setAccionPendienteSinArtes(null);
+
+    if (accion === 'crear') {
+      await crearOrdenTrabajo(true);
+      return;
+    }
+
+    if (accion === 'crear_nueva') {
+      await ejecutarCrearComoNueva(true);
+    }
+  };
+
+  const getMensajeConfirmacionSinArtes = () => {
+    if (accionPendienteSinArtes === 'crear_nueva') {
+      return 'Vas a crear una nueva orden basada en una orden existente sin artes aprobados.';
+    }
+
+    if (accionPendienteSinArtes === 'crear' && cotizacionId) {
+      return 'Vas a crear una orden desde cotización sin artes aprobados.';
+    }
+
+    return 'Vas a crear una orden nueva sin artes aprobados.';
   };
 
   return (
@@ -2066,7 +2113,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
                )}
                
                {!ordenId ? (
-                 <button type="button" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={crearOrdenTrabajo}>
+                 <button type="button" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => { void crearOrdenTrabajo(); }}>
                    Crear Orden
                  </button>
                ) : (
@@ -2309,9 +2356,44 @@ const OrdendeTrabajoEditar: React.FC = () => {
                 </button>
                 <button
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded transition-colors"
-                  onClick={ejecutarCrearComoNueva}
+                  onClick={() => { void ejecutarCrearComoNueva(); }}
                 >
                   Sí, Crear Nueva
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para crear sin artes aprobados */}
+        {showConfirmSinArtesModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+              <h3 className="text-lg font-semibold mb-4 text-amber-700">
+                Confirmación requerida
+              </h3>
+              <p className="mb-6 text-gray-700">
+                {getMensajeConfirmacionSinArtes()}
+                <br />
+                <span className="text-sm text-gray-600">
+                  No se podrá enviar a producción hasta aprobar los artes.
+                </span>
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded transition-colors"
+                  onClick={() => {
+                    setShowConfirmSinArtesModal(false);
+                    setAccionPendienteSinArtes(null);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded transition-colors"
+                  onClick={confirmarCreacionSinArtes}
+                >
+                  Sí, crear de todos modos
                 </button>
               </div>
             </div>
