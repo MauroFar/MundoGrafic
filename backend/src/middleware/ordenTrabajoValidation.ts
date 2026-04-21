@@ -29,6 +29,7 @@ export const validateOrdenTrabajo = (
     cantidad,
     fecha_creacion,
     fecha_entrega,
+    artes_aprobados,
     telefono,
     email,
     // Nuevos campos de trabajo - extraer del objeto detalle
@@ -239,7 +240,7 @@ export const validateOrdenTrabajo = (
   }
 
   // Validación de fechas
-  if (fechaCreacionStr && fechaEntregaStr) {
+  if (Boolean(artes_aprobados) && fechaCreacionStr && fechaEntregaStr) {
     const fechaCreacion = new Date(fechaCreacionStr);
     const fechaEntrega = new Date(fechaEntregaStr);
 
@@ -288,6 +289,7 @@ export const validateOrdenTrabajoUpdate = (
     cantidad,
     fecha_creacion,
     fecha_entrega,
+    artes_aprobados,
     telefono,
     email,
     // Nuevos campos de trabajo - extraer del objeto detalle
@@ -421,7 +423,7 @@ export const validateOrdenTrabajoUpdate = (
   }
 
   // Validación de fechas (solo si ambas se proporcionan)
-  if (fecha_creacion && fecha_entrega) {
+  if (Boolean(artes_aprobados) && fecha_creacion && fecha_entrega) {
     const fechaCreacion = new Date(fecha_creacion);
     const fechaEntrega = new Date(fecha_entrega);
 

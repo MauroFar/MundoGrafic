@@ -51,6 +51,7 @@ interface OrdenData {
   email?: string;
   contacto?: string;
   fecha_entrega?: string; // Nuevo campo para la fecha de entrega
+  artes_aprobados?: boolean;
 }
 
 type TrazabilidadProcesoItem = {
@@ -192,6 +193,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [prensasTotalImpresion, setPrensasTotalImpresion] = useState<string>('');
   // Estados adicionales generales
   const [fechaEntrega, setFechaEntrega] = useState<string>('');
+  const [artesAprobados, setArtesAprobados] = useState<boolean>(false);
   const [estado, setEstado] = useState<string>('pendiente');
   const [notasObservaciones, setNotasObservaciones] = useState<string>('');
   const [vendedor, setVendedor] = useState<string>('');
@@ -288,7 +290,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Generar lote de producción automáticamente a partir de la fecha de entrega (MGANOMESDIA)
   useEffect(() => {
-    if (!fechaEntrega) {
+    if (!artesAprobados || !fechaEntrega) {
       setLoteProduccion('');
       return;
     }
@@ -301,7 +303,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
     } else {
       setLoteProduccion('');
     }
-  }, [fechaEntrega]);
+  }, [artesAprobados, fechaEntrega]);
+
+  useEffect(() => {
+    if (!artesAprobados && fechaEntrega) {
+      setFechaEntrega('');
+    }
+  }, [artesAprobados, fechaEntrega]);
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -452,6 +460,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setPrensasCabidaImpresion('');
       setPrensasTotalImpresion('');
       setFechaEntrega('');
+      setArtesAprobados(false);
       setEstado('');
       setNotasObservaciones('');
       setVendedor('');
@@ -786,6 +795,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       : (ordenData.estado_offset_key || 'pendiente');
     setEstado(estadoActual);
     setNotasObservaciones(ordenData.notas_observaciones || '');
+    setArtesAprobados(Boolean(ordenData.artes_aprobados ?? ordenData.fecha_entrega));
     
     // Mapear fecha de entrega correctamente para el input tipo date
     if (ordenData.fecha_entrega) {
@@ -974,7 +984,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       cantidad: cantidadParaBackend,
       concepto: conceptoParaBackend,
       fecha_creacion: fechaCreacion || null,
-      fecha_entrega: fechaEntrega || null,
+      fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
+      artes_aprobados: artesAprobados,
         // Para órdenes digitales no enviamos el campo `estado` (usar estado_orden_digital_id)
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
       notas_observaciones: notasObservaciones,
@@ -1134,7 +1145,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
           cantidad: cantidadParaBackend,
           concepto: conceptoParaBackend,
           fecha_creacion: fechaCreacion || null,
-          fecha_entrega: fechaEntrega || null,
+          fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
+          artes_aprobados: artesAprobados,
           ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
           notas_observaciones: notasObservaciones,
           vendedor,
@@ -1270,7 +1282,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
         cantidad: cantidadParaBackend,
         concepto: conceptoParaBackend,
         fecha_creacion: fechaCreacion || null,
-        fecha_entrega: fechaEntrega || null,
+        fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
+        artes_aprobados: artesAprobados,
         // Nueva orden: para digitales no usamos `estado` (se gestionará con estado_orden_digital)
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado: 'pendiente' }),
         notas_observaciones: notasObservaciones,
@@ -1452,12 +1465,22 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   />
                 </div>
                 <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Artes Aprobados:</label>
+                  <input
+                    type="checkbox"
+                    checked={artesAprobados}
+                    onChange={(e) => setArtesAprobados(e.target.checked)}
+                    className="h-4 w-4 accent-green-600"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Fecha Entrega:</label>
                   <input 
-                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm" 
+                    className={`border rounded px-2 py-1 text-sm ${artesAprobados ? 'border-gray-300 text-gray-700' : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'}`}
                     type="date" 
                     value={fechaEntrega} 
                     onChange={e => setFechaEntrega(e.target.value)} 
+                    disabled={!artesAprobados}
                   />
                 </div>
               </div>
@@ -2110,6 +2133,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
                {ordenId ? '¡Orden actualizada exitosamente!' : '¡Orden guardada exitosamente!'}
              </h3>
              <p className="mb-4">Orden número: <span className="font-bold">{ordenGuardadaNumero}</span></p>
+             {Boolean(cotizacionId) && !artesAprobados && (
+               <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                 Los artes no estan aprobados. No se podra iniciar la produccion hasta aprobarlos.
+               </div>
+             )}
                            <button
                 className="bg-blue-500 text-white px-4 py-2 rounded"
                 onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}

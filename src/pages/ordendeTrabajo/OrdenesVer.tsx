@@ -10,6 +10,7 @@ interface OrdenTrabajo {
   nombre_cliente: string;
   concepto: string;
   fecha_creacion?: string;
+  fecha_entrega?: string;
   estado?: string;
   email_cliente?: string;
   tipo_orden?: string;
@@ -20,6 +21,7 @@ interface OrdenTrabajo {
   estado_offset_key?: string;
   estado_offset_titulo?: string;
   enviada_produccion?: boolean;
+  artes_aprobados?: boolean;
 }
 
 const OrdenesVer: React.FC = () => {
@@ -55,6 +57,9 @@ const OrdenesVer: React.FC = () => {
   const [cotizacionDetalle, setCotizacionDetalle] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [ordenToDelete, setOrdenToDelete] = useState<OrdenTrabajo | null>(null);
+  const [modalAprobarArtesId, setModalAprobarArtesId] = useState<number | null>(null);
+  const [fechaEntregaAprobacion, setFechaEntregaAprobacion] = useState<string>('');
+  const [aprobandoArtes, setAprobandoArtes] = useState<boolean>(false);
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
 
   // Función para verificar si el estado es de producción
@@ -414,6 +419,13 @@ const OrdenesVer: React.FC = () => {
   };
 
   const enviarAProduccion = async (id: number) => {
+    const orden = ordenes.find((o) => o.id === id);
+    if (orden && !orden.artes_aprobados) {
+      setModalProduccionId(null);
+      toast.info('No se puede enviar a producción: primero confirma que los artes están aprobados en la orden.');
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -462,6 +474,50 @@ const OrdenesVer: React.FC = () => {
       toast.error(error.message || "Ocurrió un error al enviar a producción");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const abrirModalAprobarArtes = (orden: OrdenTrabajo) => {
+    setModalAprobarArtesId(orden.id);
+    setFechaEntregaAprobacion(orden.fecha_entrega ? orden.fecha_entrega.slice(0, 10) : '');
+  };
+
+  const aprobarArtes = async () => {
+    if (!modalAprobarArtesId) return;
+    if (!fechaEntregaAprobacion) {
+      toast.info('Debes seleccionar la fecha de entrega para aprobar artes.');
+      return;
+    }
+
+    setAprobandoArtes(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${modalAprobarArtesId}/aprobar-artes`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ fecha_entrega: fechaEntregaAprobacion }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo aprobar artes');
+      }
+
+      setOrdenes((prev) => prev.map((o) => (
+        o.id === modalAprobarArtesId
+          ? { ...o, artes_aprobados: true, fecha_entrega: fechaEntregaAprobacion }
+          : o
+      )));
+      setModalAprobarArtesId(null);
+      setFechaEntregaAprobacion('');
+      toast.success('Artes aprobados. Ahora ya puedes enviar la orden a producción.');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al aprobar artes');
+    } finally {
+      setAprobandoArtes(false);
     }
   };
 
@@ -643,6 +699,14 @@ const OrdenesVer: React.FC = () => {
                   <td className="px-6 py-4 border-b">
                     {(() => {
                       const key = (orden as any).estado_digital_key || orden.estado;
+                      const estadoNorm = normalizeKey(key);
+                      if (estadoNorm === 'pendiente' && !orden.artes_aprobados) {
+                        return (
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            Pendiente (sin artes aprobadas)
+                          </span>
+                        );
+                      }
                       const s = getEstadoStyle(key);
                       return (
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${s.classes}`}>
@@ -723,13 +787,23 @@ const OrdenesVer: React.FC = () => {
                           }
 
                           return (
-                            <button
-                              className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                              onClick={() => setModalProduccionId(orden.id)}
-                              title="Enviar a Producción"
-                            >
-                              <span className="font-bold text-xs">Enviar a Producción</span>
-                            </button>
+                            orden.artes_aprobados ? (
+                              <button
+                                className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
+                                onClick={() => setModalProduccionId(orden.id)}
+                                title="Enviar a Producción"
+                              >
+                                <span className="font-bold text-xs">Enviar a Producción</span>
+                              </button>
+                            ) : (
+                              <button
+                                className="p-2 text-amber-700 hover:bg-amber-100 rounded flex flex-col items-center"
+                                onClick={() => abrirModalAprobarArtes(orden)}
+                                title="Aprobar artes"
+                              >
+                                <span className="font-bold text-xs">Aprobar artes</span>
+                              </button>
+                            )
                           );
                         })()
                       }
@@ -911,6 +985,42 @@ const OrdenesVer: React.FC = () => {
               <button
                 className="bg-gray-400 text-white px-4 py-2 rounded"
                 onClick={() => setModalProduccionId(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalAprobarArtesId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
+            <h3 className="text-lg font-semibold mb-2 text-amber-700">Confirmar aprobación de artes</h3>
+            <p className="text-sm text-gray-700">
+              Al confirmar, los artes quedarán aprobados y se habilitará el envío a producción.
+            </p>
+            <div className="mt-4 text-left">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de entrega</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded p-2"
+                value={fechaEntregaAprobacion}
+                onChange={(e) => setFechaEntregaAprobacion(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-center gap-4 mt-5">
+              <button
+                className="bg-amber-600 text-white px-4 py-2 rounded"
+                onClick={aprobarArtes}
+                disabled={aprobandoArtes}
+              >
+                {aprobandoArtes ? 'Guardando...' : 'Sí, aprobar artes'}
+              </button>
+              <button
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+                onClick={() => { setModalAprobarArtesId(null); setFechaEntregaAprobacion(''); }}
+                disabled={aprobandoArtes}
               >
                 Cancelar
               </button>

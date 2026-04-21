@@ -162,6 +162,7 @@ export default (client: any) => {
         concepto,
         fecha_creacion,
         fecha_entrega,
+        artes_aprobados,
         estado,
         notas_observaciones,
         vendedor,
@@ -237,6 +238,9 @@ export default (client: any) => {
       try {
         await client.query("BEGIN");
 
+        const artesAprobados = Boolean(artes_aprobados);
+        const fechaEntregaPersistida = artesAprobados ? fecha_entrega : null;
+
         // Determinar estado_orden_offset_id para órdenes offset (estado inicial: pendiente)
         let estadoOffsetId: number | null = null;
         if ((tipo_orden || "offset") !== "digital") {
@@ -252,9 +256,9 @@ export default (client: any) => {
         INSERT INTO orden_trabajo (
           nombre_cliente, orden_compra, contacto, email, telefono,
           fecha_creacion, fecha_entrega, notas_observaciones,
-          id_cotizacion, id_detalle_cotizacion, tipo_orden, created_by,
+          id_cotizacion, id_detalle_cotizacion, tipo_orden, created_by, artes_aprobados,
           estado_orden_offset_id
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         RETURNING id, numero_orden
       `,
           [
@@ -264,12 +268,13 @@ export default (client: any) => {
             email,
             telefono,
             fecha_creacion,
-            fecha_entrega,
+            fechaEntregaPersistida,
             notas_observaciones,
             id_cotizacion,
             id_detalle_cotizacion,
             tipo_orden || "offset",
             userId,
+            artesAprobados,
             estadoOffsetId,
           ],
         );
@@ -497,7 +502,7 @@ export default (client: any) => {
                    LIMIT 1
                  )
                ) AS concepto,
-               ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion,
+               ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion, ot.artes_aprobados,
                ot.estado_orden_digital_id, eod.key AS estado_digital_key, eod.titulo AS estado_digital_titulo,
                ot.estado_orden_offset_id, eoo.key AS estado_offset_key, eoo.titulo AS estado_offset_titulo,
                (
@@ -736,6 +741,7 @@ export default (client: any) => {
         concepto,
         fecha_creacion,
         fecha_entrega,
+        artes_aprobados,
         telefono,
         email,
         contacto,
@@ -802,6 +808,9 @@ export default (client: any) => {
         }
 
         await client.query("BEGIN");
+        const artesAprobados =
+          artes_aprobados === undefined ? null : Boolean(artes_aprobados);
+        const fechaEntregaPersistida = artesAprobados === false ? null : fecha_entrega;
         // Actualizar datos generales (solo columnas que existen en el nuevo esquema)
         const result = await client.query(
           `UPDATE orden_trabajo
@@ -815,21 +824,23 @@ export default (client: any) => {
             notas_observaciones = $8,
             id_detalle_cotizacion = $9,
             tipo_orden = $10,
-            updated_by = $11,
+            artes_aprobados = COALESCE($11, artes_aprobados),
+            updated_by = $12,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $12
+        WHERE id = $13
         RETURNING *`,
           [
             nombre_cliente,
             orden_compra,
             fecha_creacion,
-            fecha_entrega,
+            fechaEntregaPersistida,
             telefono,
             email,
             contacto,
             notas_observaciones,
             id_detalle_cotizacion,
             tipo_orden,
+            artesAprobados,
             userId,
             id,
           ],
@@ -2109,6 +2120,56 @@ export default (client: any) => {
     }
   });
 
+  // Aprobar artes y registrar fecha de entrega antes de enviar a producción
+  router.put(
+    "/:id/aprobar-artes",
+    authRequired(),
+    checkPermission(client, "ordenes_trabajo", "editar"),
+    async (req: any, res: any) => {
+      const { id } = req.params;
+      const { fecha_entrega } = req.body || {};
+
+      if (!fecha_entrega || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha_entrega))) {
+        return res.status(400).json({
+          error: "Debes seleccionar una fecha de entrega válida (YYYY-MM-DD).",
+        });
+      }
+
+      try {
+        const bloqueada = await ordenFueEnviadaAProduccion(id);
+        if (bloqueada) {
+          return res.status(409).json({
+            error: "La orden ya fue enviada a producción y no se puede modificar.",
+          });
+        }
+
+        const result = await client.query(
+          `UPDATE orden_trabajo
+             SET artes_aprobados = TRUE,
+                 fecha_entrega = $1,
+                 updated_by = $2,
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3
+           RETURNING id, numero_orden, artes_aprobados, fecha_entrega`,
+          [fecha_entrega, req.user?.id || null, id],
+        );
+
+        if (!result.rows.length) {
+          return res.status(404).json({ error: "Orden no encontrada" });
+        }
+
+        return res.json({
+          success: true,
+          message: "Artes aprobados correctamente",
+          orden: result.rows[0],
+        });
+      } catch (error: any) {
+        console.error("Error al aprobar artes:", error);
+        return res.status(500).json({ error: "Error al aprobar artes" });
+      }
+    },
+  );
+
   // Cambiar estado a "en producción" (estado_orden_offset_id = pendiente para offset, o estado_orden_digital para digital)
   router.put(
     "/:id/enviar-produccion",
@@ -2120,7 +2181,7 @@ export default (client: any) => {
         console.log(`📤 Enviando orden ${id} a producción...`);
         // Determinar tipo de orden
         const tipoRes = await client.query(
-          `SELECT tipo_orden FROM orden_trabajo WHERE id = $1`,
+          `SELECT tipo_orden, artes_aprobados FROM orden_trabajo WHERE id = $1`,
           [id],
         );
         if (!tipoRes.rows.length)
@@ -2128,6 +2189,12 @@ export default (client: any) => {
         const tipoOrden = (
           tipoRes.rows[0].tipo_orden || "offset"
         ).toLowerCase();
+        if (!tipoRes.rows[0].artes_aprobados) {
+          return res.status(409).json({
+            error:
+              "No se puede enviar a producción: debes confirmar primero que los artes están aprobados.",
+          });
+        }
 
         let result: any;
         if (tipoOrden === "digital") {
@@ -2274,6 +2341,13 @@ export default (client: any) => {
         LEFT JOIN detalle_orden_trabajo_offset dot ON ot.id = dot.orden_trabajo_id
         LEFT JOIN estado_orden_offset eoo ON ot.estado_orden_offset_id = eoo.id
         WHERE (ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital')
+          AND EXISTS (
+            SELECT 1
+            FROM estado_orden_offset_historial eooh
+            WHERE eooh.orden_trabajo_id = ot.id
+              AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+          )
 
         UNION ALL
 
@@ -2326,6 +2400,13 @@ export default (client: any) => {
         LEFT JOIN detalle_orden_trabajo_digital dtd ON ot.id = dtd.orden_trabajo_id
         LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
         WHERE ot.tipo_orden = 'digital'
+          AND EXISTS (
+            SELECT 1
+            FROM estado_orden_digital_historial eodh
+            WHERE eodh.orden_trabajo_id = ot.id
+              AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+          )
         ORDER BY fecha_entrega ASC, created_at DESC
       `);
 
@@ -2522,17 +2603,37 @@ export default (client: any) => {
 
         const activeOffset = `(ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital') AND ${notTerminalOffset}`;
         const activeDigital = `ot.tipo_orden = 'digital' AND ${notTerminalDigital}`;
+        const enviadaProduccionCond = `(
+          EXISTS (
+            SELECT 1
+            FROM estado_orden_digital_historial eodh
+            WHERE eodh.orden_trabajo_id = ot.id
+              AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM estado_orden_offset_historial eooh
+            WHERE eooh.orden_trabajo_id = ot.id
+              AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+              AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+          )
+        )`;
 
         // Total de órdenes en producción (activas)
         const totalEnProduccion = await client.query(
-          `SELECT COUNT(*) as total FROM orden_trabajo ot WHERE (${activeOffset}) OR (${activeDigital})`,
+          `SELECT COUNT(*) as total
+           FROM orden_trabajo ot
+           WHERE ${enviadaProduccionCond}
+             AND ((${activeOffset}) OR (${activeDigital}))`,
         );
 
         // Órdenes pendientes (primer estado / sin avanzar)
         const pendientes = await client.query(
           `
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE (
+        WHERE ${enviadaProduccionCond}
+          AND (
           (ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital') AND
           (ot.estado_orden_offset_id IS NULL OR ot.estado_orden_offset_id = $1)
         )
@@ -2543,7 +2644,8 @@ export default (client: any) => {
         // Órdenes en proceso activo (con un estado asignado, no terminal)
         const enProceso = await client.query(`
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE (
+        WHERE ${enviadaProduccionCond}
+          AND (
           ((ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital') AND ot.estado_orden_offset_id IS NOT NULL AND ${notTerminalOffset})
           OR (ot.tipo_orden = 'digital' AND ot.estado_orden_digital_id IS NOT NULL AND ${notTerminalDigital})
         )
@@ -2552,14 +2654,16 @@ export default (client: any) => {
         // Órdenes retrasadas (fecha de entrega pasada y no terminales)
         const retrasadas = await client.query(`
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE fecha_entrega < CURRENT_DATE
+        WHERE ${enviadaProduccionCond}
+        AND fecha_entrega < CURRENT_DATE
         AND ((${activeOffset}) OR (${activeDigital}))
       `);
 
         // Órdenes completadas hoy
         const completadasHoy = await client.query(`
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE DATE(ot.updated_at) = CURRENT_DATE
+        WHERE ${enviadaProduccionCond}
+        AND DATE(ot.updated_at) = CURRENT_DATE
         AND (
           ((ot.tipo_orden IS NULL OR ot.tipo_orden <> 'digital') AND ot.estado_orden_offset_id IN (${idsTerminalOffset.length ? idsTerminalOffset.join(",") : "NULL"}))
           OR (ot.tipo_orden = 'digital' AND ot.estado_orden_digital_id IN (${idsTerminalDigital.length ? idsTerminalDigital.join(",") : "NULL"}))
@@ -2569,14 +2673,16 @@ export default (client: any) => {
         // Órdenes por entregar hoy
         const hoy = await client.query(`
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE fecha_entrega = CURRENT_DATE
+        WHERE ${enviadaProduccionCond}
+        AND fecha_entrega = CURRENT_DATE
         AND ((${activeOffset}) OR (${activeDigital}))
       `);
 
         // Órdenes por entregar esta semana
         const estaSemana = await client.query(`
         SELECT COUNT(*) as total FROM orden_trabajo ot
-        WHERE fecha_entrega BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+        WHERE ${enviadaProduccionCond}
+        AND fecha_entrega BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
         AND ((${activeOffset}) OR (${activeDigital}))
       `);
 
@@ -2588,6 +2694,7 @@ export default (client: any) => {
         FROM orden_trabajo ot
         LEFT JOIN estado_orden_offset  eoo ON ot.estado_orden_offset_id  = eoo.id
         LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+        WHERE ${enviadaProduccionCond}
         GROUP BY COALESCE(eoo.titulo, eod.titulo, 'Sin estado')
         ORDER BY cantidad DESC
       `);
@@ -2596,7 +2703,8 @@ export default (client: any) => {
         const promedioTiempo = await client.query(`
         SELECT AVG(EXTRACT(DAY FROM (CURRENT_TIMESTAMP - created_at))) as promedio_dias
         FROM orden_trabajo ot
-        WHERE (${activeOffset}) OR (${activeDigital})
+        WHERE ${enviadaProduccionCond}
+          AND ((${activeOffset}) OR (${activeDigital}))
       `);
 
         const metricas = {
