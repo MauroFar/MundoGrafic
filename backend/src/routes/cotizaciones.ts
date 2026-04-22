@@ -480,7 +480,9 @@ body {
   align-self: flex-start;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  margin-top: -4px;
+  padding-top: 0;
 }
 
 .detalle-con-imagen.layout-abajo {
@@ -499,6 +501,7 @@ body {
 
 .detalle-con-imagen.layout-abajo .imagenes-container {
   align-self: center;
+  margin-top: -4px;
 }
 
 /* Footer */
@@ -687,7 +690,7 @@ body {
 .imagen-producto {
   max-width: 100%;
   height: auto;
-  margin: 10px 0;
+  margin: 0;
   display: block;
   object-fit: contain;
 }
@@ -698,7 +701,7 @@ body {
 }
 
 .detalle-texto {
-  margin-bottom: 6px;
+  margin-bottom: 0;
   white-space: pre-line; /* respeta \n como saltos de línea en HTML/PDF */
   word-break: break-word; /* evita desbordes si hay palabras largas */
 }
@@ -866,7 +869,7 @@ body {
                           <!-- Layout: Texto arriba, imagen(es) debajo -->
                           <div class="detalle-texto">${d.detalle.replace(/\n/g, '<br>')}</div>
                           ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
-                            <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
+                            <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 0;">
                               ${d.imagenesBase64.map(img => `
                                 <img 
                                   src="${img.base64}" 

@@ -873,7 +873,7 @@ function CotizacionesCrear() {
       {
         cantidad: 1,
         detalle: detalleInicial,
-        valor_unitario: '0.00',
+        valor_unitario: '',
         valor_total: 0,
         imagenes: [],  // Array vacío para múltiples imágenes
         alineacion_imagenes: 'horizontal',  // Alineación por defecto (horizontal/vertical)
@@ -2221,14 +2221,12 @@ function CotizacionesCrear() {
                     </td>
                     <td className="border border-gray-300 px-2 py-2 align-top">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         value={fila.valor_unitario}
                         onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
                         onBlur={() => normalizarValorUnitarioFila(index)}
-                        onWheel={(e) => e.target.blur()}
                         className="w-full border border-gray-300 rounded-md p-2 text-right"
-                        min="0"
-                        step="0.0001"
                       />
                     </td>
                     <td className="border border-gray-300 px-2 py-2 text-right align-top whitespace-nowrap">
