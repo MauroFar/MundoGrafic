@@ -944,30 +944,34 @@ function CotizacionesVer() {
       </form>
 
       {/* Tabla de Cotizaciones */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-hidden">
         {loading ? (
           <div className="text-center py-4">Cargando...</div>
         ) : (
-          <table className="min-w-full bg-white border border-gray-300">
+          <table className="w-full bg-white border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
-                <th className="px-6 py-3 border-b text-left">Número</th>
-                <th className="px-6 py-3 border-b text-left">Cliente</th>
-                <th className="px-6 py-3 border-b text-left">Descripción</th>
-                <th className="px-6 py-3 border-b text-left">Fecha</th>
-                <th className="px-6 py-3 border-b text-left">Total</th>
-                <th className="px-6 py-3 border-b text-left">Estado</th>
-                <th className="px-6 py-3 border-b text-left">Acciones</th>
+                <th className="px-2 sm:px-3 py-3 border-b text-left">Número</th>
+                <th className="px-2 sm:px-3 py-3 border-b text-left">Cliente</th>
+                <th className="hidden lg:table-cell px-2 sm:px-3 py-3 border-b text-left">Descripción</th>
+                <th className="hidden md:table-cell px-2 sm:px-3 py-3 border-b text-left">Fecha</th>
+                <th className="hidden sm:table-cell px-2 sm:px-3 py-3 border-b text-left">Total</th>
+                <th className="px-2 sm:px-3 py-3 border-b text-left">Estado</th>
+                <th className="px-2 sm:px-3 py-3 border-b text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {cotizaciones.map((cotizacion) => (
+              {cotizaciones.map((cotizacion) => {
+                const estadoNormalizado = String(cotizacion.estado || '').trim().toLowerCase();
+                const puedeAprobar = ['pendiente', 'activo', ''].includes(estadoNormalizado);
+                const puedeGenerarOrden = estadoNormalizado === 'aprobada';
+                return (
                 <tr 
                   key={cotizacion.id} 
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleVerDetalle(cotizacion.id)}
                 >
-                  <td className="px-6 py-4 border-b">
+                  <td className="px-2 sm:px-3 py-3 border-b">
                     <div className="flex flex-col">
                       <span className="font-bold text-blue-600">
                         {cotizacion.codigo_cotizacion 
@@ -978,32 +982,32 @@ function CotizacionesVer() {
                       <span className="text-xs text-gray-500">{cotizacion.codigo_cotizacion}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 border-b">{cotizacion.empresa_cliente || cotizacion.nombre_cliente}</td>
-                  <td className="px-6 py-4 border-b">
+                  <td className="px-2 sm:px-3 py-3 border-b">{cotizacion.empresa_cliente || cotizacion.nombre_cliente}</td>
+                  <td className="hidden lg:table-cell px-2 sm:px-3 py-3 border-b">
                     <div 
                       className="line-clamp-2" 
                       dangerouslySetInnerHTML={{ __html: cotizacion.primer_detalle || 'Sin descripción' }}
                     />
                   </td>
-                  <td className="px-6 py-4 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 border-b">${formatearTotal(cotizacion.total)}</td>
-                  <td className="px-6 py-4 border-b">
+                  <td className="hidden md:table-cell px-2 sm:px-3 py-3 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
+                  <td className="hidden sm:table-cell px-2 sm:px-3 py-3 border-b">${formatearTotal(cotizacion.total)}</td>
+                  <td className="px-2 sm:px-3 py-3 border-b">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        cotizacion.estado === "aprobada"
+                        estadoNormalizado === "aprobada"
                           ? "bg-green-100 text-green-800"
-                          : cotizacion.estado === "rechazada"
+                          : estadoNormalizado === "rechazada"
                           ? "bg-red-100 text-red-800"
                           : "bg-yellow-100 text-yellow-800"
                       }`}
                     >
-                      {cotizacion.estado}
+                      {(cotizacion.estado || 'pendiente')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 border-b">
-                    <div className="flex space-x-2">
+                  <td className="px-2 sm:px-3 py-3 border-b">
+                    <div className="flex flex-wrap gap-1">
                       <button
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
+                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           previewEnModal(cotizacion.id);
@@ -1011,11 +1015,11 @@ function CotizacionesVer() {
                         title="Vista previa"
                       >
                         <FaEye />
-                        <span className="text-xs mt-1 text-gray-600">VistaPreviaPDF</span>
+                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">VistaPreviaPDF</span>
                       </button>
                       {puedeEditar('cotizaciones') && (
                         <button
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
+                          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             editarCotizacion(cotizacion.id);
@@ -1023,12 +1027,12 @@ function CotizacionesVer() {
                           title="Editar"
                         >
                           <FaEdit />
-                          <span className="text-xs mt-1 text-gray-600">Editar</span>
+                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Editar</span>
                         </button>
                       )}
                       {puedeEliminar('cotizaciones') && (
                         <button
-                          className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
+                          className="p-1.5 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             eliminarCotizacion(cotizacion.id);
@@ -1036,11 +1040,11 @@ function CotizacionesVer() {
                           title="Eliminar"
                         >
                           <FaTrash />
-                          <span className="text-xs mt-1 text-gray-600">Eliminar</span>
+                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Eliminar</span>
                         </button>
                       )}
                       <button
-                        className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
+                        className="p-1.5 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           descargarPDF(cotizacion.id);
@@ -1048,10 +1052,10 @@ function CotizacionesVer() {
                         title="Descargar PDF"
                       >
                         <FaDownload />
-                        <span className="text-xs mt-1 text-gray-600">Descargar PDF</span>
+                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Descargar PDF</span>
                       </button>
                       <button
-                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
+                        className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEnviarCorreoAlternativo(cotizacion.id);
@@ -1059,11 +1063,11 @@ function CotizacionesVer() {
                         title="Enviar por correo"
                       >
                         <FaEnvelopeOpen />
-                        <span className="text-xs mt-1 text-gray-600">Enviar Correo</span>
+                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Enviar Correo</span>
                       </button>
-                      {cotizacion.estado === 'pendiente' && (
+                      {puedeAprobar && (
                         <button
-                          className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
+                          className="p-1.5 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             setCotizacionToApprove(cotizacion);
@@ -1072,12 +1076,12 @@ function CotizacionesVer() {
                           title="Aprobar cotización"
                         >
                           <FaCheck />
-                          <span className="text-xs mt-1 text-gray-600">Aprobar</span>
+                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Aprobar</span>
                         </button>
                       )}
-                      {cotizacion.estado === 'aprobada' && (
+                      {puedeGenerarOrden && (
                         <button
-                          className="p-2 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
+                          className="p-1.5 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             generarOrdenTrabajo(cotizacion.id);
@@ -1085,13 +1089,14 @@ function CotizacionesVer() {
                           title="Generar Orden de Trabajo"
                         >
                           <FaTools />
-                          <span className="text-xs mt-1 text-gray-600">Orden</span>
+                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Orden</span>
                         </button>
                       )}
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
