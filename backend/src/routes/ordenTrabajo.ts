@@ -1874,7 +1874,7 @@ export default (client: any) => {
                   <th class="tabla-celda">Ancho (mm)</th>
                   <th class="tabla-celda">Gap V (mm)</th>
                   <th class="tabla-celda">Alto (mm)</th>
-                  <th class="tabla-celda">Cavidad</th>
+                  <th class="tabla-celda">Cabida</th>
                   <th class="tabla-celda">Metros Imp.</th>
                   <th class="tabla-celda">N&deg; Salida</th>
                 </tr>
