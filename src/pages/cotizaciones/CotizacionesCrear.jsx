@@ -42,9 +42,7 @@ function CotizacionesCrear() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
-  const [imageFitMode, setImageFitMode] = useState('contain'); // 'contain', 'cover', 'fill'
   const [showConfirmacionClienteModal, setShowConfirmacionClienteModal] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
@@ -969,6 +967,11 @@ function CotizacionesCrear() {
         };
         setFilas(nuevasFilas);
 
+        // Abrir ajuste tras subir para que el usuario redimensione arrastrando.
+        const nuevaImagenIndex = imagenesActuales.length;
+        setSelectedImageIndices({ row: index, img: nuevaImagenIndex });
+        setImageDimensions({ width, height });
+
         // Resetear el input de archivo
         const fileInput = document.getElementById(`file-upload-${index}`);
         if (fileInput) {
@@ -1204,7 +1207,7 @@ function CotizacionesCrear() {
   }, [filas]);
 
   // Función para generar la vista previa
-  const generarVistaPrevia = async () => {
+  const generarVistaPrevia = async (filasOverride = filas) => {
     try {
       setPreviewLoading(true);
       
@@ -1228,7 +1231,7 @@ function CotizacionesCrear() {
         nombre_ejecutivo: nombreEjecutivo
       };
 
-      const detallesTemp = filas.map(fila => ({
+      const detallesTemp = filasOverride.map(fila => ({
         cantidad: fila.cantidad,
         detalle: fila.detalle,
         valor_unitario: fila.valor_unitario,
@@ -1267,41 +1270,58 @@ function CotizacionesCrear() {
   // Función para mostrar el modal de ajuste de imagen - ahora recibe rowIndex e imageIndex
   const [selectedImageIndices, setSelectedImageIndices] = React.useState({ row: null, img: null });
 
+  const clampImageDimensions = (width, height) => {
+    const minWidth = 100;
+    const minHeight = 75;
+    const maxWidth = 600;
+    const maxHeight = 400;
+
+    return {
+      width: Math.max(minWidth, Math.min(maxWidth, width)),
+      height: Math.max(minHeight, Math.min(maxHeight, height))
+    };
+  };
+
   const showImageAdjustModal = (rowIndex, imgIndex) => {
     setSelectedImageIndices({ row: rowIndex, img: imgIndex });
     const imagen = filas[rowIndex].imagenes[imgIndex];
-    setImageDimensions({
-      width: imagen.imagen_width || 200,
-      height: imagen.imagen_height || 150
-    });
-    setImageFitMode('contain'); // Siempre contain para PDF
+    setImageDimensions(
+      clampImageDimensions(
+        imagen.imagen_width || 200,
+        imagen.imagen_height || 150
+      )
+    );
+  };
+
+  const handleResizeImagePreview = (_, { size }) => {
+    setImageDimensions(clampImageDimensions(size.width, size.height));
   };
 
   // Función para aplicar los cambios de dimensiones
-  const applyImageDimensions = () => {
+  const applyImageDimensions = ({ openPreview = false, closeModal = true } = {}) => {
     if (selectedImageIndices.row !== null && selectedImageIndices.img !== null) {
-      // Aplicar las mismas restricciones
-      const minWidth = 100;
-      const minHeight = 75;
-      const maxWidth = 600;
-      const maxHeight = 400;
-      
-      const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, imageDimensions.width));
-      const constrainedHeight = Math.max(minHeight, Math.min(maxHeight, imageDimensions.height));
+      const constrained = clampImageDimensions(imageDimensions.width, imageDimensions.height);
       
       const newFilas = [...filas];
       const imagenesActuales = [...newFilas[selectedImageIndices.row].imagenes];
       imagenesActuales[selectedImageIndices.img] = {
         ...imagenesActuales[selectedImageIndices.img],
-        imagen_width: constrainedWidth,
-        imagen_height: constrainedHeight
+        imagen_width: constrained.width,
+        imagen_height: constrained.height
       };
       newFilas[selectedImageIndices.row] = {
         ...newFilas[selectedImageIndices.row],
         imagenes: imagenesActuales
       };
       setFilas(newFilas);
-      setSelectedImageIndices({ row: null, img: null });
+
+      if (closeModal) {
+        setSelectedImageIndices({ row: null, img: null });
+      }
+
+      if (openPreview) {
+        generarVistaPrevia(newFilas);
+      }
     }
   };
 
@@ -1705,7 +1725,7 @@ function CotizacionesCrear() {
         {/* Botones de acciones encima de la tabla */}
         <div className="flex justify-between items-center mb-2">
           <button
-            onClick={generarVistaPrevia}
+            onClick={() => generarVistaPrevia()}
             disabled={previewLoading}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm"
           >
@@ -1724,15 +1744,23 @@ function CotizacionesCrear() {
 
         {/* Tabla de productos */}
         <div className="mb-6 overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          <table className="w-full min-w-[1120px] border-collapse text-sm table-fixed">
+            <colgroup>
+              <col style={{ width: '90px' }} />
+              <col style={{ width: '95px' }} />
+              <col style={{ width: '13.9cm' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '140px' }} />
+              <col style={{ width: '80px' }} />
+            </colgroup>
             <thead>
               <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16">Procesos</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-32">Cantidad</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Procesos</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
                 <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-28">Valor Unitario</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24 sm:w-28">Total</th>
-                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-16 sm:w-20">Acciones</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor Unitario</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -1749,7 +1777,7 @@ function CotizacionesCrear() {
                         <span className="text-xs whitespace-nowrap">Calcular</span>
                       </button>
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 align-top">
+                    <td className="border border-gray-300 py-2 align-top">
                       <input
                         type="number"
                         value={fila.cantidad}
@@ -1974,8 +2002,18 @@ function CotizacionesCrear() {
                           saveSelectionForRow(index);
                           applyActiveColorAtCaret(index);
                         }}
-                        className="w-full border border-gray-300 rounded-md p-2 overflow-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}
+                        className="w-full rounded-md overflow-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          textAlign: 'left',
+                          fontSize: '13px',
+                          lineHeight: 1.35,
+                          paddingLeft: '15px',
+                          paddingRight: '8px',
+                          paddingTop: '6px',
+                          paddingBottom: '6px',
+                          boxShadow: 'inset 0 0 0 1px #d1d5db'
+                        }}
                       />
                       
                       {/* Mostrar imágenes existentes */}
@@ -2171,19 +2209,19 @@ function CotizacionesCrear() {
                         </div>
                       </div>
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 align-top">
+                    <td className="border border-gray-300 px-2 py-2 align-top">
                       <input
                         type="number"
                         value={fila.valor_unitario}
                         onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
                         onBlur={() => normalizarValorUnitarioFila(index)}
                         onWheel={(e) => e.target.blur()}
-                        className="w-32 border border-gray-300 rounded-md p-2 text-right"
+                        className="w-full border border-gray-300 rounded-md p-2 text-right"
                         min="0"
                         step="0.0001"
                       />
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-right align-top">
+                    <td className="border border-gray-300 px-2 py-2 text-right align-top whitespace-nowrap">
                       ${formatearNumero(fila.valor_total)}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center align-top">
@@ -2301,7 +2339,7 @@ function CotizacionesCrear() {
 
         {/* Modal de vista previa */}
         {showPreview && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
             <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
@@ -2333,23 +2371,42 @@ function CotizacionesCrear() {
               
               {/* Preview de la imagen */}
               <div className="mb-4 bg-gray-100 rounded-lg p-4 flex justify-center items-center" style={{ minHeight: '200px' }}>
-                <img 
-                  src={filas[selectedImageIndices.row]?.imagenes[selectedImageIndices.img]?.imagen}
-                  alt="Preview"
-                  style={{
-                    width: `${imageDimensions.width}px`,
-                    height: `${imageDimensions.height}px`,
-                    objectFit: 'contain',
-                    border: '2px dashed #3B82F6'
-                  }}
-                />
+                <Resizable
+                  width={imageDimensions.width}
+                  height={imageDimensions.height}
+                  minConstraints={[100, 75]}
+                  maxConstraints={[600, 400]}
+                  resizeHandles={['se']}
+                  onResize={handleResizeImagePreview}
+                >
+                  <div
+                    style={{
+                      width: `${imageDimensions.width}px`,
+                      height: `${imageDimensions.height}px`,
+                      border: '2px dashed #3B82F6',
+                      backgroundColor: '#ffffff'
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <img
+                      src={filas[selectedImageIndices.row]?.imagenes[selectedImageIndices.img]?.imagen}
+                      alt="Preview"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  </div>
+                </Resizable>
               </div>
               
               <div className="space-y-4">
                 <div className="bg-blue-50 p-3 rounded-md">
                   <p className="text-sm text-blue-700">
                     <i className="fas fa-info-circle mr-2"></i>
-                    Este tamaño se aplicará en el PDF. Tamaño mínimo: 100x75px | Tamaño máximo: 600x400px
+                    Arrastre la esquina inferior derecha para ajustar el tamaño. Se aplicará en el PDF. Rango: 100x75px a 600x400px
                   </p>
                 </div>
                 
@@ -2363,11 +2420,8 @@ function CotizacionesCrear() {
                       max="600"
                       value={imageDimensions.width}
                       onChange={(e) => {
-                        const value = parseInt(e.target.value) || 100;
-                        setImageDimensions(prev => ({ 
-                          ...prev, 
-                          width: Math.max(100, Math.min(600, value)) 
-                        }));
+                        const value = parseInt(e.target.value, 10) || 100;
+                        setImageDimensions(prev => clampImageDimensions(value, prev.height));
                       }}
                       className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-2"
                     />
@@ -2381,11 +2435,8 @@ function CotizacionesCrear() {
                       max="400"
                       value={imageDimensions.height}
                       onChange={(e) => {
-                        const value = parseInt(e.target.value) || 75;
-                        setImageDimensions(prev => ({ 
-                          ...prev, 
-                          height: Math.max(75, Math.min(400, value)) 
-                        }));
+                        const value = parseInt(e.target.value, 10) || 75;
+                        setImageDimensions(prev => clampImageDimensions(prev.width, value));
                       }}
                       className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-2"
                     />
@@ -2398,19 +2449,19 @@ function CotizacionesCrear() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tamaños predefinidos</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
-                      onClick={() => setImageDimensions({ width: 200, height: 150 })}
+                      onClick={() => setImageDimensions(clampImageDimensions(200, 150))}
                       className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
                     >
                       Pequeño<br/>(200x150)
                     </button>
                     <button
-                      onClick={() => setImageDimensions({ width: 300, height: 200 })}
+                      onClick={() => setImageDimensions(clampImageDimensions(300, 200))}
                       className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
                     >
                       Mediano<br/>(300x200)
                     </button>
                     <button
-                      onClick={() => setImageDimensions({ width: 400, height: 300 })}
+                      onClick={() => setImageDimensions(clampImageDimensions(400, 300))}
                       className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
                     >
                       Grande<br/>(400x300)
@@ -2424,6 +2475,18 @@ function CotizacionesCrear() {
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
                   >
                     Cancelar
+                  </button>
+                  <button
+                    onClick={() => applyImageDimensions({ openPreview: true, closeModal: false })}
+                    disabled={previewLoading}
+                    className={`px-4 py-2 rounded transition-colors flex items-center gap-2 ${
+                      previewLoading
+                        ? 'bg-blue-300 text-white cursor-not-allowed'
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                    }`}
+                  >
+                    <FaEye />
+                    {previewLoading ? 'Generando...' : 'Aplicar y vista previa PDF'}
                   </button>
                   <button
                     onClick={applyImageDimensions}
@@ -2637,7 +2700,7 @@ function CotizacionesCrear() {
         <div className="fixed bottom-6 right-6 z-40 flex flex-row flex-wrap justify-end gap-3 max-w-[calc(100vw-3rem)]">
           <button
             type="button"
-            onClick={generarVistaPrevia}
+            onClick={() => generarVistaPrevia()}
             disabled={previewLoading}
             className="px-4 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
             title="Abrir vista previa del PDF"

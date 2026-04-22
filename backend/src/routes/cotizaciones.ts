@@ -470,16 +470,17 @@ body {
   flex: 1;
   min-width: 0;
   padding-right: 10px;
-  white-space: pre-line; /* respeta \n como saltos de línea en HTML/PDF */
-  word-break: break-word; /* evita desbordes si hay palabras largas */
+  white-space: normal;
+  word-break: break-word;
+  word-wrap: break-word;
 }
 
 .imagenes-derecha {
   flex-shrink: 0;
+  align-self: flex-start;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 40%;
 }
 
 .detalle-con-imagen.layout-abajo {
@@ -491,6 +492,9 @@ body {
 .detalle-con-imagen.layout-abajo .detalle-texto {
   align-self: flex-start;
   width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  word-wrap: break-word;
 }
 
 .detalle-con-imagen.layout-abajo .imagenes-container {
@@ -847,7 +851,7 @@ body {
                       <div class="detalle-con-imagen ${d.posicion_imagen === 'derecha' ? 'layout-derecha' : 'layout-abajo'}">
                         ${d.posicion_imagen === 'derecha' && d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                           <!-- Layout: Texto a la izquierda, imagen a la derecha -->
-                          <div class="texto-izquierda">${d.detalle}</div>
+                          <div class="texto-izquierda">${d.detalle.replace(/\n/g, '<br>')}</div>
                           <div class="imagenes-derecha">
                             ${d.imagenesBase64.map(img => `
                               <img 
@@ -860,7 +864,7 @@ body {
                           </div>
                         ` : `
                           <!-- Layout: Texto arriba, imagen(es) debajo -->
-                          <div class="detalle-texto">${d.detalle}</div>
+                          <div class="detalle-texto">${d.detalle.replace(/\n/g, '<br>')}</div>
                           ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                             <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px;">
                               ${d.imagenesBase64.map(img => `
