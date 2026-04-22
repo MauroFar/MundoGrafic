@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -72,12 +72,74 @@ function CotizacionesVer() {
   const [showAprobarModal, setShowAprobarModal] = useState(false);
   const [cotizacionToApprove, setCotizacionToApprove] = useState(null);
 
+  // Scroll horizontal sincronizado (arriba y abajo), igual a Kanban
+  const scrollTopRef = useRef(null);
+  const scrollBottomRef = useRef(null);
+  const scrollInnerRef = useRef(null);
+  const mirrorInnerRef = useRef(null);
+  const syncingRef = useRef(false);
+
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
     if (total === null || total === undefined) return "0.00";
     const numero = typeof total === 'string' ? parseFloat(total) : total;
     return isNaN(numero) ? "0.00" : numero.toFixed(2);
   };
+
+  const resumirDescripcion = (html, maxLength = 110) => {
+    if (!html) return 'Sin descripción';
+
+    const textoPlano = String(html)
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!textoPlano) return 'Sin descripción';
+    if (textoPlano.length <= maxLength) return textoPlano;
+    return `${textoPlano.slice(0, maxLength).trimEnd()}...`;
+  };
+
+  const descripcionClampStyle = {
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 3,
+    overflow: 'hidden',
+  };
+
+  useEffect(() => {
+    const syncWidth = () => {
+      if (scrollInnerRef.current && mirrorInnerRef.current) {
+        mirrorInnerRef.current.style.width = `${scrollInnerRef.current.scrollWidth}px`;
+      }
+    };
+
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    if (scrollBottomRef.current) observer.observe(scrollBottomRef.current);
+    if (scrollInnerRef.current) observer.observe(scrollInnerRef.current);
+
+    return () => observer.disconnect();
+  }, [cotizaciones.length]);
+
+  const handleScrollTop = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollTopRef.current && scrollBottomRef.current) {
+      scrollBottomRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    }
+    syncingRef.current = false;
+  }, []);
+
+  const handleScrollBottom = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollBottomRef.current && scrollTopRef.current) {
+      scrollTopRef.current.scrollLeft = scrollBottomRef.current.scrollLeft;
+    }
+    syncingRef.current = false;
+  }, []);
 
   // Cargar las últimas 5 cotizaciones al montar el componente
   useEffect(() => {
@@ -867,6 +929,113 @@ function CotizacionesVer() {
     navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { productos: selectedProductos, tipoOrden: tipoOrdenSeleccionado } });
   };
 
+  const renderCotizacionActions = (cotizacion, compact = false) => {
+    const estadoNormalizado = String(cotizacion.estado || '').trim().toLowerCase();
+    const puedeAprobar = ['pendiente', 'activo', ''].includes(estadoNormalizado);
+    const puedeGenerarOrden = estadoNormalizado === 'aprobada';
+
+    const buttonClass = compact
+      ? 'px-2 py-1 text-xs rounded border'
+      : 'p-1.5 rounded flex flex-col items-center';
+
+    return (
+      <div className={compact ? 'flex flex-wrap gap-2' : 'flex flex-wrap gap-1 min-w-[10rem]'}>
+        <button
+          className={`${buttonClass} text-blue-600 hover:bg-blue-100`}
+          onClick={(e) => {
+            e.stopPropagation();
+            previewEnModal(cotizacion.id);
+          }}
+          title="Vista previa"
+        >
+          <FaEye className={compact ? 'inline mr-1' : ''} />
+          {compact ? 'Vista previa' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">VistaPreviaPDF</span>}
+        </button>
+
+        {puedeEditar('cotizaciones') && (
+          <button
+            className={`${buttonClass} text-blue-600 hover:bg-blue-100`}
+            onClick={(e) => {
+              e.stopPropagation();
+              editarCotizacion(cotizacion.id);
+            }}
+            title="Editar"
+          >
+            <FaEdit className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Editar' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Editar</span>}
+          </button>
+        )}
+
+        {puedeEliminar('cotizaciones') && (
+          <button
+            className={`${buttonClass} text-red-600 hover:bg-red-100`}
+            onClick={(e) => {
+              e.stopPropagation();
+              eliminarCotizacion(cotizacion.id);
+            }}
+            title="Eliminar"
+          >
+            <FaTrash className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Eliminar' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Eliminar</span>}
+          </button>
+        )}
+
+        <button
+          className={`${buttonClass} text-purple-600 hover:bg-purple-100`}
+          onClick={(e) => {
+            e.stopPropagation();
+            descargarPDF(cotizacion.id);
+          }}
+          title="Descargar PDF"
+        >
+          <FaDownload className={compact ? 'inline mr-1' : ''} />
+          {compact ? 'Descargar' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Descargar PDF</span>}
+        </button>
+
+        <button
+          className={`${buttonClass} text-indigo-600 hover:bg-indigo-100`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEnviarCorreoAlternativo(cotizacion.id);
+          }}
+          title="Enviar por correo"
+        >
+          <FaEnvelopeOpen className={compact ? 'inline mr-1' : ''} />
+          {compact ? 'Correo' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Enviar Correo</span>}
+        </button>
+
+        {puedeAprobar && (
+          <button
+            className={`${buttonClass} text-green-600 hover:bg-green-100`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCotizacionToApprove(cotizacion);
+              setShowAprobarModal(true);
+            }}
+            title="Aprobar cotización"
+          >
+            <FaCheck className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Aprobar' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Aprobar</span>}
+          </button>
+        )}
+
+        {puedeGenerarOrden && (
+          <button
+            className={`${buttonClass} text-pink-600 hover:bg-pink-100`}
+            onClick={(e) => {
+              e.stopPropagation();
+              generarOrdenTrabajo(cotizacion.id);
+            }}
+            title="Generar Orden de Trabajo"
+          >
+            <FaTools className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Orden' : <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Orden</span>}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -943,21 +1112,82 @@ function CotizacionesVer() {
         </div>
       </form>
 
-      {/* Tabla de Cotizaciones */}
-      <div className="overflow-x-hidden">
-        {loading ? (
-          <div className="text-center py-4">Cargando...</div>
-        ) : (
-          <table className="w-full bg-white border border-gray-300 text-sm">
+      {/* Tabla/Lista de Cotizaciones */}
+      {loading ? (
+        <div className="text-center py-4">Cargando...</div>
+      ) : (
+        <>
+          <div className="md:hidden space-y-3">
+            {cotizaciones.map((cotizacion) => {
+              const estadoNormalizado = String(cotizacion.estado || '').trim().toLowerCase();
+              const descripcionResumen = resumirDescripcion(cotizacion.primer_detalle, 180);
+
+              return (
+                <div
+                  key={cotizacion.id}
+                  className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                  onClick={() => handleVerDetalle(cotizacion.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-blue-600 text-sm">
+                        {cotizacion.codigo_cotizacion
+                          ? cotizacion.codigo_cotizacion.slice(-4)
+                          : String(cotizacion.id).padStart(4, '0')}
+                      </div>
+                      <div className="text-[11px] text-gray-500">{cotizacion.codigo_cotizacion}</div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded-full ${
+                        estadoNormalizado === 'aprobada'
+                          ? 'bg-green-100 text-green-800'
+                          : estadoNormalizado === 'rechazada'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      {cotizacion.estado || 'pendiente'}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 font-medium text-sm text-gray-900">
+                    {cotizacion.empresa_cliente || cotizacion.nombre_cliente}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-600 leading-5" style={descripcionClampStyle}>
+                    {descripcionResumen}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div><span className="font-semibold">Fecha:</span> {new Date(cotizacion.fecha).toLocaleDateString()}</div>
+                    <div><span className="font-semibold">Total:</span> ${formatearTotal(cotizacion.total)}</div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+                    {renderCotizacionActions(cotizacion, true)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            ref={scrollTopRef}
+            onScroll={handleScrollTop}
+            className="hidden md:block overflow-x-auto mb-1"
+          >
+            <div ref={mirrorInnerRef} className="h-1" />
+          </div>
+          <div ref={scrollBottomRef} onScroll={handleScrollBottom} className="hidden md:block overflow-x-auto">
+          <div ref={scrollInnerRef} className="min-w-[1200px]">
+          <table className="w-full table-fixed bg-white border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
-                <th className="px-2 sm:px-3 py-3 border-b text-left">Número</th>
-                <th className="px-2 sm:px-3 py-3 border-b text-left">Cliente</th>
-                <th className="hidden lg:table-cell px-2 sm:px-3 py-3 border-b text-left">Descripción</th>
-                <th className="hidden md:table-cell px-2 sm:px-3 py-3 border-b text-left">Fecha</th>
-                <th className="hidden sm:table-cell px-2 sm:px-3 py-3 border-b text-left">Total</th>
-                <th className="px-2 sm:px-3 py-3 border-b text-left">Estado</th>
-                <th className="px-2 sm:px-3 py-3 border-b text-left">Acciones</th>
+                <th className="w-20 px-2 sm:px-3 py-3 border-b text-left">Número</th>
+                <th className="w-52 xl:w-44 px-2 sm:px-3 py-3 border-b text-left">Cliente/Descripción</th>
+                <th className="hidden md:table-cell w-28 px-2 sm:px-3 py-3 border-b text-left">Fecha</th>
+                <th className="hidden sm:table-cell w-24 px-2 sm:px-3 py-3 border-b text-left">Total</th>
+                <th className="w-24 px-2 sm:px-3 py-3 border-b text-left">Estado</th>
+                <th className="w-44 xl:w-56 px-2 sm:px-3 py-3 border-b text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -965,6 +1195,7 @@ function CotizacionesVer() {
                 const estadoNormalizado = String(cotizacion.estado || '').trim().toLowerCase();
                 const puedeAprobar = ['pendiente', 'activo', ''].includes(estadoNormalizado);
                 const puedeGenerarOrden = estadoNormalizado === 'aprobada';
+                const descripcionResumen = resumirDescripcion(cotizacion.primer_detalle, 180);
                 return (
                 <tr 
                   key={cotizacion.id} 
@@ -982,12 +1213,19 @@ function CotizacionesVer() {
                       <span className="text-xs text-gray-500">{cotizacion.codigo_cotizacion}</span>
                     </div>
                   </td>
-                  <td className="px-2 sm:px-3 py-3 border-b">{cotizacion.empresa_cliente || cotizacion.nombre_cliente}</td>
-                  <td className="hidden lg:table-cell px-2 sm:px-3 py-3 border-b">
-                    <div 
-                      className="line-clamp-2" 
-                      dangerouslySetInnerHTML={{ __html: cotizacion.primer_detalle || 'Sin descripción' }}
-                    />
+                  <td className="px-2 sm:px-3 py-3 border-b">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium" title={cotizacion.empresa_cliente || cotizacion.nombre_cliente}>
+                        {cotizacion.empresa_cliente || cotizacion.nombre_cliente}
+                      </div>
+                      <div
+                        className="mt-1 text-xs leading-5 text-gray-600"
+                        style={descripcionClampStyle}
+                        title={descripcionResumen}
+                      >
+                        {descripcionResumen}
+                      </div>
+                    </div>
                   </td>
                   <td className="hidden md:table-cell px-2 sm:px-3 py-3 border-b">{new Date(cotizacion.fecha).toLocaleDateString()}</td>
                   <td className="hidden sm:table-cell px-2 sm:px-3 py-3 border-b">${formatearTotal(cotizacion.total)}</td>
@@ -1004,103 +1242,18 @@ function CotizacionesVer() {
                       {(cotizacion.estado || 'pendiente')}
                     </span>
                   </td>
-                  <td className="px-2 sm:px-3 py-3 border-b">
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          previewEnModal(cotizacion.id);
-                        }}
-                        title="Vista previa"
-                      >
-                        <FaEye />
-                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">VistaPreviaPDF</span>
-                      </button>
-                      {puedeEditar('cotizaciones') && (
-                        <button
-                          className="p-1.5 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editarCotizacion(cotizacion.id);
-                          }}
-                          title="Editar"
-                        >
-                          <FaEdit />
-                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Editar</span>
-                        </button>
-                      )}
-                      {puedeEliminar('cotizaciones') && (
-                        <button
-                          className="p-1.5 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            eliminarCotizacion(cotizacion.id);
-                          }}
-                          title="Eliminar"
-                        >
-                          <FaTrash />
-                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Eliminar</span>
-                        </button>
-                      )}
-                      <button
-                        className="p-1.5 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          descargarPDF(cotizacion.id);
-                        }}
-                        title="Descargar PDF"
-                      >
-                        <FaDownload />
-                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Descargar PDF</span>
-                      </button>
-                      <button
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEnviarCorreoAlternativo(cotizacion.id);
-                        }}
-                        title="Enviar por correo"
-                      >
-                        <FaEnvelopeOpen />
-                        <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Enviar Correo</span>
-                      </button>
-                      {puedeAprobar && (
-                        <button
-                          className="p-1.5 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCotizacionToApprove(cotizacion);
-                            setShowAprobarModal(true);
-                          }}
-                          title="Aprobar cotización"
-                        >
-                          <FaCheck />
-                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Aprobar</span>
-                        </button>
-                      )}
-                      {puedeGenerarOrden && (
-                        <button
-                          className="p-1.5 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            generarOrdenTrabajo(cotizacion.id);
-                          }}
-                          title="Generar Orden de Trabajo"
-                        >
-                          <FaTools />
-                          <span className="hidden xl:block text-[10px] mt-1 text-gray-600">Orden</span>
-                        </button>
-                      )}
-                    </div>
+                  <td className="px-2 sm:px-3 py-3 border-b align-top">
+                    {renderCotizacionActions(cotizacion)}
                   </td>
                 </tr>
                 );
               })}
             </tbody>
           </table>
-        )}
-      </div>
+          </div>
+          </div>
+        </>
+      )}
 
       {/* Modal para enviar correo alternativo */}
       {showModal && (

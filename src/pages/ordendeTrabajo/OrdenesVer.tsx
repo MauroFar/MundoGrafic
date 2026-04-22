@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks, FaSync } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -61,6 +61,67 @@ const OrdenesVer: React.FC = () => {
   const [fechaEntregaAprobacion, setFechaEntregaAprobacion] = useState<string>('');
   const [aprobandoArtes, setAprobandoArtes] = useState<boolean>(false);
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
+
+  // Scroll horizontal sincronizado (arriba y abajo), igual a Kanban
+  const scrollTopRef = useRef<HTMLDivElement | null>(null);
+  const scrollBottomRef = useRef<HTMLDivElement | null>(null);
+  const scrollInnerRef = useRef<HTMLDivElement | null>(null);
+  const mirrorInnerRef = useRef<HTMLDivElement | null>(null);
+  const syncingRef = useRef(false);
+
+  const resumirConcepto = (texto: string | undefined, maxLength = 160): string => {
+    if (!texto) return 'Sin concepto';
+    const plano = String(texto)
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!plano) return 'Sin concepto';
+    if (plano.length <= maxLength) return plano;
+    return `${plano.slice(0, maxLength).trimEnd()}...`;
+  };
+
+  const conceptoClampStyle: React.CSSProperties = {
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 3,
+    overflow: 'hidden',
+  };
+
+  useEffect(() => {
+    const syncWidth = () => {
+      if (scrollInnerRef.current && mirrorInnerRef.current) {
+        mirrorInnerRef.current.style.width = `${scrollInnerRef.current.scrollWidth}px`;
+      }
+    };
+
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    if (scrollBottomRef.current) observer.observe(scrollBottomRef.current);
+    if (scrollInnerRef.current) observer.observe(scrollInnerRef.current);
+
+    return () => observer.disconnect();
+  }, [ordenes.length]);
+
+  const handleScrollTop = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollTopRef.current && scrollBottomRef.current) {
+      scrollBottomRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    }
+    syncingRef.current = false;
+  }, []);
+
+  const handleScrollBottom = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollBottomRef.current && scrollTopRef.current) {
+      scrollTopRef.current.scrollLeft = scrollBottomRef.current.scrollLeft;
+    }
+    syncingRef.current = false;
+  }, []);
 
   // Función para verificar si el estado es de producción
   const normalizeKey = (s: string | undefined) => {
@@ -581,6 +642,107 @@ const OrdenesVer: React.FC = () => {
     return isNaN(numero) ? "0.00" : numero.toFixed(2);
   };
 
+  const renderOrdenActions = (orden: OrdenTrabajo, compact = false) => {
+    const estadoRaw = ((orden as any).estado_digital_key || orden.estado || '').toString().toLowerCase().replace(/\s+/g, '_');
+    const buttonClass = compact
+      ? 'px-2 py-1 text-xs rounded border'
+      : 'p-2 rounded flex flex-col items-center';
+
+    return (
+      <div className={compact ? 'flex flex-wrap gap-2' : 'flex space-x-2'} onClick={(e) => e.stopPropagation()}>
+        <button
+          className={`${buttonClass} text-green-600 hover:bg-green-100`}
+          onClick={() => verPDF(orden.id)}
+          title="Ver PDF/Imprimir"
+        >
+          <FaEye className={compact ? 'inline mr-1' : ''} />
+          {compact ? 'Ver' : <span className="text-xs mt-1 text-gray-600">Ver PDF/Imprimir</span>}
+        </button>
+
+        {puedeEditar('ordenes_trabajo') && (
+          <button
+            className={`${buttonClass} text-blue-600 hover:bg-blue-100`}
+            onClick={() => editarOrden(orden.id)}
+            title="Editar"
+          >
+            <FaEdit className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Editar' : <span className="text-xs mt-1 text-gray-600">Editar</span>}
+          </button>
+        )}
+
+        {puedeEliminar('ordenes_trabajo') && !estaBloqueadaPorProduccion(orden) && (
+          <button
+            className={`${buttonClass} text-red-600 hover:bg-red-100`}
+            onClick={() => eliminarOrden(orden.id)}
+            title="Eliminar"
+          >
+            <FaTrash className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Eliminar' : <span className="text-xs mt-1 text-gray-600">Eliminar</span>}
+          </button>
+        )}
+
+        <button
+          className={`${buttonClass} text-purple-600 hover:bg-purple-100`}
+          onClick={() => descargarPDF(orden.id)}
+          title="Descargar PDF"
+        >
+          <FaDownload className={compact ? 'inline mr-1' : ''} />
+          {compact ? 'Descargar' : <span className="text-xs mt-1 text-gray-600">Descargar</span>}
+        </button>
+
+        {estadoRaw === 'entregado' ? (
+          <div className={compact ? 'px-2 py-1 text-xs text-gray-500 border rounded' : 'p-2 text-gray-500 text-xs'}>Entregado</div>
+        ) : esEstadoProduccion((orden as any).estado_digital_key || orden.estado) ? (
+          <>
+            <button
+              className={`${buttonClass} text-teal-600 hover:bg-teal-100`}
+              onClick={() => navigate('/produccion/kanban')}
+              title="Vista Kanban"
+            >
+              <FaTasks className={compact ? 'inline mr-1' : ''} />
+              {compact ? 'Kanban' : <span className="text-xs mt-1 text-gray-600">Vista Kanban</span>}
+            </button>
+            <button
+              className={`${buttonClass} text-indigo-600 hover:bg-indigo-100`}
+              onClick={() => handleGenerarCertificado(orden.id)}
+              title="Generar Certificado"
+            >
+              <FaFileAlt className={compact ? 'inline mr-1' : ''} />
+              {compact ? 'Certif.' : <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>}
+            </button>
+          </>
+        ) : orden.artes_aprobados ? (
+          <button
+            className={`${buttonClass} text-green-600 hover:bg-green-100`}
+            onClick={() => setModalProduccionId(orden.id)}
+            title="Enviar a Producción"
+          >
+            {compact ? 'Enviar producción' : <span className="font-bold text-xs">Enviar a Producción</span>}
+          </button>
+        ) : (
+          <button
+            className={`${buttonClass} text-amber-700 hover:bg-amber-100`}
+            onClick={() => abrirModalAprobarArtes(orden)}
+            title="Aprobar artes"
+          >
+            {compact ? 'Aprobar artes' : <span className="font-bold text-xs">Aprobar artes</span>}
+          </button>
+        )}
+
+        {orden.id_cotizacion && (
+          <button
+            className={`${buttonClass} text-orange-600 hover:bg-orange-100`}
+            onClick={() => handleVerCotizacion(orden.id_cotizacion!)}
+            title="Ver Cotización"
+          >
+            <FaFileAlt className={compact ? 'inline mr-1' : ''} />
+            {compact ? 'Cotización' : <span className="text-xs mt-1 text-gray-600">Ver Cotización</span>}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Órdenes de Trabajo</h1>
@@ -660,16 +822,60 @@ const OrdenesVer: React.FC = () => {
           </div>
         </div>
       </form>
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="text-center py-4">Cargando...</div>
-        ) : (
+      {loading ? (
+        <div className="text-center py-4">Cargando...</div>
+      ) : (
+        <>
+          <div className="md:hidden space-y-3">
+            {ordenes.map((orden) => {
+              const key = (orden as any).estado_digital_key || orden.estado;
+              const estadoNorm = normalizeKey(key);
+              const s = getEstadoStyle(key);
+              return (
+                <div
+                  key={orden.id}
+                  className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                  onClick={() => handleVerDetalle(orden.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold text-sm text-gray-900">#{orden.numero_orden}</div>
+                    <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${estadoNorm === 'pendiente' && !orden.artes_aprobados ? 'bg-amber-100 text-amber-800' : s.classes}`}>
+                      {estadoNorm === 'pendiente' && !orden.artes_aprobados ? 'Pendiente (sin artes)' : s.text}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 font-medium text-sm text-gray-900">{orden.nombre_cliente}</div>
+                  <div className="mt-1 text-xs text-gray-600 leading-5" style={conceptoClampStyle}>
+                    {resumirConcepto(orden.concepto)}
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div><span className="font-semibold">Tipo:</span> {orden.tipo_orden === 'digital' ? 'Digital' : 'Offset'}</div>
+                    <div><span className="font-semibold">Fecha:</span> {orden.fecha_creacion?.slice(0, 10) || 'N/A'}</div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    {renderOrdenActions(orden, true)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            ref={scrollTopRef}
+            onScroll={handleScrollTop}
+            className="hidden md:block overflow-x-auto mb-1"
+          >
+            <div ref={mirrorInnerRef} className="h-1" />
+          </div>
+          <div ref={scrollBottomRef} onScroll={handleScrollBottom} className="hidden md:block overflow-x-auto">
+          <div ref={scrollInnerRef} className="min-w-[1300px]">
           <table className="min-w-full bg-white border border-gray-300">
             <thead>
               <tr className="bg-gray-100">
                 <th className="px-6 py-3 border-b text-left">N° Orden</th>
-                <th className="px-6 py-3 border-b text-left">Cliente</th>
-                <th className="px-6 py-3 border-b text-left">Concepto</th>
+                <th className="px-6 py-3 border-b text-left">Cliente/Concepto</th>
                 <th className="px-6 py-3 border-b text-left">Tipo</th>
                 <th className="px-6 py-3 border-b text-left">Fecha</th>
                 <th className="px-6 py-3 border-b text-left">Estado</th>
@@ -684,8 +890,18 @@ const OrdenesVer: React.FC = () => {
                   onClick={() => handleVerDetalle(orden.id)}
                 >
                   <td className="px-6 py-4 border-b">{orden.numero_orden}</td>
-                  <td className="px-6 py-4 border-b">{orden.nombre_cliente}</td>
-                  <td className="px-6 py-4 border-b">{orden.concepto}</td>
+                  <td className="px-6 py-4 border-b">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate" title={orden.nombre_cliente}>{orden.nombre_cliente}</div>
+                      <div
+                        className="mt-1 text-xs text-gray-600 leading-5"
+                        style={conceptoClampStyle}
+                        title={resumirConcepto(orden.concepto, 500)}
+                      >
+                        {resumirConcepto(orden.concepto)}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 border-b">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       orden.tipo_orden === 'digital' 
@@ -716,115 +932,16 @@ const OrdenesVer: React.FC = () => {
                     })()}
                   </td>
                   <td className="px-6 py-4 border-b">
-                    <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                        onClick={() => verPDF(orden.id)}
-                        title="Ver PDF/Imprimir"
-                      >
-                        <FaEye />
-                        <span className="text-xs mt-1 text-gray-600">Ver PDF/Imprimir</span>
-                      </button>
-                      {puedeEditar('ordenes_trabajo') && (
-                        <button
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded flex flex-col items-center"
-                          onClick={() => editarOrden(orden.id)}
-                          title="Editar"
-                        >
-                          <FaEdit />
-                          <span className="text-xs mt-1 text-gray-600">Editar</span>
-                        </button>
-                      )}
-                      {puedeEliminar('ordenes_trabajo') && !estaBloqueadaPorProduccion(orden) && (
-                        <button
-                          className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
-                          onClick={() => eliminarOrden(orden.id)}
-                          title="Eliminar"
-                        >
-                          <FaTrash />
-                          <span className="text-xs mt-1 text-gray-600">Eliminar</span>
-                        </button>
-                      )}
-                      <button
-                        className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
-                        onClick={() => descargarPDF(orden.id)}
-                        title="Descargar PDF"
-                      >
-                        <FaDownload />
-                        <span className="text-xs mt-1 text-gray-600">Descargar</span>
-                      </button>
-                      {
-                        (() => {
-                          const raw = (orden as any).estado_digital_key || orden.estado || '';
-                          const estadoNorm = raw.toString().toLowerCase().replace(/\s+/g, '_');
-                          if (estadoNorm === 'entregado') {
-                            return (
-                              <div className="p-2 text-gray-500 text-xs">Entregado</div>
-                            );
-                          }
-
-                          if (esEstadoProduccion((orden as any).estado_digital_key || orden.estado)) {
-                            return (
-                              <>
-                                <button
-                                  className="p-2 text-teal-600 hover:bg-teal-100 rounded flex flex-col items-center"
-                                  onClick={() => navigate('/produccion/kanban')}
-                                  title="Vista Kanban"
-                                >
-                                  <FaTasks />
-                                  <span className="text-xs mt-1 text-gray-600">Vista Kanban</span>
-                                </button>
-                                <button
-                                  className="p-2 text-indigo-600 hover:bg-indigo-100 rounded flex flex-col items-center"
-                                  onClick={() => handleGenerarCertificado(orden.id)}
-                                  title="Generar Certificado"
-                                >
-                                  <FaFileAlt />
-                                  <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>
-                                </button>
-                              </>
-                            );
-                          }
-
-                          return (
-                            orden.artes_aprobados ? (
-                              <button
-                                className="p-2 text-green-600 hover:bg-green-100 rounded flex flex-col items-center"
-                                onClick={() => setModalProduccionId(orden.id)}
-                                title="Enviar a Producción"
-                              >
-                                <span className="font-bold text-xs">Enviar a Producción</span>
-                              </button>
-                            ) : (
-                              <button
-                                className="p-2 text-amber-700 hover:bg-amber-100 rounded flex flex-col items-center"
-                                onClick={() => abrirModalAprobarArtes(orden)}
-                                title="Aprobar artes"
-                              >
-                                <span className="font-bold text-xs">Aprobar artes</span>
-                              </button>
-                            )
-                          );
-                        })()
-                      }
-                      {orden.id_cotizacion && (
-                        <button
-                          className="p-2 text-orange-600 hover:bg-orange-100 rounded flex flex-col items-center"
-                          onClick={() => handleVerCotizacion(orden.id_cotizacion!)}
-                          title="Ver Cotización"
-                        >
-                          <FaFileAlt />
-                          <span className="text-xs mt-1 text-gray-600">Ver Cotización</span>
-                        </button>
-                      )}
-                    </div>
+                    {renderOrdenActions(orden)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          </div>
+          </div>
+        </>
+      )}
       {!loading && hayMas && (
         <button
           className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
