@@ -147,6 +147,13 @@ function CotizacionesCrear() {
     }
   };
 
+  const autoResizeDetalleEditor = (editorElement) => {
+    if (!editorElement) return;
+    const minHeight = 140;
+    editorElement.style.height = 'auto';
+    editorElement.style.height = `${Math.max(minHeight, editorElement.scrollHeight)}px`;
+  };
+
   useEffect(() => {
     if (showSuccessModal && successModalRef.current) {
       successModalRef.current.focus();
@@ -1745,7 +1752,7 @@ function CotizacionesCrear() {
             <colgroup>
               <col style={{ width: '90px' }} />
               <col style={{ width: '95px' }} />
-              <col style={{ width: '13.9cm' }} />
+              <col style={{ width: '12.35cm' }} />
               <col style={{ width: '140px' }} />
               <col style={{ width: '140px' }} />
               <col style={{ width: '80px' }} />
@@ -1942,6 +1949,9 @@ function CotizacionesCrear() {
                           if (el && !el.innerHTML && fila.detalle) {
                             el.innerHTML = fila.detalle;
                           }
+                          if (el) {
+                            autoResizeDetalleEditor(el);
+                          }
                         }}
                         contentEditable
                         spellCheck={false}
@@ -1955,6 +1965,7 @@ function CotizacionesCrear() {
                           const nuevasFilas = [...filas];
                           nuevasFilas[index].detalle = e.currentTarget.innerHTML;
                           setFilas(nuevasFilas);
+                          autoResizeDetalleEditor(e.currentTarget);
                         }}
                         onKeyUp={() => {
                           saveSelectionForRow(index);
@@ -1999,16 +2010,12 @@ function CotizacionesCrear() {
                           saveSelectionForRow(index);
                           applyActiveColorAtCaret(index);
                         }}
-                        className="w-full rounded-md h-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full rounded-md min-h-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         style={{
-                          height: '140px',
-                          maxHeight: '140px',
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
                           overflowWrap: 'break-word',
-                          overflowX: 'hidden',
-                          overflowY: 'auto',
-                          scrollbarGutter: 'stable',
+                          overflow: 'hidden',
                           textAlign: 'left',
                           fontSize: '13px',
                           lineHeight: 1.35,
