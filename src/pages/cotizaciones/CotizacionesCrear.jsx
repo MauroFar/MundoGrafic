@@ -853,9 +853,14 @@ function CotizacionesCrear() {
 
   // Función para agregar una nueva fila
   const agregarFila = () => {
-    // Texto HTML inicial para el detalle, con títulos en negrita y salto de línea
-    const detalleInicial = `
-<b>IMPRESIÓN :</b> \n<b>MATERIAL :</b> \n<b>TERMINADO :</b> \n<b>TAMAÑO :</b> `;
+    // Texto HTML inicial para el detalle, con títulos en negrita — cada línea en su propio div para evitar reflow
+    const detalleInicial = [
+      '<div><br></div>',
+      '<div><span contenteditable="false" style="font-weight:700;white-space:nowrap;">IMPRESIÓN :</span>&nbsp;</div>',
+      '<div><span contenteditable="false" style="font-weight:700;white-space:nowrap;">MATERIAL :</span>&nbsp;</div>',
+      '<div><span contenteditable="false" style="font-weight:700;white-space:nowrap;">TERMINADO :</span>&nbsp;</div>',
+      '<div><span contenteditable="false" style="font-weight:700;white-space:nowrap;">TAMAÑO :</span>&nbsp;</div>',
+    ].join('');
     const nuevasFilas = [
       ...filas,
       {
@@ -1196,15 +1201,7 @@ function CotizacionesCrear() {
     calcularTotales(filas);
   }, [aplicarIva, descuento]);
 
-  // Efecto para ajustar la altura de los textareas al cargar o actualizar las filas
-  useEffect(() => {
-    textareaRefs.current.forEach((textarea) => {
-      if (textarea) {
-        textarea.style.height = "auto";
-        textarea.style.height = textarea.scrollHeight + "px";
-      }
-    });
-  }, [filas]);
+  // El editor de detalle mantiene altura fija para evitar que se expanda al escribir.
 
   // Función para generar la vista previa
   const generarVistaPrevia = async (filasOverride = filas) => {
@@ -1787,7 +1784,7 @@ function CotizacionesCrear() {
                         min="1"
                       />
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 align-top">
+                    <td className="border border-gray-300 p-0 align-top">
                       {/* Botón de negrita */}
                       <div className="flex items-center gap-3 mb-2">
                         <div className="flex flex-col items-center gap-1">
@@ -2002,16 +1999,22 @@ function CotizacionesCrear() {
                           saveSelectionForRow(index);
                           applyActiveColorAtCaret(index);
                         }}
-                        className="w-full rounded-md overflow-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full rounded-md h-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                         style={{
-                          whiteSpace: 'pre-wrap',
+                          height: '140px',
+                          maxHeight: '140px',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word',
+                          overflowX: 'hidden',
+                          overflowY: 'auto',
+                          scrollbarGutter: 'stable',
                           textAlign: 'left',
                           fontSize: '13px',
                           lineHeight: 1.35,
-                          paddingLeft: '15px',
-                          paddingRight: '8px',
-                          paddingTop: '6px',
-                          paddingBottom: '6px',
+                          padding: '6px 8px 6px 15px',
+                          boxSizing: 'border-box',
+                          display: 'block',
                           boxShadow: 'inset 0 0 0 1px #d1d5db'
                         }}
                       />
