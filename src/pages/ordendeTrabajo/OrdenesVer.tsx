@@ -334,6 +334,9 @@ const OrdenesVer: React.FC = () => {
   };
 
   const editarOrden = (id: number) => {
+    if (!verificarYMostrarError('ordenes_trabajo', 'editar', 'editar esta orden de trabajo')) {
+      return;
+    }
     navigate(`/ordendeTrabajo/editar/${id}`);
   };
 
@@ -667,7 +670,7 @@ const OrdenesVer: React.FC = () => {
           {compact ? 'Ver' : <span className="text-xs mt-1 text-gray-600">Ver PDF/Imprimir</span>}
         </button>
 
-        {puedeEditar('ordenes_trabajo') && !enviadaProduccion && (
+        {
           <button
             className={`${buttonClass} text-blue-600 hover:bg-blue-100`}
             onClick={() => editarOrden(orden.id)}
@@ -676,7 +679,7 @@ const OrdenesVer: React.FC = () => {
             <FaEdit className={compact ? 'inline mr-1' : ''} />
             {compact ? 'Editar' : <span className="text-xs mt-1 text-gray-600">Editar</span>}
           </button>
-        )}
+        }
 
         {puedeEliminar('ordenes_trabajo') && !enviadaProduccion && (
           <button
@@ -1780,7 +1783,7 @@ const OrdenesVer: React.FC = () => {
 
               {/* ── BOTONES DE ACCIÓN ── */}
               <div className="flex gap-3 pt-4 border-t">
-                {puedeEditar('ordenes_trabajo') && (
+                {
                   <button
                     onClick={() => {
                       handleCerrarDetalleModal();
@@ -1791,7 +1794,7 @@ const OrdenesVer: React.FC = () => {
                     <FaEdit />
                     Editar Orden
                   </button>
-                )}
+                }
                 <button
                   onClick={() => {
                     handleCerrarDetalleModal();

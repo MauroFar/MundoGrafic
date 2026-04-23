@@ -242,6 +242,24 @@ function show_status() {
   ss -tlnp 2>/dev/null | grep -E ":$PORT_BLUE|:$PORT_GREEN" || \
     netstat -tlnp 2>/dev/null | grep -E ":$PORT_BLUE|:$PORT_GREEN" || \
     warn "No se pudo verificar puertos (ss/netstat no disponibles)"
+
+  echo ""
+  echo "--- Últimos logs backend BLUE ($BLUE_SERVICE) ---"
+  sudo journalctl -u "$BLUE_SERVICE" -n 40 --no-pager 2>/dev/null || warn "No se pudieron leer logs de $BLUE_SERVICE"
+
+  echo ""
+  echo "--- Últimos logs backend GREEN ($GREEN_SERVICE) ---"
+  sudo journalctl -u "$GREEN_SERVICE" -n 40 --no-pager 2>/dev/null || warn "No se pudieron leer logs de $GREEN_SERVICE"
+
+  echo ""
+  echo "--- Últimos logs frontend (nginx error.log) ---"
+  sudo tail -n 40 /var/log/nginx/error.log 2>/dev/null || warn "No se pudo leer /var/log/nginx/error.log"
+
+  if [ -f /var/log/nginx/mundografic_green_error.log ]; then
+    echo ""
+    echo "--- Últimos logs frontend GREEN (nginx mundografic_green_error.log) ---"
+    sudo tail -n 40 /var/log/nginx/mundografic_green_error.log 2>/dev/null || warn "No se pudo leer /var/log/nginx/mundografic_green_error.log"
+  fi
 }
 
 # ─── Setup inicial green (una sola vez) ─────────────────────────
