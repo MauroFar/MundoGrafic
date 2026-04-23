@@ -320,8 +320,12 @@ body {
 
 .servicio {
   flex: 1;
-  font-size: 8px;
+  font-size: 10px !important;
   line-height: 1.2;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
   padding: 0 2px;
   border-right: 1px solid #999;
 }
@@ -331,12 +335,14 @@ body {
 }
 
 .servicio-titulo {
-  color: #ff0000;
-  font-weight: bold;
+  color: #d10000;
+  font-weight: 600 !important;
   margin-bottom: 2px;
   text-transform: uppercase;
   white-space: nowrap;
-  font-size: 6px;
+  font-size: 10px !important;
+  line-height: 1.2;
+  font-family: inherit;
 }
 
 .servicio-texto {
@@ -344,7 +350,9 @@ body {
   padding: 0;
   color: #333;
   line-height: 1.2;
-  font-size: 6px;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  font-family: inherit;
 }
 
 .intersection-overlay {

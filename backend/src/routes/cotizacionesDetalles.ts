@@ -1,12 +1,6 @@
 import express from "express";
 const router = express.Router();
 
-const toImageDimensionInt = (value: any, fallback: number) => {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.round(n));
-};
-
 const createCotizacionDetalles = (client: any) => {
   // Obtener detalles de una cotización por ID
   router.get("/:id", async (req: any, res: any) => {
@@ -96,14 +90,12 @@ const createCotizacionDetalles = (client: any) => {
         
         for (let i = 0; i < imagenes.length; i++) {
           const img = imagenes[i];
-          const imageWidth = toImageDimensionInt(img.imagen_width, 200);
-          const imageHeight = toImageDimensionInt(img.imagen_height, 150);
           await client.query(imageQuery, [
             detalleId,
             img.imagen_ruta,
             i,
-            imageWidth,
-            imageHeight,
+            img.imagen_width || 200,
+            img.imagen_height || 150
           ]);
         }
       }
@@ -181,14 +173,12 @@ const createCotizacionDetalles = (client: any) => {
           
           for (let i = 0; i < imagenes.length; i++) {
             const img = imagenes[i];
-            const imageWidth = toImageDimensionInt(img.imagen_width, 200);
-            const imageHeight = toImageDimensionInt(img.imagen_height, 150);
             await client.query(imageQuery, [
               detalleId,
               img.imagen_ruta,
               i,
-              imageWidth,
-              imageHeight,
+              img.imagen_width || 200,
+              img.imagen_height || 150
             ]);
           }
         }

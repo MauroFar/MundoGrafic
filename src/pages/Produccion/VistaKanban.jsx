@@ -52,7 +52,7 @@ const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
             </div>
           </div>
           <p className="text-xs text-gray-400 italic">
-            Esta fecha y hora quedarán registradas como inicio de la etapa en el formulario de calidad.
+            Esta fecha y hora quedarán registradas como inicio de la etapa seleccionada.
           </p>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
@@ -1124,28 +1124,6 @@ const VistaKanban = () => {
                     className={`bg-white rounded shadow-sm border ${getUrgenciaColor(orden.fecha_entrega)} p-2 ${esEntregada ? 'cursor-default' : 'cursor-pointer hover:shadow-md'} transition-shadow text-sm`}
                     style={{ lineHeight: '1.05' }}
                   >
-                    {!esEntregada && (() => {
-                      const gate = getQaState(orden.id, columna.id);
-                      if (!gate) return null;
-                      const badgeClass =
-                        gate.estado === 'aprobado'    ? 'bg-green-100 text-green-700'  :
-                        gate.estado === 'rechazado'   ? 'bg-red-100 text-red-700'      :
-                        gate.estado === 'condicionado'? 'bg-orange-100 text-orange-700':
-                                                        'bg-yellow-100 text-yellow-800';
-                      const badgeText =
-                        gate.estado === 'aprobado'    ? '✓ Calidad aprobada'           :
-                        gate.estado === 'rechazado'   ? '✗ Calidad rechazada'          :
-                        gate.estado === 'condicionado'? '⚠ Calidad condicionada'       :
-                                                        '⏳ Enviado a calidad';
-                      return (
-                        <div className="mb-1">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClass}`}>
-                            {badgeText}
-                          </span>
-                        </div>
-                      );
-                    })()}
-
                     {/* Header de la tarjeta */}
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">
@@ -1211,60 +1189,13 @@ const VistaKanban = () => {
                       </div>
 
                       {!esEntregada && (() => {
-                        const gate = getQaState(orden.id, columna.id);
                         const idxActual = columnas.findIndex((c) => c.id === columna.id);
                         const ordenEntregada = esEstadoTerminalEntrega(orden, columna.id);
                         const tieneSiguiente = !ordenEntregada && idxActual >= 0 && idxActual < columnas.length - 1;
-                        const puedeEnviar = gate?.estado === 'aprobado' && tieneSiguiente;
+                        const puedeEnviar = tieneSiguiente;
 
                         return (
                           <div className="grid grid-cols-1 gap-1">
-                            {!gate && tieneSiguiente && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRegistroEjecucion({ orden, etapa: columna });
-                                }}
-                                className="text-[11px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition-colors"
-                              >
-                                Enviar a calidad
-                              </button>
-                            )}
-
-                            {gate?.estado === 'pendiente' && (
-                              <div className="text-[11px] text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 text-center leading-snug">
-                                Esperando aprobación de calidad
-                              </div>
-                            )}
-
-                            {gate?.estado === 'rechazado' && tieneSiguiente && (
-                              <div className="grid grid-cols-1 gap-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRegistroEjecucion({ orden, etapa: columna });
-                                  }}
-                                  className="text-[11px] bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
-                                >
-                                  Reenviar a calidad
-                                </button>
-                              </div>
-                            )}
-
-                            {gate?.estado === 'condicionado' && tieneSiguiente && (
-                              <div className="grid grid-cols-1 gap-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRegistroEjecucion({ orden, etapa: columna });
-                                  }}
-                                  className="text-[11px] bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
-                                >
-                                  Reenviar a calidad
-                                </button>
-                              </div>
-                            )}
-
                             {tieneSiguiente && (() => {
                               const selectorKey = `${orden.id}:${columna.id}`;
                               const selectorAbierto = selectorProcesoAbierto === selectorKey;
@@ -1298,29 +1229,18 @@ const VistaKanban = () => {
                                       style={{ top: dropdownCoords.top, left: dropdownCoords.left, minWidth: dropdownCoords.width }}
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {etapasDestino.map((etapa) => {
-                                        const yaProcessado = Boolean(getQaState(orden.id, etapa.id));
-                                        return (
-                                          <button
-                                            key={etapa.id}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (yaProcessado) return;
-                                              abrirConfirmacionProceso(orden, columna.id, etapa.id, etapa.titulo, false);
-                                            }}
-                                            disabled={yaProcessado}
-                                            title={yaProcessado ? 'Esta etapa ya fue procesada' : undefined}
-                                            className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors flex items-center justify-between gap-2 ${
-                                              yaProcessado
-                                                ? 'text-gray-400 cursor-not-allowed bg-gray-50 line-through'
-                                                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-800'
-                                            }`}
-                                          >
-                                            <span>{etapa.titulo}</span>
-                                            {yaProcessado && <span className="text-[10px] text-gray-400 no-underline" style={{textDecoration:'none'}}>ya procesado</span>}
-                                          </button>
-                                        );
-                                      })}
+                                      {etapasDestino.map((etapa) => (
+                                        <button
+                                          key={etapa.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            abrirConfirmacionProceso(orden, columna.id, etapa.id, etapa.titulo, false);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                                        >
+                                          {etapa.titulo}
+                                        </button>
+                                      ))}
                                       {etapasDestino.length === 0 && (
                                         <div className="px-3 py-2 text-[11px] text-gray-400">No hay etapas siguientes</div>
                                       )}

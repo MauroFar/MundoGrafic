@@ -1,134 +1,97 @@
 #!/bin/bash
 
-# Script de actualización y control de producción para MundoGrafic
+# Script de actualización automática para MundoGrafic
 # Uso: sudo bash update.sh
 
 set -e
 
-BACKEND_SERVICE="mundografic-backend"
-FRONTEND_ACCESS_LOG="/var/log/nginx/mundografic_access.log"
-FRONTEND_ERROR_LOG="/var/log/nginx/mundografic_error.log"
+echo "🚀 Iniciando actualización de MundoGrafic..."
 
-show_menu() {
-    echo ""
-    echo "=============================================="
-    echo "  MundoGrafic — Producción"
-    echo "=============================================="
-    echo "  1) Actualizar sistema"
-    echo "  2) Ver logs de backend"
-    echo "  3) Ver logs de frontend"
-    echo "  0) Salir"
-    echo "=============================================="
-}
+# Verificar que estamos en el directorio correcto
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: No se encontró package.json. Ejecuta este script desde el directorio del proyecto"
+    exit 1
+fi
 
-run_update() {
-    echo "🚀 Iniciando actualización de MundoGrafic..."
+# Obtener cambios de Git
+echo "📥 Obteniendo cambios de Git..."
+git pull origin main
 
-    if [ ! -f "package.json" ]; then
-        echo "❌ Error: No se encontró package.json. Ejecuta este script desde el directorio del proyecto"
-        exit 1
-    fi
+# Verificar si hay cambios en package.json
+if git diff --name-only HEAD~1 HEAD | grep -q "package.json"; then
+    echo "📦 Instalando nuevas dependencias..."
+    npm install
+else
+    echo "ℹ️  No hay cambios en dependencias"
+fi
 
-    echo "📥 Obteniendo cambios de Git..."
-    git pull origin main
+# Recompilar frontend
+echo "🔨 Recompilando frontend..."
+npm run build
 
-    if git diff --name-only HEAD~1 HEAD | grep -q "package.json"; then
-        echo "📦 Instalando nuevas dependencias..."
-        npm install
-    else
-        echo "ℹ️  No hay cambios en dependencias"
-    fi
+# Desplegar archivos compilados
+echo "📁 Desplegando archivos..."
+sudo mkdir -p /var/www/mundografic
+sudo rsync -a --delete dist/ /var/www/mundografic/
 
-    echo "🔨 Recompilando frontend..."
-    npm run build
-
-    echo "📁 Desplegando archivos..."
-    sudo mkdir -p /var/www/mundografic
-    sudo rsync -a --delete dist/ /var/www/mundografic/
-
-    echo "🌐 Actualizando configuración de Nginx..."
-    sudo cp backend/deploy/nginx_mundografic_site.conf /etc/nginx/sites-available/mundografic
-    sudo ln -sfn /etc/nginx/sites-available/mundografic /etc/nginx/sites-enabled/mundografic
-    if [ ! -f /etc/nginx/conf.d/mundografic_upstream.conf ]; then
+# Actualizar configuración de Nginx para evitar cache viejo en clientes
+echo "🌐 Actualizando configuración de Nginx..."
+sudo cp backend/deploy/nginx_mundografic_site.conf /etc/nginx/sites-available/mundografic
+sudo ln -sfn /etc/nginx/sites-available/mundografic /etc/nginx/sites-enabled/mundografic
+if [ ! -f /etc/nginx/conf.d/mundografic_upstream.conf ]; then
         echo "🧭 Creando upstream inicial de nginx apuntando a producción..."
         sudo tee /etc/nginx/conf.d/mundografic_upstream.conf > /dev/null <<EOF
 upstream mundografic_backends {
     server 127.0.0.1:3002 max_fails=3 fail_timeout=5s;
 }
 EOF
-    fi
+fi
 
-    echo "🔐 Estableciendo permisos..."
-    sudo chown -R www-data:www-data /var/www/mundografic
-    sudo chmod -R 755 /var/www/mundografic
+# Establecer permisos correctos
+echo "🔐 Estableciendo permisos..."
+sudo chown -R www-data:www-data /var/www/mundografic
+sudo chmod -R 755 /var/www/mundografic
 
-    echo "🛑 Deteniendo backend..."
-    sudo systemctl stop "$BACKEND_SERVICE"
-    echo "🔨 Recompilando backend..."
-    (
-        cd backend
-        rm -rf dist
-        npm run build
-    )
-    echo "🔄 Reiniciando backend..."
-    sudo systemctl start "$BACKEND_SERVICE"
-    echo "✅ Backend recompilado y reiniciado"
+# Siempre recompilar el backend (por si acaso)
+echo "🛑 Deteniendo backend..."
+sudo systemctl stop mundografic-backend
+echo "🔨 Recompilando backend..."
+cd backend && rm -rf dist && npm run build
+echo "🔄 Reiniciando backend..."
+sudo systemctl start mundografic-backend
+echo "✅ Backend recompilado y reiniciado"
 
-    echo "🗄️  Ejecutando migraciones de base de datos..."
-    (
-        cd backend
-        npx knex migrate:latest || echo "⚠️  Migraciones no ejecutadas"
-    )
-    echo "✅ Migraciones ejecutadas"
+# Ejecutar migraciones de Knex para mantener BD sincronizada
+echo "🗄️  Ejecutando migraciones de base de datos..."
+cd backend && npx knex migrate:latest || echo "⚠️  Migraciones no ejecutadas"
+echo "✅ Migraciones ejecutadas"
 
-    echo "🔍 Verificando estado de migraciones..."
-    (
-        cd backend
-        npx knex migrate:status || echo "⚠️  Estado de migraciones no verificado"
-    )
+# Verificar estado de migraciones
+echo "🔍 Verificando estado de migraciones..."
+cd backend && npx knex migrate:status || echo "⚠️  Estado de migraciones no verificado"
 
-    echo "⚠️  Seeds deshabilitados para proteger datos existentes"
+# Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
+# echo "🌱 Ejecutando seeds..."
+# cd backend && npx knex seed:run
+# echo "✅ Seeds ejecutados"
+echo "⚠️  Seeds deshabilitados para proteger datos existentes"
 
-    echo "🔍 Verificando estado de servicios..."
-    echo "Backend:"
-    sudo systemctl status "$BACKEND_SERVICE" --no-pager -l
+# Verificar estado de los servicios
+echo "🔍 Verificando estado de servicios..."
+echo "Backend:"
+sudo systemctl status mundografic-backend --no-pager -l
 
-    echo ""
-    echo "Nginx:"
-    sudo nginx -t
-    sudo systemctl reload nginx
-    sudo systemctl status nginx --no-pager -l
+echo ""
+echo "Nginx:"
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl status nginx --no-pager -l
 
-    echo ""
-    echo "🎉 ¡Actualización completada exitosamente!"
-    echo "🌐 Tu aplicación está disponible en: http://$(hostname -I | awk '{print $1}'):3000"
-}
-
-show_backend_logs() {
-    echo "📜 Mostrando logs del backend de producción. Sal con Ctrl+C."
-    sudo journalctl -u "$BACKEND_SERVICE" -n 100 -f
-}
-
-show_frontend_logs() {
-    echo "📜 Mostrando logs del frontend de producción. Sal con Ctrl+C."
-
-    if [ ! -f "$FRONTEND_ACCESS_LOG" ] && [ ! -f "$FRONTEND_ERROR_LOG" ]; then
-        echo "⚠️  No se encontraron logs de nginx para producción"
-        return 1
-    fi
-
-    sudo tail -n 100 -f "$FRONTEND_ACCESS_LOG" "$FRONTEND_ERROR_LOG"
-}
-
-while true; do
-    show_menu
-    read -rp "Opción: " opt
-
-    case "$opt" in
-        1) run_update ;;
-        2) show_backend_logs ;;
-        3) show_frontend_logs ;;
-        0) echo "Saliendo."; exit 0 ;;
-        *) echo "⚠️  Opción inválida: $opt" ;;
-    esac
-done
+echo ""
+echo "🎉 ¡Actualización completada exitosamente!"
+echo "🌐 Tu aplicación está disponible en: http://$(hostname -I | awk '{print $1}'):3000"
+echo ""
+echo "📋 Comandos útiles:"
+echo "- Ver logs del backend: sudo journalctl -u mundografic-backend -f"
+echo "- Ver logs de Nginx: sudo tail -f /var/log/nginx/error.log"
+echo "- Reiniciar servicios: sudo systemctl restart mundografic-backend nginx"
