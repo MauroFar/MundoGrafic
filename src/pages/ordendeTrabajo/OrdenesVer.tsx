@@ -157,9 +157,15 @@ const OrdenesVer: React.FC = () => {
     return estadosProduccion.includes(key);
   };
 
-  const estaBloqueadaPorProduccion = (orden: OrdenTrabajo | any): boolean => {
+  const fueEnviadaAProduccion = (orden: OrdenTrabajo | any): boolean => {
     if (Boolean(orden?.enviada_produccion)) return true;
     if (orden?.id && produccionEnviada[orden.id]) return true;
+
+    return false;
+  };
+
+  const estaBloqueadaPorProduccion = (orden: OrdenTrabajo | any): boolean => {
+    if (fueEnviadaAProduccion(orden)) return true;
 
     if ((orden?.tipo_orden || '').toLowerCase() === 'digital' && orden?.estado_digital_key) {
       return esEstadoProduccion(orden.estado_digital_key);
@@ -643,7 +649,9 @@ const OrdenesVer: React.FC = () => {
   };
 
   const renderOrdenActions = (orden: OrdenTrabajo, compact = false) => {
-    const estadoRaw = ((orden as any).estado_digital_key || orden.estado || '').toString().toLowerCase().replace(/\s+/g, '_');
+    const estadoRaw = ((orden as any).estado_digital_key || (orden as any).estado_offset_key || orden.estado || '').toString().toLowerCase().replace(/\s+/g, '_');
+    const enviadaProduccion = fueEnviadaAProduccion(orden);
+    const enProduccionPorEstado = esEstadoProduccion((orden as any).estado_digital_key || (orden as any).estado_offset_key || orden.estado);
     const buttonClass = compact
       ? 'px-2 py-1 text-xs rounded border'
       : 'p-2 rounded flex flex-col items-center';
@@ -659,7 +667,7 @@ const OrdenesVer: React.FC = () => {
           {compact ? 'Ver' : <span className="text-xs mt-1 text-gray-600">Ver PDF/Imprimir</span>}
         </button>
 
-        {puedeEditar('ordenes_trabajo') && (
+        {puedeEditar('ordenes_trabajo') && !enviadaProduccion && (
           <button
             className={`${buttonClass} text-blue-600 hover:bg-blue-100`}
             onClick={() => editarOrden(orden.id)}
@@ -670,7 +678,7 @@ const OrdenesVer: React.FC = () => {
           </button>
         )}
 
-        {puedeEliminar('ordenes_trabajo') && !estaBloqueadaPorProduccion(orden) && (
+        {puedeEliminar('ordenes_trabajo') && !enviadaProduccion && (
           <button
             className={`${buttonClass} text-red-600 hover:bg-red-100`}
             onClick={() => eliminarOrden(orden.id)}
@@ -692,7 +700,23 @@ const OrdenesVer: React.FC = () => {
 
         {estadoRaw === 'entregado' ? (
           <div className={compact ? 'px-2 py-1 text-xs text-gray-500 border rounded' : 'p-2 text-gray-500 text-xs'}>Entregado</div>
-        ) : esEstadoProduccion((orden as any).estado_digital_key || orden.estado) ? (
+        ) : !enviadaProduccion && !orden.artes_aprobados ? (
+          <button
+            className={`${buttonClass} text-amber-700 hover:bg-amber-100`}
+            onClick={() => abrirModalAprobarArtes(orden)}
+            title="Aprobar artes"
+          >
+            {compact ? 'Aprobar artes' : <span className="font-bold text-xs">Aprobar artes</span>}
+          </button>
+        ) : !enviadaProduccion && orden.artes_aprobados ? (
+          <button
+            className={`${buttonClass} text-green-600 hover:bg-green-100`}
+            onClick={() => setModalProduccionId(orden.id)}
+            title="Enviar a Producción"
+          >
+            {compact ? 'Enviar producción' : <span className="font-bold text-xs">Enviar a Producción</span>}
+          </button>
+        ) : enviadaProduccion || enProduccionPorEstado ? (
           <>
             <button
               className={`${buttonClass} text-teal-600 hover:bg-teal-100`}
@@ -711,22 +735,8 @@ const OrdenesVer: React.FC = () => {
               {compact ? 'Certif.' : <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>}
             </button>
           </>
-        ) : orden.artes_aprobados ? (
-          <button
-            className={`${buttonClass} text-green-600 hover:bg-green-100`}
-            onClick={() => setModalProduccionId(orden.id)}
-            title="Enviar a Producción"
-          >
-            {compact ? 'Enviar producción' : <span className="font-bold text-xs">Enviar a Producción</span>}
-          </button>
         ) : (
-          <button
-            className={`${buttonClass} text-amber-700 hover:bg-amber-100`}
-            onClick={() => abrirModalAprobarArtes(orden)}
-            title="Aprobar artes"
-          >
-            {compact ? 'Aprobar artes' : <span className="font-bold text-xs">Aprobar artes</span>}
-          </button>
+          <div className={compact ? 'px-2 py-1 text-xs text-gray-500 border rounded' : 'p-2 text-gray-500 text-xs'}>Sin acciones</div>
         )}
 
         {orden.id_cotizacion && (
