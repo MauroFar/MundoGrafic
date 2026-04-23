@@ -6,13 +6,10 @@ import {
   FaSync, FaBoxes, FaClipboardList, FaShippingFast
 } from 'react-icons/fa';
 import OrdenDetalleModal from '../../components/OrdenDetalleModal';
-import ModalRegistroEjecucion from './ModalRegistroEjecucion';
 
 // Solo órdenes con estado 'liberado' en la tabla estado_orden_digital
 const ESTADOS_TERMINADO = ['liberado'];
 
-const QA_STORAGE_KEY = 'mg.qa.gates.v1';
-const QA_QUEUE_KEY = 'mg.qa.queue.v1';
 const ETAPA_TIMESTAMPS_KEY = 'mg.etapa.timestamps.v1';
 
 const ETAPA_LIBERADO = { id: 'liberado', titulo: 'Producto Liberado' };
@@ -117,22 +114,17 @@ const ProductosTerminados = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  const [qaGates, setQaGates] = useState({});
-  const [registroEjecucion, setRegistroEjecucion] = useState(null);
   const [confirmacionProceso, setConfirmacionProceso] = useState(null);
+  const [etapasDestino, setEtapasDestino] = useState([ETAPA_ENTREGADO]);
 
   // Modal detalle
   const [showModal, setShowModal] = useState(false);
   const [ordenDetalle, setOrdenDetalle] = useState(null);
 
-  const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
-
   const getAllTimestamps = () => {
     try { return JSON.parse(localStorage.getItem(ETAPA_TIMESTAMPS_KEY) || '{}'); }
     catch { return {}; }
   };
-
-  const getTimestamp = (ordenId, etapaId) => getAllTimestamps()[`${ordenId}:${etapaId}`] || {};
 
   const saveTimestamp = (ordenId, etapaId, tipo, fecha, hora) => {
     const all = getAllTimestamps();
@@ -141,96 +133,32 @@ const ProductosTerminados = () => {
     localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
   };
 
-  const saveCantidadEntregada = (ordenId, etapaId, cantidad) => {
-    const all = getAllTimestamps();
-    const key = `${ordenId}:${etapaId}`;
-    all[key] = { ...all[key], cantidad_entregada: cantidad };
-    localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
-  };
-
-  const loadQaFromBackend = async () => {
+  const cargarWorkflowDigital = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/qa/estados`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/workflow?tipo=digital`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
-      const json = await res.json();
-      const gates = {};
-      (json.gates || []).forEach((g) => {
-        gates[`${g.orden_trabajo_id}:${g.etapa_id}`] = { estado: g.estado, updatedAt: g.updated_at };
-      });
-      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(gates));
-      setQaGates(gates);
+      const data = await res.json();
+      const workflow = Array.isArray(data?.workflow) ? data.workflow : [];
+      const idxLiberado = workflow.findIndex((e) => normalizeKey(e.id) === ETAPA_LIBERADO.id);
+      const siguientes = idxLiberado >= 0
+        ? workflow.slice(idxLiberado + 1)
+        : workflow.filter((e) => normalizeKey(e.id) !== ETAPA_LIBERADO.id);
+
+      const opciones = (siguientes || [])
+        .map((e) => ({ id: e.id, titulo: e.titulo || e.id }))
+        .filter((e) => Boolean(e.id));
+
+      if (opciones.length > 0) {
+        setEtapasDestino(opciones);
+        return;
+      }
+      setEtapasDestino([ETAPA_ENTREGADO]);
     } catch (err) {
-      console.error('No se pudieron cargar estados de QA', err);
-      try {
-        const raw = localStorage.getItem(QA_STORAGE_KEY);
-        setQaGates(raw ? JSON.parse(raw) : {});
-      } catch {
-        setQaGates({});
-      }
-    }
-  };
-
-  const getQaState = (ordenId, etapaId) => qaGates[gateKey(ordenId, etapaId)] || null;
-
-  const saveQaState = (ordenId, etapaId, estado, observacion = '') => {
-    setQaGates((prev) => {
-      const updated = {
-        ...prev,
-        [gateKey(ordenId, etapaId)]: { estado, observacion, updatedAt: new Date().toISOString() },
-      };
-      localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const upsertQaQueue = async (orden, etapa) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/qa`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ etapa_id: etapa.id, etapa_titulo: etapa.titulo }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload?.error || 'No se pudo crear el gate de calidad');
-      }
-
-      try {
-        const raw = localStorage.getItem(QA_QUEUE_KEY);
-        const queue = raw ? JSON.parse(raw) : [];
-        const itemId = `${orden.id}:${etapa.id}`;
-        const nextItem = {
-          id: itemId,
-          ordenId: orden.id,
-          numeroOrden: orden.numero_orden,
-          cliente: orden.nombre_cliente,
-          producto: orden.concepto || '',
-          cantidad: orden.cantidad || '',
-          etapaId: etapa.id,
-          etapaTitulo: etapa.titulo,
-          estado: 'pendiente',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const idx = queue.findIndex((q) => q.id === itemId);
-        if (idx >= 0) queue[idx] = { ...queue[idx], ...nextItem };
-        else queue.unshift(nextItem);
-        localStorage.setItem(QA_QUEUE_KEY, JSON.stringify(queue));
-        window.dispatchEvent(new Event('qa-queue-updated'));
-      } catch (err) {
-        console.error('Error actualizando caché QA', err);
-      }
-
-      return true;
-    } catch (err) {
-      console.error('No se pudo crear QA gate en backend', err);
-      toast.error(err.message || 'No se pudo enviar a calidad');
-      return false;
+      console.error('No se pudo cargar workflow digital', err);
+      setEtapasDestino([ETAPA_ENTREGADO]);
     }
   };
 
@@ -266,13 +194,7 @@ const ProductosTerminados = () => {
 
   useEffect(() => {
     cargarOrdenes();
-    loadQaFromBackend();
-  }, []);
-
-  useEffect(() => {
-    const refreshQa = () => { loadQaFromBackend(); };
-    window.addEventListener('qa-gates-updated', refreshQa);
-    return () => window.removeEventListener('qa-gates-updated', refreshQa);
+    cargarWorkflowDigital();
   }, []);
 
   const abrirDetalle = async (id) => {
@@ -290,11 +212,12 @@ const ProductosTerminados = () => {
     }
   };
 
-  const abrirConfirmacionProceso = (orden) => {
+  const abrirConfirmacionProceso = (orden, etapaDestino) => {
     const now = new Date();
     setConfirmacionProceso({
       orden,
-      etapaTitulo: ETAPA_ENTREGADO.titulo,
+      etapaDestinoId: etapaDestino.id,
+      etapaTitulo: etapaDestino.titulo,
       fecha: now.toISOString().slice(0, 10),
       hora: now.toTimeString().slice(0, 5),
     });
@@ -303,9 +226,11 @@ const ProductosTerminados = () => {
   const confirmarEnvioAProceso = async (fecha, hora) => {
     if (!confirmacionProceso?.orden) return;
     const orden = confirmacionProceso.orden;
+    const etapaDestinoId = confirmacionProceso.etapaDestinoId;
+    const etapaDestinoTitulo = confirmacionProceso.etapaTitulo;
 
     try {
-      saveTimestamp(orden.id, ETAPA_ENTREGADO.id, 'inicio', fecha, hora);
+      saveTimestamp(orden.id, etapaDestinoId, 'inicio', fecha, hora);
       saveTimestamp(orden.id, ETAPA_LIBERADO.id, 'fin', fecha, hora);
 
       const token = localStorage.getItem('token');
@@ -319,14 +244,13 @@ const ProductosTerminados = () => {
       const resEstado = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ estado: ETAPA_ENTREGADO.id })
+        body: JSON.stringify({ estado: etapaDestinoId })
       });
-      if (!resEstado.ok) throw new Error('Error al actualizar estado a entregado');
+      if (!resEstado.ok) throw new Error('Error al actualizar estado');
 
       setConfirmacionProceso(null);
-      toast.success(`Orden ${orden.numero_orden} enviada a ${ETAPA_ENTREGADO.titulo}`);
+      toast.success(`Orden ${orden.numero_orden} enviada a ${etapaDestinoTitulo}`);
       await cargarOrdenes();
-      await loadQaFromBackend();
     } catch (err) {
       console.error(err);
       toast.error(err.message || 'No se pudo enviar la orden a proceso');
@@ -358,7 +282,7 @@ const ProductosTerminados = () => {
             </div>
           </div>
           <button
-            onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
+            onClick={async () => { await cargarOrdenes(); await cargarWorkflowDigital(); }}
             className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
           >
             <FaSync className={loading ? 'animate-spin' : ''} />
@@ -419,7 +343,7 @@ const ProductosTerminados = () => {
         </div>
         <div className="mt-3 flex justify-end">
           <button
-            onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
+            onClick={cargarOrdenes}
             className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Aplicar filtros
@@ -467,8 +391,7 @@ const ProductosTerminados = () => {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {ordenesFiltradas.map((o, i) => {
-                  const gate = getQaState(o.id, ETAPA_LIBERADO.id);
-                  const puedeEnviarProceso = gate?.estado === 'aprobado';
+                  const etapaElegida = etapasDestino[0] || ETAPA_ENTREGADO;
                   return (
                     <tr
                       key={o.id}
@@ -486,24 +409,9 @@ const ProductosTerminados = () => {
                       <td className="px-4 py-3 text-gray-700">{o.nombre_cliente || '-'}</td>
                       <td className="px-4 py-3 text-gray-600 max-w-xs"><span className="block truncate">{o.concepto || '-'}</span></td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeStyle(o.estado_digital_key)}`}>
-                            {badgeLabel(o.estado_digital_key, o.estado_digital_titulo)}
-                          </span>
-                          {gate && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                              gate.estado === 'aprobado' ? 'bg-green-100 text-green-700' :
-                              gate.estado === 'rechazado' ? 'bg-red-100 text-red-700' :
-                              gate.estado === 'condicionado' ? 'bg-orange-100 text-orange-700' :
-                              'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {gate.estado === 'aprobado' ? 'Calidad aprobada' :
-                               gate.estado === 'rechazado' ? 'Calidad rechazada' :
-                               gate.estado === 'condicionado' ? 'Calidad condicionada' :
-                               'Enviado a calidad'}
-                            </span>
-                          )}
-                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeStyle(o.estado_digital_key)}`}>
+                          {badgeLabel(o.estado_digital_key, o.estado_digital_titulo)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_entrega)}</td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.fecha_creacion || o.created_at)}</td>
@@ -516,38 +424,9 @@ const ProductosTerminados = () => {
                             Ver trazabilidad
                           </button>
 
-                          {!gate && (
-                            <button
-                              onClick={() => setRegistroEjecucion({ orden: o, etapa: ETAPA_LIBERADO })}
-                              className="px-2 py-1 rounded-lg text-[11px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
-                            >
-                              Enviar a calidad
-                            </button>
-                          )}
-
-                          {(gate?.estado === 'rechazado' || gate?.estado === 'condicionado') && (
-                            <button
-                              onClick={() => setRegistroEjecucion({ orden: o, etapa: ETAPA_LIBERADO })}
-                              className="px-2 py-1 rounded-lg text-[11px] bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors"
-                            >
-                              Reenviar a calidad
-                            </button>
-                          )}
-
-                          {gate?.estado === 'pendiente' && (
-                            <div className="px-2 py-1 rounded-lg text-[11px] text-yellow-700 bg-yellow-50 border border-yellow-200 text-center leading-snug">
-                              Esperando aprobación de calidad
-                            </div>
-                          )}
-
                           <button
-                            onClick={() => abrirConfirmacionProceso(o)}
-                            disabled={!puedeEnviarProceso}
-                            className={`px-2 py-1 rounded-lg text-[11px] transition-colors ${
-                              puedeEnviarProceso
-                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
+                            onClick={() => abrirConfirmacionProceso(o, etapaElegida)}
+                            className="px-2 py-1 rounded-lg text-[11px] transition-colors bg-blue-100 text-blue-800 hover:bg-blue-200"
                           >
                             Enviar a proceso
                           </button>
@@ -573,28 +452,6 @@ const ProductosTerminados = () => {
           canEdit={true}
         />
       )}
-
-      {registroEjecucion && (() => {
-        const { orden, etapa } = registroEjecucion;
-        const cantRecibida = getTimestamp(orden.id, 'terminados').cantidad_entregada || null;
-        return (
-          <ModalRegistroEjecucion
-            orden={orden}
-            etapa={etapa}
-            fechaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_fecha}
-            horaInicioEtapa={getTimestamp(orden.id, etapa.id).inicio_hora}
-            cantidadRecibida={cantRecibida}
-            onConfirmar={async (_ejecucionGuardada, cantidadEntregada) => {
-              saveCantidadEntregada(orden.id, etapa.id, cantidadEntregada);
-              const gateCreado = await upsertQaQueue(orden, etapa);
-              if (!gateCreado) return;
-              saveQaState(orden.id, etapa.id, 'pendiente');
-              setRegistroEjecucion(null);
-            }}
-            onCancelar={() => setRegistroEjecucion(null)}
-          />
-        );
-      })()}
 
       <ModalConfirmacionProceso
         datos={confirmacionProceso}
