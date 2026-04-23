@@ -61,14 +61,10 @@ echo "🔄 Reiniciando backend..."
 sudo systemctl start mundografic-backend
 echo "✅ Backend recompilado y reiniciado"
 
-# Ejecutar migraciones de Knex para mantener BD sincronizada
-echo "🗄️  Ejecutando migraciones de base de datos..."
-cd backend && npx knex migrate:latest || echo "⚠️  Migraciones no ejecutadas"
-echo "✅ Migraciones ejecutadas"
-
-# Verificar estado de migraciones
-echo "🔍 Verificando estado de migraciones..."
-cd backend && npx knex migrate:status || echo "⚠️  Estado de migraciones no verificado"
+# Migraciones de base de datos deshabilitadas en este script.
+# Se ejecutan manualmente por seguridad y control operativo.
+echo "🗄️  Migraciones de base de datos: OMITIDAS (ejecución manual)"
+echo "ℹ️  Ejecuta manualmente los .sql de backend/migrations cuando corresponda"
 
 # Ejecutar seeds para insertar datos (COMENTADO PARA EVITAR BORRAR DATOS)
 # echo "🌱 Ejecutando seeds..."
