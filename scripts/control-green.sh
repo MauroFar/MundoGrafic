@@ -72,6 +72,8 @@ function show_menu() {
   echo "  6) Refrescar BD staging desde producción"
   echo "  7) Ver estado del sistema"
   echo "  8) Setup inicial green (primera vez)"
+  echo "  9) Ver logs de backend green"
+  echo " 10) Ver logs de frontend green"
   echo "  0) Salir"
   echo "======================================================"
 }
@@ -244,6 +246,25 @@ function show_status() {
     warn "No se pudo verificar puertos (ss/netstat no disponibles)"
 }
 
+function show_backend_logs() {
+  info "Mostrando logs del backend green ($GREEN_SERVICE). Sal con Ctrl+C."
+  sudo journalctl -u "$GREEN_SERVICE" -n 100 -f
+}
+
+function show_frontend_logs() {
+  local access_log="/var/log/nginx/mundografic_green_access.log"
+  local error_log="/var/log/nginx/mundografic_green_error.log"
+
+  info "Mostrando logs del frontend green (nginx). Sal con Ctrl+C."
+
+  if [ ! -f "$access_log" ] && [ ! -f "$error_log" ]; then
+    warn "No se encontraron logs de nginx para green. Verifica la configuración del sitio en nginx."
+    return 1
+  fi
+
+  sudo tail -n 100 -f "$access_log" "$error_log"
+}
+
 # ─── Setup inicial green (una sola vez) ─────────────────────────
 function setup_green_initial() {
   info "=== Setup inicial de instancia green ==="
@@ -339,6 +360,8 @@ while true; do
     6) refresh_staging_db ;;
     7) show_status ;;
     8) setup_green_initial ;;
+    9) show_backend_logs ;;
+    10) show_frontend_logs ;;
     0) info "Saliendo."; exit 0 ;;
     *) warn "Opción inválida: $opt" ;;
   esac
