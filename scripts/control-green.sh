@@ -99,6 +99,9 @@ function deploy_to_green() {
     return 1
   fi
 
+  warn "Esta opción actualiza solo la copia green en $GREEN_DIR."
+  warn "Si cambiaste este script, debes actualizar también el repositorio desde donde ejecutas control-green.sh."
+
   info "Actualizando código en $GREEN_DIR…"
   sudo -u "$REAL_USER" git -C "$GREEN_DIR" fetch --all --prune
 
