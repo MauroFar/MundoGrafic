@@ -78,7 +78,8 @@ const ReportesTrabajoDiario = () => {
   // Filtros de tabla
   const [areaId, setAreaId] = useState("");
   const [filtroOperadorId, setFiltroOperadorId] = useState("");
-  const [fechaFiltro, setFechaFiltro] = useState(hoy);
+  const [fechaDesde, setFechaDesde] = useState(hoy);
+  const [fechaHasta, setFechaHasta] = useState(hoy);
   const [busqueda, setBusqueda] = useState("");
 
   // Formulario (modal)
@@ -107,6 +108,35 @@ const ReportesTrabajoDiario = () => {
   const [editErrores, setEditErrores] = useState({});
   const [guardandoEdit, setGuardandoEdit] = useState(false);
 
+  // Vista por operador: lista de fechas
+  const [fechasOperador, setFechasOperador] = useState([]);
+  const [cargandoFechas, setCargandoFechas] = useState(false);
+  const [fechaDetalleActiva, setFechaDetalleActiva] = useState(null);
+
+  // Semana visible: offset en semanas respecto a la semana actual (0 = esta semana)
+  const [semanaOffset, setSemanaOffset] = useState(0);
+
+  // Calcula lunes y domingo de la semana actual ± offset
+  const calcularSemana = (offset = 0) => {
+    const hoyDate = new Date();
+    // día de la semana en lunes=0 … domingo=6
+    const dow = (hoyDate.getDay() + 6) % 7;
+    const lunes = new Date(hoyDate);
+    lunes.setDate(hoyDate.getDate() - dow + offset * 7);
+    lunes.setHours(0, 0, 0, 0);
+    const domingo = new Date(lunes);
+    domingo.setDate(lunes.getDate() + 6);
+    const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { lunes, domingo, lunesISO: toISO(lunes), domingoISO: toISO(domingo) };
+  };
+
+  const semanaActual = calcularSemana(semanaOffset);
+
+  // Fechas del operador filtradas a la semana visible
+  const fechasDeLaSemana = fechasOperador.filter(
+    f => f.fecha >= semanaActual.lunesISO && f.fecha <= semanaActual.domingoISO
+  );
+
   // ── Cargar catálogos al montar ──────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
@@ -132,19 +162,51 @@ const ReportesTrabajoDiario = () => {
     ? operadores.filter(o => String(o.area_id) === String(modalAreaId))
     : [];
 
+  // ── Cargar fechas con reportes cuando se selecciona un operador ────────────
+  useEffect(() => {
+    if (!filtroOperadorId) {
+      setFechasOperador([]);
+      setFechaDetalleActiva(null);
+      return;
+    }
+    setCargandoFechas(true);
+    const params = new URLSearchParams({ operador_id: filtroOperadorId });
+    if (areaId) params.append("area_id", areaId);
+    if (fechaDesde) params.append("fecha_desde", fechaDesde);
+    if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+    fetch(buildApiUrl(`/api/reportesTrabajo/fechas?${params}`), { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        setFechasOperador(data);
+        setFechaDetalleActiva(null);
+        setSemanaOffset(0);
+      })
+      .catch(() => setFechasOperador([]))
+      .finally(() => setCargandoFechas(false));
+  }, [filtroOperadorId, areaId, fechaDesde, fechaHasta]);
+
   // ── Cargar reportes cuando cambia área o fecha ──────────────────────────────
   useEffect(() => {
     if (!areaId) { setReportes([]); return; }
+    // En modo detalle de operador, sólo cargamos cuando hay fecha activa
+    if (filtroOperadorId && !fechaDetalleActiva) { setReportes([]); return; }
+    const fechaUsada = filtroOperadorId ? fechaDetalleActiva : null;
     setCargando(true);
     setError("");
     const params = new URLSearchParams({ area_id: areaId });
-    if (fechaFiltro) params.append("fecha", fechaFiltro);
+    if (filtroOperadorId) params.append("operador_id", filtroOperadorId);
+    if (fechaUsada) {
+      params.append("fecha", fechaUsada);
+    } else {
+      if (fechaDesde) params.append("fecha_desde", fechaDesde);
+      if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+    }
     fetch(buildApiUrl(`/api/reportesTrabajo?${params}`), { headers: authHeaders() })
       .then(r => { if (!r.ok) throw new Error("Error al cargar reportes"); return r.json(); })
       .then(data => setReportes(data))
       .catch(e => setError(e.message))
       .finally(() => setCargando(false));
-  }, [areaId, fechaFiltro]);
+  }, [areaId, fechaDesde, fechaHasta, filtroOperadorId, fechaDetalleActiva]);
 
   // Filtro client-side (búsqueda de texto + operador)
   const reportesFiltrados = useMemo(() => {
@@ -240,7 +302,7 @@ const ReportesTrabajoDiario = () => {
               solicitado_por: f.solicitado_por,
               inicio: f.inicio,
               fin: f.fin,
-              fecha: fechaFiltro || hoy,
+              fecha: fechaHasta || fechaDesde || hoy,
             }),
           }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         )
@@ -334,6 +396,18 @@ const ReportesTrabajoDiario = () => {
       errores[campo] ? "border-red-400 focus:ring-red-300" : "border-gray-300 focus:ring-blue-400"
     }`;
 
+  // Formatea "2026-04-25" → { diaNombre: "Viernes", fechaDisplay: "25 abr 2026" }
+  const formatearFecha = (fechaStr) => {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const diaNombre = dt.toLocaleDateString("es-ES", { weekday: "long" });
+    const fechaDisplay = dt.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    return {
+      diaNombre: diaNombre.charAt(0).toUpperCase() + diaNombre.slice(1),
+      fechaDisplay,
+    };
+  };
+
   // ── Generar PDF ─────────────────────────────────────────────────────────────
   const generarPDF = async () => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -390,7 +464,10 @@ const ReportesTrabajoDiario = () => {
     doc.setFont("helvetica", "bold");
     doc.text("Fecha:", 14, 39);
     doc.setFont("helvetica", "normal");
-    doc.text(fechaFiltro || "Todas", 26, 39);
+    const etiquetaFecha = filtroOperadorId
+      ? (fechaDetalleActiva || "Selecciona una fecha")
+      : ((fechaDesde && fechaHasta) ? `${fechaDesde} a ${fechaHasta}` : (fechaDesde || fechaHasta || "Todas"));
+    doc.text(etiquetaFecha, 26, 39);
 
     // ── Tabla ──
     // Ancho total usable: 210 - 14*2 = 182 mm
@@ -485,7 +562,10 @@ const ReportesTrabajoDiario = () => {
       doc.text(`Página ${i} de ${pages}`, W - 14, pH - 5, { align: "right" });
     }
 
-    const nombreArchivo = `reporte_${areaNombre.replace(/\s+/g, "_")}_${fechaFiltro || "todos"}.pdf`;
+    const etiquetaArchivo = filtroOperadorId
+      ? (fechaDetalleActiva || "sin_fecha")
+      : `${fechaDesde || "inicio"}_a_${fechaHasta || "fin"}`;
+    const nombreArchivo = `reporte_${areaNombre.replace(/\s+/g, "_")}_${etiquetaArchivo}.pdf`;
     doc.save(nombreArchivo);
   };
 
@@ -562,11 +642,185 @@ const ReportesTrabajoDiario = () => {
           <div className="mb-4 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>
         )}
 
-        {/* ── Barra de filtros ── */}
-        {areaId && (
-          <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-sm">
+        {/* ── Modo: Operador seleccionado → lista de fechas + detalle ── */}
+        {areaId && filtroOperadorId ? (
+          <>
+            {/* Lista de fechas con reportes */}
+            <div className="mb-5">
 
-            {/* Búsqueda */}
+              {/* Encabezado de semana con navegación */}
+              <div className="flex items-center gap-3 mb-3">
+                <button
+                  onClick={() => { setSemanaOffset(o => o - 1); setFechaDetalleActiva(null); }}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
+                  title="Semana anterior"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <div className="text-sm font-semibold text-gray-700">
+                  {semanaActual.lunes.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
+                  {" — "}
+                  {semanaActual.domingo.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
+                  {semanaOffset === 0 && (
+                    <span className="ml-2 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Esta semana</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => { setSemanaOffset(o => o + 1); setFechaDetalleActiva(null); }}
+                  disabled={semanaOffset >= 0}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Semana siguiente"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                {semanaOffset !== 0 && (
+                  <button
+                    onClick={() => { setSemanaOffset(0); setFechaDetalleActiva(null); }}
+                    className="text-xs text-blue-600 hover:underline ml-1"
+                  >
+                    Ir a hoy
+                  </button>
+                )}
+              </div>
+
+              {/* Tarjetas de fechas */}
+              {cargandoFechas ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
+                  <svg className="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Cargando fechas...
+                </div>
+              ) : fechasDeLaSemana.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4">
+                  {fechasOperador.length === 0
+                    ? "Este operador no tiene reportes registrados."
+                    : "Sin reportes en esta semana."}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {fechasDeLaSemana.map(item => {
+                    const { diaNombre, fechaDisplay } = formatearFecha(item.fecha);
+                    const activa = fechaDetalleActiva === item.fecha;
+                    return (
+                      <button
+                        key={item.fecha}
+                        onClick={() => setFechaDetalleActiva(activa ? null : item.fecha)}
+                        className={`flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all shadow-sm ${
+                          activa
+                            ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                            : "bg-white border-gray-200 text-gray-700 hover:border-blue-400 hover:bg-blue-50"
+                        }`}
+                      >
+                        <span className={`text-xs font-semibold uppercase tracking-wide ${activa ? "text-blue-100" : "text-blue-500"}`}>{diaNombre}</span>
+                        <span className="text-sm font-medium mt-0.5">{fechaDisplay}</span>
+                        <span className={`text-xs mt-0.5 ${activa ? "text-blue-200" : "text-gray-400"}`}>
+                          {item.total} registro{item.total !== 1 ? "s" : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Detalle al seleccionar fecha */}
+            {fechaDetalleActiva && (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <span className="font-semibold text-gray-700 text-sm">
+                    {(() => { const { diaNombre, fechaDisplay } = formatearFecha(fechaDetalleActiva); return `${diaNombre} ${fechaDisplay}`; })()}
+                    <span className="ml-2 text-gray-400 font-normal">
+                      — {operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId))?.nombre}
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">
+                      {reportes.length} registro{reportes.length !== 1 ? "s" : ""}
+                    </span>
+                    {reportes.length > 0 && (
+                      <button
+                        onClick={generarPDF}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        Descargar PDF
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                        <th className="py-3 px-4 text-left font-semibold">Proceso</th>
+                        <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
+                        <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
+                        <th className="py-3 px-4 text-left font-semibold">Hora final</th>
+                        <th className="py-3 px-4 text-left font-semibold"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {cargando ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8 text-gray-400">
+                            <div className="flex items-center justify-center gap-2">
+                              <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                              Cargando registros...
+                            </div>
+                          </td>
+                        </tr>
+                      ) : reportes.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8 text-gray-400">No hay registros para esta fecha.</td>
+                        </tr>
+                      ) : (
+                        reportes.map(d => (
+                          <tr key={d.id} className="hover:bg-blue-50 transition-colors">
+                            <td className="py-3 px-4 text-gray-700">{d.proceso}</td>
+                            <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
+                            <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
+                            <td className="py-3 px-4 text-gray-600">{d.fin}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                                  </svg>
+                                </button>
+                                <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── Modo normal: filtros por fecha ── */
+          <>
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-sm">
             <div className="relative flex-1 max-w-sm">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -580,18 +834,25 @@ const ReportesTrabajoDiario = () => {
               />
             </div>
 
-            {/* Filtro de fecha */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha:</label>
+            {/* Filtro de rango de fechas */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Desde:</label>
               <input
                 type="date"
-                value={fechaFiltro}
-                onChange={e => setFechaFiltro(e.target.value)}
+                value={fechaDesde}
+                onChange={e => setFechaDesde(e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
-              {fechaFiltro !== hoy && (
+              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Hasta:</label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={e => setFechaHasta(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              {(fechaDesde !== hoy || fechaHasta !== hoy) && (
                 <button
-                  onClick={() => setFechaFiltro(hoy)}
+                  onClick={() => { setFechaDesde(hoy); setFechaHasta(hoy); }}
                   className="text-xs text-blue-600 hover:underline whitespace-nowrap"
                 >
                   Hoy
@@ -599,7 +860,6 @@ const ReportesTrabajoDiario = () => {
               )}
             </div>
           </div>
-        )}
 
         {/* ── Tabla de reportes ── */}
         {areaId && (
@@ -607,8 +867,8 @@ const ReportesTrabajoDiario = () => {
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <span className="font-semibold text-gray-700 text-sm">
                 {areas.find(a => String(a.id) === String(areaId))?.nombre}
-                {fechaFiltro && (
-                  <span className="ml-2 text-gray-400 font-normal">— {fechaFiltro}</span>
+                {(fechaDesde || fechaHasta) && (
+                  <span className="ml-2 text-gray-400 font-normal">— {fechaDesde || "..."} a {fechaHasta || "..."}</span>
                 )}
               </span>
               <div className="flex items-center gap-3">
@@ -700,6 +960,8 @@ const ReportesTrabajoDiario = () => {
               </table>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

@@ -5,14 +5,14 @@ import checkPermission from "../middleware/checkPermission";
 export default (client: any) => {
   const router = express.Router();
 
-  // GET /api/reportesTrabajo?area_id=&operador_id=&fecha=
+  // GET /api/reportesTrabajo?area_id=&operador_id=&fecha=&fecha_desde=&fecha_hasta=
   router.get(
     "/",
     authRequired(),
     checkPermission(client, "reportes", "leer"),
     async (req: any, res: any) => {
       try {
-        const { area_id, operador_id, fecha } = req.query;
+        const { area_id, operador_id, fecha, fecha_desde, fecha_hasta } = req.query;
         const conditions: string[] = [];
         const params: any[] = [];
 
@@ -27,6 +27,15 @@ export default (client: any) => {
         if (fecha) {
           params.push(fecha);
           conditions.push(`r.fecha = $${params.length}`);
+        } else {
+          if (fecha_desde) {
+            params.push(fecha_desde);
+            conditions.push(`r.fecha >= $${params.length}`);
+          }
+          if (fecha_hasta) {
+            params.push(fecha_hasta);
+            conditions.push(`r.fecha <= $${params.length}`);
+          }
         }
 
         const where = conditions.length
@@ -118,6 +127,55 @@ export default (client: any) => {
       } catch (error: any) {
         console.error("Error al crear reporte:", error);
         res.status(500).json({ error: "Error al crear reporte" });
+      }
+    },
+  );
+
+  // GET /api/reportesTrabajo/fechas?operador_id=&area_id=&fecha_desde=&fecha_hasta=
+  // Devuelve las fechas (con nombre del día y total de registros) que tienen reportes para un operador dado.
+  router.get(
+    "/fechas",
+    authRequired(),
+    checkPermission(client, "reportes", "leer"),
+    async (req: any, res: any) => {
+      try {
+        const { operador_id, area_id, fecha_desde, fecha_hasta } = req.query;
+        if (!operador_id) {
+          return res.status(400).json({ error: "operador_id es requerido" });
+        }
+
+        const params: any[] = [operador_id];
+        const extraFilters: string[] = [];
+        if (area_id) {
+          params.push(area_id);
+          extraFilters.push(`AND r.area_id = $${params.length}`);
+        }
+        if (fecha_desde) {
+          params.push(fecha_desde);
+          extraFilters.push(`AND r.fecha >= $${params.length}`);
+        }
+        if (fecha_hasta) {
+          params.push(fecha_hasta);
+          extraFilters.push(`AND r.fecha <= $${params.length}`);
+        }
+
+        const query = `
+          SELECT
+            r.fecha::text                                        AS fecha,
+            TO_CHAR(r.fecha, 'Day')                             AS dia_semana_raw,
+            COUNT(*)::int                                        AS total
+          FROM reportes_trabajo_diario r
+          WHERE r.operador_id = $1
+          ${extraFilters.join("\n")}
+          GROUP BY r.fecha
+          ORDER BY r.fecha DESC
+        `;
+
+        const result = await client.query(query, params);
+        res.json(result.rows);
+      } catch (error: any) {
+        console.error("Error al listar fechas:", error);
+        res.status(500).json({ error: "Error al listar fechas" });
       }
     },
   );
