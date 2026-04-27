@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash, FaDownload, FaEnvelope, FaEnvelopeOpen, FaCheck, FaUserFriends, FaTools, FaHistory, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -17,6 +17,38 @@ function CotizacionesVer() {
     fechaHasta: "",
   });
   const [loading, setLoading] = useState(true);
+
+  // Scroll horizontal sincronizado (arriba y abajo)
+  const scrollTopRef = useRef(null);
+  const scrollTableRef = useRef(null);
+  const mirrorInnerRef = useRef(null);
+  const syncingRef = useRef(false);
+
+  useEffect(() => {
+    const syncWidth = () => {
+      if (scrollTableRef.current && mirrorInnerRef.current) {
+        mirrorInnerRef.current.style.width = scrollTableRef.current.scrollWidth + 'px';
+      }
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    if (scrollTableRef.current) observer.observe(scrollTableRef.current);
+    return () => observer.disconnect();
+  });
+
+  const handleScrollTop = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollTableRef.current) scrollTableRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
+
+  const handleScrollTable = useCallback(() => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (scrollTopRef.current) scrollTopRef.current.scrollLeft = scrollTableRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [selectedCotizacion, setSelectedCotizacion] = useState(null);
   const [emailData, setEmailData] = useState({
@@ -944,7 +976,16 @@ function CotizacionesVer() {
       </form>
 
       {/* Tabla de Cotizaciones */}
-      <div className="overflow-x-auto">
+      {/* Scrollbar superior sincronizado */}
+      <div
+        ref={scrollTopRef}
+        onScroll={handleScrollTop}
+        className="overflow-x-auto mb-1"
+        style={{ height: '12px' }}
+      >
+        <div ref={mirrorInnerRef} style={{ height: '1px', width: '3000px' }} />
+      </div>
+      <div ref={scrollTableRef} onScroll={handleScrollTable} className="overflow-x-auto">
         {loading ? (
           <div className="text-center py-4">Cargando...</div>
         ) : (
