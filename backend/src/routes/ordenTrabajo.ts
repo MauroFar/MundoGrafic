@@ -2511,11 +2511,18 @@ export default (client: any) => {
     checkPermission(client, "ordenes_trabajo", "editar"),
     async (req: any, res: any) => {
       const { id } = req.params;
+      const observacionNormalizada = (req.body?.observacion || "").trim();
       try {
         console.log(`📤 Enviando orden ${id} a producción...`);
         // Determinar tipo de orden
         const tipoRes = await client.query(
-          `SELECT tipo_orden, artes_aprobados FROM orden_trabajo WHERE id = $1`,
+          `SELECT ot.tipo_orden, ot.artes_aprobados,
+                  eod.key AS estado_digital_key,
+                  eoo.key AS estado_offset_key
+             FROM orden_trabajo ot
+        LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+        LEFT JOIN estado_orden_offset  eoo ON ot.estado_orden_offset_id  = eoo.id
+            WHERE ot.id = $1`,
           [id],
         );
         if (!tipoRes.rows.length)
@@ -2523,10 +2530,19 @@ export default (client: any) => {
         const tipoOrden = (
           tipoRes.rows[0].tipo_orden || "offset"
         ).toLowerCase();
+        const estadoActual =
+          tipoOrden === "digital"
+            ? tipoRes.rows[0].estado_digital_key
+            : tipoRes.rows[0].estado_offset_key;
         if (!tipoRes.rows[0].artes_aprobados) {
           return res.status(409).json({
             error:
               "No se puede enviar a producción: debes confirmar primero que los artes están aprobados.",
+          });
+        }
+        if (String(estadoActual || "").toLowerCase() === "cancelado") {
+          return res.status(409).json({
+            error: "La orden está cancelada y ya no puede enviarse a producción.",
           });
         }
 
@@ -2567,15 +2583,29 @@ export default (client: any) => {
           );
 
           result = await client.query(
-            `UPDATE orden_trabajo SET estado_orden_digital_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
-            [estadoDigitalId, id],
+            `UPDATE orden_trabajo
+                SET estado_orden_digital_id = $1,
+                    observacion_produccion = $2,
+                    motivo_cancelacion = NULL,
+                    updated_by = $3,
+                    updated_at = CURRENT_TIMESTAMP
+              WHERE id = $4
+          RETURNING *`,
+            [estadoDigitalId, observacionNormalizada || null, req.user?.id || null, id],
           );
 
           // Registrar en historial
           await client
             .query(
               `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`,
-              [id, estadoDigitalId, req.user?.id || null, "Enviada a producción"],
+              [
+                id,
+                estadoDigitalId,
+                req.user?.id || null,
+                observacionNormalizada
+                  ? `Enviada a producción. Observación: ${observacionNormalizada}`
+                  : "Enviada a producción",
+              ],
             )
             .catch(() => {});
         } else {
@@ -2585,15 +2615,29 @@ export default (client: any) => {
           );
           const estadoId = estadoRes.rows[0]?.id;
           result = await client.query(
-            `UPDATE orden_trabajo SET estado_orden_offset_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
-            [estadoId, id],
+            `UPDATE orden_trabajo
+                SET estado_orden_offset_id = $1,
+                    observacion_produccion = $2,
+                    motivo_cancelacion = NULL,
+                    updated_by = $3,
+                    updated_at = CURRENT_TIMESTAMP
+              WHERE id = $4
+          RETURNING *`,
+            [estadoId, observacionNormalizada || null, req.user?.id || null, id],
           );
           // Registrar en historial
           if (estadoId) {
             await client
               .query(
                 `INSERT INTO estado_orden_offset_historial (orden_trabajo_id, estado_id, usuario_id, nota) VALUES ($1, $2, $3, $4)`,
-                [id, estadoId, req.user?.id || null, "Enviada a producción"],
+                [
+                  id,
+                  estadoId,
+                  req.user?.id || null,
+                  observacionNormalizada
+                    ? `Enviada a producción. Observación: ${observacionNormalizada}`
+                    : "Enviada a producción",
+                ],
               )
               .catch(() => {});
           }
@@ -4142,6 +4186,156 @@ export default (client: any) => {
       } catch (err: any) {
         console.error("Error obteniendo estados QA:", err);
         res.status(500).json({ error: "Error al obtener estados de calidad" });
+      }
+    },
+  );
+
+  router.put(
+    '/:id/cancelar-produccion',
+    authRequired(),
+    checkPermission(client, 'ordenes_trabajo', 'editar'),
+    async (req: any, res: any) => {
+      const { id } = req.params;
+      const motivoNormalizado = (req.body?.motivo || '').trim();
+
+      try {
+        if (!motivoNormalizado) {
+          return res.status(400).json({ error: 'El motivo de cancelación es obligatorio' });
+        }
+
+        const ordenRes = await client.query(
+          `SELECT ot.id, ot.tipo_orden,
+                  eod.key AS estado_digital_key,
+                  eoo.key AS estado_offset_key
+             FROM orden_trabajo ot
+        LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+        LEFT JOIN estado_orden_offset  eoo ON ot.estado_orden_offset_id  = eoo.id
+            WHERE ot.id = $1`,
+          [id],
+        );
+
+        if (!ordenRes.rows.length) {
+          return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        const fueEnviada = await ordenFueEnviadaAProduccion(id);
+        if (!fueEnviada) {
+          return res.status(409).json({
+            error: 'La orden todavía no ha sido enviada a producción.',
+          });
+        }
+
+        const orden = ordenRes.rows[0];
+        const tipoOrden = (orden.tipo_orden || 'offset').toLowerCase();
+        const estadoActual = String(
+          tipoOrden === 'digital' ? orden.estado_digital_key : orden.estado_offset_key,
+        ).toLowerCase();
+
+        if (estadoActual !== 'pendiente') {
+          return res.status(409).json({
+            error: 'Solo se puede cancelar producción cuando la orden recién fue enviada y está en pendiente.',
+          });
+        }
+
+        let result: any;
+        if (tipoOrden === 'digital') {
+          const estadoDigitalRes = await client.query(
+            `
+            WITH existente AS (
+              SELECT id FROM estado_orden_digital WHERE key = 'cancelado' LIMIT 1
+            ),
+            insertado AS (
+              INSERT INTO estado_orden_digital (key, titulo, orden, color, activo)
+              SELECT 'cancelado', 'Cancelado', 999, '#dc2626', TRUE
+              WHERE NOT EXISTS (SELECT 1 FROM existente)
+              RETURNING id
+            )
+            SELECT id FROM insertado
+            UNION ALL
+            SELECT id FROM existente
+            LIMIT 1
+            `,
+          );
+
+          const estadoCanceladoId = estadoDigitalRes.rows[0]?.id;
+          await client.query(
+            `UPDATE estado_orden_digital SET activo = TRUE WHERE id = $1`,
+            [estadoCanceladoId],
+          );
+
+          result = await client.query(
+            `UPDATE orden_trabajo
+                SET estado_orden_digital_id = $1,
+                    motivo_cancelacion = $2,
+                    observacion_produccion = NULL,
+                    updated_by = $3,
+                    updated_at = CURRENT_TIMESTAMP
+              WHERE id = $4
+          RETURNING *`,
+            [estadoCanceladoId, motivoNormalizado, req.user?.id || null, id],
+          );
+
+          await client.query(
+            `INSERT INTO estado_orden_digital_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+             VALUES ($1, $2, $3, $4)`,
+            [id, estadoCanceladoId, req.user?.id || null, `Producción cancelada. Motivo: ${motivoNormalizado}`],
+          ).catch(() => {});
+        } else {
+          const estadoOffsetRes = await client.query(
+            `
+            WITH existente AS (
+              SELECT id FROM estado_orden_offset WHERE key = 'cancelado' LIMIT 1
+            ),
+            insertado AS (
+              INSERT INTO estado_orden_offset (key, titulo, orden, color, activo)
+              SELECT 'cancelado', 'Cancelado', 999, '#dc2626', TRUE
+              WHERE NOT EXISTS (SELECT 1 FROM existente)
+              RETURNING id
+            )
+            SELECT id FROM insertado
+            UNION ALL
+            SELECT id FROM existente
+            LIMIT 1
+            `,
+          );
+
+          const estadoCanceladoId = estadoOffsetRes.rows[0]?.id;
+          await client.query(
+            `UPDATE estado_orden_offset SET activo = TRUE WHERE id = $1`,
+            [estadoCanceladoId],
+          );
+
+          result = await client.query(
+            `UPDATE orden_trabajo
+                SET estado_orden_offset_id = $1,
+                    motivo_cancelacion = $2,
+                    observacion_produccion = NULL,
+                    updated_by = $3,
+                    updated_at = CURRENT_TIMESTAMP
+              WHERE id = $4
+          RETURNING *`,
+            [estadoCanceladoId, motivoNormalizado, req.user?.id || null, id],
+          );
+
+          await client.query(
+            `INSERT INTO estado_orden_offset_historial (orden_trabajo_id, estado_id, usuario_id, nota)
+             VALUES ($1, $2, $3, $4)`,
+            [id, estadoCanceladoId, req.user?.id || null, `Producción cancelada. Motivo: ${motivoNormalizado}`],
+          ).catch(() => {});
+        }
+
+        if (!result.rows.length) {
+          return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        return res.json({
+          success: true,
+          orden: result.rows[0],
+          message: 'Producción cancelada correctamente',
+        });
+      } catch (error: any) {
+        console.error('Error al cancelar producción:', error);
+        return res.status(500).json({ error: 'Error al cancelar producción' });
       }
     },
   );

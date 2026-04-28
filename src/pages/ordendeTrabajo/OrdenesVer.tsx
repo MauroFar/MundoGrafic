@@ -40,7 +40,6 @@ const OrdenesVer: React.FC = () => {
   const [pagina, setPagina] = useState<number>(1);
   const [hayMas, setHayMas] = useState<boolean>(true);
   const LIMITE_POR_PAGINA = 15;
-  const [modalProduccionId, setModalProduccionId] = useState<number | null>(null);
   const [produccionEnviada, setProduccionEnviada] = useState<{ [id: number]: boolean }>({});
   const [modalActualizarEstadoId, setModalActualizarEstadoId] = useState<number | null>(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('');
@@ -61,6 +60,11 @@ const OrdenesVer: React.FC = () => {
   const [modalAprobarArtesId, setModalAprobarArtesId] = useState<number | null>(null);
   const [fechaEntregaAprobacion, setFechaEntregaAprobacion] = useState<string>('');
   const [aprobandoArtes, setAprobandoArtes] = useState<boolean>(false);
+  const [showProduccionModal, setShowProduccionModal] = useState<boolean>(false);
+  const [ordenToProduccion, setOrdenToProduccion] = useState<OrdenTrabajo | null>(null);
+  const [accionProduccion, setAccionProduccion] = useState<'enviar' | 'cancelar'>('enviar');
+  const [motivoCancelacion, setMotivoCancelacion] = useState<string>('');
+  const [observacionProduccion, setObservacionProduccion] = useState<string>('');
   const { puedeEditar, puedeEliminar, verificarYMostrarError } = usePermisos();
 
   // Scroll horizontal sincronizado (arriba y abajo), igual a Kanban
@@ -495,10 +499,9 @@ const OrdenesVer: React.FC = () => {
     setPreviewUrl(null);
   };
 
-  const enviarAProduccion = async (id: number) => {
+  const enviarAProduccion = async (id: number, observacion = '') => {
     const orden = ordenes.find((o) => o.id === id);
     if (orden && !orden.artes_aprobados) {
-      setModalProduccionId(null);
       toast.info('No se puede enviar a producción: primero confirma que los artes están aprobados en la orden.');
       return;
     }
@@ -511,7 +514,8 @@ const OrdenesVer: React.FC = () => {
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ observacion })
       });
       if (!response.ok) throw new Error("Error al enviar a producción");
       
@@ -532,7 +536,6 @@ const OrdenesVer: React.FC = () => {
         };
       }));
       setProduccionEnviada(prev => ({ ...prev, [id]: true }));
-      setModalProduccionId(null);
       
       // Mostrar mensaje de éxito con opción de ir a Vista Kanban
       toast.success(
@@ -595,6 +598,35 @@ const OrdenesVer: React.FC = () => {
       toast.error(error.message || 'Error al aprobar artes');
     } finally {
       setAprobandoArtes(false);
+    }
+  };
+
+  const cancelarProduccion = async (id: number, motivo: string) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/cancelar-produccion`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ motivo })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al cancelar producción');
+      }
+
+      toast.success('❌ Producción cancelada');
+      setPagina(1);
+      await cargarOrdenes(true);
+    } catch (error: any) {
+      console.error('Error al cancelar producción:', error);
+      toast.error(error.message || 'Error al cancelar producción');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -675,9 +707,12 @@ const OrdenesVer: React.FC = () => {
   };
 
   const renderOrdenActions = (orden: OrdenTrabajo, compact = false) => {
-    const estadoRaw = ((orden as any).estado_digital_key || (orden as any).estado_offset_key || orden.estado || '').toString().toLowerCase().replace(/\s+/g, '_');
+    const estadoKey = normalizeKey((orden as any).estado_digital_key || (orden as any).estado_offset_key || orden.estado);
+    const estadoRaw = estadoKey;
     const enviadaProduccion = fueEnviadaAProduccion(orden);
     const enProduccionPorEstado = esEstadoProduccion((orden as any).estado_digital_key || (orden as any).estado_offset_key || orden.estado);
+    const cancelada = estadoKey === 'cancelado';
+    const puedeCancelarProduccion = enviadaProduccion && estadoKey === 'pendiente';
     const buttonClass = compact
       ? 'px-2 py-1 text-xs rounded border'
       : 'p-2 rounded flex flex-col items-center';
@@ -726,6 +761,8 @@ const OrdenesVer: React.FC = () => {
 
         {estadoRaw === 'entregado' ? (
           <div className={compact ? 'px-2 py-1 text-xs text-gray-500 border rounded' : 'p-2 text-gray-500 text-xs'}>Entregado</div>
+        ) : cancelada ? (
+          <div className={compact ? 'px-2 py-1 text-xs text-red-600 border border-red-200 rounded' : 'p-2 text-red-600 text-xs'}>Cancelado</div>
         ) : !enviadaProduccion && !orden.artes_aprobados ? (
           <button
             className={`${buttonClass} text-amber-700 hover:bg-amber-100`}
@@ -737,7 +774,11 @@ const OrdenesVer: React.FC = () => {
         ) : !enviadaProduccion && orden.artes_aprobados ? (
           <button
             className={`${buttonClass} text-green-600 hover:bg-green-100`}
-            onClick={() => setModalProduccionId(orden.id)}
+            onClick={() => {
+              setOrdenToProduccion(orden);
+              setAccionProduccion('enviar');
+              setShowProduccionModal(true);
+            }}
             title="Enviar a Producción"
           >
             {compact ? 'Enviar producción' : <span className="font-bold text-xs">Enviar a Producción</span>}
@@ -760,6 +801,20 @@ const OrdenesVer: React.FC = () => {
               <FaFileAlt className={compact ? 'inline mr-1' : ''} />
               {compact ? 'Certif.' : <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>}
             </button>
+            {puedeCancelarProduccion && (
+              <button
+                className={`${buttonClass} text-red-600 hover:bg-red-100`}
+                onClick={() => {
+                  setOrdenToProduccion(orden);
+                  setAccionProduccion('cancelar');
+                  setShowProduccionModal(true);
+                }}
+                title="Cancelar Producción"
+              >
+                <FaTimes className={compact ? 'inline mr-1' : ''} />
+                {compact ? 'Cancelar' : <span className="text-xs mt-1 text-gray-600">Cancelar Prod.</span>}
+              </button>
+            )}
           </>
         ) : (
           <div className={compact ? 'px-2 py-1 text-xs text-gray-500 border rounded' : 'p-2 text-gray-500 text-xs'}>Sin acciones</div>
@@ -778,6 +833,13 @@ const OrdenesVer: React.FC = () => {
       </div>
     );
   };
+
+  const modalEstadoProduccionKey = ordenToProduccion
+    ? normalizeKey((ordenToProduccion as any).estado_digital_key || (ordenToProduccion as any).estado_offset_key || ordenToProduccion.estado)
+    : '';
+  const modalFueEnviadaProduccion = ordenToProduccion ? fueEnviadaAProduccion(ordenToProduccion) : false;
+  const modalPuedeCancelarProduccion = modalFueEnviadaProduccion && modalEstadoProduccionKey === 'pendiente';
+  const modalPuedeEnviarProduccion = Boolean(ordenToProduccion && !modalFueEnviadaProduccion && ordenToProduccion.artes_aprobados && modalEstadoProduccionKey !== 'cancelado');
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -1118,34 +1180,6 @@ const OrdenesVer: React.FC = () => {
           </div>
         </div>
       )}
-      {modalProduccionId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
-            <h3 className="text-lg font-semibold mb-2 text-green-700">¿Enviar esta orden a producción?</h3>
-            <p className="text-sm text-gray-700">
-              Orden:{' '}
-              <span className="font-semibold text-gray-900">
-                {ordenes.find((o) => o.id === modalProduccionId)?.numero_orden || `#${modalProduccionId}`}
-              </span>
-            </p>
-            <div className="flex justify-center gap-4 mt-4">
-              <button
-                className="bg-green-600 text-white px-4 py-2 rounded"
-                onClick={() => enviarAProduccion(modalProduccionId)}
-              >
-                Sí, enviar
-              </button>
-              <button
-                className="bg-gray-400 text-white px-4 py-2 rounded"
-                onClick={() => setModalProduccionId(null)}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {modalAprobarArtesId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md text-center">
@@ -1357,6 +1391,37 @@ const OrdenesVer: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {(ordenDetalle.observacion_produccion || ordenDetalle.motivo_cancelacion) && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center border-b pb-2">
+                    <FaClipboardList className="mr-2 text-green-600" />
+                    Gestión de Producción
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {ordenDetalle.observacion_produccion && (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <label className="text-sm text-blue-700 block mb-2 font-medium">
+                          Observación al enviar a producción
+                        </label>
+                        <p className="text-gray-900 whitespace-pre-wrap break-words">
+                          {ordenDetalle.observacion_produccion}
+                        </p>
+                      </div>
+                    )}
+                    {ordenDetalle.motivo_cancelacion && (
+                      <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                        <label className="text-sm text-red-700 block mb-2 font-medium">
+                          Motivo de cancelación de producción
+                        </label>
+                        <p className="text-gray-900 whitespace-pre-wrap break-words">
+                          {ordenDetalle.motivo_cancelacion}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* ── SECCIÓN 2: INFORMACIÓN DEL TRABAJO (diferenciada por tipo) ── */}
               {ordenDetalle.tipo_orden === 'digital' ? (
@@ -2077,6 +2142,130 @@ const OrdenesVer: React.FC = () => {
               >
                 Eliminar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de gestión de producción (Enviar/Cancelar) */}
+      {showProduccionModal && ordenToProduccion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-fadeIn">
+            <div className="p-6">
+              <div className={`flex items-center justify-center w-16 h-16 mx-auto rounded-full mb-4 ${accionProduccion === 'enviar' ? 'bg-blue-100' : 'bg-red-100'}`}>
+                {accionProduccion === 'enviar' ? (
+                  <FaSync className="text-3xl text-blue-600" />
+                ) : (
+                  <FaTimes className="text-3xl text-red-600" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-center text-gray-800 mb-2">
+                Gestionar producción
+              </h3>
+              <p className="text-gray-600 text-center mb-4">
+                Orden <span className="font-semibold">N° {ordenToProduccion.numero_orden}</span> de <span className="font-semibold">{ordenToProduccion.nombre_cliente}</span>.
+              </p>
+              {(modalPuedeEnviarProduccion || modalPuedeCancelarProduccion) && (
+                <div className={`grid gap-2 mb-4 ${modalPuedeEnviarProduccion && modalPuedeCancelarProduccion ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {modalPuedeEnviarProduccion && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccionProduccion('enviar');
+                        setMotivoCancelacion('');
+                      }}
+                      className={`px-3 py-2 rounded-lg border font-medium transition-colors ${accionProduccion === 'enviar' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                    >
+                      Enviar a Prod.
+                    </button>
+                  )}
+                  {modalPuedeCancelarProduccion && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccionProduccion('cancelar');
+                        setObservacionProduccion('');
+                      }}
+                      className={`px-3 py-2 rounded-lg border font-medium transition-colors ${accionProduccion === 'cancelar' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                    >
+                      Cancelar Prod.
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {accionProduccion === 'enviar' ? (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 text-center mb-3">
+                    Se iniciará el proceso de producción de la orden.
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Observaciones (opcional)
+                  </label>
+                  <textarea
+                    value={observacionProduccion}
+                    onChange={(e) => setObservacionProduccion(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Escriba una observación para la producción (opcional)"
+                  />
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Motivo de cancelación
+                  </label>
+                  <textarea
+                    value={motivoCancelacion}
+                    onChange={(e) => setMotivoCancelacion(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Ingrese el motivo de cancelación"
+                  />
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowProduccionModal(false);
+                    setOrdenToProduccion(null);
+                    setAccionProduccion('enviar');
+                    setMotivoCancelacion('');
+                    setObservacionProduccion('');
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    const id = ordenToProduccion.id;
+                    const motivoLimpio = motivoCancelacion.trim();
+                    const observacionLimpia = observacionProduccion.trim();
+
+                    if (accionProduccion === 'cancelar' && !motivoLimpio) {
+                      toast.error('Debe ingresar un motivo de cancelación');
+                      return;
+                    }
+
+                    setShowProduccionModal(false);
+                    setOrdenToProduccion(null);
+                    setAccionProduccion('enviar');
+                    setMotivoCancelacion('');
+                    setObservacionProduccion('');
+
+                    if (accionProduccion === 'enviar') {
+                      await enviarAProduccion(id, observacionLimpia);
+                    } else {
+                      await cancelarProduccion(id, motivoLimpio);
+                    }
+                  }}
+                  className={`flex-1 px-4 py-3 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${accionProduccion === 'enviar' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}
+                >
+                  {accionProduccion === 'enviar' ? <FaSync /> : <FaTimes />}
+                  {accionProduccion === 'enviar' ? 'Enviar a Producción' : 'Cancelar Producción'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
