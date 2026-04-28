@@ -329,6 +329,32 @@ export default (client: any) => {
       const userId = (req as any).user.id;
       console.log("👤 Usuario creando orden:", userId);
 
+      // Normalizar y validar cotización vinculada opcional
+      const idCotizacionNormalizado =
+        id_cotizacion === null || id_cotizacion === undefined || id_cotizacion === ""
+          ? null
+          : Number(id_cotizacion);
+
+      if (
+        idCotizacionNormalizado !== null &&
+        (!Number.isInteger(idCotizacionNormalizado) || idCotizacionNormalizado <= 0)
+      ) {
+        res.status(400).json({ error: "id_cotizacion inválido" });
+        return;
+      }
+
+      if (idCotizacionNormalizado !== null) {
+        const cotizacionExiste = await client.query(
+          "SELECT 1 FROM cotizaciones WHERE id = $1 LIMIT 1",
+          [idCotizacionNormalizado],
+        );
+
+        if (!cotizacionExiste.rows.length) {
+          res.status(400).json({ error: "La cotización indicada no existe" });
+          return;
+        }
+      }
+
       // Extraer campos del detalle
       const material = detalle?.material;
       const corteMaterial = detalle?.corte_material;
@@ -407,7 +433,7 @@ export default (client: any) => {
             fecha_creacion,
             fechaEntregaPersistida,
             notas_observaciones,
-            id_cotizacion,
+            idCotizacionNormalizado,
             id_detalle_cotizacion,
             tipo_orden || "offset",
             userId,
@@ -620,7 +646,7 @@ export default (client: any) => {
     checkPermission(client, "ordenes_trabajo", "leer"),
     async (req, res): Promise<void> => {
       try {
-        const { busqueda, fechaDesde, fechaHasta, limite, tipo_orden } = req.query;
+        const { busqueda, fechaDesde, fechaHasta, limite, tipo_orden, id_cotizacion } = req.query;
         let query = `
         SELECT ot.id, ot.numero_orden, ot.nombre_cliente,
                COALESCE(
@@ -693,6 +719,18 @@ export default (client: any) => {
             where.push(`(ot.tipo_orden IS NULL OR ot.tipo_orden <> $${paramCount})`);
             params.push("digital");
           }
+          paramCount++;
+        }
+
+        if (id_cotizacion !== undefined && id_cotizacion !== null && String(id_cotizacion).trim() !== "") {
+          const cotizacionIdNum = Number(id_cotizacion);
+          if (!Number.isInteger(cotizacionIdNum) || cotizacionIdNum <= 0) {
+            res.status(400).json({ error: "id_cotizacion inválido" });
+            return;
+          }
+
+          where.push(`ot.id_cotizacion = $${paramCount}`);
+          params.push(cotizacionIdNum);
           paramCount++;
         }
 

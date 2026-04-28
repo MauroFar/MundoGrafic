@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks, FaSync } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
@@ -27,6 +27,7 @@ interface OrdenTrabajo {
 const OrdenesVer: React.FC = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+  const location = useLocation();
   const [workflowType, setWorkflowType] = useState<'todos' | 'offset' | 'digital'>('todos');
 
   const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
@@ -263,7 +264,7 @@ const OrdenesVer: React.FC = () => {
     setPagina(1);
     cargarOrdenes(true);
     // eslint-disable-next-line
-  }, []);
+  }, [location.search]);
 
   const cargarOrdenes = async (reset = false, tipoSeleccionado?: 'todos' | 'offset' | 'digital') => {
     setLoading(true);
@@ -277,6 +278,12 @@ const OrdenesVer: React.FC = () => {
       if (tipo !== 'todos') {
         queryParams.append("tipo_orden", tipo);
       }
+
+      const cotizacionFiltroId = new URLSearchParams(location.search).get('id_cotizacion');
+      if (cotizacionFiltroId) {
+        queryParams.append('id_cotizacion', cotizacionFiltroId);
+      }
+
       queryParams.append("limite", LIMITE_POR_PAGINA.toString());
       const url = `${apiUrl}/api/ordenTrabajo/listar?${queryParams}`;
       const response = await fetch(url, {
@@ -649,6 +656,22 @@ const OrdenesVer: React.FC = () => {
     if (total === null || total === undefined) return "0.00";
     const numero = typeof total === 'string' ? parseFloat(total) : total;
     return isNaN(numero) ? "0.00" : numero.toFixed(2);
+  };
+
+  // Función para limpiar HTML y mostrar solo texto formateado
+  const limpiarHTML = (html: string | undefined): string => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .trim();
   };
 
   const renderOrdenActions = (orden: OrdenTrabajo, compact = false) => {

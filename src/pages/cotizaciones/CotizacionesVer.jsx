@@ -105,12 +105,29 @@ function CotizacionesVer() {
   const [cotizacionToApprove, setCotizacionToApprove] = useState(null);
   const [accionEstadoCotizacion, setAccionEstadoCotizacion] = useState('aprobar');
   const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [observacionAprobacion, setObservacionAprobacion] = useState('');
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
     if (total === null || total === undefined) return "0.00";
     const numero = typeof total === 'string' ? parseFloat(total) : total;
     return isNaN(numero) ? "0.00" : numero.toFixed(2);
+  };
+
+  // Función para limpiar HTML y mostrar solo texto formateado
+  const limpiarHTML = (html) => {
+    if (!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>/gi, '\n')                    // Convertir br a saltos de línea
+      .replace(/<\/p>/gi, '\n')                          // Convertir cierre de p a saltos
+      .replace(/<[^>]*>/g, '')                            // Eliminar todos los tags HTML
+      .replace(/&nbsp;/g, ' ')                            // Convertir entidades
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+\n/g, '\n')                           // Eliminar espacios antes de saltos
+      .replace(/\n\s+/g, '\n')                           // Eliminar espacios después de saltos
+      .trim();
   };
 
   // Cargar las últimas 5 cotizaciones al montar el componente
@@ -741,7 +758,7 @@ function CotizacionesVer() {
     }
   };
 
-  const aprobarCotizacion = async (id) => {
+  const aprobarCotizacion = async (id, observacion = '') => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -750,7 +767,8 @@ function CotizacionesVer() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
-        }
+        },
+        body: JSON.stringify({ observacion })
       });
 
       if (!response.ok) {
@@ -935,6 +953,10 @@ function CotizacionesVer() {
     setShowProductoModal(false);
     // Navegar con array de productos en el state
     navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { productos: selectedProductos, tipoOrden: tipoOrdenSeleccionado } });
+  };
+
+  const verOrdenesRelacionadas = (cotizacionId) => {
+    navigate(`/ordendeTrabajo/ver?id_cotizacion=${cotizacionId}`);
   };
 
   return (
@@ -1152,6 +1174,7 @@ function CotizacionesVer() {
                             setCotizacionToApprove(cotizacion);
                             setAccionEstadoCotizacion('aprobar');
                             setMotivoRechazo('');
+                            setObservacionAprobacion('');
                             setShowAprobarModal(true);
                           }}
                           title="Gestionar estado"
@@ -1161,17 +1184,32 @@ function CotizacionesVer() {
                         </button>
                       )}
                       {cotizacion.estado === 'aprobada' && (
-                        <button
-                          className="p-2 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            generarOrdenTrabajo(cotizacion.id);
-                          }}
-                          title="Generar Orden de Trabajo"
-                        >
-                          <FaTools />
-                          <span className="text-xs mt-1 text-gray-600">Orden</span>
-                        </button>
+                        <>
+                          {Number(cotizacion.cantidad_ordenes_relacionadas || 0) > 0 && (
+                            <button
+                              className="p-2 text-indigo-700 hover:bg-indigo-100 rounded flex flex-col items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                verOrdenesRelacionadas(cotizacion.id);
+                              }}
+                              title={`Ver órdenes creadas (${cotizacion.cantidad_ordenes_relacionadas})`}
+                            >
+                              <FaHistory />
+                              <span className="text-xs mt-1 text-gray-600">Ver Órdenes ({cotizacion.cantidad_ordenes_relacionadas})</span>
+                            </button>
+                          )}
+                          <button
+                            className="p-2 text-pink-600 hover:bg-pink-100 rounded flex flex-col items-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              generarOrdenTrabajo(cotizacion.id);
+                            }}
+                            title={Number(cotizacion.cantidad_ordenes_relacionadas || 0) > 0 ? 'Generar nueva orden para esta cotización' : 'Generar orden de trabajo'}
+                          >
+                            <FaTools />
+                            <span className="text-xs mt-1 text-gray-600">Nueva Orden</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -1996,6 +2034,12 @@ function CotizacionesVer() {
                   <p className="text-sm text-red-700 mt-1 whitespace-pre-wrap">{cotizacionDetalle.motivo_rechazo}</p>
                 </div>
               )}
+              {cotizacionDetalle.estado === 'aprobada' && cotizacionDetalle.observacion_aprobacion && (
+                <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-green-700">Observaciones de aprobación</p>
+                  <p className="text-sm text-green-700 mt-1 whitespace-pre-wrap">{cotizacionDetalle.observacion_aprobacion}</p>
+                </div>
+              )}
             </div>
 
             {/* Contenido del Modal */}
@@ -2102,10 +2146,9 @@ function CotizacionesVer() {
                                 <span className="font-semibold text-gray-900">{detalle.cantidad}</span>
                               </td>
                               <td className="px-4 py-3 border-b">
-                                <div 
-                                  className="text-gray-900 whitespace-pre-wrap" 
-                                  dangerouslySetInnerHTML={{ __html: detalle.detalle }}
-                                />
+                                <div className="text-gray-900 whitespace-pre-wrap">
+                                  {limpiarHTML(detalle.detalle)}
+                                </div>
                               </td>
                               <td className="px-4 py-3 border-b text-right text-gray-900">
                                 ${formatearTotal(detalle.precio_unitario)}
@@ -2277,9 +2320,21 @@ function CotizacionesVer() {
               </div>
 
               {accionEstadoCotizacion === 'aprobar' ? (
-                <p className="text-sm text-gray-500 text-center mb-6">
-                  Si apruebas, se habilitará la opción de generar la orden de trabajo.
-                </p>
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 text-center mb-3">
+                    Si apruebas, se habilitará la opción de generar la orden de trabajo.
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Observaciones de aprobación (opcional)
+                  </label>
+                  <textarea
+                    value={observacionAprobacion}
+                    onChange={(e) => setObservacionAprobacion(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Escriba una observación para la aprobación (opcional)"
+                  />
+                </div>
               ) : (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2301,6 +2356,7 @@ function CotizacionesVer() {
                     setCotizacionToApprove(null);
                     setAccionEstadoCotizacion('aprobar');
                     setMotivoRechazo('');
+                    setObservacionAprobacion('');
                   }}
                   className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
                 >
@@ -2310,6 +2366,7 @@ function CotizacionesVer() {
                   onClick={async () => {
                     const id = cotizacionToApprove.id;
                     const motivoLimpio = motivoRechazo.trim();
+                    const observacionLimpia = observacionAprobacion.trim();
 
                     if (accionEstadoCotizacion === 'rechazar' && !motivoLimpio) {
                       toast.error('Debe ingresar un motivo de rechazo');
@@ -2320,9 +2377,10 @@ function CotizacionesVer() {
                     setCotizacionToApprove(null);
                     setAccionEstadoCotizacion('aprobar');
                     setMotivoRechazo('');
+                    setObservacionAprobacion('');
 
                     if (accionEstadoCotizacion === 'aprobar') {
-                      await aprobarCotizacion(id);
+                      await aprobarCotizacion(id, observacionLimpia);
                     } else {
                       await rechazarCotizacion(id, motivoLimpio);
                     }

@@ -1136,6 +1136,7 @@ const CotizacionDatos = (client: any) => {
           c.fecha,
           c.estado,
           c.motivo_rechazo,
+          c.observacion_aprobacion,
           c.total,
           r.ruc,
           r.descripcion as ruc_descripcion,
@@ -1146,7 +1147,12 @@ const CotizacionDatos = (client: any) => {
           c.updated_at,
           u1.nombre as created_by_nombre,
           u2.nombre as updated_by_nombre,
-          (SELECT detalle FROM detalle_cotizacion WHERE cotizacion_id = c.id ORDER BY id LIMIT 1) as primer_detalle
+          (SELECT detalle FROM detalle_cotizacion WHERE cotizacion_id = c.id ORDER BY id LIMIT 1) as primer_detalle,
+          (
+            SELECT COUNT(*)::int
+            FROM orden_trabajo ot
+            WHERE ot.id_cotizacion = c.id
+          ) AS cantidad_ordenes_relacionadas
         FROM cotizaciones c
         JOIN clientes cl ON c.cliente_id = cl.id
         JOIN rucs r ON c.ruc_id = r.id
@@ -1423,10 +1429,16 @@ const CotizacionDatos = (client: any) => {
   // Ruta para aprobar una cotización
   router.put('/:id/aprobar', authRequired(), async (req: any, res: any) => {
     const { id } = req.params;
+    const observacionNormalizada = (req.body?.observacion || '').trim();
     try {
       const result = await client.query(
-        `UPDATE cotizaciones SET estado = 'aprobada', motivo_rechazo = NULL WHERE id = $1 RETURNING *`,
-        [id]
+        `UPDATE cotizaciones
+         SET estado = 'aprobada',
+             motivo_rechazo = NULL,
+             observacion_aprobacion = $2
+         WHERE id = $1
+         RETURNING *`,
+        [id, observacionNormalizada || null]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Cotización no encontrada' });
@@ -1450,7 +1462,12 @@ const CotizacionDatos = (client: any) => {
       }
 
       const result = await client.query(
-        `UPDATE cotizaciones SET estado = 'rechazada', motivo_rechazo = $2 WHERE id = $1 RETURNING *`,
+        `UPDATE cotizaciones
+         SET estado = 'rechazada',
+             motivo_rechazo = $2,
+             observacion_aprobacion = NULL
+         WHERE id = $1
+         RETURNING *`,
         [id, motivoNormalizado]
       );
 
