@@ -143,6 +143,143 @@ export default (client: any) => {
     },
   );
 
+  // Listar cotizaciones para vincular a una orden existente
+  router.get(
+    "/cotizaciones-vinculables",
+    authRequired(),
+    checkPermission(client, "ordenes_trabajo", "editar"),
+    async (req, res): Promise<void> => {
+      const busqueda = String(req.query.busqueda || "").trim();
+      const limiteRaw = Number(req.query.limite || 10);
+      const limite = Number.isFinite(limiteRaw)
+        ? Math.min(Math.max(limiteRaw, 1), 50)
+        : 10;
+
+      try {
+        const params: any[] = [];
+        let whereBusqueda = "";
+
+        if (busqueda) {
+          params.push(`%${busqueda}%`);
+          whereBusqueda = `
+            AND (
+              translate(lower(CAST(c.codigo_cotizacion AS TEXT)), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
+              OR translate(lower(cl.nombre_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
+              OR translate(lower(cl.empresa_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
+              OR EXISTS (
+                SELECT 1
+                FROM detalle_cotizacion dc
+                WHERE dc.cotizacion_id = c.id
+                  AND translate(lower(dc.detalle), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
+              )
+            )
+          `;
+        }
+
+        params.push(limite);
+        const idxLimite = params.length;
+
+        const result = await client.query(
+          `
+          SELECT
+            c.id,
+            c.codigo_cotizacion,
+            c.fecha,
+            c.estado,
+            cl.nombre_cliente,
+            cl.empresa_cliente,
+            (SELECT detalle FROM detalle_cotizacion WHERE cotizacion_id = c.id ORDER BY id LIMIT 1) AS primer_detalle
+          FROM cotizaciones c
+          JOIN clientes cl ON c.cliente_id = cl.id
+          WHERE 1=1
+            ${whereBusqueda}
+          ORDER BY c.id DESC
+          LIMIT $${idxLimite}
+          `,
+          params,
+        );
+
+        res.json(result.rows);
+      } catch (error: unknown) {
+        const err = error as Error;
+        console.error("Error al listar cotizaciones vinculables:", err.message);
+        res.status(500).json({ error: "Error al listar cotizaciones vinculables" });
+      }
+    },
+  );
+
+  // Vincular cotización a una orden existente
+  router.put(
+    "/:id/vincular-cotizacion",
+    authRequired(),
+    checkPermission(client, "ordenes_trabajo", "editar"),
+    async (req: any, res: any): Promise<void> => {
+      const { id } = req.params;
+      const { cotizacion_id } = req.body;
+      const userId = req.user?.id || null;
+
+      try {
+        const ordenBloqueada = await ordenFueEnviadaAProduccion(id);
+        if (ordenBloqueada) {
+          res.status(409).json({
+            error: "No se puede vincular cotización porque la orden ya fue enviada a producción.",
+          });
+          return;
+        }
+
+        const cotizacionIdNum = Number(cotizacion_id);
+        if (!Number.isInteger(cotizacionIdNum) || cotizacionIdNum <= 0) {
+          res.status(400).json({ error: "cotizacion_id inválido" });
+          return;
+        }
+
+        const cotResult = await client.query(
+          `
+          SELECT c.id, c.codigo_cotizacion, c.fecha, c.estado,
+                 cl.nombre_cliente, cl.empresa_cliente
+          FROM cotizaciones c
+          JOIN clientes cl ON c.cliente_id = cl.id
+          WHERE c.id = $1
+          `,
+          [cotizacionIdNum],
+        );
+
+        if (!cotResult.rows.length) {
+          res.status(404).json({ error: "Cotización no encontrada" });
+          return;
+        }
+
+        const ordenResult = await client.query(
+          `
+          UPDATE orden_trabajo
+             SET id_cotizacion = $1,
+                 updated_by = $2,
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = $3
+           RETURNING id, numero_orden, id_cotizacion
+          `,
+          [cotizacionIdNum, userId, id],
+        );
+
+        if (!ordenResult.rows.length) {
+          res.status(404).json({ error: "Orden no encontrada" });
+          return;
+        }
+
+        res.json({
+          success: true,
+          message: "Cotización vinculada correctamente",
+          orden: ordenResult.rows[0],
+          cotizacion: cotResult.rows[0],
+        });
+      } catch (error: unknown) {
+        const err = error as Error;
+        console.error("Error al vincular cotización:", err.message);
+        res.status(500).json({ error: "Error al vincular cotización" });
+      }
+    },
+  );
+
   // Crear una orden de trabajo desde una cotización o manualmente
   router.post(
     "/crearOrdenTrabajo",

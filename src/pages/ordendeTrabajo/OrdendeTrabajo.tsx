@@ -54,6 +54,16 @@ interface OrdenData {
   artes_aprobados?: boolean;
 }
 
+interface CotizacionVinculable {
+  id: number;
+  codigo_cotizacion: string;
+  fecha: string;
+  estado: string;
+  nombre_cliente?: string;
+  empresa_cliente?: string;
+  primer_detalle?: string;
+}
+
 type TrazabilidadProcesoItem = {
   fecha_inicio: string;
   hora_inicio: string;
@@ -237,6 +247,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [clienteIdSeleccionado, setClienteIdSeleccionado] = useState<number | null>(null);
+  const [showVincularCotizacionModal, setShowVincularCotizacionModal] = useState(false);
+  const [busquedaCotizacionVincular, setBusquedaCotizacionVincular] = useState('');
+  const [cotizacionesVinculables, setCotizacionesVinculables] = useState<CotizacionVinculable[]>([]);
+  const [loadingCotizacionesVinculables, setLoadingCotizacionesVinculables] = useState(false);
 
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
@@ -948,6 +962,97 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
   };
 
+  const cargarCotizacionesVinculables = async (busqueda = '') => {
+    setLoadingCotizacionesVinculables(true);
+    try {
+      const token = localStorage.getItem('token');
+      const query = new URLSearchParams();
+      query.append('limite', '10');
+      if (busqueda.trim()) query.append('busqueda', busqueda.trim());
+
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/cotizaciones-vinculables?${query.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al cargar cotizaciones para vincular');
+      }
+
+      const data = await res.json();
+      setCotizacionesVinculables(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error('❌ Error cargando cotizaciones vinculables:', error);
+      toast.error(error.message || 'No se pudo cargar las cotizaciones');
+      setCotizacionesVinculables([]);
+    } finally {
+      setLoadingCotizacionesVinculables(false);
+    }
+  };
+
+  const abrirModalVincularCotizacion = async () => {
+    if (!verificarYMostrarError('ordenes_trabajo', 'editar', 'vincular una cotización')) {
+      return;
+    }
+
+    if (!ordenId) {
+      toast.info('Primero debes crear la orden para poder vincular una cotización.');
+      return;
+    }
+
+    setBusquedaCotizacionVincular('');
+    setShowVincularCotizacionModal(true);
+    await cargarCotizacionesVinculables('');
+  };
+
+  const vincularCotizacionAOrden = async (cotizacion: CotizacionVinculable) => {
+    if (!ordenId) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/${ordenId}/vincular-cotizacion`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ cotizacion_id: cotizacion.id })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'No se pudo vincular la cotización');
+      }
+
+      setNumero_cotizacion(cotizacion.codigo_cotizacion || '');
+      setShowVincularCotizacionModal(false);
+      
+      // Recargar datos de la orden para que el botón Vincular se deshabilite automáticamente
+      try {
+        const refreshRes = await fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (refreshRes.ok) {
+          const refreshedData = await refreshRes.json();
+          setOrdenData(refreshedData);
+        }
+      } catch (refreshError) {
+        console.warn('⚠️ No se pudo recargar datos de la orden:', refreshError);
+      }
+      
+      toast.success(`Cotización ${cotizacion.codigo_cotizacion} vinculada correctamente`);
+    } catch (error: any) {
+      console.error('❌ Error al vincular cotización:', error);
+      toast.error(error.message || 'Error al vincular cotización');
+    }
+  };
+
   // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
   const crearOrdenTrabajo = async (forzarSinArtes = false) => {
     console.log('🚀 FRONTEND - Iniciando creación de orden');
@@ -1487,6 +1592,27 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     value={String(numero_cotizacion).padStart(6, '0')}
                     onChange={(e) => setNumero_cotizacion(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    onClick={() => { void abrirModalVincularCotizacion(); }}
+                    disabled={!ordenId || Boolean(ordenData?.id_cotizacion)}
+                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      !ordenId 
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                        : Boolean(ordenData?.id_cotizacion)
+                        ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                        : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                    }`}
+                    title={
+                      !ordenId 
+                        ? 'Primero crea la orden para poder vincular una cotización'
+                        : Boolean(ordenData?.id_cotizacion)
+                        ? `Cotización ${numero_cotizacion} ya vinculada a esta orden`
+                        : 'Vincular cotización existente'
+                    }
+                  >
+                    Vincular
+                  </button>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Orden de Compra:</label>
@@ -2298,6 +2424,88 @@ const OrdendeTrabajoEditar: React.FC = () => {
                 >
                   Cerrar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para Actualizar Orden */}
+        {showVincularCotizacionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[85vh] overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-blue-700">Vincular cotización a la orden</h3>
+                <button
+                  onClick={() => setShowVincularCotizacionModal(false)}
+                  className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={busquedaCotizacionVincular}
+                  onChange={(e) => setBusquedaCotizacionVincular(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      void cargarCotizacionesVinculables(busquedaCotizacionVincular);
+                    }
+                  }}
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="Buscar por número o descripción"
+                />
+                <button
+                  type="button"
+                  onClick={() => { void cargarCotizacionesVinculables(busquedaCotizacionVincular); }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Buscar
+                </button>
+              </div>
+
+              <div className="overflow-auto max-h-[58vh] border border-gray-200 rounded">
+                {loadingCotizacionesVinculables ? (
+                  <div className="p-6 text-center text-gray-600">Cargando cotizaciones...</div>
+                ) : cotizacionesVinculables.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">No se encontraron cotizaciones</div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left border-b">Número</th>
+                        <th className="px-3 py-2 text-left border-b">Cliente</th>
+                        <th className="px-3 py-2 text-left border-b">Descripción</th>
+                        <th className="px-3 py-2 text-left border-b">Fecha</th>
+                        <th className="px-3 py-2 text-left border-b">Estado</th>
+                        <th className="px-3 py-2 text-left border-b">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cotizacionesVinculables.map((cot) => (
+                        <tr key={cot.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 border-b font-semibold text-blue-700">{cot.codigo_cotizacion}</td>
+                          <td className="px-3 py-2 border-b">{cot.empresa_cliente || cot.nombre_cliente || '-'}</td>
+                          <td className="px-3 py-2 border-b">
+                            <div className="line-clamp-2" dangerouslySetInnerHTML={{ __html: cot.primer_detalle || 'Sin descripción' }} />
+                          </td>
+                          <td className="px-3 py-2 border-b">{cot.fecha ? new Date(cot.fecha).toLocaleDateString('es-EC') : '-'}</td>
+                          <td className="px-3 py-2 border-b capitalize">{cot.estado || '-'}</td>
+                          <td className="px-3 py-2 border-b">
+                            <button
+                              type="button"
+                              onClick={() => { void vincularCotizacionAOrden(cot); }}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Vincular
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
