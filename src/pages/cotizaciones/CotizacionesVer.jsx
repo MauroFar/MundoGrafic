@@ -911,14 +911,14 @@ function CotizacionesVer() {
       <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N° o Cliente</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N°, cliente o descripción</label>
             <input
               type="text"
               name="busqueda"
               value={filtros.busqueda}
               onChange={handleBusquedaChange}
               className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="Número de cotización o nombre del cliente"
+              placeholder="Número, cliente o descripción"
               />
             <div className="mt-2 flex items-center gap-2">
               <input

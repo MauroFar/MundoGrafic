@@ -1160,10 +1160,16 @@ const CotizacionDatos = (client: any) => {
 
       if (busqueda) {
         query += ` AND (
-          CAST(c.codigo_cotizacion AS TEXT) ILIKE $${paramCount} 
-          OR cl.nombre_cliente ILIKE $${paramCount}
-          OR cl.empresa_cliente ILIKE $${paramCount}
-          OR u.nombre ILIKE $${paramCount}
+          translate(lower(CAST(c.codigo_cotizacion AS TEXT)), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($${paramCount}), 'áéíóúüñ', 'aeiouun')
+          OR translate(lower(cl.nombre_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($${paramCount}), 'áéíóúüñ', 'aeiouun')
+          OR translate(lower(cl.empresa_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($${paramCount}), 'áéíóúüñ', 'aeiouun')
+          OR translate(lower(u.nombre), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($${paramCount}), 'áéíóúüñ', 'aeiouun')
+          OR EXISTS (
+            SELECT 1
+            FROM detalle_cotizacion dc
+            WHERE dc.cotizacion_id = c.id
+              AND translate(lower(dc.detalle), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($${paramCount}), 'áéíóúüñ', 'aeiouun')
+          )
         )`;
         params.push(`%${busqueda}%`);
         paramCount++;
