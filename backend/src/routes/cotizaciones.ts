@@ -1135,6 +1135,7 @@ const CotizacionDatos = (client: any) => {
           cl.email_cliente,
           c.fecha,
           c.estado,
+          c.motivo_rechazo,
           c.total,
           r.ruc,
           r.descripcion as ruc_descripcion,
@@ -1312,6 +1313,19 @@ const CotizacionDatos = (client: any) => {
     const userId = req.user?.id; // Usuario de la sesión para auditoría
 
     try {
+      const estadoActualResult = await client.query("SELECT estado FROM cotizaciones WHERE id = $1", [id]);
+
+      if (estadoActualResult.rows.length === 0) {
+        return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      const estadoActual = estadoActualResult.rows[0].estado;
+      if (estadoActual === 'aprobada' || estadoActual === 'rechazada') {
+        return res.status(400).json({
+          error: "No se puede actualizar una cotización aprobada o rechazada. Debe guardarse como nueva."
+        });
+      }
+
       const query = `
         UPDATE cotizaciones 
         SET fecha = $1, 
@@ -1370,11 +1384,18 @@ const CotizacionDatos = (client: any) => {
 
     try {
       // Primero verificar si la cotización existe
-      const checkQuery = "SELECT id FROM cotizaciones WHERE id = $1";
+      const checkQuery = "SELECT id, estado FROM cotizaciones WHERE id = $1";
       const checkResult = await client.query(checkQuery, [id]);
 
       if (checkResult.rows.length === 0) {
         return res.status(404).json({ error: "Cotización no encontrada" });
+      }
+
+      const estadoActual = checkResult.rows[0].estado;
+      if (estadoActual === 'aprobada' || estadoActual === 'rechazada') {
+        return res.status(400).json({
+          error: "No se puede eliminar una cotización aprobada o rechazada."
+        });
       }
 
       // Eliminar los detalles de la cotización primero (por la foreign key)
@@ -1404,7 +1425,7 @@ const CotizacionDatos = (client: any) => {
     const { id } = req.params;
     try {
       const result = await client.query(
-        `UPDATE cotizaciones SET estado = 'aprobada' WHERE id = $1 RETURNING *`,
+        `UPDATE cotizaciones SET estado = 'aprobada', motivo_rechazo = NULL WHERE id = $1 RETURNING *`,
         [id]
       );
       if (result.rows.length === 0) {
@@ -1414,6 +1435,33 @@ const CotizacionDatos = (client: any) => {
     } catch (error: any) {
       console.error('Error al aprobar la cotización:', error);
       res.status(500).json({ error: 'Error al aprobar la cotización' });
+    }
+  });
+
+  // Ruta para rechazar una cotización con motivo
+  router.put('/:id/rechazar', authRequired(), async (req: any, res: any) => {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    try {
+      const motivoNormalizado = (motivo || '').trim();
+      if (!motivoNormalizado) {
+        return res.status(400).json({ error: 'El motivo de rechazo es obligatorio' });
+      }
+
+      const result = await client.query(
+        `UPDATE cotizaciones SET estado = 'rechazada', motivo_rechazo = $2 WHERE id = $1 RETURNING *`,
+        [id, motivoNormalizado]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Cotización no encontrada' });
+      }
+
+      res.json(result.rows[0]);
+    } catch (error: any) {
+      console.error('Error al rechazar la cotización:', error);
+      res.status(500).json({ error: 'Error al rechazar la cotización' });
     }
   });
 

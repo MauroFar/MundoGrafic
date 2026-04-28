@@ -103,6 +103,8 @@ function CotizacionesVer() {
   const [cotizacionDetalle, setCotizacionDetalle] = useState(null);
   const [showAprobarModal, setShowAprobarModal] = useState(false);
   const [cotizacionToApprove, setCotizacionToApprove] = useState(null);
+  const [accionEstadoCotizacion, setAccionEstadoCotizacion] = useState('aprobar');
+  const [motivoRechazo, setMotivoRechazo] = useState('');
 
   // Función auxiliar para formatear el total de manera segura
   const formatearTotal = (total) => {
@@ -277,6 +279,13 @@ function CotizacionesVer() {
 
     // Buscar la cotización para mostrar información en el modal
     const cotizacion = cotizaciones.find(c => c.id === id);
+
+    if (cotizacion && (cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada')) {
+      setConfirmMessage('No se puede eliminar una cotización aprobada o rechazada.');
+      setShowConfirmModal(true);
+      return;
+    }
+
     setCotizacionToDelete(cotizacion);
     setShowDeleteModal(true);
   };
@@ -760,6 +769,35 @@ function CotizacionesVer() {
     }
   };
 
+  const rechazarCotizacion = async (id, motivo) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${apiUrl}/api/cotizaciones/${id}/rechazar`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ motivo })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al rechazar la cotización');
+      }
+
+      toast.success('❌ Cotización rechazada');
+      setPagina(1);
+      await cargarCotizaciones(true);
+    } catch (error) {
+      console.error('Error al rechazar la cotización:', error);
+      toast.error(error.message || 'Error al rechazar la cotización');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Función para buscar clientes reales
   const buscarClientes = async (q) => {
     if (!q || q.length < 2) {
@@ -1069,12 +1107,16 @@ function CotizacionesVer() {
                       )}
                       {puedeEliminar('cotizaciones') && (
                         <button
-                          className="p-2 text-red-600 hover:bg-red-100 rounded flex flex-col items-center"
+                          className={`p-2 rounded flex flex-col items-center ${cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada' ? 'text-gray-400 cursor-not-allowed opacity-60' : 'text-red-600 hover:bg-red-100'}`}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada') {
+                              return;
+                            }
                             eliminarCotizacion(cotizacion.id);
                           }}
-                          title="Eliminar"
+                          disabled={cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada'}
+                          title={cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada' ? 'No se puede eliminar una cotización aprobada o rechazada' : 'Eliminar'}
                         >
                           <FaTrash />
                           <span className="text-xs mt-1 text-gray-600">Eliminar</span>
@@ -1108,12 +1150,14 @@ function CotizacionesVer() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setCotizacionToApprove(cotizacion);
+                            setAccionEstadoCotizacion('aprobar');
+                            setMotivoRechazo('');
                             setShowAprobarModal(true);
                           }}
-                          title="Aprobar cotización"
+                          title="Gestionar estado"
                         >
                           <FaCheck />
-                          <span className="text-xs mt-1 text-gray-600">Aprobar</span>
+                          <span className="text-xs mt-1 text-gray-600">Aprobar/Rechazar</span>
                         </button>
                       )}
                       {cotizacion.estado === 'aprobada' && (
@@ -1946,6 +1990,12 @@ function CotizacionesVer() {
                   {cotizacionDetalle.estado?.toUpperCase()}
                 </span>
               </div>
+              {cotizacionDetalle.estado === 'rechazada' && cotizacionDetalle.motivo_rechazo && (
+                <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-red-700">Motivo del rechazo</p>
+                  <p className="text-sm text-red-700 mt-1 whitespace-pre-wrap">{cotizacionDetalle.motivo_rechazo}</p>
+                </div>
+              )}
             </div>
 
             {/* Contenido del Modal */}
@@ -2196,23 +2246,61 @@ function CotizacionesVer() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-fadeIn">
             <div className="p-6">
-              <div className="flex items-center justify-center w-16 h-16 mx-auto bg-green-100 rounded-full mb-4">
-                <FaCheck className="text-3xl text-green-600" />
+              <div className={`flex items-center justify-center w-16 h-16 mx-auto rounded-full mb-4 ${accionEstadoCotizacion === 'aprobar' ? 'bg-green-100' : 'bg-red-100'}`}>
+                {accionEstadoCotizacion === 'aprobar' ? (
+                  <FaCheck className="text-3xl text-green-600" />
+                ) : (
+                  <FaTimes className="text-3xl text-red-600" />
+                )}
               </div>
               <h3 className="text-xl font-bold text-center text-gray-800 mb-2">
-                ¿Aprobar Cotización?
+                Gestionar estado de cotización
               </h3>
               <p className="text-gray-600 text-center mb-4">
-                Estás por aprobar la cotización <span className="font-semibold">{cotizacionToApprove.codigo_cotizacion}</span> de <span className="font-semibold">{cotizacionToApprove.empresa_cliente || cotizacionToApprove.nombre_cliente}</span>.
+                Cotización <span className="font-semibold">{cotizacionToApprove.codigo_cotizacion}</span> de <span className="font-semibold">{cotizacionToApprove.empresa_cliente || cotizacionToApprove.nombre_cliente}</span>.
               </p>
-              <p className="text-sm text-gray-500 text-center mb-6">
-                Una vez aprobada, se habilitará la opción de generar la orden de trabajo.
-              </p>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setAccionEstadoCotizacion('aprobar')}
+                  className={`px-3 py-2 rounded-lg border font-medium transition-colors ${accionEstadoCotizacion === 'aprobar' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Aprobar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccionEstadoCotizacion('rechazar')}
+                  className={`px-3 py-2 rounded-lg border font-medium transition-colors ${accionEstadoCotizacion === 'rechazar' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Rechazar
+                </button>
+              </div>
+
+              {accionEstadoCotizacion === 'aprobar' ? (
+                <p className="text-sm text-gray-500 text-center mb-6">
+                  Si apruebas, se habilitará la opción de generar la orden de trabajo.
+                </p>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Motivo del rechazo
+                  </label>
+                  <textarea
+                    value={motivoRechazo}
+                    onChange={(e) => setMotivoRechazo(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    placeholder="Ingrese el motivo del rechazo"
+                  />
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
                   onClick={() => {
                     setShowAprobarModal(false);
                     setCotizacionToApprove(null);
+                    setAccionEstadoCotizacion('aprobar');
+                    setMotivoRechazo('');
                   }}
                   className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
                 >
@@ -2221,14 +2309,28 @@ function CotizacionesVer() {
                 <button
                   onClick={async () => {
                     const id = cotizacionToApprove.id;
+                    const motivoLimpio = motivoRechazo.trim();
+
+                    if (accionEstadoCotizacion === 'rechazar' && !motivoLimpio) {
+                      toast.error('Debe ingresar un motivo de rechazo');
+                      return;
+                    }
+
                     setShowAprobarModal(false);
                     setCotizacionToApprove(null);
-                    await aprobarCotizacion(id);
+                    setAccionEstadoCotizacion('aprobar');
+                    setMotivoRechazo('');
+
+                    if (accionEstadoCotizacion === 'aprobar') {
+                      await aprobarCotizacion(id);
+                    } else {
+                      await rechazarCotizacion(id, motivoLimpio);
+                    }
                   }}
-                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  className={`flex-1 px-4 py-3 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${accionEstadoCotizacion === 'aprobar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
                 >
-                  <FaCheck />
-                  Aprobar Cotización
+                  {accionEstadoCotizacion === 'aprobar' ? <FaCheck /> : <FaTimes />}
+                  {accionEstadoCotizacion === 'aprobar' ? 'Aprobar Cotización' : 'Rechazar Cotización'}
                 </button>
               </div>
             </div>

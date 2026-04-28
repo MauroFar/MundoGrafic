@@ -76,6 +76,7 @@ function CotizacionesCrear() {
   const [vendedores, setVendedores] = useState([]);
   const [esVendedor, setEsVendedor] = useState(false);
   const [mostrarVendedores, setMostrarVendedores] = useState(false);
+  const [estadoCotizacionOriginal, setEstadoCotizacionOriginal] = useState(null);
   
   // Estados para el modal de clientes
   const [showClientesModal, setShowClientesModal] = useState(false);
@@ -258,6 +259,10 @@ function CotizacionesCrear() {
     fetchNumeroCotizacion();
   }, [id, apiUrl]);
 
+  const cotizacionBloqueadaParaActualizar = Boolean(
+    id && (estadoCotizacionOriginal === 'aprobada' || estadoCotizacionOriginal === 'rechazada')
+  );
+
   const cargarCotizacion = async () => {
     try {
       // Cargar datos de la cotización usando la API correcta
@@ -280,6 +285,7 @@ function CotizacionesCrear() {
       console.log("Detalles de la cotización:", detallesData);
 
       // Actualizar el estado con los datos completos
+      setEstadoCotizacionOriginal(cotizacionData.estado || null);
       setFecha(cotizacionData.fecha ? cotizacionData.fecha.split('T')[0] : today);
       setNumeroCotizacion(cotizacionData.codigo_cotizacion || "");
       setTxtTiempoEntrega(cotizacionData.tiempo_entrega ?? "5 días hábiles");
@@ -542,6 +548,12 @@ function CotizacionesCrear() {
       console.log("Ya se está guardando, ignorando clic adicional");
       return; // Prevenir doble guardado
     }
+
+    if (cotizacionBloqueadaParaActualizar) {
+      alert("Esta cotización está aprobada o rechazada. Debe guardarse como nueva.");
+      return;
+    }
+
     setIsSaving(true);
     console.log("Iniciando guardado de cotización...");
     try {
@@ -1525,8 +1537,9 @@ function CotizacionesCrear() {
               </button>
               <button
                 onClick={handleGuardarTodo}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                disabled={isSaving}
+                className={`px-4 py-2 text-white rounded-md flex items-center ${cotizacionBloqueadaParaActualizar ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                disabled={isSaving || cotizacionBloqueadaParaActualizar}
+                title={cotizacionBloqueadaParaActualizar ? 'No se puede actualizar una cotización aprobada o rechazada. Use Guardar como Nueva.' : 'Actualizar cotización'}
               >
                 <FaSave className="mr-2" /> Actualizar Cotizacion
               </button>
@@ -2733,9 +2746,9 @@ function CotizacionesCrear() {
           <button
             type="button"
             onClick={handleGuardarTodo}
-            disabled={isSaving}
-            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2"
-            title={id ? 'Actualizar cotización' : 'Guardar cotización'}
+            disabled={isSaving || cotizacionBloqueadaParaActualizar}
+            className={`px-4 py-3 text-white font-semibold rounded-full shadow-xl transition-all duration-200 flex items-center gap-2 ${cotizacionBloqueadaParaActualizar ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300'}`}
+            title={id ? (cotizacionBloqueadaParaActualizar ? 'No se puede actualizar una cotización aprobada o rechazada. Use Guardar como Nueva.' : 'Actualizar cotización') : 'Guardar cotización'}
           >
             <FaSave />
             <span className="hidden sm:inline">{id ? 'Actualizar Cotización' : 'Guardar Cotización'}</span>
