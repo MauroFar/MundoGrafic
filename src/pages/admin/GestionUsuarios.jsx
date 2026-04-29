@@ -13,11 +13,12 @@ const getAuthHeaders = () => ({
 });
 
 function GestionUsuarios() {
+  const nombreCompleto = (usuario) => [usuario?.nombre, usuario?.apellido].filter(Boolean).join(' ');
   const [usuarios, setUsuarios] = useState([]);
   const [areas, setAreas] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showPermisosModal, setShowPermisosModal] = useState(false);
@@ -76,6 +77,8 @@ function GestionUsuarios() {
           (usuario.email || '').toLowerCase().includes(term) ||
           (usuario.nombre_usuario || '').toLowerCase().includes(term) ||
           (usuario.nombre || '').toLowerCase().includes(term) ||
+          (usuario.apellido || '').toLowerCase().includes(term) ||
+          nombreCompleto(usuario).toLowerCase().includes(term) ||
           (usuario.rol || '').toLowerCase().includes(term) ||
           areaNombre.toLowerCase().includes(term)
         );
@@ -130,7 +133,7 @@ function GestionUsuarios() {
     });
     if (res.ok) {
       fetchUsuarios();
-      setForm({ email: '', nombre_usuario: '', nombre: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+      setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
       setEditId(null);
       setShowForm(false);
     } else {
@@ -147,6 +150,7 @@ function GestionUsuarios() {
       email: usuario.email,
       nombre_usuario: usuario.nombre_usuario,
       nombre: usuario.nombre,
+      apellido: usuario.apellido || '',
       rol: usuario.rol,
       area_id: usuario.area_id || '',
       area_ids: (usuario.area_ids || []).filter((area) => Number(area) !== Number(usuario.area_id)).map(String),
@@ -245,7 +249,7 @@ function GestionUsuarios() {
 
   const resetForm = () => {
     setEditId(null);
-    setForm({ email: '', nombre_usuario: '', nombre: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+    setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
   };
 
   const handleNuevoUsuario = () => {
@@ -285,7 +289,7 @@ function GestionUsuarios() {
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar por email, usuario, nombre, rol o área..."
+            placeholder="Buscar por email, usuario, nombre, apellido, rol o área..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -378,9 +382,14 @@ function GestionUsuarios() {
             <input id="nombre_usuario" name="nombre_usuario" value={form.nombre_usuario} onChange={handleChange} placeholder="Usuario" autoComplete="off" required className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           
-          <div className="md:col-span-2">
-            <label htmlFor="nombre" className="block text-sm font-bold text-blue-900 mb-2">Nombre Completo *</label>
-            <input id="nombre" name="nombre" value={form.nombre} onChange={handleChange} placeholder="Nombre completo" autoComplete="off" required className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          <div>
+            <label htmlFor="nombre" className="block text-sm font-bold text-blue-900 mb-2">Nombre *</label>
+            <input id="nombre" name="nombre" value={form.nombre} onChange={handleChange} placeholder="Nombre" autoComplete="off" required className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </div>
+
+          <div>
+            <label htmlFor="apellido" className="block text-sm font-bold text-blue-900 mb-2">Apellido</label>
+            <input id="apellido" name="apellido" value={form.apellido} onChange={handleChange} placeholder="Apellido" autoComplete="off" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           
           <div>
@@ -559,7 +568,7 @@ function GestionUsuarios() {
               {filteredUsuarios.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{u.nombre}</div>
+                    <div className="text-sm font-medium text-gray-900">{nombreCompleto(u) || u.nombre}</div>
                     <div className="text-sm text-gray-500">@{u.nombre_usuario}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

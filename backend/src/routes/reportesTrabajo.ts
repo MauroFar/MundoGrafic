@@ -5,6 +5,73 @@ import checkPermission from "../middleware/checkPermission";
 export default (client: any) => {
   const router = express.Router();
 
+  router.get(
+    "/catalogos",
+    authRequired(),
+    checkPermission(client, "reportes", "leer"),
+    async (_req: any, res: any) => {
+      try {
+        const [areas, operadores] = await Promise.all([
+          client.query(
+            `SELECT id, nombre, activo
+             FROM areas
+             WHERE activo = true
+             ORDER BY nombre ASC`,
+          ),
+          client.query(
+            `SELECT id,
+                    nombre,
+                    apellido,
+                    TRIM(CONCAT_WS(' ', nombre, apellido)) AS nombre_completo,
+                    area_id,
+                    activo
+             FROM usuarios
+             WHERE activo = true
+               AND area_id IS NOT NULL
+             ORDER BY nombre ASC, apellido ASC`,
+          ),
+        ]);
+
+        res.json({ areas: areas.rows, operadores: operadores.rows });
+      } catch (error: any) {
+        console.error("Error al cargar catálogos de reportes:", error);
+        res.status(500).json({ error: "Error al cargar catálogos" });
+      }
+    },
+  );
+
+  router.get(
+    "/mi-contexto",
+    authRequired(),
+    async (req: any, res: any) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(401).json({ error: "Usuario no autenticado" });
+        }
+
+        const result = await client.query(
+          `SELECT
+             u.id AS operador_id,
+             TRIM(CONCAT_WS(' ', u.nombre, u.apellido)) AS operador,
+             a.id AS area_id,
+             a.nombre AS area
+           FROM usuarios u
+           LEFT JOIN areas a ON a.id = u.area_id
+           WHERE u.id = $1
+             AND u.activo = true
+           LIMIT 1`,
+          [userId],
+        );
+
+        res.json(result.rows[0] || null);
+      } catch (error: any) {
+        console.error("Error al obtener contexto de reportes del usuario:", error);
+        res.status(500).json({ error: "Error al obtener contexto del usuario" });
+      }
+    },
+  );
+
   // GET /api/reportesTrabajo?area_id=&operador_id=&fecha=&fecha_desde=&fecha_hasta=
   router.get(
     "/",
@@ -22,7 +89,7 @@ export default (client: any) => {
         }
         if (operador_id) {
           params.push(operador_id);
-          conditions.push(`r.operador_id = $${params.length}`);
+          conditions.push(`r.usuario_id = $${params.length}`);
         }
         if (fecha) {
           params.push(fecha);
@@ -45,8 +112,10 @@ export default (client: any) => {
         const query = `
           SELECT
             r.id,
-            r.area_id,   a.nombre AS area,
-            r.operador_id, o.nombre AS operador,
+            r.area_id,
+            a.nombre AS area,
+            r.usuario_id AS operador_id,
+            TRIM(CONCAT_WS(' ', u.nombre, u.apellido)) AS operador,
             r.proceso,
             r.solicitado_por,
             to_char(r.inicio, 'HH24:MI') AS inicio,
@@ -54,10 +123,10 @@ export default (client: any) => {
             r.fecha,
             r.created_at
           FROM reportes_trabajo_diario r
-          JOIN areas_reporte      a ON a.id = r.area_id
-          JOIN operadores_reporte o ON o.id = r.operador_id
+          JOIN areas a ON a.id = r.area_id
+          JOIN usuarios u ON u.id = r.usuario_id
           ${where}
-          ORDER BY r.fecha DESC, o.nombre ASC, r.inicio ASC
+          ORDER BY r.fecha DESC, u.nombre ASC, r.inicio ASC
         `;
 
         const result = await client.query(query, params);
@@ -77,35 +146,51 @@ export default (client: any) => {
     async (req: any, res: any) => {
       try {
         const {
-          area_id,
-          operador_id,
           proceso,
           solicitado_por,
           inicio,
           fin,
           fecha,
         } = req.body;
+        const userId = req.user?.id;
 
-        if (!area_id || !operador_id || !proceso || !inicio || !fin) {
+        if (!userId) {
+          return res.status(401).json({ error: "Usuario no autenticado" });
+        }
+
+        if (!proceso || !inicio || !fin) {
           return res.status(400).json({
-            error:
-              "Campos requeridos: area_id, operador_id, proceso, inicio, fin",
+            error: "Campos requeridos: proceso, inicio, fin",
           });
+        }
+
+        const usuarioInfo = await client.query(
+          `SELECT id, nombre, apellido, area_id FROM usuarios WHERE id = $1 AND activo = true`,
+          [userId],
+        );
+
+        if (usuarioInfo.rows.length === 0) {
+          return res.status(400).json({ error: "No se encontró un usuario activo para crear el reporte" });
+        }
+
+        const usuario = usuarioInfo.rows[0];
+        if (!usuario.area_id) {
+          return res.status(400).json({ error: "Tu usuario no tiene un área asignada" });
         }
 
         const insert = `
           INSERT INTO reportes_trabajo_diario
-            (area_id, operador_id, proceso, solicitado_por, inicio, fin, fecha)
+            (area_id, usuario_id, proceso, solicitado_por, inicio, fin, fecha)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
-          RETURNING id, area_id, operador_id, proceso, solicitado_por,
+          RETURNING id, area_id, usuario_id, proceso, solicitado_por,
                     to_char(inicio, 'HH24:MI') AS inicio,
                     to_char(fin,   'HH24:MI') AS fin,
                     fecha, created_at
         `;
 
         const params = [
-          area_id,
-          operador_id,
+          usuario.area_id,
+          usuario.id,
           proceso,
           solicitado_por || null,
           inicio,
@@ -116,14 +201,17 @@ export default (client: any) => {
         const inserted = await client.query(insert, params);
         const row = inserted.rows[0];
 
-        // Enriquecer con los nombres para devolver al frontend
-        const names = await client.query(
-          `SELECT a.nombre AS area, o.nombre AS operador
-           FROM areas_reporte a, operadores_reporte o
-           WHERE a.id = $1 AND o.id = $2`,
-          [area_id, operador_id],
+        const areaNombre = await client.query(
+          `SELECT nombre FROM areas WHERE id = $1`,
+          [usuario.area_id],
         );
-        res.json({ ...row, ...names.rows[0] });
+
+        res.json({
+          ...row,
+          operador_id: row.usuario_id,
+          operador: [usuario.nombre, usuario.apellido].filter(Boolean).join(" "),
+          area: areaNombre.rows[0]?.nombre || "",
+        });
       } catch (error: any) {
         console.error("Error al crear reporte:", error);
         res.status(500).json({ error: "Error al crear reporte" });
@@ -165,7 +253,7 @@ export default (client: any) => {
             TO_CHAR(r.fecha, 'Day')                             AS dia_semana_raw,
             COUNT(*)::int                                        AS total
           FROM reportes_trabajo_diario r
-          WHERE r.operador_id = $1
+          WHERE r.usuario_id = $1
           ${extraFilters.join("\n")}
           GROUP BY r.fecha
           ORDER BY r.fecha DESC
@@ -188,34 +276,50 @@ export default (client: any) => {
     async (req: any, res: any) => {
       try {
         const {
-          area_id,
-          operador_id,
           proceso,
           solicitado_por,
           inicio,
           fin,
           fecha,
         } = req.body;
-        if (!area_id || !operador_id || !proceso || !inicio || !fin) {
+
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(401).json({ error: "Usuario no autenticado" });
+        }
+
+        if (!proceso || !inicio || !fin) {
           return res
             .status(400)
             .json({
-              error:
-                "Campos requeridos: area_id, operador_id, proceso, inicio, fin",
+              error: "Campos requeridos: proceso, inicio, fin",
             });
         }
+
+        const usuarioInfo = await client.query(
+          `SELECT id, nombre, apellido, area_id FROM usuarios WHERE id = $1 AND activo = true`,
+          [userId],
+        );
+        if (usuarioInfo.rows.length === 0) {
+          return res.status(400).json({ error: "No se encontró un usuario activo para editar el reporte" });
+        }
+        const usuario = usuarioInfo.rows[0];
+        if (!usuario.area_id) {
+          return res.status(400).json({ error: "Tu usuario no tiene un área asignada" });
+        }
+
         const update = `
           UPDATE reportes_trabajo_diario
-          SET area_id=$1, operador_id=$2, proceso=$3, solicitado_por=$4, inicio=$5, fin=$6, fecha=$7
+          SET area_id=$1, usuario_id=$2, proceso=$3, solicitado_por=$4, inicio=$5, fin=$6, fecha=$7
           WHERE id=$8
-          RETURNING id, area_id, operador_id, proceso, solicitado_por,
+          RETURNING id, area_id, usuario_id, proceso, solicitado_por,
                     to_char(inicio, 'HH24:MI') AS inicio,
                     to_char(fin,   'HH24:MI') AS fin,
                     fecha, created_at
         `;
         const result = await client.query(update, [
-          area_id,
-          operador_id,
+          usuario.area_id,
+          usuario.id,
           proceso,
           solicitado_por || null,
           inicio,
@@ -226,13 +330,16 @@ export default (client: any) => {
         if (result.rows.length === 0)
           return res.status(404).json({ error: "Registro no encontrado" });
         const row = result.rows[0];
-        const names = await client.query(
-          `SELECT a.nombre AS area, o.nombre AS operador
-           FROM areas_reporte a, operadores_reporte o
-           WHERE a.id = $1 AND o.id = $2`,
-          [area_id, operador_id],
+        const areaNombre = await client.query(
+          `SELECT nombre FROM areas WHERE id = $1`,
+          [usuario.area_id],
         );
-        res.json({ ...row, ...names.rows[0] });
+        res.json({
+          ...row,
+          operador_id: row.usuario_id,
+          operador: [usuario.nombre, usuario.apellido].filter(Boolean).join(" "),
+          area: areaNombre.rows[0]?.nombre || "",
+        });
       } catch (error: any) {
         console.error("Error al editar reporte:", error);
         res.status(500).json({ error: "Error al editar reporte" });

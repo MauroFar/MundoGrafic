@@ -27,7 +27,6 @@ export const ADMIN_PANEL_MODULES = [
   'catalogo-procesos',
   'tipos-trabajo',
   'certificados',
-  'gestion-reportes',
 ];
 
 export const CRUD_MODULE_ID_SET = new Set(CRUD_PERMISSION_MODULES.map((m) => m.id));

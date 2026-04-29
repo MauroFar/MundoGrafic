@@ -18,7 +18,6 @@ const MODULE_TEXT = {
   areas: 'areas',
   'catalogo-procesos': 'catalogo de procesos',
   'tipos-trabajo': 'tipos de trabajo',
-  'gestion-reportes': 'gestion de reportes',
 };
 
 const normalizeModuleText = (modulo) => {

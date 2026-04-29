@@ -66,8 +66,32 @@ const TimeInput24 = ({ value, onChange, className }) => (
   />
 );
 
-const ReportesTrabajoDiario = () => {
+const normalizarFechaISO = (valor) => {
+  if (!valor) return "";
+  const str = String(valor).trim();
+
+  // Caso esperado: YYYY-MM-DD o timestamp que inicia con esa fecha.
+  const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+
+  // Fallback defensivo si llega otro formato parseable.
+  const dt = new Date(str);
+  if (Number.isNaN(dt.getTime())) return "";
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const nombreOperador = (operador) => {
+  if (!operador) return "";
+  if (operador.nombre_completo) return operador.nombre_completo;
+  return [operador.nombre, operador.apellido].filter(Boolean).join(" ") || operador.nombre || "";
+};
+
+const ReportesTrabajoDiario = ({ modo = "completo" }) => {
   const navigate = useNavigate();
+  const soloVisualizacion = modo === "visualizacion";
 
   const hoy = new Date().toISOString().split("T")[0];
 
@@ -78,8 +102,7 @@ const ReportesTrabajoDiario = () => {
   // Filtros de tabla
   const [areaId, setAreaId] = useState("");
   const [filtroOperadorId, setFiltroOperadorId] = useState("");
-  const [fechaDesde, setFechaDesde] = useState(hoy);
-  const [fechaHasta, setFechaHasta] = useState(hoy);
+  const [fechaFiltro, setFechaFiltro] = useState(hoy);
   const [busqueda, setBusqueda] = useState("");
 
   // Formulario (modal)
@@ -100,6 +123,9 @@ const ReportesTrabajoDiario = () => {
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [contextoUsuarioReporte, setContextoUsuarioReporte] = useState(null);
+  const [cargandoContextoUsuario, setCargandoContextoUsuario] = useState(false);
+  const [errorContextoUsuario, setErrorContextoUsuario] = useState("");
 
   // Modal editar
   const [modalEditar, setModalEditar] = useState(false);
@@ -112,17 +138,22 @@ const ReportesTrabajoDiario = () => {
   const [fechasOperador, setFechasOperador] = useState([]);
   const [cargandoFechas, setCargandoFechas] = useState(false);
   const [fechaDetalleActiva, setFechaDetalleActiva] = useState(null);
+  const [tarjetasAbiertas, setTarjetasAbiertas] = useState({});
 
-  // Semana visible: offset en semanas respecto a la semana actual (0 = esta semana)
-  const [semanaOffset, setSemanaOffset] = useState(0);
+  // Fecha de referencia para mostrar la semana en modo operador
+  const [fechaSemanaRef, setFechaSemanaRef] = useState(hoy);
+  const fechaRegistro = normalizarFechaISO(
+    fechaDetalleActiva || (filtroOperadorId ? fechaSemanaRef : fechaFiltro) || hoy,
+  ) || hoy;
 
-  // Calcula lunes y domingo de la semana actual ± offset
-  const calcularSemana = (offset = 0) => {
-    const hoyDate = new Date();
+  // Calcula lunes y domingo de la semana de una fecha dada
+  const calcularSemana = (fechaISO) => {
+    const fechaNormalizada = normalizarFechaISO(fechaISO);
+    const base = fechaNormalizada ? new Date(`${fechaNormalizada}T00:00:00`) : new Date();
     // día de la semana en lunes=0 … domingo=6
-    const dow = (hoyDate.getDay() + 6) % 7;
-    const lunes = new Date(hoyDate);
-    lunes.setDate(hoyDate.getDate() - dow + offset * 7);
+    const dow = (base.getDay() + 6) % 7;
+    const lunes = new Date(base);
+    lunes.setDate(base.getDate() - dow);
     lunes.setHours(0, 0, 0, 0);
     const domingo = new Date(lunes);
     domingo.setDate(lunes.getDate() + 6);
@@ -130,27 +161,65 @@ const ReportesTrabajoDiario = () => {
     return { lunes, domingo, lunesISO: toISO(lunes), domingoISO: toISO(domingo) };
   };
 
-  const semanaActual = calcularSemana(semanaOffset);
+  const semanaActual = calcularSemana(fechaSemanaRef);
+
+  const moverSemana = (deltaDias) => {
+    const base = new Date(`${fechaSemanaRef}T00:00:00`);
+    base.setDate(base.getDate() + deltaDias);
+    const yyyy = base.getFullYear();
+    const mm = String(base.getMonth() + 1).padStart(2, "0");
+    const dd = String(base.getDate()).padStart(2, "0");
+    setFechaSemanaRef(`${yyyy}-${mm}-${dd}`);
+    setFechaDetalleActiva(null);
+  };
 
   // Fechas del operador filtradas a la semana visible
-  const fechasDeLaSemana = fechasOperador.filter(
-    f => f.fecha >= semanaActual.lunesISO && f.fecha <= semanaActual.domingoISO
-  );
+  const fechasDeLaSemana = fechasOperador
+    .filter(f => f.fecha >= semanaActual.lunesISO && f.fecha <= semanaActual.domingoISO)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   // ── Cargar catálogos al montar ──────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([
-      fetch(buildApiUrl("/api/areasReporte"), { headers: authHeaders() }).then(r => r.json()),
-      fetch(buildApiUrl("/api/operadoresReporte"), { headers: authHeaders() }).then(r => r.json()),
-    ]).then(([areasData, opsData]) => {
-      const activas = areasData.filter(a => a.activo);
+    fetch(buildApiUrl("/api/reportesTrabajo/catalogos"), { headers: authHeaders() })
+      .then(r => {
+        if (!r.ok) throw new Error("Error al cargar catálogos");
+        return r.json();
+      })
+      .then((data) => {
+      const activas = (data.areas || []).filter(a => a.activo);
       setAreas(activas);
-      setOperadores(opsData.filter(o => o.activo));
-      // Auto-seleccionar área "Sistemas"
-      const sistemas = activas.find(a => a.nombre.toLowerCase().includes("sistema"));
-      if (sistemas) setAreaId(String(sistemas.id));
+      setOperadores((data.operadores || []).filter(o => o.activo));
     }).catch(() => setError("Error al cargar catálogos"));
-  }, []);
+  }, [soloVisualizacion]);
+
+  useEffect(() => {
+    if (soloVisualizacion) return;
+
+    setCargandoContextoUsuario(true);
+    setErrorContextoUsuario("");
+
+    fetch(buildApiUrl("/api/reportesTrabajo/mi-contexto"), { headers: authHeaders() })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("No se pudo cargar la asignación del usuario");
+        return r.json();
+      })
+      .then((data) => {
+        setContextoUsuarioReporte(data || null);
+        if (data?.area_id && data?.operador_id) {
+          const areaAsignada = String(data.area_id);
+          const operadorAsignado = String(data.operador_id);
+          setAreaId(areaAsignada);
+          setFiltroOperadorId(operadorAsignado);
+          setModalAreaId(areaAsignada);
+          setOperadorId(operadorAsignado);
+        }
+      })
+      .catch((e) => {
+        setContextoUsuarioReporte(null);
+        setErrorContextoUsuario(e.message || "No se pudo cargar la asignación del usuario");
+      })
+      .finally(() => setCargandoContextoUsuario(false));
+  }, [soloVisualizacion]);
 
   // Operadores del área seleccionada en la tabla (para el filtro principal)
   const operadoresDelArea = areaId
@@ -162,6 +231,8 @@ const ReportesTrabajoDiario = () => {
     ? operadores.filter(o => String(o.area_id) === String(modalAreaId))
     : [];
 
+  const ingresoBloqueadoPorAsignacion = !soloVisualizacion && !cargandoContextoUsuario && !contextoUsuarioReporte;
+
   // ── Cargar fechas con reportes cuando se selecciona un operador ────────────
   useEffect(() => {
     if (!filtroOperadorId) {
@@ -172,41 +243,51 @@ const ReportesTrabajoDiario = () => {
     setCargandoFechas(true);
     const params = new URLSearchParams({ operador_id: filtroOperadorId });
     if (areaId) params.append("area_id", areaId);
-    if (fechaDesde) params.append("fecha_desde", fechaDesde);
-    if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+    // En vista por operador no aplicamos rango por defecto (hoy),
+    // para mostrar todas las fechas históricas y navegar por semanas.
     fetch(buildApiUrl(`/api/reportesTrabajo/fechas?${params}`), { headers: authHeaders() })
       .then(r => r.json())
       .then(data => {
-        setFechasOperador(data);
+        const normalizadas = (Array.isArray(data) ? data : [])
+          .map((item) => ({
+            ...item,
+            fecha: normalizarFechaISO(item.fecha),
+            total: Number(item.total) || 0,
+          }))
+          .filter((item) => Boolean(item.fecha));
+        setFechasOperador(normalizadas);
         setFechaDetalleActiva(null);
-        setSemanaOffset(0);
       })
       .catch(() => setFechasOperador([]))
       .finally(() => setCargandoFechas(false));
-  }, [filtroOperadorId, areaId, fechaDesde, fechaHasta]);
+  }, [filtroOperadorId, areaId]);
 
   // ── Cargar reportes cuando cambia área o fecha ──────────────────────────────
   useEffect(() => {
-    if (!areaId) { setReportes([]); return; }
+    if (!soloVisualizacion && !areaId) { setReportes([]); return; }
     // En modo detalle de operador, sólo cargamos cuando hay fecha activa
-    if (filtroOperadorId && !fechaDetalleActiva) { setReportes([]); return; }
-    const fechaUsada = filtroOperadorId ? fechaDetalleActiva : null;
+    if (!soloVisualizacion && filtroOperadorId && !fechaDetalleActiva) { setReportes([]); return; }
+    const fechaUsada = !soloVisualizacion && filtroOperadorId ? fechaDetalleActiva : null;
     setCargando(true);
     setError("");
-    const params = new URLSearchParams({ area_id: areaId });
-    if (filtroOperadorId) params.append("operador_id", filtroOperadorId);
+    const params = new URLSearchParams();
+    if (areaId) params.append("area_id", areaId);
+    if (!soloVisualizacion && filtroOperadorId) params.append("operador_id", filtroOperadorId);
     if (fechaUsada) {
       params.append("fecha", fechaUsada);
     } else {
-      if (fechaDesde) params.append("fecha_desde", fechaDesde);
-      if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+      if (fechaFiltro) params.append("fecha", fechaFiltro);
     }
     fetch(buildApiUrl(`/api/reportesTrabajo?${params}`), { headers: authHeaders() })
       .then(r => { if (!r.ok) throw new Error("Error al cargar reportes"); return r.json(); })
       .then(data => setReportes(data))
       .catch(e => setError(e.message))
       .finally(() => setCargando(false));
-  }, [areaId, fechaDesde, fechaHasta, filtroOperadorId, fechaDetalleActiva]);
+  }, [soloVisualizacion, areaId, fechaFiltro, filtroOperadorId, fechaDetalleActiva]);
+
+  useEffect(() => {
+    setTarjetasAbiertas({});
+  }, [fechaFiltro]);
 
   // Filtro client-side (búsqueda de texto + operador)
   const reportesFiltrados = useMemo(() => {
@@ -225,6 +306,46 @@ const ReportesTrabajoDiario = () => {
     return lista;
   }, [reportes, filtroOperadorId, busqueda]);
 
+  const columnasPorArea = useMemo(() => {
+    return areas.map((area) => {
+      const registrosArea = reportesFiltrados.filter(
+        (r) => String(r.area_id) === String(area.id),
+      );
+
+      const operadoresMap = new Map();
+      registrosArea.forEach((r) => {
+        const key = String(r.operador_id);
+        if (!operadoresMap.has(key)) {
+          operadoresMap.set(key, {
+            operador_id: r.operador_id,
+            operador: r.operador,
+            registros: [],
+          });
+        }
+        operadoresMap.get(key).registros.push(r);
+      });
+
+      const operadoresArea = Array.from(operadoresMap.values())
+        .map((op) => ({
+          ...op,
+          registros: [...op.registros].sort((a, b) => (a.inicio || "").localeCompare(b.inicio || "")),
+        }))
+        .sort((a, b) => (a.operador || "").localeCompare(b.operador || ""));
+
+      return {
+        areaId: String(area.id),
+        areaNombre: area.nombre,
+        total: registrosArea.length,
+        operadores: operadoresArea,
+      };
+    });
+  }, [areas, reportesFiltrados]);
+
+  const toggleTarjetaOperador = (areaKey, operadorKey) => {
+    const key = `${areaKey}-${operadorKey}`;
+    setTarjetasAbiertas((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   // ── Validación fila actual ───────────────────────────────────────────────────
   const validarFila = () => {
     const e = {};
@@ -242,7 +363,7 @@ const ReportesTrabajoDiario = () => {
   const agregarALista = () => {
     if (!validarFila()) return;
     const areaNombre = areas.find(a => String(a.id) === String(modalAreaId))?.nombre || "";
-    const opNombre   = operadores.find(o => String(o.id) === String(operadorId))?.nombre || "";
+    const opNombre   = nombreOperador(operadores.find(o => String(o.id) === String(operadorId)));
     setFilasPendientes(prev => [
       ...prev,
       {
@@ -266,13 +387,16 @@ const ReportesTrabajoDiario = () => {
   // ── Cerrar formulario y limpiar ─────────────────────────────────────────────
   const cerrarFormulario = () => {
     setMostrarFormulario(false);
-    setModalAreaId(""); setOperadorId(""); setProceso(""); setSolicitadoPor("");
+    setModalAreaId(contextoUsuarioReporte?.area_id ? String(contextoUsuarioReporte.area_id) : "");
+    setOperadorId(contextoUsuarioReporte?.operador_id ? String(contextoUsuarioReporte.operador_id) : "");
+    setProceso(""); setSolicitadoPor("");
     setInicio(""); setFin(""); setErrores({});
     setFilasPendientes([]);
   };
 
   const abrirFormulario = () => {
-    setModalAreaId(areaId);
+    setModalAreaId(contextoUsuarioReporte?.area_id ? String(contextoUsuarioReporte.area_id) : areaId);
+    setOperadorId(contextoUsuarioReporte?.operador_id ? String(contextoUsuarioReporte.operador_id) : operadorId);
     // Pre-llenar inicio con la hora final del último proceso guardado en el área.
     // Si no hay registros del día (primer registro), arrange a las 08:00.
     const ultimoFin = reportes
@@ -302,15 +426,48 @@ const ReportesTrabajoDiario = () => {
               solicitado_por: f.solicitado_por,
               inicio: f.inicio,
               fin: f.fin,
-              fecha: fechaHasta || fechaDesde || hoy,
+              fecha: fechaRegistro,
             }),
           }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         )
       );
       const fallidos = resultados.filter(r => !r.ok);
       if (fallidos.length > 0) throw new Error(fallidos[0].data?.error || "Error al guardar uno o más registros");
+      const guardados = resultados.map(r => r.data);
+
+      // Refrescar tarjetas de fechas en caliente para no depender de recargar la página.
+      if (filtroOperadorId) {
+        setFechasOperador(prev => {
+          const acumulado = new Map(
+            prev.map(f => [f.fecha, { ...f, total: Number(f.total) || 0 }]),
+          );
+
+          guardados.forEach((row) => {
+            if (String(row.operador_id) !== String(filtroOperadorId)) return;
+            if (areaId && String(row.area_id) !== String(areaId)) return;
+
+            const fechaFila = normalizarFechaISO(row.fecha);
+            if (!fechaFila) return;
+
+            const actual = acumulado.get(fechaFila);
+            if (actual) {
+              actual.total += 1;
+            } else {
+              acumulado.set(fechaFila, { fecha: fechaFila, total: 1 });
+            }
+          });
+
+          return Array.from(acumulado.values()).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+        });
+      }
+
+      if (filtroOperadorId) {
+        setFechaSemanaRef(fechaRegistro);
+        setFechaDetalleActiva(fechaRegistro);
+      }
+
       // Agregar a la tabla y reordenar igual que el backend: operador ASC, inicio ASC
-      const nuevos = resultados.map(r => r.data).filter(d => String(d.area_id) === String(areaId));
+      const nuevos = guardados.filter(d => String(d.area_id) === String(areaId));
       if (nuevos.length > 0) {
         setReportes(prev => {
           const combinado = [...prev, ...nuevos];
@@ -398,7 +555,11 @@ const ReportesTrabajoDiario = () => {
 
   // Formatea "2026-04-25" → { diaNombre: "Viernes", fechaDisplay: "25 abr 2026" }
   const formatearFecha = (fechaStr) => {
-    const [y, m, d] = fechaStr.split("-").map(Number);
+    const fechaISO = normalizarFechaISO(fechaStr);
+    if (!fechaISO) {
+      return { diaNombre: "Fecha inválida", fechaDisplay: String(fechaStr || "") };
+    }
+    const [y, m, d] = fechaISO.split("-").map(Number);
     const dt = new Date(y, m - 1, d);
     const diaNombre = dt.toLocaleDateString("es-ES", { weekday: "long" });
     const fechaDisplay = dt.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
@@ -414,7 +575,7 @@ const ReportesTrabajoDiario = () => {
     const W = doc.internal.pageSize.getWidth(); // 210 mm
     const areaNombre = areas.find(a => String(a.id) === String(areaId))?.nombre || "";
     const opNombre   = filtroOperadorId
-      ? operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId))?.nombre || ""
+      ? nombreOperador(operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId)))
       : "Todos";
 
     // ── Logo ──
@@ -466,7 +627,7 @@ const ReportesTrabajoDiario = () => {
     doc.setFont("helvetica", "normal");
     const etiquetaFecha = filtroOperadorId
       ? (fechaDetalleActiva || "Selecciona una fecha")
-      : ((fechaDesde && fechaHasta) ? `${fechaDesde} a ${fechaHasta}` : (fechaDesde || fechaHasta || "Todas"));
+      : (fechaFiltro || "Todas");
     doc.text(etiquetaFecha, 26, 39);
 
     // ── Tabla ──
@@ -564,7 +725,7 @@ const ReportesTrabajoDiario = () => {
 
     const etiquetaArchivo = filtroOperadorId
       ? (fechaDetalleActiva || "sin_fecha")
-      : `${fechaDesde || "inicio"}_a_${fechaHasta || "fin"}`;
+      : `${fechaFiltro || "sin_fecha"}`;
     const nombreArchivo = `reporte_${areaNombre.replace(/\s+/g, "_")}_${etiquetaArchivo}.pdf`;
     doc.save(nombreArchivo);
   };
@@ -587,10 +748,12 @@ const ReportesTrabajoDiario = () => {
             </button>
             <div>
               <h1 className="text-xl font-bold text-gray-800">Reportes de Trabajo Diario</h1>
-              <p className="text-xs text-gray-500 mt-0.5">Registro y consulta de procesos por área</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {soloVisualizacion ? "Consulta de reportes cargados por los usuarios" : "Registro y consulta de procesos por área"}
+              </p>
             </div>
           </div>
-          {areas.length > 0 && (
+          {!soloVisualizacion && areas.length > 0 && !ingresoBloqueadoPorAsignacion && (
             <button
               onClick={abrirFormulario}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm"
@@ -606,52 +769,198 @@ const ReportesTrabajoDiario = () => {
 
       <div className="max-w-6xl mx-auto px-6 py-6">
 
-        {/* ── Selectores: Área + Operador ── */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-          <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Área de trabajo:</label>
-          <select
-            value={areaId}
-            onChange={e => { setAreaId(e.target.value); setFiltroOperadorId(""); setBusqueda(""); }}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[200px]"
-          >
-            <option value="">-- Seleccionar área --</option>
-            {areas.map(a => (
-              <option key={a.id} value={a.id}>{a.nombre}</option>
-            ))}
-          </select>
+        {!soloVisualizacion && cargandoContextoUsuario && (
+          <div className="mb-4 text-sm bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-4 py-3">
+            Resolviendo tu área y operador asignados...
+          </div>
+        )}
 
-          {areaId && (
+        {!soloVisualizacion && ingresoBloqueadoPorAsignacion && (
+          <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">
+            No tienes un operador de reportes vinculado a tu usuario. Pide a administración que haga la asignación en Gestión de Reportes.
+          </div>
+        )}
+
+        {!soloVisualizacion && errorContextoUsuario && !ingresoBloqueadoPorAsignacion && (
+          <div className="mb-4 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3">
+            {errorContextoUsuario}
+          </div>
+        )}
+
+        {/* ── Selectores: Área + Operador ── */}
+        {!soloVisualizacion && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+          {!soloVisualizacion && contextoUsuarioReporte ? (
             <>
-              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Operador:</label>
+              <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Área de trabajo:</span>
+              <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 text-sm font-medium">
+                {contextoUsuarioReporte.area}
+              </span>
+              <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Operador:</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1.5 text-sm font-medium">
+                {contextoUsuarioReporte.operador}
+              </span>
+            </>
+          ) : (
+            <>
+              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Área de trabajo:</label>
               <select
-                value={filtroOperadorId}
-                onChange={e => setFiltroOperadorId(e.target.value)}
+                value={areaId}
+                onChange={e => { setAreaId(e.target.value); setFiltroOperadorId(""); setBusqueda(""); }}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[200px]"
               >
-                <option value="">Todos los operadores</option>
-                {operadoresDelArea.map(o => (
-                  <option key={o.id} value={o.id}>{o.nombre}</option>
+                <option value="">-- Seleccionar área --</option>
+                {areas.map(a => (
+                  <option key={a.id} value={a.id}>{a.nombre}</option>
                 ))}
               </select>
+
+              {areaId && (
+                <>
+                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Operador:</label>
+                  <select
+                    value={filtroOperadorId}
+                    onChange={e => setFiltroOperadorId(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[200px]"
+                  >
+                    <option value="">Todos los operadores</option>
+                    {operadoresDelArea.map(o => (
+                      <option key={o.id} value={o.id}>{nombreOperador(o)}</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </>
           )}
         </div>
+        )}
 
         {/* ── Error general ── */}
         {error && (
           <div className="mb-4 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>
         )}
 
-        {/* ── Modo: Operador seleccionado → lista de fechas + detalle ── */}
-        {areaId && filtroOperadorId ? (
+        {soloVisualizacion ? (
+          <>
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-sm">
+              <div className="relative flex-1 max-w-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Buscar operador, proceso..."
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha:</label>
+                <input
+                  type="date"
+                  value={fechaFiltro}
+                  onChange={e => setFechaFiltro(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                {fechaFiltro !== hoy && (
+                  <button
+                    onClick={() => setFechaFiltro(hoy)}
+                    className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                  >
+                    Hoy
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {cargando ? (
+              <div className="bg-white border border-gray-200 rounded-xl px-6 py-10 text-center text-gray-400">
+                Cargando reportes...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {columnasPorArea.map((col) => (
+                  <div key={col.areaId} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                      <div className="text-sm font-bold text-gray-800">{col.areaNombre}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {col.total} registro{col.total !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+
+                    <div className="p-3 space-y-2 max-h-[520px] overflow-y-auto">
+                      {col.operadores.length === 0 ? (
+                        <div className="text-xs text-gray-400 py-3 text-center">Sin reportes en esta fecha.</div>
+                      ) : (
+                        col.operadores.map((op) => {
+                          const key = `${col.areaId}-${op.operador_id}`;
+                          const abierto = Boolean(tarjetasAbiertas[key]);
+                          return (
+                            <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
+                              <button
+                                onClick={() => toggleTarjetaOperador(col.areaId, op.operador_id)}
+                                className="w-full px-3 py-2.5 bg-white hover:bg-blue-50 text-left transition-colors"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-sm font-semibold text-gray-800">{op.operador}</span>
+                                  <span className="text-xs text-gray-500">{op.registros.length}</span>
+                                </div>
+                              </button>
+
+                              {abierto && (
+                                <div className="border-t border-gray-100 bg-gray-50 px-3 py-2 space-y-1.5">
+                                  {op.registros.map((r) => (
+                                    <div key={r.id} className="text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2">
+                                      <div className="font-semibold text-blue-700">{r.inicio} - {r.fin}</div>
+                                      <div className="font-medium text-gray-800 mt-0.5">{r.proceso}</div>
+                                      {r.solicitado_por && (
+                                        <div className="text-gray-500 mt-0.5">Solicitado por: {r.solicitado_por}</div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : areaId && filtroOperadorId ? (
+          /* ── Modo: Operador seleccionado → lista de fechas + detalle ── */
           <>
             {/* Lista de fechas con reportes */}
             <div className="mb-5">
 
+              {/* Filtro de semana por fecha */}
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha de referencia:</label>
+                <input
+                  type="date"
+                  value={fechaSemanaRef}
+                  onChange={e => { setFechaSemanaRef(e.target.value); setFechaDetalleActiva(null); }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                {fechaSemanaRef !== hoy && (
+                  <button
+                    onClick={() => { setFechaSemanaRef(hoy); setFechaDetalleActiva(null); }}
+                    className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                  >
+                    Hoy
+                  </button>
+                )}
+              </div>
+
               {/* Encabezado de semana con navegación */}
               <div className="flex items-center gap-3 mb-3">
                 <button
-                  onClick={() => { setSemanaOffset(o => o - 1); setFechaDetalleActiva(null); }}
+                  onClick={() => moverSemana(-7)}
                   className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
                   title="Semana anterior"
                 >
@@ -664,30 +973,17 @@ const ReportesTrabajoDiario = () => {
                   {semanaActual.lunes.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
                   {" — "}
                   {semanaActual.domingo.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
-                  {semanaOffset === 0 && (
-                    <span className="ml-2 text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Esta semana</span>
-                  )}
                 </div>
 
                 <button
-                  onClick={() => { setSemanaOffset(o => o + 1); setFechaDetalleActiva(null); }}
-                  disabled={semanaOffset >= 0}
-                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={() => moverSemana(7)}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
                   title="Semana siguiente"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
-
-                {semanaOffset !== 0 && (
-                  <button
-                    onClick={() => { setSemanaOffset(0); setFechaDetalleActiva(null); }}
-                    className="text-xs text-blue-600 hover:underline ml-1"
-                  >
-                    Ir a hoy
-                  </button>
-                )}
               </div>
 
               {/* Tarjetas de fechas */}
@@ -707,13 +1003,17 @@ const ReportesTrabajoDiario = () => {
                 </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {fechasDeLaSemana.map(item => {
+                  {[...fechasDeLaSemana].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).map(item => {
                     const { diaNombre, fechaDisplay } = formatearFecha(item.fecha);
                     const activa = fechaDetalleActiva === item.fecha;
                     return (
                       <button
                         key={item.fecha}
-                        onClick={() => setFechaDetalleActiva(activa ? null : item.fecha)}
+                        onClick={() => {
+                          const fechaTarjeta = normalizarFechaISO(item.fecha) || hoy;
+                          setFechaSemanaRef(fechaTarjeta);
+                          setFechaDetalleActiva(activa ? null : fechaTarjeta);
+                        }}
                         className={`flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all shadow-sm ${
                           activa
                             ? "bg-blue-600 border-blue-600 text-white shadow-md"
@@ -739,7 +1039,7 @@ const ReportesTrabajoDiario = () => {
                   <span className="font-semibold text-gray-700 text-sm">
                     {(() => { const { diaNombre, fechaDisplay } = formatearFecha(fechaDetalleActiva); return `${diaNombre} ${fechaDisplay}`; })()}
                     <span className="ml-2 text-gray-400 font-normal">
-                      — {operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId))?.nombre}
+                      — {nombreOperador(operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId)))}
                     </span>
                   </span>
                   <div className="flex items-center gap-3">
@@ -767,13 +1067,13 @@ const ReportesTrabajoDiario = () => {
                         <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
                         <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
                         <th className="py-3 px-4 text-left font-semibold">Hora final</th>
-                        <th className="py-3 px-4 text-left font-semibold"></th>
+                        {!soloVisualizacion && <th className="py-3 px-4 text-left font-semibold"></th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {cargando ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-gray-400">
+                          <td colSpan={soloVisualizacion ? 4 : 5} className="text-center py-8 text-gray-400">
                             <div className="flex items-center justify-center gap-2">
                               <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -785,7 +1085,7 @@ const ReportesTrabajoDiario = () => {
                         </tr>
                       ) : reportes.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-gray-400">No hay registros para esta fecha.</td>
+                          <td colSpan={soloVisualizacion ? 4 : 5} className="text-center py-8 text-gray-400">No hay registros para esta fecha.</td>
                         </tr>
                       ) : (
                         reportes.map(d => (
@@ -794,20 +1094,22 @@ const ReportesTrabajoDiario = () => {
                             <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
                             <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
                             <td className="py-3 px-4 text-gray-600">{d.fin}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
-                                  </svg>
-                                </button>
-                                <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
+                            {!soloVisualizacion && (
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                                    </svg>
+                                  </button>
+                                  <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -836,23 +1138,16 @@ const ReportesTrabajoDiario = () => {
 
             {/* Filtro de rango de fechas */}
             <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Desde:</label>
+              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha:</label>
               <input
                 type="date"
-                value={fechaDesde}
-                onChange={e => setFechaDesde(e.target.value)}
+                value={fechaFiltro}
+                onChange={e => setFechaFiltro(e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
-              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Hasta:</label>
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={e => setFechaHasta(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              {(fechaDesde !== hoy || fechaHasta !== hoy) && (
+              {fechaFiltro !== hoy && (
                 <button
-                  onClick={() => { setFechaDesde(hoy); setFechaHasta(hoy); }}
+                  onClick={() => setFechaFiltro(hoy)}
                   className="text-xs text-blue-600 hover:underline whitespace-nowrap"
                 >
                   Hoy
@@ -867,8 +1162,8 @@ const ReportesTrabajoDiario = () => {
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <span className="font-semibold text-gray-700 text-sm">
                 {areas.find(a => String(a.id) === String(areaId))?.nombre}
-                {(fechaDesde || fechaHasta) && (
-                  <span className="ml-2 text-gray-400 font-normal">— {fechaDesde || "..."} a {fechaHasta || "..."}</span>
+                {fechaFiltro && (
+                  <span className="ml-2 text-gray-400 font-normal">— {fechaFiltro}</span>
                 )}
               </span>
               <div className="flex items-center gap-3">
@@ -909,13 +1204,13 @@ const ReportesTrabajoDiario = () => {
                     <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
                     <th className="py-3 px-4 text-left font-semibold">Hora final</th>
-                    <th className="py-3 px-4 text-left font-semibold"></th>
+                    {!soloVisualizacion && <th className="py-3 px-4 text-left font-semibold"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {cargando ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                      <td colSpan={soloVisualizacion ? 5 : 6} className="text-center py-10 text-gray-400">
                         <div className="flex items-center justify-center gap-2">
                           <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -927,7 +1222,7 @@ const ReportesTrabajoDiario = () => {
                     </tr>
                   ) : reportesFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                      <td colSpan={soloVisualizacion ? 5 : 6} className="text-center py-10 text-gray-400">
                         No hay registros para esta fecha y área.
                       </td>
                     </tr>
@@ -939,20 +1234,22 @@ const ReportesTrabajoDiario = () => {
                         <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
                         <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
                         <td className="py-3 px-4 text-gray-600">{d.fin}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
-                              </svg>
-                            </button>
-                            <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
+                        {!soloVisualizacion && (
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => abrirEditar(d)} title="Editar" className="text-blue-400 hover:text-blue-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                                </svg>
+                              </button>
+                              <button onClick={() => eliminarReporte(d.id)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-4a1 1 0 00-1 1m-4 0h10" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -966,7 +1263,7 @@ const ReportesTrabajoDiario = () => {
       </div>
 
       {/* ── Modal: Editar registro ── */}
-      {modalEditar && editando && (
+      {!soloVisualizacion && modalEditar && editando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cerrarEditar} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 z-10">
@@ -989,7 +1286,7 @@ const ReportesTrabajoDiario = () => {
                 >
                   <option value="">-- Seleccionar --</option>
                   {operadores.filter(o => String(o.area_id) === String(editando.area_id)).map(o => (
-                    <option key={o.id} value={o.id}>{o.nombre}</option>
+                    <option key={o.id} value={o.id}>{nombreOperador(o)}</option>
                   ))}
                 </select>
                 {editErrores.operador_id && <p className="text-red-500 text-xs mt-1">{editErrores.operador_id}</p>}
@@ -1042,7 +1339,7 @@ const ReportesTrabajoDiario = () => {
       )}
 
       {/* ── Modal: Agregar registros ── */}
-      {mostrarFormulario && (
+      {!soloVisualizacion && mostrarFormulario && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* Overlay */}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cerrarFormulario} />
@@ -1065,37 +1362,60 @@ const ReportesTrabajoDiario = () => {
             {/* Cuerpo scrolleable */}
             <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
 
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm text-blue-800">
+                Fecha de guardado: <span className="font-semibold">{fechaRegistro}</span>
+              </div>
+
               {/* Formulario nueva fila */}
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
 
-                {/* Área */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Área <span className="text-red-500">*</span></label>
-                  <select
-                    className={inputClass("modalAreaId")}
-                    value={modalAreaId}
-                    onChange={e => { setModalAreaId(e.target.value); setOperadorId(""); setErrores(p => ({ ...p, modalAreaId: "", operadorId: "" })); }}
-                  >
-                    <option value="">-- Seleccionar área --</option>
-                    {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                  </select>
-                  {errores.modalAreaId && <p className="text-red-500 text-xs mt-1">{errores.modalAreaId}</p>}
-                </div>
+                {contextoUsuarioReporte ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Área asignada</label>
+                      <div className="w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-700 font-medium">
+                        {contextoUsuarioReporte.area}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Operador asignado</label>
+                      <div className="w-full border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 text-sm text-emerald-700 font-medium">
+                        {contextoUsuarioReporte.operador}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Área */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Área <span className="text-red-500">*</span></label>
+                      <select
+                        className={inputClass("modalAreaId")}
+                        value={modalAreaId}
+                        onChange={e => { setModalAreaId(e.target.value); setOperadorId(""); setErrores(p => ({ ...p, modalAreaId: "", operadorId: "" })); }}
+                      >
+                        <option value="">-- Seleccionar área --</option>
+                        {areas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                      </select>
+                      {errores.modalAreaId && <p className="text-red-500 text-xs mt-1">{errores.modalAreaId}</p>}
+                    </div>
 
-                {/* Operador */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Operador <span className="text-red-500">*</span></label>
-                  <select
-                    className={inputClass("operadorId")}
-                    value={operadorId}
-                    onChange={e => { setOperadorId(e.target.value); setErrores(p => ({ ...p, operadorId: "" })); }}
-                    disabled={operadoresFiltrados.length === 0}
-                  >
-                    <option value="">{operadoresFiltrados.length === 0 ? "Sin operadores en esta área" : "-- Seleccionar operador --"}</option>
-                    {operadoresFiltrados.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                  </select>
-                  {errores.operadorId && <p className="text-red-500 text-xs mt-1">{errores.operadorId}</p>}
-                </div>
+                    {/* Operador */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Operador <span className="text-red-500">*</span></label>
+                      <select
+                        className={inputClass("operadorId")}
+                        value={operadorId}
+                        onChange={e => { setOperadorId(e.target.value); setErrores(p => ({ ...p, operadorId: "" })); }}
+                        disabled={operadoresFiltrados.length === 0}
+                      >
+                        <option value="">{operadoresFiltrados.length === 0 ? "Sin operadores en esta área" : "-- Seleccionar operador --"}</option>
+                        {operadoresFiltrados.map(o => <option key={o.id} value={o.id}>{nombreOperador(o)}</option>)}
+                      </select>
+                      {errores.operadorId && <p className="text-red-500 text-xs mt-1">{errores.operadorId}</p>}
+                    </div>
+                  </>
+                )}
 
                 {/* Proceso */}
                 <div>

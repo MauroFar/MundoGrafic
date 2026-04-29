@@ -28,7 +28,6 @@ import GestionRoles from "./pages/admin/GestionRoles";
 import GestionAreas from "./pages/admin/GestionAreas";
 import CatalogoProcesos from "./pages/admin/CatalogoProcesos";
 import TiposTrabajo from "./pages/admin/TiposTrabajo";
-import GestionReportes from "./pages/admin/GestionReportes";
 import ReportesTrabajoDiario from "./pages/Produccion/ReportesTrabajoDiario";
 import SeguimientoOrden from "./pages/Produccion/SeguimientoOrden";
 import Administracion from "./pages/Administracion";
@@ -227,13 +226,6 @@ function App() {
             </PrivateRoute>
           } />
 
-          {/* Gestión de Áreas y Operadores para Reportes */}
-          <Route path="/admin/gestion-reportes" element={
-            <PrivateRoute requiredModule="gestion-reportes">
-              <GestionReportes />
-            </PrivateRoute>
-          } />
-
           {/* Administración: placeholder para futuras herramientas (solo admin) */}
           <Route path="/administracion" element={
             <PrivateRoute requireAnyAdminModule={true}>
@@ -243,7 +235,13 @@ function App() {
 
           <Route path="/reportesTrabajoDiario" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <ReportesTrabajoDiario />
+              <ReportesTrabajoDiario modo="visualizacion" />
+            </PrivateRoute>
+          } />
+
+          <Route path="/reportesTrabajoDiario/ingresar" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ReportesTrabajoDiario modo="completo" />
             </PrivateRoute>
           } />
         </Route>

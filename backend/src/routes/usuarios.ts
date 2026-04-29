@@ -40,6 +40,7 @@ export default (client: any) => {
         u.email,
         u.nombre_usuario,
         u.nombre,
+        u.apellido,
         u.rol,
         u.area_id,
         u.activo,
@@ -63,6 +64,7 @@ export default (client: any) => {
         u.email,
         u.nombre_usuario,
         u.nombre,
+        u.apellido,
         u.rol,
         u.area_id,
         u.activo,
@@ -82,7 +84,7 @@ export default (client: any) => {
   router.get('/vendedores', authRequired(), async (req: any, res: any) => {
     try {
       const result = await client.query(
-        'SELECT id, nombre, email, celular FROM usuarios WHERE LOWER(rol) = LOWER($1) AND activo = true ORDER BY nombre',
+        'SELECT id, nombre, apellido, email, celular FROM usuarios WHERE LOWER(rol) = LOWER($1) AND activo = true ORDER BY nombre, apellido',
         ['vendedor']
       );
       console.log('Vendedores encontrados:', result.rows.length);
@@ -94,7 +96,7 @@ export default (client: any) => {
 
   // Crear usuario (requiere permiso crear en modulo usuarios)
   router.post('/', authRequired(), checkPermission(client, 'usuarios', 'crear'), async (req: any, res: any) => {
-    const { email, nombre_usuario, password, nombre, rol, area_id, area_ids, email_personal, celular } = req.body;
+    const { email, nombre_usuario, password, nombre, apellido, rol, area_id, area_ids, email_personal, celular } = req.body;
     try {
       const normalizedAreaIds = normalizeAreaIds(area_ids, area_id);
       if (normalizedAreaIds.length === 0) {
@@ -135,8 +137,8 @@ export default (client: any) => {
       await client.query('BEGIN');
 
       const result = await client.query(
-        'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, rol, rol_id, area_id, email_personal, email_config, celular) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, email, nombre_usuario, nombre, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular',
-        [email, nombre_usuario, hash, nombre, rol, rol_id, primaryAreaId, email_personal, email_config, celular || null]
+        'INSERT INTO usuarios (email, nombre_usuario, password_hash, nombre, apellido, rol, rol_id, area_id, email_personal, email_config, celular) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, email, nombre_usuario, nombre, apellido, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular',
+        [email, nombre_usuario, hash, nombre, apellido || null, rol, rol_id, primaryAreaId, email_personal, email_config, celular || null]
       );
       
       // Crear permisos iniciales denegados para el nuevo usuario
@@ -165,7 +167,7 @@ export default (client: any) => {
   // Editar usuario (requiere permiso editar en modulo usuarios)
   router.put('/:id', authRequired(), checkPermission(client, 'usuarios', 'editar'), async (req: any, res: any) => {
     const { id } = req.params;
-    const { email, nombre_usuario, nombre, rol, area_id, area_ids, activo, password, email_personal, celular } = req.body;
+    const { email, nombre_usuario, nombre, apellido, rol, area_id, area_ids, activo, password, email_personal, celular } = req.body;
     try {
       const normalizedAreaIds = normalizeAreaIds(area_ids, area_id);
       if (normalizedAreaIds.length === 0) {
@@ -204,14 +206,14 @@ export default (client: any) => {
 
       await client.query('BEGIN');
       
-      let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, rol_id = $5, area_id = $6, activo = $7, email_personal = $8, email_config = $9, celular = $10';
-      let params = [email, nombre_usuario, nombre, rol, rol_id, primaryAreaId, activo, email_personal, email_config, celular || null, id];
+      let query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, apellido = $4, rol = $5, rol_id = $6, area_id = $7, activo = $8, email_personal = $9, email_config = $10, celular = $11';
+      let params = [email, nombre_usuario, nombre, apellido || null, rol, rol_id, primaryAreaId, activo, email_personal, email_config, celular || null, id];
       if (password) {
         const hash = await bcrypt.hash(password, 10);
-        query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, rol = $4, rol_id = $5, area_id = $6, activo = $7, email_personal = $8, email_config = $9, celular = $10, password_hash = $11 WHERE id = $12 RETURNING id, email, nombre_usuario, nombre, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
-        params = [email, nombre_usuario, nombre, rol, rol_id, primaryAreaId, activo, email_personal, email_config, celular || null, hash, id];
+        query = 'UPDATE usuarios SET email = $1, nombre_usuario = $2, nombre = $3, apellido = $4, rol = $5, rol_id = $6, area_id = $7, activo = $8, email_personal = $9, email_config = $10, celular = $11, password_hash = $12 WHERE id = $13 RETURNING id, email, nombre_usuario, nombre, apellido, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
+        params = [email, nombre_usuario, nombre, apellido || null, rol, rol_id, primaryAreaId, activo, email_personal, email_config, celular || null, hash, id];
       } else {
-        query += ' WHERE id = $11 RETURNING id, email, nombre_usuario, nombre, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
+        query += ' WHERE id = $12 RETURNING id, email, nombre_usuario, nombre, apellido, rol, rol_id, area_id, activo, fecha_creacion, firma_html, firma_activa, email_personal, email_config, celular';
       }
       const result = await client.query(query, params);
 

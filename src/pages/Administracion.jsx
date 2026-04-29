@@ -76,18 +76,19 @@ const Administracion = () => {
       color: "#10b981"
     },
     {
-      id: 'gestion-reportes',
-      titulo: "Gestión de Reportes",
-      descripcion: "Administrar áreas y operadores de los Reportes de Trabajo Diario",
+      id: 'reportes-carga',
+      titulo: "Ingresar Reportes Diarios",
+      descripcion: "Registrar los reportes de trabajo diario cargados por cada usuario",
       icono: <FaClipboardList />,
-      ruta: "/admin/gestion-reportes",
-      color: "#f97316"
+      ruta: "/reportesTrabajoDiario/ingresar",
+      color: "#2563eb",
+      alwaysVisible: true
     }
   ];
 
   // Filtrar módulos según permisos
-  const modulosAdmin = todosLosModulos.filter(modulo => 
-    modulosDisponibles.includes(modulo.id)
+  const modulosAdmin = todosLosModulos.filter(modulo =>
+    modulo.alwaysVisible || modulosDisponibles.includes(modulo.id)
   );
 
   if (loading) {
