@@ -310,6 +310,17 @@ export default (client: any) => {
         laminado_barnizado,
         troquelado,
         liberacion_producto, // Campos adicionales para digital
+        preprensa_responsable,
+        impresion_responsable,
+        laminado_responsable,
+        barnizado_responsable,
+        troquelado_flexible_responsable,
+        troquelado_plano_responsable,
+        rebobinado_responsable,
+        refilado_termoencogible_responsable,
+        sellado_termoencogible_responsable,
+        corte_termoencogible_responsable,
+        terminado_responsable,
         // Campos de cantidad final para cada responsable
         vendedor_cantidad_final,
         preprensa_cantidad_final,
@@ -453,12 +464,15 @@ export default (client: any) => {
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
             proveedor_material, espesor,
             material, impresion, observaciones, numero_salida,
-            vendedor, preprensa, prensa, laminado_barnizado, troquelado, terminados, facturado, liberacion_producto,
+            vendedor, preprensa_responsable, impresion_responsable, laminado_responsable, barnizado_responsable,
+            troquelado_flexible_responsable, troquelado_plano_responsable, rebobinado_responsable,
+            refilado_termoencogible_responsable, sellado_termoencogible_responsable,
+            corte_termoencogible_responsable, terminado_responsable, liberacion_producto, facturado,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
             laminado_barnizado_cantidad_final, troquelado_cantidad_final,
             terminados_cantidad_final, liberacion_producto_cantidad_final,
             trazabilidad_proceso
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32::jsonb)
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38::jsonb)
         `,
             [
               ordenId,
@@ -478,13 +492,19 @@ export default (client: any) => {
               observaciones || null,
               numeroSalida || null,
               vendedor || null,
-              preprensa || null,
-              prensa || null,
-              laminado_barnizado || null,
-              troquelado || null,
-              terminados || null,
-              facturado || null,
+              preprensa_responsable || preprensa || null,
+              impresion_responsable || prensa || null,
+              laminado_responsable || laminado_barnizado || null,
+              barnizado_responsable || null,
+              troquelado_flexible_responsable || troquelado || null,
+              troquelado_plano_responsable || null,
+              rebobinado_responsable || null,
+              refilado_termoencogible_responsable || null,
+              sellado_termoencogible_responsable || null,
+              corte_termoencogible_responsable || null,
+              terminado_responsable || terminados || null,
               liberacion_producto || null,
+              facturado || null,
               vendedor_cantidad_final || null,
               preprensa_cantidad_final || null,
               prensa_cantidad_final || null,
@@ -1062,6 +1082,17 @@ export default (client: any) => {
         laminado_barnizado,
         troquelado,
         liberacion_producto,
+        preprensa_responsable,
+        impresion_responsable,
+        laminado_responsable,
+        barnizado_responsable,
+        troquelado_flexible_responsable,
+        troquelado_plano_responsable,
+        rebobinado_responsable,
+        refilado_termoencogible_responsable,
+        sellado_termoencogible_responsable,
+        corte_termoencogible_responsable,
+        terminado_responsable,
         vendedor_cantidad_final,
         preprensa_cantidad_final,
         prensa_cantidad_final,
@@ -1168,23 +1199,30 @@ export default (client: any) => {
             troquel, codigo_troquel, terminado_etiqueta, terminados_especiales, cantidad_por_rollo,
             proveedor_material, espesor,
             material, impresion, observaciones, numero_salida,
-            vendedor, preprensa, prensa, laminado_barnizado, troquelado, terminados, facturado, liberacion_producto,
+            vendedor, preprensa_responsable, impresion_responsable, laminado_responsable, barnizado_responsable,
+            troquelado_flexible_responsable, troquelado_plano_responsable, rebobinado_responsable,
+            refilado_termoencogible_responsable, sellado_termoencogible_responsable,
+            corte_termoencogible_responsable, terminado_responsable, liberacion_producto, facturado,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
             laminado_barnizado_cantidad_final, troquelado_cantidad_final,
             terminados_cantidad_final, liberacion_producto_cantidad_final,
             trazabilidad_proceso
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32::jsonb)
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38::jsonb)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             adherencia = $2, lote_material = $3, lote_produccion = $4, tipo_impresion = $5,
             troquel = $6, codigo_troquel = $7, terminado_etiqueta = $8, terminados_especiales = $9,
             cantidad_por_rollo = $10, proveedor_material = $11, espesor = $12,
             material = $13, impresion = $14, observaciones = $15, numero_salida = $16,
-            vendedor = $17, preprensa = $18, prensa = $19, laminado_barnizado = $20, troquelado = $21,
-            terminados = $22, facturado = $23, liberacion_producto = $24,
-            vendedor_cantidad_final = $25, preprensa_cantidad_final = $26, prensa_cantidad_final = $27,
-            laminado_barnizado_cantidad_final = $28, troquelado_cantidad_final = $29,
-            terminados_cantidad_final = $30, liberacion_producto_cantidad_final = $31,
-            trazabilidad_proceso = $32::jsonb,
+            vendedor = $17, preprensa_responsable = $18, impresion_responsable = $19,
+            laminado_responsable = $20, barnizado_responsable = $21,
+            troquelado_flexible_responsable = $22, troquelado_plano_responsable = $23,
+            rebobinado_responsable = $24, refilado_termoencogible_responsable = $25,
+            sellado_termoencogible_responsable = $26, corte_termoencogible_responsable = $27,
+            terminado_responsable = $28, liberacion_producto = $29, facturado = $30,
+            vendedor_cantidad_final = $31, preprensa_cantidad_final = $32, prensa_cantidad_final = $33,
+            laminado_barnizado_cantidad_final = $34, troquelado_cantidad_final = $35,
+            terminados_cantidad_final = $36, liberacion_producto_cantidad_final = $37,
+            trazabilidad_proceso = $38::jsonb,
             updated_at = CURRENT_TIMESTAMP
         `,
             [
@@ -1205,13 +1243,19 @@ export default (client: any) => {
               observaciones || null,
               numeroSalida || null,
               vendedor || null,
-              preprensa || null,
-              prensa || null,
-              laminado_barnizado || null,
-              troquelado || null,
-              terminados || null,
-              facturado || null,
+              preprensa_responsable || preprensa || null,
+              impresion_responsable || prensa || null,
+              laminado_responsable || laminado_barnizado || null,
+              barnizado_responsable || null,
+              troquelado_flexible_responsable || troquelado || null,
+              troquelado_plano_responsable || null,
+              rebobinado_responsable || null,
+              refilado_termoencogible_responsable || null,
+              sellado_termoencogible_responsable || null,
+              corte_termoencogible_responsable || null,
+              terminado_responsable || terminados || null,
               liberacion_producto || null,
+              facturado || null,
               vendedor_cantidad_final || null,
               preprensa_cantidad_final || null,
               prensa_cantidad_final || null,
@@ -1445,7 +1489,22 @@ export default (client: any) => {
   // FUNCIONES AUXILIARES PARA GENERAR PDFs
   // ============================================
 
-  const parseTrazabilidadProceso = (raw: any) => {
+  const parseTrazabilidadProceso = (raw: any): any => {
+    const digitalProcessKeys = [
+      "preprensa",
+      "impresion",
+      "laminado",
+      "barnizado",
+      "troquelado_flexible",
+      "troquelado_plano",
+      "rebobinado",
+      "refilado_termoencogible",
+      "sellado_termoencogible",
+      "corte_termoencogible",
+      "terminado",
+      "liberacion_producto",
+    ];
+
     const base = {
       preprensa: {
         fecha_inicio: "",
@@ -1474,7 +1533,7 @@ export default (client: any) => {
         observaciones: "",
         firma: "",
       },
-      troquelado: {
+      barnizado: {
         fecha_inicio: "",
         hora_inicio: "",
         fecha_fin: "",
@@ -1483,7 +1542,61 @@ export default (client: any) => {
         observaciones: "",
         firma: "",
       },
-      terminados: {
+      troquelado_flexible: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      troquelado_plano: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      rebobinado: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      refilado_termoencogible: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      sellado_termoencogible: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      corte_termoencogible: {
+        fecha_inicio: "",
+        hora_inicio: "",
+        fecha_fin: "",
+        hora_fin: "",
+        cantidad: "",
+        observaciones: "",
+        firma: "",
+      },
+      terminado: {
         fecha_inicio: "",
         hora_inicio: "",
         fecha_fin: "",
@@ -1514,23 +1627,56 @@ export default (client: any) => {
       }
     }
 
+    const procesosSeleccionados = Array.isArray(parsed?.procesos_seleccionados)
+      ? parsed.procesos_seleccionados.filter((k: any) => digitalProcessKeys.includes(k))
+      : [...digitalProcessKeys];
+
     return {
       preprensa: { ...base.preprensa, ...(parsed?.preprensa || {}) },
       impresion: { ...base.impresion, ...(parsed?.impresion || {}) },
       laminado: { ...base.laminado, ...(parsed?.laminado || {}) },
-      troquelado: { ...base.troquelado, ...(parsed?.troquelado || {}) },
-      terminados: { ...base.terminados, ...(parsed?.terminados || {}) },
+      barnizado: { ...base.barnizado, ...(parsed?.barnizado || {}) },
+      troquelado_flexible: {
+        ...base.troquelado_flexible,
+        ...(parsed?.troquelado_flexible || parsed?.troquelado || {}),
+      },
+      troquelado_plano: {
+        ...base.troquelado_plano,
+        ...(parsed?.troquelado_plano || {}),
+      },
+      rebobinado: { ...base.rebobinado, ...(parsed?.rebobinado || {}) },
+      refilado_termoencogible: {
+        ...base.refilado_termoencogible,
+        ...(parsed?.refilado_termoencogible || {}),
+      },
+      sellado_termoencogible: {
+        ...base.sellado_termoencogible,
+        ...(parsed?.sellado_termoencogible || {}),
+      },
+      corte_termoencogible: {
+        ...base.corte_termoencogible,
+        ...(parsed?.corte_termoencogible || {}),
+      },
+      terminado: { ...base.terminado, ...(parsed?.terminado || parsed?.terminados || {}) },
+      terminados: { ...base.terminado, ...(parsed?.terminado || parsed?.terminados || {}) },
+      troquelado: { ...base.troquelado_flexible, ...(parsed?.troquelado_flexible || parsed?.troquelado || {}) },
       liberacion_producto: {
         ...base.liberacion_producto,
         ...(parsed?.liberacion_producto || {}),
       },
+      procesos_seleccionados: procesosSeleccionados,
     };
   };
 
   const buildTrazabilidadRows = (detalle: any, procesos: any[]) => {
     const trazabilidad = parseTrazabilidadProceso(detalle?.trazabilidad_proceso);
+    const selectedKeys = (trazabilidad as any)?.procesos_seleccionados;
+    const selected = Array.isArray(selectedKeys)
+      ? new Set(selectedKeys)
+      : null;
 
     return procesos
+      .filter((p: any) => !selected || selected.has(p.key))
       .map((p: any) => {
         const t = trazabilidad[p.key] || {};
         const cantidad = t.cantidad || p.cantidadFinal || "";
@@ -1876,34 +2022,76 @@ export default (client: any) => {
       {
         key: "preprensa",
         titulo: "PRE-PRENSA",
-        responsable: detalle.preprensa,
+        responsable: detalle.preprensa_responsable || detalle.preprensa,
         cantidadFinal: detalle.preprensa_cantidad_final,
       },
       {
         key: "impresion",
         titulo: "IMPRESION",
-        responsable: detalle.prensa,
+        responsable: detalle.impresion_responsable || detalle.prensa,
         cantidadFinal: detalle.prensa_cantidad_final,
       },
       {
         key: "laminado",
-        titulo: "LAMINADO/BARNIZADO",
-        responsable: detalle.laminado_barnizado,
+        titulo: "LAMINADO",
+        responsable: detalle.laminado_responsable || detalle.laminado_barnizado,
         cantidadFinal: detalle.laminado_barnizado_cantidad_final,
       },
       {
-        key: "troquelado",
-        titulo: "TROQUELADO",
-        responsable: detalle.troquelado,
+        key: "barnizado",
+        titulo: "BARNIZADO",
+        responsable: detalle.barnizado_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "troquelado_flexible",
+        titulo: "TROQUELADO FLEXIBLE",
+        responsable: detalle.troquelado_flexible_responsable || detalle.troquelado,
         cantidadFinal: detalle.troquelado_cantidad_final,
       },
       {
-        key: "terminados",
-        titulo: "TERMINADOS",
-        responsable: detalle.terminados,
+        key: "troquelado_plano",
+        titulo: "TROQUELADO PLANO",
+        responsable: detalle.troquelado_plano_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "rebobinado",
+        titulo: "REBOBINADO",
+        responsable: detalle.rebobinado_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "refilado_termoencogible",
+        titulo: "REFILADO TERMOENCOGIBLE",
+        responsable: detalle.refilado_termoencogible_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "sellado_termoencogible",
+        titulo: "SELLADO TERMOENCOGIBLE",
+        responsable: detalle.sellado_termoencogible_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "corte_termoencogible",
+        titulo: "CORTE TERMOENCOGIBLE",
+        responsable: detalle.corte_termoencogible_responsable,
+        cantidadFinal: "",
+      },
+      {
+        key: "terminado",
+        titulo: "TERMINADO",
+        responsable: detalle.terminado_responsable || detalle.terminados,
         cantidadFinal: detalle.terminados_cantidad_final,
       },
     ]);
+
+    const procesosSeleccionadosRaw = (trazabilidad as any)?.procesos_seleccionados;
+    const procesosSeleccionados = Array.isArray(procesosSeleccionadosRaw)
+      ? procesosSeleccionadosRaw
+      : [];
+    const mostrarLiberacion = procesosSeleccionados.length === 0 || procesosSeleccionados.includes("liberacion_producto");
 
     return `
       <!DOCTYPE html>
@@ -2162,6 +2350,7 @@ export default (client: any) => {
           </div>
         </div>
 
+        ${mostrarLiberacion ? `
         <div class="seccion">
           <div class="seccion-titulo">📦 LIBERACIÓN PRODUCTO</div>
           <div class="seccion-contenido">
@@ -2189,6 +2378,7 @@ export default (client: any) => {
             </table>
           </div>
         </div>
+        ` : ""}
       </body>
       </html>
     `;

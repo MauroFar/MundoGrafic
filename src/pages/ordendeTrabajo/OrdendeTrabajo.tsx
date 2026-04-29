@@ -15,9 +15,17 @@ interface OrdenData {
     tipo_orden?: string;
     empresa_cliente?: string;
     orden_compra?: string;
-    laminado_barnizado?: string;
-    troquelado?: string;
-    liberacion_producto?: string;
+  preprensa_responsable?: string;
+  impresion_responsable?: string;
+  laminado_responsable?: string;
+  barnizado_responsable?: string;
+  troquelado_flexible_responsable?: string;
+  troquelado_plano_responsable?: string;
+  rebobinado_responsable?: string;
+  refilado_termoencogible_responsable?: string;
+  sellado_termoencogible_responsable?: string;
+  corte_termoencogible_responsable?: string;
+  terminado_responsable?: string;
     vendedor_cantidad_final?: string;
     preprensa_cantidad_final?: string;
     prensa_cantidad_final?: string;
@@ -35,9 +43,17 @@ interface OrdenData {
   numero_orden?: string;
   // Campos de Responsables del Proceso
   vendedor?: string;
-  preprensa?: string;
-  prensa?: string;
-  terminados?: string;
+  preprensa_responsable?: string;
+  impresion_responsable?: string;
+  laminado_responsable?: string;
+  barnizado_responsable?: string;
+  troquelado_flexible_responsable?: string;
+  troquelado_plano_responsable?: string;
+  rebobinado_responsable?: string;
+  refilado_termoencogible_responsable?: string;
+  sellado_termoencogible_responsable?: string;
+  corte_termoencogible_responsable?: string;
+  terminado_responsable?: string;
   // Otros campos generales
   estado?: string;
   estado_offset_key?: string;
@@ -89,9 +105,52 @@ type TrazabilidadProceso = {
   preprensa: TrazabilidadProcesoItem;
   impresion: TrazabilidadProcesoItem;
   laminado: TrazabilidadProcesoItem;
-  troquelado: TrazabilidadProcesoItem;
-  terminados: TrazabilidadProcesoItem;
+  barnizado: TrazabilidadProcesoItem;
+  troquelado_flexible: TrazabilidadProcesoItem;
+  troquelado_plano: TrazabilidadProcesoItem;
+  rebobinado: TrazabilidadProcesoItem;
+  refilado_termoencogible: TrazabilidadProcesoItem;
+  sellado_termoencogible: TrazabilidadProcesoItem;
+  corte_termoencogible: TrazabilidadProcesoItem;
+  terminado: TrazabilidadProcesoItem;
   liberacion_producto: TrazabilidadProcesoItem;
+};
+
+const DIGITAL_PROCESS_KEYS = [
+  'preprensa',
+  'impresion',
+  'laminado',
+  'barnizado',
+  'troquelado_flexible',
+  'troquelado_plano',
+  'rebobinado',
+  'refilado_termoencogible',
+  'sellado_termoencogible',
+  'corte_termoencogible',
+  'terminado',
+  'liberacion_producto',
+] as const;
+
+type DigitalProcessKey = typeof DIGITAL_PROCESS_KEYS[number];
+
+const normalizarProcesosDigitalSeleccionados = (valor: any): DigitalProcessKey[] => {
+  if (!valor) return [];
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const lista = parsed?.procesos_seleccionados;
+  if (!Array.isArray(lista)) return [];
+
+  const validos = lista.filter((item: any): item is DigitalProcessKey =>
+    typeof item === 'string' && (DIGITAL_PROCESS_KEYS as readonly string[]).includes(item)
+  );
+
+  return validos;
 };
 
 const crearTrazabilidadVacia = (): TrazabilidadProcesoItem => ({
@@ -119,8 +178,14 @@ const crearTrazabilidadProcesoVacia = (): TrazabilidadProceso => ({
   preprensa: crearTrazabilidadVacia(),
   impresion: crearTrazabilidadVacia(),
   laminado: crearTrazabilidadVacia(),
-  troquelado: crearTrazabilidadVacia(),
-  terminados: crearTrazabilidadVacia(),
+  barnizado: crearTrazabilidadVacia(),
+  troquelado_flexible: crearTrazabilidadVacia(),
+  troquelado_plano: crearTrazabilidadVacia(),
+  rebobinado: crearTrazabilidadVacia(),
+  refilado_termoencogible: crearTrazabilidadVacia(),
+  sellado_termoencogible: crearTrazabilidadVacia(),
+  corte_termoencogible: crearTrazabilidadVacia(),
+  terminado: crearTrazabilidadVacia(),
   liberacion_producto: crearTrazabilidadVacia(),
 });
 
@@ -139,8 +204,14 @@ const normalizarTrazabilidadProceso = (valor: any): TrazabilidadProceso => {
     preprensa: { ...base.preprensa, ...(safe.preprensa || {}) },
     impresion: { ...base.impresion, ...(safe.impresion || {}) },
     laminado: { ...base.laminado, ...(safe.laminado || {}) },
-    troquelado: { ...base.troquelado, ...(safe.troquelado || {}) },
-    terminados: { ...base.terminados, ...(safe.terminados || {}) },
+    barnizado: { ...base.barnizado, ...(safe.barnizado || {}) },
+    troquelado_flexible: { ...base.troquelado_flexible, ...(safe.troquelado_flexible || safe.troquelado || {}) },
+    troquelado_plano: { ...base.troquelado_plano, ...(safe.troquelado_plano || {}) },
+    rebobinado: { ...base.rebobinado, ...(safe.rebobinado || {}) },
+    refilado_termoencogible: { ...base.refilado_termoencogible, ...(safe.refilado_termoencogible || {}) },
+    sellado_termoencogible: { ...base.sellado_termoencogible, ...(safe.sellado_termoencogible || {}) },
+    corte_termoencogible: { ...base.corte_termoencogible, ...(safe.corte_termoencogible || {}) },
+    terminado: { ...base.terminado, ...(safe.terminado || safe.terminados || {}) },
     liberacion_producto: { ...base.liberacion_producto, ...(safe.liberacion_producto || {}) },
   };
 };
@@ -207,15 +278,31 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [estado, setEstado] = useState<string>('pendiente');
   const [notasObservaciones, setNotasObservaciones] = useState<string>('');
   const [vendedor, setVendedor] = useState<string>('');
-  const [preprensa, setPreprensa] = useState<string>('');
-  const [prensa, setPrensa] = useState<string>('');
-  const [terminados, setTerminados] = useState<string>('');
+  const [preprensaResponsable, setPreprensaResponsable] = useState<string>('');
+  const [impresionResponsable, setImpresionResponsable] = useState<string>('');
+  const [laminadoResponsable, setLaminadoResponsable] = useState<string>('');
+  const [barnizadoResponsable, setBarnizadoResponsable] = useState<string>('');
+  const [troqueladoFlexibleResponsable, setTroqueladoFlexibleResponsable] = useState<string>('');
+  const [troqueladoPlanoResponsable, setTroqueladoPlanoResponsable] = useState<string>('');
+  const [rebobinadoResponsable, setRebobinadoResponsable] = useState<string>('');
+  const [refiladoTermoencogibleResponsable, setRefiladoTermoencogibleResponsable] = useState<string>('');
+  const [selladoTermoencogibleResponsable, setSelladoTermoencogibleResponsable] = useState<string>('');
+  const [corteTermoencogibleResponsable, setCorteTermoencogibleResponsable] = useState<string>('');
+  const [terminadoResponsable, setTerminadoResponsable] = useState<string>('');
+  const [liberacionProductoResponsable, setLiberacionProductoResponsable] = useState<string>('');
+  const [procesosDigitalSeleccionados, setProcesosDigitalSeleccionados] = useState<DigitalProcessKey[]>([]);
+  const [showProcesosDropdown, setShowProcesosDropdown] = useState<boolean>(false);
+  const procesosDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (procesosDropdownRef.current && !procesosDropdownRef.current.contains(e.target as Node)) {
+        setShowProcesosDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
-  // Estados adicionales para responsables de orden DIGITAL
-  const [laminadoBarnizado, setLaminadoBarnizado] = useState<string>('');
-  const [troquelado, setTroquelado] = useState<string>('');
-  const [liberacionProducto, setLiberacionProducto] = useState<string>('');
-
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
   const [materialEspesor, setMaterialEspesor] = useState<string>('');
@@ -276,6 +363,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
   const [espesorDigital, setEspesorDigital] = useState<string>('');
   const [trazabilidadProceso, setTrazabilidadProceso] = useState<TrazabilidadProceso>(crearTrazabilidadProcesoVacia());
+
+  const toggleProcesoDigital = (proceso: DigitalProcessKey) => {
+    setProcesosDigitalSeleccionados((prev) =>
+      prev.includes(proceso)
+        ? prev.filter((p) => p !== proceso)
+        : [...prev, proceso],
+    );
+  };
+
+  const construirTrazabilidadParaPayload = () => ({
+    ...trazabilidadProceso,
+    procesos_seleccionados: procesosDigitalSeleccionados,
+  });
 
   const actualizarCampoTrazabilidad = (
     proceso: keyof TrazabilidadProceso,
@@ -480,13 +580,20 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setEstado('');
       setNotasObservaciones('');
       setVendedor('');
-      setPreprensa('');
-      setPrensa('');
-      setTerminados('');
-      // Limpiar campos adicionales responsables digital
-      setLaminadoBarnizado('');
-      setTroquelado('');
-      setLiberacionProducto('');
+      setPreprensaResponsable('');
+      setImpresionResponsable('');
+      setLaminadoResponsable('');
+      setBarnizadoResponsable('');
+      setTroqueladoFlexibleResponsable('');
+      setTroqueladoPlanoResponsable('');
+      setRebobinadoResponsable('');
+      setRefiladoTermoencogibleResponsable('');
+      setSelladoTermoencogibleResponsable('');
+      setCorteTermoencogibleResponsable('');
+      setTerminadoResponsable('');
+      setLiberacionProductoResponsable('');
+      setProcesosDigitalSeleccionados([...DIGITAL_PROCESS_KEYS]);
+      setShowProcesosDropdown(false);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales
        // Limpiar nuevos campos
@@ -782,28 +889,36 @@ const OrdendeTrabajoEditar: React.FC = () => {
     const detalleResponsables = ordenData.detalle || {};
     console.log('🔄 Sincronizando Responsables del Proceso desde detalle:', {
       vendedor: detalleResponsables.vendedor,
-      preprensa: detalleResponsables.preprensa,
-      prensa: detalleResponsables.prensa,
-      terminados: detalleResponsables.terminados,
-      laminado_barnizado: detalleResponsables.laminado_barnizado,
-      troquelado: detalleResponsables.troquelado,
-      liberacion_producto: detalleResponsables.liberacion_producto
+      preprensa_responsable: detalleResponsables.preprensa_responsable,
+      impresion_responsable: detalleResponsables.impresion_responsable,
+      laminado_responsable: detalleResponsables.laminado_responsable,
+      barnizado_responsable: detalleResponsables.barnizado_responsable,
+      troquelado_flexible_responsable: detalleResponsables.troquelado_flexible_responsable,
+      troquelado_plano_responsable: detalleResponsables.troquelado_plano_responsable,
+      rebobinado_responsable: detalleResponsables.rebobinado_responsable,
+      refilado_termoencogible_responsable: detalleResponsables.refilado_termoencogible_responsable,
+      sellado_termoencogible_responsable: detalleResponsables.sellado_termoencogible_responsable,
+      corte_termoencogible_responsable: detalleResponsables.corte_termoencogible_responsable,
+      terminado_responsable: detalleResponsables.terminado_responsable,
+      liberacion_producto: detalleResponsables.liberacion_producto,
     });
     
     setVendedor(detalleResponsables.vendedor || '');
-    setPreprensa(detalleResponsables.preprensa || '');
-    setPrensa(detalleResponsables.prensa || '');
-    setTerminados(detalleResponsables.terminados || '');
-    
-    // Sincronizar cantidades finales de cada responsable
-    
-    // Sincronizar campos adicionales para orden digital
-    if (ordenData.tipo_orden === 'digital') {
-      setLaminadoBarnizado(detalleResponsables.laminado_barnizado || '');
-      setTroquelado(detalleResponsables.troquelado || '');
-      setLiberacionProducto(detalleResponsables.liberacion_producto || '');
-    }
+    setPreprensaResponsable(detalleResponsables.preprensa_responsable || detalleResponsables.preprensa || '');
+    setImpresionResponsable(detalleResponsables.impresion_responsable || detalleResponsables.prensa || '');
+    setLaminadoResponsable(detalleResponsables.laminado_responsable || detalleResponsables.laminado_barnizado || '');
+    setBarnizadoResponsable(detalleResponsables.barnizado_responsable || '');
+    setTroqueladoFlexibleResponsable(detalleResponsables.troquelado_flexible_responsable || detalleResponsables.troquelado || '');
+    setTroqueladoPlanoResponsable(detalleResponsables.troquelado_plano_responsable || '');
+    setRebobinadoResponsable(detalleResponsables.rebobinado_responsable || '');
+    setRefiladoTermoencogibleResponsable(detalleResponsables.refilado_termoencogible_responsable || '');
+    setSelladoTermoencogibleResponsable(detalleResponsables.sellado_termoencogible_responsable || '');
+    setCorteTermoencogibleResponsable(detalleResponsables.corte_termoencogible_responsable || '');
+    setTerminadoResponsable(detalleResponsables.terminado_responsable || detalleResponsables.terminados || '');
+    setLiberacionProductoResponsable(detalleResponsables.liberacion_producto || '');
+
     setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
+    setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
     const estadoActual = ordenData.tipo_orden === 'digital'
@@ -1109,16 +1224,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
       notas_observaciones: notasObservaciones,
       vendedor,
-      preprensa,
-      prensa,
-      terminados,
+      preprensa_responsable: preprensaResponsable,
+      impresion_responsable: impresionResponsable,
+      laminado_responsable: laminadoResponsable,
+      barnizado_responsable: barnizadoResponsable,
+      troquelado_flexible_responsable: troqueladoFlexibleResponsable,
+      troquelado_plano_responsable: troqueladoPlanoResponsable,
+      rebobinado_responsable: rebobinadoResponsable,
+      refilado_termoencogible_responsable: refiladoTermoencogibleResponsable,
+      sellado_termoencogible_responsable: selladoTermoencogibleResponsable,
+      corte_termoencogible_responsable: corteTermoencogibleResponsable,
+      terminado_responsable: terminadoResponsable,
+      liberacion_producto: liberacionProductoResponsable,
       // Campos adicionales para orden digital
-      ...(tipoOrdenSeleccionado === 'digital' && {
-        laminado_barnizado: laminadoBarnizado,
-        troquelado: troquelado,
-        liberacion_producto: liberacionProducto,
-        // Cantidades finales para responsables
-      }),
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
       tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
@@ -1141,7 +1259,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         observaciones: observacionesDigital
         ,
         espesor: espesorDigital,
-        trazabilidad_proceso: trazabilidadProceso
+        trazabilidad_proceso: construirTrazabilidadParaPayload()
       } : {
         // Datos específicos de offset
         material: material,
@@ -1269,16 +1387,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
           ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
           notas_observaciones: notasObservaciones,
           vendedor,
-          preprensa,
-          prensa,
-          terminados,
+          preprensa_responsable: preprensaResponsable,
+          impresion_responsable: impresionResponsable,
+          laminado_responsable: laminadoResponsable,
+          barnizado_responsable: barnizadoResponsable,
+          troquelado_flexible_responsable: troqueladoFlexibleResponsable,
+          troquelado_plano_responsable: troqueladoPlanoResponsable,
+          rebobinado_responsable: rebobinadoResponsable,
+          refilado_termoencogible_responsable: refiladoTermoencogibleResponsable,
+          sellado_termoencogible_responsable: selladoTermoencogibleResponsable,
+          corte_termoencogible_responsable: corteTermoencogibleResponsable,
+          terminado_responsable: terminadoResponsable,
+            liberacion_producto: liberacionProductoResponsable,
           // Campos adicionales para orden digital
-          ...(tipoOrdenSeleccionado === 'digital' && {
-            laminado_barnizado: laminadoBarnizado,
-            troquelado: troquelado,
-            liberacion_producto: liberacionProducto,
-            // Cantidades finales para responsables
-          }),
           tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
           // Detalle técnico (depende del tipo de orden)
           detalle: tipoOrdenSeleccionado === 'digital' ? {
@@ -1298,7 +1419,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             cantidad_por_rollo: cantidadPorRollo,
             observaciones: observacionesDigital,
             espesor: espesorDigital,
-            trazabilidad_proceso: trazabilidadProceso
+            trazabilidad_proceso: construirTrazabilidadParaPayload()
           } : {
             // Datos específicos de offset
             material: material,
@@ -1413,16 +1534,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado: 'pendiente' }),
         notas_observaciones: notasObservaciones,
         vendedor,
-        preprensa,
-        prensa,
-        terminados,
+        preprensa_responsable: preprensaResponsable,
+        impresion_responsable: impresionResponsable,
+        laminado_responsable: laminadoResponsable,
+        barnizado_responsable: barnizadoResponsable,
+        troquelado_flexible_responsable: troqueladoFlexibleResponsable,
+        troquelado_plano_responsable: troqueladoPlanoResponsable,
+        rebobinado_responsable: rebobinadoResponsable,
+        refilado_termoencogible_responsable: refiladoTermoencogibleResponsable,
+        sellado_termoencogible_responsable: selladoTermoencogibleResponsable,
+        corte_termoencogible_responsable: corteTermoencogibleResponsable,
+        terminado_responsable: terminadoResponsable,
+        liberacion_producto: liberacionProductoResponsable,
         tipo_orden: tipoOrdenSeleccionado,
-        // Campos adicionales para orden digital
-        ...(tipoOrdenSeleccionado === 'digital' && {
-          laminado_barnizado: laminadoBarnizado,
-          troquelado: troquelado,
-          liberacion_producto: liberacionProducto
-        }),
         id_cotizacion: cotizacionId || null,
         id_detalle_cotizacion: idDetalleCotizacion,
         // Detalle técnico según tipo de orden
@@ -1445,7 +1569,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           productos_digital: productosDigital
           ,
           espesor: espesorDigital,
-          trazabilidad_proceso: trazabilidadProceso
+          trazabilidad_proceso: construirTrazabilidadParaPayload()
         } : {
           // Detalle offset
           material: material,
@@ -1811,6 +1935,42 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="relative inline-block" ref={procesosDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowProcesosDropdown((prev) => !prev)}
+                    className="px-3 py-2 border border-gray-300 rounded bg-gray-50 text-sm font-medium"
+                  >
+                    Procesos ({procesosDigitalSeleccionados.length}) ▾
+                  </button>
+                  {showProcesosDropdown && (
+                    <div className="absolute z-20 mt-1 w-80 bg-white border border-gray-200 rounded shadow-lg p-3 space-y-2">
+                      {[
+                        { key: 'preprensa', label: 'Preprensa' },
+                        { key: 'impresion', label: 'Impresion' },
+                        { key: 'laminado', label: 'Laminado' },
+                        { key: 'barnizado', label: 'Barnizado' },
+                        { key: 'troquelado_flexible', label: 'Troquelado Flexible' },
+                        { key: 'troquelado_plano', label: 'Troquelado Plano' },
+                        { key: 'rebobinado', label: 'Rebobinado' },
+                        { key: 'refilado_termoencogible', label: 'Refilado Termoencogible' },
+                        { key: 'sellado_termoencogible', label: 'Sellado Termoencogible' },
+                        { key: 'corte_termoencogible', label: 'Corte Termoencogible' },
+                        { key: 'terminado', label: 'Terminado' },
+                      ].map((proceso) => (
+                        <label key={proceso.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={procesosDigitalSeleccionados.includes(proceso.key as DigitalProcessKey)}
+                            onChange={() => toggleProcesoDigital(proceso.key as DigitalProcessKey)}
+                          />
+                          <span>{proceso.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="overflow-x-auto border border-gray-200 rounded-lg">
                   <table className="min-w-full text-xs">
                     <thead className="bg-gray-100">
@@ -1827,12 +1987,20 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     </thead>
                     <tbody>
                       {[
-                        { key: 'preprensa', label: 'Pre-prensa', responsable: preprensa, setResponsable: setPreprensa, options: PREPRENSA_OPTIONS },
-                        { key: 'impresion', label: 'Impresión', responsable: prensa, setResponsable: setPrensa, options: OPERACIONES_OPTIONS },
-                        { key: 'laminado', label: 'Laminado/Barnizado', responsable: laminadoBarnizado, setResponsable: setLaminadoBarnizado, options: OPERACIONES_OPTIONS },
-                        { key: 'troquelado', label: 'Troquelado', responsable: troquelado, setResponsable: setTroquelado, options: OPERACIONES_OPTIONS },
-                        { key: 'terminados', label: 'Terminados', responsable: terminados, setResponsable: setTerminados, options: OPERACIONES_OPTIONS },
-                      ].map((proceso) => (
+                        { key: 'preprensa', label: 'Preprensa', responsable: preprensaResponsable, setResponsable: setPreprensaResponsable, options: PREPRENSA_OPTIONS },
+                        { key: 'impresion', label: 'Impresion', responsable: impresionResponsable, setResponsable: setImpresionResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'laminado', label: 'Laminado', responsable: laminadoResponsable, setResponsable: setLaminadoResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'barnizado', label: 'Barnizado', responsable: barnizadoResponsable, setResponsable: setBarnizadoResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'troquelado_flexible', label: 'Troquelado Flexible', responsable: troqueladoFlexibleResponsable, setResponsable: setTroqueladoFlexibleResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'troquelado_plano', label: 'Troquelado Plano', responsable: troqueladoPlanoResponsable, setResponsable: setTroqueladoPlanoResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'rebobinado', label: 'Rebobinado', responsable: rebobinadoResponsable, setResponsable: setRebobinadoResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'refilado_termoencogible', label: 'Refilado Termoencogible', responsable: refiladoTermoencogibleResponsable, setResponsable: setRefiladoTermoencogibleResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'sellado_termoencogible', label: 'Sellado Termoencogible', responsable: selladoTermoencogibleResponsable, setResponsable: setSelladoTermoencogibleResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'corte_termoencogible', label: 'Corte Termoencogible', responsable: corteTermoencogibleResponsable, setResponsable: setCorteTermoencogibleResponsable, options: OPERACIONES_OPTIONS },
+                        { key: 'terminado', label: 'Terminado', responsable: terminadoResponsable, setResponsable: setTerminadoResponsable, options: OPERACIONES_OPTIONS },
+                      ]
+                        .filter((proceso) => procesosDigitalSeleccionados.includes(proceso.key as DigitalProcessKey))
+                        .map((proceso) => (
                         <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
                           <td className="px-2 py-2 border font-medium">{proceso.label}</td>
                           <td className="px-2 py-2 border min-w-[180px]">
@@ -1851,80 +2019,43 @@ const OrdendeTrabajoEditar: React.FC = () => {
                           <td className="px-2 py-2 border min-w-[220px]"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].observaciones} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'observaciones', e.target.value)} /></td>
                         </tr>
                       ))}
+                      {/* Liberacion de Producto - siempre visible */}
+                      <tr className="bg-green-50">
+                        <td className="px-2 py-2 border font-medium">Liberacion de Producto</td>
+                        <td className="px-2 py-2 border min-w-[180px]">
+                          <EditableCombo
+                            value={liberacionProductoResponsable}
+                            onChange={setLiberacionProductoResponsable}
+                            options={OPERACIONES_OPTIONS}
+                            placeholder="-- Seleccione --"
+                          />
+                        </td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso.liberacion_producto.fecha_inicio} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_inicio', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso.liberacion_producto.hora_inicio} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_inicio', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso.liberacion_producto.fecha_fin} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_fin', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso.liberacion_producto.hora_fin} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_fin', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.cantidad} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'cantidad', e.target.value)} /></td>
+                        <td className="px-2 py-2 border min-w-[220px]"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.observaciones} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'observaciones', e.target.value)} /></td>
+                      </tr>
                     </tbody>
                   </table>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Liberacion de Producto</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Responsable</label>
-                      <EditableCombo
-                        value={liberacionProducto}
-                        onChange={setLiberacionProducto}
-                        options={OPERACIONES_OPTIONS}
-                        placeholder="-- Seleccione --"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
-                      <input
-                        className="w-full border rounded px-2 py-1"
-                        type="date"
-                        value={trazabilidadProceso.liberacion_producto.fecha_inicio}
-                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_inicio', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Hora</label>
-                      <input
-                        className="w-full border rounded px-2 py-1"
-                        type="time"
-                        value={trazabilidadProceso.liberacion_producto.hora_inicio}
-                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_inicio', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
-                      <input
-                        className="w-full border rounded px-2 py-1"
-                        type="text"
-                        value={trazabilidadProceso.liberacion_producto.cantidad}
-                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'cantidad', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Observaciones</label>
-                      <input
-                        className="w-full border rounded px-2 py-1"
-                        type="text"
-                        value={trazabilidadProceso.liberacion_producto.observaciones}
-                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'observaciones', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Firma</label>
-                      <input
-                        className="w-full border rounded px-2 py-1"
-                        type="text"
-                        value={trazabilidadProceso.liberacion_producto.firma}
-                        onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'firma', e.target.value)}
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {false && <div className="border border-blue-200 rounded-lg p-3 bg-blue-50/40">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Calidad y Auditoría por Proceso</h4>
                   <div className="space-y-3">
                     {[
-                      { key: 'preprensa', label: 'Pre-prensa', responsable: preprensa },
-                      { key: 'impresion', label: 'Impresión', responsable: prensa },
-                      { key: 'laminado', label: 'Laminado/Barnizado', responsable: laminadoBarnizado },
-                      { key: 'troquelado', label: 'Troquelado', responsable: troquelado },
-                      { key: 'terminados', label: 'Terminados', responsable: terminados },
-                      { key: 'liberacion_producto', label: 'Liberación de Producto', responsable: liberacionProducto },
+                      { key: 'preprensa', label: 'Preprensa', responsable: preprensaResponsable },
+                      { key: 'impresion', label: 'Impresion', responsable: impresionResponsable },
+                      { key: 'laminado', label: 'Laminado', responsable: laminadoResponsable },
+                      { key: 'barnizado', label: 'Barnizado', responsable: barnizadoResponsable },
+                      { key: 'troquelado_flexible', label: 'Troquelado Flexible', responsable: troqueladoFlexibleResponsable },
+                      { key: 'troquelado_plano', label: 'Troquelado Plano', responsable: troqueladoPlanoResponsable },
+                      { key: 'rebobinado', label: 'Rebobinado', responsable: rebobinadoResponsable },
+                      { key: 'refilado_termoencogible', label: 'Refilado Termoencogible', responsable: refiladoTermoencogibleResponsable },
+                      { key: 'sellado_termoencogible', label: 'Sellado Termoencogible', responsable: selladoTermoencogibleResponsable },
+                      { key: 'corte_termoencogible', label: 'Corte Termoencogible', responsable: corteTermoencogibleResponsable },
+                      { key: 'terminado', label: 'Terminado', responsable: terminadoResponsable },
                     ].map((proceso) => (
                       <div key={proceso.key} className="border border-blue-100 rounded-md bg-white p-3">
                         <div className="text-xs font-semibold text-blue-700 mb-2">
@@ -2077,9 +2208,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     </thead>
                     <tbody>
                       {[
-                        { key: 'preprensa', label: 'Preprensa', responsable: preprensa, setResponsable: setPreprensa },
-                        { key: 'impresion', label: 'Impresión', responsable: prensa, setResponsable: setPrensa },
-                        { key: 'terminados', label: 'Terminados', responsable: terminados, setResponsable: setTerminados },
+                        { key: 'preprensa', label: 'Preprensa', responsable: preprensaResponsable, setResponsable: setPreprensaResponsable },
+                        { key: 'impresion', label: 'Impresion', responsable: impresionResponsable, setResponsable: setImpresionResponsable },
+                        { key: 'terminado', label: 'Terminado', responsable: terminadoResponsable, setResponsable: setTerminadoResponsable },
                       ].map((proceso) => (
                         <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
                           <td className="px-2 py-2 border font-medium">{proceso.label}</td>
@@ -2100,9 +2231,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Calidad y Auditoría por Proceso</h4>
                   <div className="space-y-3">
                     {[
-                      { key: 'preprensa', label: 'Preprensa', responsable: preprensa },
-                      { key: 'impresion', label: 'Impresión', responsable: prensa },
-                      { key: 'terminados', label: 'Terminados', responsable: terminados },
+                      { key: 'preprensa', label: 'Preprensa', responsable: preprensaResponsable },
+                      { key: 'impresion', label: 'Impresion', responsable: impresionResponsable },
+                      { key: 'terminado', label: 'Terminado', responsable: terminadoResponsable },
                     ].map((proceso) => (
                       <div key={proceso.key} className="border border-blue-100 rounded-md bg-white p-3">
                         <div className="text-xs font-semibold text-blue-700 mb-2">
