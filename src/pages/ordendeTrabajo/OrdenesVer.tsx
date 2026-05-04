@@ -102,13 +102,18 @@ const OrdenesVer: React.FC = () => {
       }
     };
 
-    syncWidth();
+    // Recalcular después del render evita que el scroll superior quede sin ancho
+    // cuando cambia el contenido (acciones/estado) sin cambiar la cantidad de filas.
+    const rafId = window.requestAnimationFrame(syncWidth);
     const observer = new ResizeObserver(syncWidth);
     if (scrollBottomRef.current) observer.observe(scrollBottomRef.current);
     if (scrollInnerRef.current) observer.observe(scrollInnerRef.current);
 
-    return () => observer.disconnect();
-  }, [ordenes.length]);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [ordenes, loading, produccionEnviada]);
 
   const handleScrollTop = useCallback(() => {
     if (syncingRef.current) return;

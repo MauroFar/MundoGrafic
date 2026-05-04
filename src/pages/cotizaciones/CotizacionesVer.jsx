@@ -20,33 +20,39 @@ function CotizacionesVer() {
 
   // Scroll horizontal sincronizado (arriba y abajo)
   const scrollTopRef = useRef(null);
-  const scrollTableRef = useRef(null);
+  const scrollBottomRef = useRef(null);
+  const scrollInnerRef = useRef(null);
   const mirrorInnerRef = useRef(null);
   const syncingRef = useRef(false);
 
   useEffect(() => {
     const syncWidth = () => {
-      if (scrollTableRef.current && mirrorInnerRef.current) {
-        mirrorInnerRef.current.style.width = scrollTableRef.current.scrollWidth + 'px';
+      if (scrollInnerRef.current && mirrorInnerRef.current) {
+        mirrorInnerRef.current.style.width = `${scrollInnerRef.current.scrollWidth}px`;
       }
     };
     syncWidth();
     const observer = new ResizeObserver(syncWidth);
-    if (scrollTableRef.current) observer.observe(scrollTableRef.current);
+    if (scrollBottomRef.current) observer.observe(scrollBottomRef.current);
+    if (scrollInnerRef.current) observer.observe(scrollInnerRef.current);
     return () => observer.disconnect();
-  });
+  }, [cotizaciones.length, loading]);
 
   const handleScrollTop = useCallback(() => {
     if (syncingRef.current) return;
     syncingRef.current = true;
-    if (scrollTableRef.current) scrollTableRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    if (scrollTopRef.current && scrollBottomRef.current) {
+      scrollBottomRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+    }
     syncingRef.current = false;
   }, []);
 
-  const handleScrollTable = useCallback(() => {
+  const handleScrollBottom = useCallback(() => {
     if (syncingRef.current) return;
     syncingRef.current = true;
-    if (scrollTopRef.current) scrollTopRef.current.scrollLeft = scrollTableRef.current.scrollLeft;
+    if (scrollBottomRef.current && scrollTopRef.current) {
+      scrollTopRef.current.scrollLeft = scrollBottomRef.current.scrollLeft;
+    }
     syncingRef.current = false;
   }, []);
   const [showModal, setShowModal] = useState(false);
@@ -1041,11 +1047,11 @@ function CotizacionesVer() {
         ref={scrollTopRef}
         onScroll={handleScrollTop}
         className="overflow-x-auto mb-1"
-        style={{ height: '12px' }}
       >
-        <div ref={mirrorInnerRef} style={{ height: '1px', width: '3000px' }} />
+        <div ref={mirrorInnerRef} className="h-1" />
       </div>
-      <div ref={scrollTableRef} onScroll={handleScrollTable} className="overflow-x-auto">
+      <div ref={scrollBottomRef} onScroll={handleScrollBottom} className="overflow-x-auto">
+        <div ref={scrollInnerRef} className="min-w-[1300px]">
         {loading ? (
           <div className="text-center py-4">Cargando...</div>
         ) : (
@@ -1218,6 +1224,7 @@ function CotizacionesVer() {
             </tbody>
           </table>
         )}
+        </div>
       </div>
 
       {/* Modal para enviar correo alternativo */}
