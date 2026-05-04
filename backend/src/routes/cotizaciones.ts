@@ -15,6 +15,28 @@ require('dotenv').config();
 const generarHTMLCotizacion = async (cotizacion, detalles) => {
   // Establecer la URL base para las imágenes
   const baseUrl = process.env.API_URL || 'http://localhost:3000';
+
+  const parseCantidadEntera = (valor: any) => {
+    if (valor === null || valor === undefined || valor === '') return 0;
+
+    if (typeof valor === 'number') {
+      return Number.isFinite(valor) ? Math.trunc(valor) : 0;
+    }
+
+    const texto = String(valor).trim();
+    if (!texto) return 0;
+
+    const soloDigitos = texto.replace(/\D/g, '');
+    if (!soloDigitos) return 0;
+
+    const parsed = Number.parseInt(soloDigitos, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const formatearCantidadPDF = (valor: any) => {
+    const cantidad = parseCantidadEntera(valor);
+    return cantidad > 0 ? cantidad.toLocaleString('es-EC') : '';
+  };
   
   // Función para convertir imagen a base64
   const getBase64Image = async (imagePath) => {
@@ -849,7 +871,7 @@ body {
               <tbody>
                 ${detallesConImagenes.map(d => `
                   <tr>
-                    <td class="col-cant">${d.cantidad}</td>
+                    <td class="col-cant">${formatearCantidadPDF(d.cantidad)}</td>
                     <td class="col-detalle">
                       <div class="detalle-con-imagen ${d.posicion_imagen === 'derecha' ? 'layout-derecha' : 'layout-abajo'}">
                         ${d.posicion_imagen === 'derecha' && d.imagenesBase64 && d.imagenesBase64.length > 0 ? `

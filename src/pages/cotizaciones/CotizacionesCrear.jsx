@@ -104,6 +104,29 @@ function CotizacionesCrear() {
     return `${parteEntera}.${parteDecimalFinal}`;
   };
 
+  const parseCantidadEntera = (valor) => {
+    if (valor === null || valor === undefined || valor === "") return 0;
+
+    if (typeof valor === 'number') {
+      return Number.isFinite(valor) ? Math.trunc(valor) : 0;
+    }
+
+    const texto = String(valor).trim();
+    if (!texto) return 0;
+
+    // La cantidad es siempre entera: removemos separadores y conservamos solo dígitos.
+    const soloDigitos = texto.replace(/\D/g, '');
+    if (!soloDigitos) return 0;
+
+    const parsed = Number.parseInt(soloDigitos, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const formatearCantidadEntera = (valor) => {
+    const cantidad = parseCantidadEntera(valor);
+    return cantidad > 0 ? cantidad.toLocaleString('es-EC') : '';
+  };
+
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
   const vendedoresDropdownRef = useRef(null);
@@ -349,9 +372,10 @@ function CotizacionesCrear() {
       if (detallesData && detallesData.length > 0) {
         const filasActualizadas = detallesData.map(detalle => {
           // Asegurarnos de que los valores sean números válidos
-          const cantidad = parseFloat(detalle.cantidad) || 0;
+          const cantidadNumerica = parseCantidadEntera(detalle.cantidad);
+          const cantidad = formatearCantidadEntera(detalle.cantidad);
           const valorUnitario = parseFloat(detalle.valor_unitario) || 0;
-          const valorTotal = parseFloat(detalle.valor_total) || (cantidad * valorUnitario);
+          const valorTotal = parseFloat(detalle.valor_total) || (cantidadNumerica * valorUnitario);
 
           // Procesar las imágenes (ahora es un array)
           const imagenes = (detalle.imagenes && Array.isArray(detalle.imagenes)) 
@@ -569,7 +593,7 @@ function CotizacionesCrear() {
       // Validar que haya al menos un producto con detalle y valores
       const productosValidos = filas.filter(fila =>
         fila.detalle && fila.detalle.trim() !== '' &&
-        parseFloat(fila.cantidad) > 0 &&
+        parseCantidadEntera(fila.cantidad) > 0 &&
         parseFloat(fila.valor_unitario) > 0
       );
       if (productosValidos.length === 0) {
@@ -642,7 +666,7 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
-        cantidad: parseFloat(fila.cantidad) || 0,
+        cantidad: parseCantidadEntera(fila.cantidad),
         detalle: fila.detalle || "",
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
@@ -883,7 +907,7 @@ function CotizacionesCrear() {
     const nuevasFilas = [
       ...filas,
       {
-        cantidad: 1,
+        cantidad: '1',
         detalle: detalleInicial,
         valor_unitario: '',
         valor_total: 0,
@@ -1165,7 +1189,7 @@ function CotizacionesCrear() {
   };
 
   const calcularTotalFila = (cantidad, valorUnitario) => {
-    const total = parseFloat(cantidad) * parseFloat(valorUnitario);
+    const total = parseCantidadEntera(cantidad) * parseFloat(valorUnitario);
     return isNaN(total) ? 0 : total;
   };
 
@@ -1173,6 +1197,14 @@ function CotizacionesCrear() {
     const nuevasFilas = [...filas];
     nuevasFilas[index].cantidad = value;
     nuevasFilas[index].valor_total = calcularTotalFila(value, nuevasFilas[index].valor_unitario);
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+  };
+
+  const normalizarCantidadFila = (index) => {
+    const nuevasFilas = [...filas];
+    nuevasFilas[index].cantidad = formatearCantidadEntera(nuevasFilas[index].cantidad);
+    nuevasFilas[index].valor_total = calcularTotalFila(nuevasFilas[index].cantidad, nuevasFilas[index].valor_unitario);
     setFilas(nuevasFilas);
     calcularTotales(nuevasFilas);
   };
@@ -1346,7 +1378,7 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
-        cantidad: parseFloat(fila.cantidad) || 0,
+        cantidad: parseCantidadEntera(fila.cantidad),
         detalle: fila.detalle || "",
         valor_unitario: parseFloat(fila.valor_unitario) || 0,
         valor_total: parseFloat(fila.valor_total) || 0,
@@ -1794,12 +1826,14 @@ function CotizacionesCrear() {
                     </td>
                     <td className="border border-gray-300 py-2 align-top">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={fila.cantidad}
                         onChange={(e) => handleCantidadChange(index, e.target.value)}
+                        onBlur={() => normalizarCantidadFila(index)}
                         onWheel={(e) => e.target.blur()}
                         className="w-full border border-gray-300 rounded-md p-2 text-center"
-                        min="1"
+                        placeholder="Ej: 20.000"
                       />
                     </td>
                     <td className="border border-gray-300 p-0 align-top">

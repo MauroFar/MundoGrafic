@@ -1,6 +1,24 @@
 import express from "express";
 const router = express.Router();
 
+const parseCantidadEntera = (valor: any) => {
+  if (valor === null || valor === undefined || valor === '') return 0;
+
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? Math.trunc(valor) : 0;
+  }
+
+  const texto = String(valor).trim();
+  if (!texto) return 0;
+
+  // Cantidad solo acepta enteros: removemos separadores y dejamos solo dígitos.
+  const soloDigitos = texto.replace(/\D/g, '');
+  if (!soloDigitos) return 0;
+
+  const parsed = Number.parseInt(soloDigitos, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
 const createCotizacionDetalles = (client: any) => {
   // Obtener detalles de una cotización por ID
   router.get("/:id", async (req: any, res: any) => {
@@ -54,6 +72,7 @@ const createCotizacionDetalles = (client: any) => {
   router.post("/", async (req: any, res: any) => {
     console.log("Recibiendo datos para crear detalle:", req.body);
     const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita } = req.body;
+    const cantidadNormalizada = parseCantidadEntera(cantidad);
 
     if (!cotizacion_id || cantidad === undefined || cantidad === null || !detalle || valor_unitario === undefined || valor_unitario === null || valor_total === undefined || valor_total === null) {
       console.error("Validación fallida:", { cotizacion_id, cantidad, detalle, valor_unitario, valor_total });
@@ -70,7 +89,7 @@ const createCotizacionDetalles = (client: any) => {
       
       const result = await client.query(query, [
         cotizacion_id,
-        cantidad,
+        cantidadNormalizada,
         detalle,
         valor_unitario,
         valor_total,
@@ -144,6 +163,7 @@ const createCotizacionDetalles = (client: any) => {
       const resultadosDetalles = [];
       for (const detalle of detalles) {
         const { cantidad, detalle: descripcion, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita } = detalle;
+        const cantidadNormalizada = parseCantidadEntera(cantidad);
         
         // Validar que todos los campos requeridos estén presentes y sean válidos
         if (cantidad === undefined || descripcion === undefined || 
@@ -153,7 +173,7 @@ const createCotizacionDetalles = (client: any) => {
 
         const result = await client.query(query, [
           id,
-          parseFloat(cantidad),
+          cantidadNormalizada,
           descripcion,
           parseFloat(valor_unitario),
           parseFloat(valor_total),
