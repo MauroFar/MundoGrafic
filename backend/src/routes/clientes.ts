@@ -169,29 +169,25 @@ const createCliente = (client: any) => {
     const { nombre, empresa, direccion, telefono, email, ruc_cedula, estado, notas } = req.body;
     const userId = req.user?.id; // Usuario de la sesión
     
-    // Validaciones: solo nombre y empresa obligatorios
-    if (!nombre || !empresa) {
+    // Validaciones para creación: solo nombre de contacto obligatorio
+    if (!nombre || !String(nombre).trim()) {
       return res.status(400).json({ 
         error: 'Faltan campos requeridos',
-        details: 'Nombre y empresa son obligatorios'
+        details: 'Nombre de contacto es obligatorio'
       });
     }
 
     try {
       console.log('📝 [Clientes API] Creando nuevo cliente:', { nombre, empresa, email, userId });
       
-      // Verificar si el cliente ya existe por email o RUC/Cédula
-      // Sólo realizar la verificación para los campos que vienen con valor (no vacíos).
+      // Verificar duplicado solo por email (si viene con valor).
+      // Se permite repetir RUC/Cédula para múltiples contactos de la misma empresa.
       const conditions: string[] = [];
       const params: any[] = [];
 
       if (email && String(email).trim() !== '') {
         params.push(email.trim());
         conditions.push(`email_cliente = $${params.length}`);
-      }
-      if (ruc_cedula && String(ruc_cedula).trim() !== '') {
-        params.push(ruc_cedula.trim());
-        conditions.push(`ruc_cedula_cliente = $${params.length}`);
       }
 
       if (conditions.length > 0) {
@@ -200,7 +196,7 @@ const createCliente = (client: any) => {
         if (checkResult.rows.length > 0) {
           return res.status(409).json({ 
             error: 'El cliente ya existe',
-            details: 'Ya existe un cliente con ese email o RUC/Cédula',
+            details: 'Ya existe un cliente con ese email',
             clienteId: checkResult.rows[0].id 
           });
         }

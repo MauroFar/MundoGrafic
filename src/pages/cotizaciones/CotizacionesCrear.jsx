@@ -1456,17 +1456,15 @@ function CotizacionesCrear() {
   const handleNuevoClienteKeyDown = async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      // Validar campos obligatorios
-      if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa || 
-          !nuevoClienteDatos.ruc_cedula || !nuevoClienteDatos.direccion || 
-          !nuevoClienteDatos.telefono || !nuevoClienteDatos.email) {
-        alert('Por favor complete todos los campos obligatorios (*).');
+      // Validar campo obligatorio: solo nombre de contacto
+      if (!nuevoClienteDatos.nombre || !String(nuevoClienteDatos.nombre).trim()) {
+        alert('Por favor ingrese el nombre del contacto.');
         return;
       }
       
-      // Validar formato de email
+      // Validar formato de email solo si se ingresa
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(nuevoClienteDatos.email)) {
+      if (nuevoClienteDatos.email && !emailRegex.test(nuevoClienteDatos.email)) {
         alert('Por favor ingrese un email válido.');
         return;
       }
@@ -1500,8 +1498,8 @@ function CotizacionesCrear() {
         const clienteCreado = await crearClienteResponse.json();
         console.log('✅ Cliente creado:', clienteCreado);
         
-        // Actualizar el campo Cliente con la empresa y Contacto con el nombre
-        setNombreCliente(nuevoClienteDatos.empresa);
+        // Actualizar cliente mostrado usando empresa si existe, o nombre como fallback.
+        setNombreCliente(nuevoClienteDatos.empresa || nuevoClienteDatos.nombre);
         setContacto(nuevoClienteDatos.nombre);
         setUsarContacto(true);
         setShowNuevoClienteModal(false);
@@ -2576,7 +2574,7 @@ function CotizacionesCrear() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre de la Empresa <span className="text-red-500">*</span>
+                    Nombre de la Empresa
                   </label>
                   <input
                     type="text"
@@ -2659,9 +2657,16 @@ function CotizacionesCrear() {
                 </button>
                 <button
                   onClick={async () => {
-                    // Validar solo empresa y nombre como obligatorios
-                    if (!nuevoClienteDatos.nombre || !nuevoClienteDatos.empresa) {
-                      alert('Por favor complete los campos obligatorios: Empresa y Nombre del Contacto.');
+                    // Validar campo obligatorio: solo nombre de contacto
+                    if (!nuevoClienteDatos.nombre || !String(nuevoClienteDatos.nombre).trim()) {
+                      alert('Por favor ingrese el nombre del contacto.');
+                      return;
+                    }
+
+                    // Validar formato de email solo si se ingresa
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (nuevoClienteDatos.email && !emailRegex.test(nuevoClienteDatos.email)) {
+                      alert('Por favor ingrese un email válido.');
                       return;
                     }
                     // Guardar cliente en la BBDD
@@ -2693,8 +2698,8 @@ function CotizacionesCrear() {
                       const clienteCreado = await crearClienteResponse.json();
                       console.log('✅ Cliente creado:', clienteCreado);
                       
-                      // Actualizar el campo Cliente con la empresa y Contacto con el nombre
-                      setNombreCliente(nuevoClienteDatos.empresa);
+                      // Actualizar cliente mostrado usando empresa si existe, o nombre como fallback.
+                      setNombreCliente(nuevoClienteDatos.empresa || nuevoClienteDatos.nombre);
                       setContacto(nuevoClienteDatos.nombre);
                       setUsarContacto(true);
                       setShowNuevoClienteModal(false);

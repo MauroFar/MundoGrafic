@@ -75,26 +75,31 @@ const ClientesCrear = () => {
       newErrors.nombre = "El nombre es requerido";
     }
 
-    if (!formData.empresa.trim()) {
-      newErrors.empresa = "El nombre de la empresa es requerido";
-    }
-
-    if (!formData.telefono.trim()) {
-      newErrors.telefono = "El teléfono es requerido";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "El email es requerido";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "El email no es válido";
     }
 
-    if (!formData.direccion.trim()) {
-      newErrors.direccion = "La dirección es requerida";
-    }
+    // En edición se mantiene la validación histórica de campos obligatorios.
+    if (isEditMode) {
+      if (!formData.empresa.trim()) {
+        newErrors.empresa = "El nombre de la empresa es requerido";
+      }
 
-    if (!formData.ruc_cedula.trim()) {
-      newErrors.ruc_cedula = "El RUC/Cédula es requerido";
+      if (!formData.telefono.trim()) {
+        newErrors.telefono = "El teléfono es requerido";
+      }
+
+      if (!formData.email.trim()) {
+        newErrors.email = "El email es requerido";
+      }
+
+      if (!formData.direccion.trim()) {
+        newErrors.direccion = "La dirección es requerida";
+      }
+
+      if (!formData.ruc_cedula.trim()) {
+        newErrors.ruc_cedula = "El RUC/Cédula es requerido";
+      }
     }
 
     setErrors(newErrors);
@@ -129,9 +134,9 @@ const ClientesCrear = () => {
         return;
       }
       if (error.response?.status === 409) {
-        toast.error('Ya existe un cliente con ese email o RUC/Cédula');
+        toast.error('Ya existe un cliente con ese email');
       } else if (error.response?.status === 400) {
-        toast.error('Por favor verifica que todos los campos estén completos');
+        toast.error('Por favor verifica los campos obligatorios');
       } else if (error.response?.status === 401) {
         toast.error('Tu sesión ha expirado, por favor inicia sesión nuevamente');
       } else {
@@ -188,7 +193,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaBuilding className="inline mr-2 text-blue-500" />
-              Nombre de la Empresa *
+              Nombre de la Empresa {isEditMode ? '*' : '(Opcional)'}
             </label>
             <input
               type="text"
@@ -209,7 +214,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaPhone className="inline mr-2 text-blue-500" />
-              Teléfono *
+              Teléfono {isEditMode ? '*' : '(Opcional)'}
             </label>
             <input
               type="text"
@@ -230,7 +235,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaEnvelope className="inline mr-2 text-blue-500" />
-              Email *
+              Email {isEditMode ? '*' : '(Opcional)'}
             </label>
             <input
               type="email"
@@ -251,7 +256,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaIdCard className="inline mr-2 text-blue-500" />
-              RUC/Cédula *
+              RUC/Cédula {isEditMode ? '*' : '(Opcional)'}
             </label>
             <input
               type="text"
@@ -288,7 +293,7 @@ const ClientesCrear = () => {
           <div className="md:col-span-2">
             <label className="block text-gray-700 font-medium mb-2">
               <FaMapMarkerAlt className="inline mr-2 text-blue-500" />
-              Dirección *
+              Dirección {isEditMode ? '*' : '(Opcional)'}
             </label>
             <input
               type="text"
