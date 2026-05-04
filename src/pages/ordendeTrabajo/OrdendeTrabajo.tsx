@@ -592,7 +592,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setCorteTermoencogibleResponsable('');
       setTerminadoResponsable('');
       setLiberacionProductoResponsable('');
-      setProcesosDigitalSeleccionados([...DIGITAL_PROCESS_KEYS]);
+      setProcesosDigitalSeleccionados([]);
       setShowProcesosDropdown(false);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales

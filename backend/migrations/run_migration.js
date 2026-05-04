@@ -18,24 +18,41 @@ async function runMigration() {
     await client.connect();
     console.log('✅ Conectado exitosamente');
 
-    // Leer el archivo SQL (actualmente: campos extra para orden digital)
-    const sqlPath = path.join(__dirname, 'add_digital_fields.sql');
+    // Permite pasar el nombre del archivo SQL por argumento.
+    // Ejemplo: node migrations/run_migration.js 016_responsables_digital_nuevos_campos.sql
+    const migrationFile = process.argv[2] || '016_responsables_digital_nuevos_campos.sql';
+    const sqlPath = path.join(__dirname, migrationFile);
+    if (!fs.existsSync(sqlPath)) {
+      throw new Error(`No existe el archivo de migracion: ${migrationFile}`);
+    }
     const sql = fs.readFileSync(sqlPath, 'utf8');
 
-    console.log('📝 Ejecutando migración...');
+    console.log(`📝 Ejecutando migración: ${migrationFile}`);
     await client.query(sql);
     console.log('✅ Migración ejecutada exitosamente');
 
-    // Verificar las columnas creadas
+    // Verificar columnas esperadas en detalle_orden_trabajo_digital
     const result = await client.query(`
-      SELECT column_name, data_type, column_default
+      SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
-      WHERE table_name = 'detalle_cotizacion'
-      AND column_name IN ('posicion_imagen', 'texto_negrita')
+      WHERE table_name = 'detalle_orden_trabajo_digital'
+      AND column_name IN (
+        'preprensa_responsable',
+        'impresion_responsable',
+        'laminado_responsable',
+        'barnizado_responsable',
+        'troquelado_flexible_responsable',
+        'troquelado_plano_responsable',
+        'rebobinado_responsable',
+        'refilado_termoencogible_responsable',
+        'sellado_termoencogible_responsable',
+        'corte_termoencogible_responsable',
+        'terminado_responsable'
+      )
       ORDER BY ordinal_position;
     `);
 
-    console.log('\n📊 Columnas creadas:');
+    console.log('\n📊 Columnas verificadas:');
     console.table(result.rows);
 
   } catch (error) {
