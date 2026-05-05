@@ -43,6 +43,7 @@ function CotizacionesCrear() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 300, height: 200 });
+  const [imageRotation, setImageRotation] = useState(0);
   const [showConfirmacionClienteModal, setShowConfirmacionClienteModal] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const [nuevoClienteDatos, setNuevoClienteDatos] = useState({
@@ -108,6 +109,20 @@ function CotizacionesCrear() {
     const numero = Number(valor);
     if (!Number.isFinite(numero)) return fallback;
     return Math.max(1, Math.round(numero));
+  };
+
+  const normalizarRotacionImagen = (valor = 0) => {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return 0;
+
+    return ((Math.round(numero / 90) * 90) % 360 + 360) % 360;
+  };
+
+  const obtenerDimensionesRenderImagen = (width, height, rotation) => {
+    const rotacion = normalizarRotacionImagen(rotation);
+    return rotacion % 180 === 0
+      ? { width, height }
+      : { width: height, height: width };
   };
 
   const parseCantidadEntera = (valor) => {
@@ -391,6 +406,7 @@ function CotizacionesCrear() {
                 imagen_ruta_jpeg: img.imagen_ruta.replace('.webp', '.jpeg'),
                 imagen_width: normalizarDimensionPx(img.imagen_width, 200),
                 imagen_height: normalizarDimensionPx(img.imagen_height, 150),
+                imagen_rotacion: normalizarRotacionImagen(img.imagen_rotacion),
                 id: img.id
               }))
             : [];
@@ -682,7 +698,8 @@ function CotizacionesCrear() {
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
               imagen_width: normalizarDimensionPx(img.imagen_width, 200),
-              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150),
+              imagen_rotacion: normalizarRotacionImagen(img.imagen_rotacion)
             }))
           : []
       }));
@@ -1020,6 +1037,7 @@ function CotizacionesCrear() {
               imagen_ruta_jpeg: data.imagenRutaJpeg,
               imagen_width: width,
               imagen_height: height,
+              imagen_rotacion: 0,
               thumbnail: data.thumbnail,
               metadata: data.metadata
             }
@@ -1304,7 +1322,8 @@ function CotizacionesCrear() {
               imagen_ruta: img.imagen_ruta,
               orden: 0,
               imagen_width: normalizarDimensionPx(img.imagen_width, 200),
-              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150),
+              imagen_rotacion: normalizarRotacionImagen(img.imagen_rotacion)
             }))
           : []
       }));
@@ -1348,6 +1367,7 @@ function CotizacionesCrear() {
   const showImageAdjustModal = (rowIndex, imgIndex) => {
     setSelectedImageIndices({ row: rowIndex, img: imgIndex });
     const imagen = filas[rowIndex].imagenes[imgIndex];
+    setImageRotation(normalizarRotacionImagen(imagen.imagen_rotacion));
     setImageDimensions(
       clampImageDimensions(
         imagen.imagen_width || 200,
@@ -1360,6 +1380,11 @@ function CotizacionesCrear() {
     setImageDimensions(clampImageDimensions(size.width, size.height));
   };
 
+  const rotateImagePreview90 = () => {
+    setImageDimensions(prev => clampImageDimensions(prev.height, prev.width));
+    setImageRotation(prev => normalizarRotacionImagen(prev + 90));
+  };
+
   // Función para aplicar los cambios de dimensiones
   const applyImageDimensions = ({ openPreview = false, closeModal = true } = {}) => {
     if (selectedImageIndices.row !== null && selectedImageIndices.img !== null) {
@@ -1370,7 +1395,8 @@ function CotizacionesCrear() {
       imagenesActuales[selectedImageIndices.img] = {
         ...imagenesActuales[selectedImageIndices.img],
         imagen_width: constrained.width,
-        imagen_height: constrained.height
+        imagen_height: constrained.height,
+        imagen_rotacion: normalizarRotacionImagen(imageRotation)
       };
       newFilas[selectedImageIndices.row] = {
         ...newFilas[selectedImageIndices.row],
@@ -1404,7 +1430,8 @@ function CotizacionesCrear() {
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
               imagen_width: normalizarDimensionPx(img.imagen_width, 200),
-              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150),
+              imagen_rotacion: normalizarRotacionImagen(img.imagen_rotacion)
             }))
           : []
       }));
@@ -2177,6 +2204,7 @@ function CotizacionesCrear() {
                                   src={img.imagen} 
                                   alt={`Imagen ${imgIndex + 1}`} 
                                   className="w-20 h-20 object-cover rounded mb-2"
+                                  style={{ transform: `rotate(${normalizarRotacionImagen(img.imagen_rotacion)}deg)` }}
                                 />
                                 <span className="text-xs text-gray-600 mb-2">Img {imgIndex + 1}</span>
                                 <div className="flex gap-1">
@@ -2452,7 +2480,8 @@ function CotizacionesCrear() {
                       width: `${imageDimensions.width}px`,
                       height: `${imageDimensions.height}px`,
                       border: '2px dashed #3B82F6',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: '#ffffff',
+                      position: 'relative'
                     }}
                     className="overflow-hidden"
                   >
@@ -2460,10 +2489,14 @@ function CotizacionesCrear() {
                       src={filas[selectedImageIndices.row]?.imagenes[selectedImageIndices.img]?.imagen}
                       alt="Preview"
                       style={{
-                        width: '100%',
-                        height: '100%',
+                        width: `${obtenerDimensionesRenderImagen(imageDimensions.width, imageDimensions.height, imageRotation).width}px`,
+                        height: `${obtenerDimensionesRenderImagen(imageDimensions.width, imageDimensions.height, imageRotation).height}px`,
                         objectFit: 'contain',
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: `translate(-50%, -50%) rotate(${imageRotation}deg)`
                       }}
                     />
                   </div>
@@ -2476,6 +2509,22 @@ function CotizacionesCrear() {
                     <i className="fas fa-info-circle mr-2"></i>
                     Arrastre la esquina inferior derecha para ajustar el tamaño. Se aplicará en el PDF. Rango: 100x75px a 600x400px
                   </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Rotación actual: {imageRotation}°</p>
+                    <p className="text-xs text-gray-500">Gira la imagen 90 grados en sentido horario.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={rotateImagePreview90}
+                    className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600"
+                    title="Rotar 90 grados"
+                  >
+                    <i className="fas fa-redo"></i>
+                    Rotar 90°
+                  </button>
                 </div>
                 
                 {/* Controles de tamaño en dos columnas */}
@@ -2539,7 +2588,10 @@ function CotizacionesCrear() {
                 
                 <div className="flex justify-end space-x-2 pt-4 border-t">
                   <button
-                    onClick={() => setSelectedImageIndices({ row: null, img: null })}
+                    onClick={() => {
+                      setSelectedImageIndices({ row: null, img: null });
+                      setImageRotation(0);
+                    }}
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
                   >
                     Cancelar

@@ -54,7 +54,7 @@ const createCotizacionDetalles = (client: any) => {
       const detallesConImagenes = await Promise.all(
         result.rows.map(async (detalle) => {
           const imagenesQuery = `
-            SELECT id, imagen_ruta, orden, imagen_width, imagen_height
+            SELECT id, imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion
             FROM detalle_cotizacion_imagenes
             WHERE detalle_cotizacion_id = $1
             ORDER BY orden ASC
@@ -111,8 +111,8 @@ const createCotizacionDetalles = (client: any) => {
       // Si hay imágenes, insertarlas en la tabla de imágenes
       if (imagenes && Array.isArray(imagenes) && imagenes.length > 0) {
         const imageQuery = `
-          INSERT INTO detalle_cotizacion_imagenes (detalle_cotizacion_id, imagen_ruta, orden, imagen_width, imagen_height)
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO detalle_cotizacion_imagenes (detalle_cotizacion_id, imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion)
+          VALUES ($1, $2, $3, $4, $5, $6)
         `;
         
         for (let i = 0; i < imagenes.length; i++) {
@@ -122,14 +122,15 @@ const createCotizacionDetalles = (client: any) => {
             img.imagen_ruta,
             i,
             normalizarDimensionImagen(img.imagen_width, 200),
-            normalizarDimensionImagen(img.imagen_height, 150)
+            normalizarDimensionImagen(img.imagen_height, 150),
+            Number.isFinite(Number(img.imagen_rotacion)) ? Number(img.imagen_rotacion) : 0
           ]);
         }
       }
 
       // Retornar el detalle con sus imágenes
       const imagenesQuery = `
-        SELECT id, imagen_ruta, orden, imagen_width, imagen_height
+        SELECT id, imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion
         FROM detalle_cotizacion_imagenes
         WHERE detalle_cotizacion_id = $1
         ORDER BY orden ASC
@@ -195,8 +196,8 @@ const createCotizacionDetalles = (client: any) => {
         // Insertar las imágenes si existen
         if (imagenes && Array.isArray(imagenes) && imagenes.length > 0) {
           const imageQuery = `
-            INSERT INTO detalle_cotizacion_imagenes (detalle_cotizacion_id, imagen_ruta, orden, imagen_width, imagen_height)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO detalle_cotizacion_imagenes (detalle_cotizacion_id, imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion)
+            VALUES ($1, $2, $3, $4, $5, $6)
           `;
           
           for (let i = 0; i < imagenes.length; i++) {
@@ -206,14 +207,15 @@ const createCotizacionDetalles = (client: any) => {
               img.imagen_ruta,
               i,
               normalizarDimensionImagen(img.imagen_width, 200),
-              normalizarDimensionImagen(img.imagen_height, 150)
+              normalizarDimensionImagen(img.imagen_height, 150),
+              Number.isFinite(Number(img.imagen_rotacion)) ? Number(img.imagen_rotacion) : 0
             ]);
           }
         }
 
         // Obtener las imágenes insertadas
         const imagenesQuery = `
-          SELECT id, imagen_ruta, orden, imagen_width, imagen_height
+          SELECT id, imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion
           FROM detalle_cotizacion_imagenes
           WHERE detalle_cotizacion_id = $1
           ORDER BY orden ASC

@@ -84,7 +84,8 @@ export const generarVistaPreviaPDF = async (cotizacionId, cotizacionData, detall
               imagen_ruta: img.imagen_ruta,
               orden: img.orden || 0,
               imagen_width: img.imagen_width || 200,
-              imagen_height: img.imagen_height || 150
+              imagen_height: img.imagen_height || 150,
+              imagen_rotacion: img.imagen_rotacion || 0
             }))
           : []
       })) : [];

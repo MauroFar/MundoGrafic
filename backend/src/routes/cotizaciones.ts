@@ -106,7 +106,8 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
             return {
               base64: base64Image,
               width: img.imagen_width || 300,
-              height: img.imagen_height || 200
+              height: img.imagen_height || 200,
+              rotation: Number.isFinite(Number(img.imagen_rotacion)) ? Number(img.imagen_rotacion) : 0
             };
           } else {
             console.log('❌ No se pudo procesar una imagen');
@@ -879,12 +880,14 @@ body {
                           <div class="texto-izquierda">${d.detalle.replace(/\n/g, '<br>')}</div>
                           <div class="imagenes-derecha">
                             ${d.imagenesBase64.map(img => `
-                              <img 
-                                src="${img.base64}" 
-                                alt="Imagen del producto" 
-                                class="imagen-producto"
-                                style="width: ${img.width}px; height: ${img.height}px; display: block;"
-                              />
+                              <div style="position: relative; width: ${img.width}px; height: ${img.height}px; overflow: hidden;">
+                                <img 
+                                  src="${img.base64}" 
+                                  alt="Imagen del producto" 
+                                  class="imagen-producto"
+                                  style="width: ${img.rotation % 180 === 0 ? img.width : img.height}px; height: ${img.rotation % 180 === 0 ? img.height : img.width}px; display: block; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(${img.rotation}deg);"
+                                />
+                              </div>
                             `).join('')}
                           </div>
                         ` : `
@@ -893,12 +896,14 @@ body {
                           ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                             <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 0;">
                               ${d.imagenesBase64.map(img => `
-                                <img 
-                                  src="${img.base64}" 
-                                  alt="Imagen del producto" 
-                                  class="imagen-producto"
-                                  style="width: ${img.width}px; height: ${img.height}px; display: block;"
-                                />
+                                <div style="position: relative; width: ${img.width}px; height: ${img.height}px; overflow: hidden;">
+                                  <img 
+                                    src="${img.base64}" 
+                                    alt="Imagen del producto" 
+                                    class="imagen-producto"
+                                    style="width: ${img.rotation % 180 === 0 ? img.width : img.height}px; height: ${img.rotation % 180 === 0 ? img.height : img.width}px; display: block; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(${img.rotation}deg);"
+                                  />
+                                </div>
                               `).join('')}
                             </div>
                           ` : ''}
@@ -1569,7 +1574,7 @@ const CotizacionDatos = (client: any) => {
       const detalles = await Promise.all(
         detallesResult.rows.map(async (detalle) => {
           const imagenesQuery = `
-            SELECT imagen_ruta, orden, imagen_width, imagen_height
+            SELECT imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion
             FROM detalle_cotizacion_imagenes
             WHERE detalle_cotizacion_id = $1
             ORDER BY orden ASC
@@ -1713,7 +1718,7 @@ const CotizacionDatos = (client: any) => {
       const detalles = await Promise.all(
         detallesResult.rows.map(async (detalle) => {
           const imagenesQuery = `
-            SELECT imagen_ruta, orden, imagen_width, imagen_height
+            SELECT imagen_ruta, orden, imagen_width, imagen_height, imagen_rotacion
             FROM detalle_cotizacion_imagenes
             WHERE detalle_cotizacion_id = $1
             ORDER BY orden ASC
