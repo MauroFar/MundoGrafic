@@ -19,6 +19,14 @@ const parseCantidadEntera = (valor: any) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
+const normalizarDimensionImagen = (valor: any, fallback: number) => {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return fallback;
+
+  const entero = Math.round(numero);
+  return entero > 0 ? entero : fallback;
+};
+
 const createCotizacionDetalles = (client: any) => {
   // Obtener detalles de una cotización por ID
   router.get("/:id", async (req: any, res: any) => {
@@ -113,8 +121,8 @@ const createCotizacionDetalles = (client: any) => {
             detalleId,
             img.imagen_ruta,
             i,
-            img.imagen_width || 200,
-            img.imagen_height || 150
+            normalizarDimensionImagen(img.imagen_width, 200),
+            normalizarDimensionImagen(img.imagen_height, 150)
           ]);
         }
       }
@@ -197,8 +205,8 @@ const createCotizacionDetalles = (client: any) => {
               detalleId,
               img.imagen_ruta,
               i,
-              img.imagen_width || 200,
-              img.imagen_height || 150
+              normalizarDimensionImagen(img.imagen_width, 200),
+              normalizarDimensionImagen(img.imagen_height, 150)
             ]);
           }
         }

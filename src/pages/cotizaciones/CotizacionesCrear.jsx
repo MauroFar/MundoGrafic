@@ -104,6 +104,12 @@ function CotizacionesCrear() {
     return `${parteEntera}.${parteDecimalFinal}`;
   };
 
+  const normalizarDimensionPx = (valor, fallback = 200) => {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return fallback;
+    return Math.max(1, Math.round(numero));
+  };
+
   const parseCantidadEntera = (valor) => {
     if (valor === null || valor === undefined || valor === "") return 0;
 
@@ -383,8 +389,8 @@ function CotizacionesCrear() {
                 imagen: `${apiUrl}${img.imagen_ruta}`,
                 imagen_ruta: img.imagen_ruta,
                 imagen_ruta_jpeg: img.imagen_ruta.replace('.webp', '.jpeg'),
-                imagen_width: img.imagen_width || 200,
-                imagen_height: img.imagen_height || 150,
+                imagen_width: normalizarDimensionPx(img.imagen_width, 200),
+                imagen_height: normalizarDimensionPx(img.imagen_height, 150),
                 id: img.id
               }))
             : [];
@@ -675,8 +681,8 @@ function CotizacionesCrear() {
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
-              imagen_width: img.imagen_width || 200,
-              imagen_height: img.imagen_height || 150
+              imagen_width: normalizarDimensionPx(img.imagen_width, 200),
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
             }))
           : []
       }));
@@ -995,8 +1001,14 @@ function CotizacionesCrear() {
         const imagenesActuales = nuevasFilas[index].imagenes || [];
         
         // Si ya hay imágenes, tomar el tamaño de la primera; si no, usar valores por defecto
-        const width = imagenesActuales.length > 0 ? imagenesActuales[0].imagen_width : 200;
-        const height = imagenesActuales.length > 0 ? imagenesActuales[0].imagen_height : 150;
+        const width = normalizarDimensionPx(
+          imagenesActuales.length > 0 ? imagenesActuales[0].imagen_width : 200,
+          200
+        );
+        const height = normalizarDimensionPx(
+          imagenesActuales.length > 0 ? imagenesActuales[0].imagen_height : 150,
+          150
+        );
         
         nuevasFilas[index] = {
           ...nuevasFilas[index],
@@ -1291,8 +1303,8 @@ function CotizacionesCrear() {
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
               orden: 0,
-              imagen_width: img.imagen_width || 200,
-              imagen_height: img.imagen_height || 150
+              imagen_width: normalizarDimensionPx(img.imagen_width, 200),
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
             }))
           : []
       }));
@@ -1324,9 +1336,12 @@ function CotizacionesCrear() {
     const maxWidth = 600;
     const maxHeight = 400;
 
+    const widthNormalizado = normalizarDimensionPx(width, minWidth);
+    const heightNormalizado = normalizarDimensionPx(height, minHeight);
+
     return {
-      width: Math.max(minWidth, Math.min(maxWidth, width)),
-      height: Math.max(minHeight, Math.min(maxHeight, height))
+      width: Math.max(minWidth, Math.min(maxWidth, widthNormalizado)),
+      height: Math.max(minHeight, Math.min(maxHeight, heightNormalizado))
     };
   };
 
@@ -1388,8 +1403,8 @@ function CotizacionesCrear() {
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
           ? fila.imagenes.map(img => ({
               imagen_ruta: img.imagen_ruta,
-              imagen_width: img.imagen_width || 200,
-              imagen_height: img.imagen_height || 150
+              imagen_width: normalizarDimensionPx(img.imagen_width, 200),
+              imagen_height: normalizarDimensionPx(img.imagen_height, 150)
             }))
           : []
       }));
