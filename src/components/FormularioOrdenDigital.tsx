@@ -23,6 +23,8 @@ interface FormularioOrdenDigitalProps {
   // Información del trabajo
   productos: ProductoDigital[];
   setProductos: (productos: ProductoDigital[]) => void;
+  mostrarTotalMetros: boolean;
+  setMostrarTotalMetros: (value: boolean) => void;
   
   // Información técnica
   adherencia: string;
@@ -58,6 +60,8 @@ interface FormularioOrdenDigitalProps {
 const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   productos,
   setProductos,
+  mostrarTotalMetros,
+  setMostrarTotalMetros,
   adherencia,
   setAdherencia,
   material,
@@ -89,6 +93,14 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 }) => {
   // Asegurar que productos siempre sea un array
   const productosArray = Array.isArray(productos) ? productos : [];
+  const totalMetros = productosArray.reduce((acumulado, producto) => {
+    const valorNormalizado = String(producto.metros_impresos || '').replace(',', '.').trim();
+    const metros = parseFloat(valorNormalizado);
+    return acumulado + (Number.isFinite(metros) ? metros : 0);
+  }, 0);
+  const totalMetrosDisplay = Number.isInteger(totalMetros)
+    ? String(totalMetros)
+    : totalMetros.toFixed(2);
 
   // Tamaño de papel global para todos los productos (valores por defecto editables)
   const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
@@ -667,6 +679,30 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <div className="w-full max-w-xs">
+            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={mostrarTotalMetros}
+                onChange={(e) => setMostrarTotalMetros(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Mostrar total de metros
+            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Total de Metros
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-800 disabled:bg-gray-100 disabled:text-gray-400"
+              value={totalMetrosDisplay}
+              disabled={!mostrarTotalMetros}
+              readOnly
+            />
+          </div>
         </div>
         </div>
       </div>

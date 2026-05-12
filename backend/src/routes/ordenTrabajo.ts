@@ -1630,6 +1630,11 @@ export default (client: any) => {
     const procesosSeleccionados = Array.isArray(parsed?.procesos_seleccionados)
       ? parsed.procesos_seleccionados.filter((k: any) => digitalProcessKeys.includes(k))
       : [...digitalProcessKeys];
+    const mostrarTotalMetros =
+      parsed?.mostrar_total_metros === true ||
+      parsed?.mostrar_total_metros === "true" ||
+      parsed?.mostrar_total_metros === 1 ||
+      parsed?.mostrar_total_metros === "1";
 
     return {
       preprensa: { ...base.preprensa, ...(parsed?.preprensa || {}) },
@@ -1665,6 +1670,7 @@ export default (client: any) => {
         ...(parsed?.liberacion_producto || {}),
       },
       procesos_seleccionados: procesosSeleccionados,
+      mostrar_total_metros: mostrarTotalMetros,
     };
   };
 
@@ -1996,6 +2002,24 @@ export default (client: any) => {
       productos = [];
     }
 
+    const mostrarTotalMetros =
+      (trazabilidad as any)?.mostrar_total_metros === true ||
+      (trazabilidad as any)?.mostrar_total_metros === "true" ||
+      (trazabilidad as any)?.mostrar_total_metros === 1 ||
+      (trazabilidad as any)?.mostrar_total_metros === "1";
+
+    const totalMetros = productos.reduce((acumulado: number, producto: any) => {
+      const valorNormalizado = String(producto?.metros_impresos || "")
+        .replace(",", ".")
+        .trim();
+      const metros = Number.parseFloat(valorNormalizado);
+      return acumulado + (Number.isFinite(metros) ? metros : 0);
+    }, 0);
+
+    const totalMetrosDisplay = Number.isInteger(totalMetros)
+      ? String(totalMetros)
+      : totalMetros.toFixed(2);
+
     // Generar filas de productos (incluyendo gaps)
     const filasProductos = productos
       .map(
@@ -2162,6 +2186,10 @@ export default (client: any) => {
           }
           .referencia-imagen { max-width: 100%; height: auto; max-height: var(--ref-img-max-height); border: 1px solid #ddd; border-radius: 4px; margin-top: 4px; }
           .grid-tecnico { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+          .tabla-total-metros-espacio { border: none; padding: 0; }
+          .tabla-total-metros-celda { border-top: none; text-align: left; padding-top: 3px; }
+          .tabla-total-metros-etiqueta { font-size: 8px; font-weight: bold; color: #666; }
+          .tabla-total-metros-valor { font-size: 10px; font-weight: bold; }
         </style>
       </head>
       <body>
@@ -2245,6 +2273,17 @@ export default (client: any) => {
               <tbody>
                 ${filasProductos || '<tr><td colspan="12" class="tabla-celda">No hay productos registrados</td></tr>'}
               </tbody>
+              ${mostrarTotalMetros ? `
+              <tfoot>
+                <tr>
+                  <td colspan="10" class="tabla-total-metros-espacio"></td>
+                  <td class="tabla-celda tabla-total-metros-celda">
+                    <div class="tabla-total-metros-etiqueta">Total Metros</div>
+                    <div class="tabla-total-metros-valor">${totalMetrosDisplay}</div>
+                  </td>
+                  <td class="tabla-total-metros-espacio"></td>
+                </tr>
+              </tfoot>` : ""}
             </table>
           </div>
         </div>

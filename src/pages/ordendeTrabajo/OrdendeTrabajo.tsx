@@ -143,6 +143,21 @@ const normalizarProcesosDigitalSeleccionados = (valor: any): DigitalProcessKey[]
   return validos;
 };
 
+const normalizarMostrarTotalMetros = (valor: any): boolean => {
+  if (!valor) return false;
+
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const mostrar = parsed?.mostrar_total_metros;
+  return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
+};
+
 const crearTrazabilidadVacia = (): TrazabilidadProcesoItem => ({
   fecha_inicio: '',
   hora_inicio: '',
@@ -352,6 +367,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
   const [espesorDigital, setEspesorDigital] = useState<string>('');
+  const [mostrarTotalMetrosDigital, setMostrarTotalMetrosDigital] = useState<boolean>(false);
   const [trazabilidadProceso, setTrazabilidadProceso] = useState<TrazabilidadProceso>(crearTrazabilidadProcesoVacia());
 
   const toggleProcesoDigital = (proceso: DigitalProcessKey) => {
@@ -365,6 +381,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const construirTrazabilidadParaPayload = () => ({
     ...trazabilidadProceso,
     procesos_seleccionados: procesosDigitalSeleccionados,
+    mostrar_total_metros: mostrarTotalMetrosDigital,
   });
 
   const actualizarCampoTrazabilidad = (
@@ -909,6 +926,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
     setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
     setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
+    setMostrarTotalMetrosDigital(normalizarMostrarTotalMetros(detalleResponsables.trazabilidad_proceso));
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
     const estadoActual = ordenData.tipo_orden === 'digital'
@@ -1838,6 +1856,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
             <FormularioOrdenDigital
               productos={productosDigital}
               setProductos={setProductosDigital}
+              mostrarTotalMetros={mostrarTotalMetrosDigital}
+              setMostrarTotalMetros={setMostrarTotalMetrosDigital}
               adherencia={adherencia}
               setAdherencia={setAdherencia}
               material={materialDigital}
