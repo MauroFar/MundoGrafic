@@ -12,20 +12,10 @@ import { usePermisos } from '../../hooks/usePermisos';
 
 // Tipos para los datos de la orden
 interface OrdenData {
+  id_cotizacion?: number | null;
     tipo_orden?: string;
     empresa_cliente?: string;
     orden_compra?: string;
-  preprensa_responsable?: string;
-  impresion_responsable?: string;
-  laminado_responsable?: string;
-  barnizado_responsable?: string;
-  troquelado_flexible_responsable?: string;
-  troquelado_plano_responsable?: string;
-  rebobinado_responsable?: string;
-  refilado_termoencogible_responsable?: string;
-  sellado_termoencogible_responsable?: string;
-  corte_termoencogible_responsable?: string;
-  terminado_responsable?: string;
     vendedor_cantidad_final?: string;
     preprensa_cantidad_final?: string;
     prensa_cantidad_final?: string;
