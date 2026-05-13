@@ -11,6 +11,17 @@ FRONTEND_ERROR_LOG="/var/log/nginx/mundografic_error.log"
 FALLBACK_FRONTEND_ACCESS_LOG="/var/log/nginx/access.log"
 FALLBACK_FRONTEND_ERROR_LOG="/var/log/nginx/error.log"
 
+# Mantenimiento
+MAINTENANCE_FLAG="/var/www/mundografic/maintenance.on"
+MAINTENANCE_PAGE="/var/www/mundografic/maintenance.html"
+MAINTENANCE_SRC="./backend/public/maintenance.html"
+
+# Colores
+RED='\033[0;31m'; GREEN_C='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+info()    { echo -e "${GREEN_C}[INFO]${NC}  $*"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
 show_menu() {
     echo ""
     echo "=============================================="
@@ -18,8 +29,8 @@ show_menu() {
     echo "=============================================="
     echo "  1) Actualizar sistema"
     echo "  2) Ver logs de backend"
-    echo "  3) Ver logs de frontend"
-    echo "  0) Salir"
+    echo "  3) Ver logs de frontend"    echo "  4) Activar modo MANTENIMIENTO"
+    echo "  5) Desactivar modo MANTENIMIENTO"    echo "  0) Salir"
     echo "=============================================="
 }
 
@@ -126,6 +137,41 @@ show_frontend_logs() {
     sudo tail -n 100 -f "${logs[@]}"
 }
 
+enable_maintenance() {
+    echo ""
+    warn "Esto activará el modo mantenimiento: los usuarios verán la página de mantenimiento."
+    read -rp "¿Confirmar? (s/N): " confirm
+    [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+    if [ -f "$MAINTENANCE_SRC" ]; then
+        sudo cp "$MAINTENANCE_SRC" "$MAINTENANCE_PAGE"
+        info "Página de mantenimiento copiada a $MAINTENANCE_PAGE"
+    else
+        warn "No se encontró $MAINTENANCE_SRC. Asegúrate de que existe el archivo en el repositorio."
+    fi
+
+    sudo touch "$MAINTENANCE_FLAG"
+    sudo nginx -t && sudo systemctl reload nginx
+    info "✅ Modo mantenimiento ACTIVADO."
+    info "   Los usuarios verán la página de mantenimiento en lugar del sistema."
+    info "   Para desactivar: ejecuta la opción 5."
+}
+
+disable_maintenance() {
+    echo ""
+    warn "Esto desactivará el modo mantenimiento: el sistema volverá a estar disponible."
+    read -rp "¿Confirmar? (s/N): " confirm
+    [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+    if [ -f "$MAINTENANCE_FLAG" ]; then
+        sudo rm -f "$MAINTENANCE_FLAG"
+        sudo nginx -t && sudo systemctl reload nginx
+        info "✅ Modo mantenimiento DESACTIVADO. El sistema está disponible."
+    else
+        info "El modo mantenimiento no estaba activo."
+    fi
+}
+
 while true; do
     show_menu
     read -rp "Opción: " opt
@@ -134,6 +180,8 @@ while true; do
         1) run_update ;;
         2) show_backend_logs ;;
         3) show_frontend_logs ;;
+        4) enable_maintenance ;;
+        5) disable_maintenance ;;
         0) echo "Saliendo."; exit 0 ;;
         *) echo "⚠️  Opción inválida: $opt" ;;
     esac
