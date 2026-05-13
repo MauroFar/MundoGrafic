@@ -25,8 +25,19 @@ app.use((req: any, res: any, next: any) => {
   next();
 });
 
+app.get('/api/system/maintenance-status', cors(), (req: any, res: any) => {
+  res.json({
+    maintenance: fs.existsSync(maintenanceFlagFile),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Si existe el flag de mantenimiento, bloquear todo el tráfico (incluye acceso directo por :4001)
 app.use((req: any, res: any, next: any) => {
+  if (req.path === '/api/system/maintenance-status') {
+    return next();
+  }
+
   if (!fs.existsSync(maintenanceFlagFile)) {
     return next();
   }

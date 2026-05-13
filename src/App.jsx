@@ -6,9 +6,11 @@ import { PermisosProvider } from "./context/PermisosContext";
 import { useTheme } from "./hooks/useTheme";
 import PrivateRoute from "./components/PrivateRoute";
 import ToastNotificaciones from "./components/ToastNotificaciones";
+import MaintenanceWatcher from "./components/MaintenanceWatcher";
 
 // Páginas
 import Login from "./pages/Login";
+import Mantenimiento from "./pages/Mantenimiento";
 import Welcome from "./components/Welcome";
 import MainMenu from "./pages/MainMenu";
 import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
@@ -45,7 +47,10 @@ function App() {
       <Router>
         <ToastContainer position="top-right" autoClose={3000} />
         <ToastNotificaciones />
+        <MaintenanceWatcher />
         <Routes>
+        <Route path="/mantenimiento" element={<Mantenimiento />} />
+
         {/* Ruta Login */}
         <Route path="/" element={<Login />} />
 

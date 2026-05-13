@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 
 const PERMISSION_EVENT = 'app:permission-denied';
 const AUTH_EXPIRED_EVENT = 'app:auth-expired';
+const MAINTENANCE_EVENT = 'app:maintenance-active';
 
 const notifyPermissionDenied = (detail = {}) => {
   if (typeof window !== 'undefined') {
@@ -62,6 +63,15 @@ const notifyAuthExpired = () => {
   }
 };
 
+const notifyMaintenanceActive = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(MAINTENANCE_EVENT));
+    if (window.location.pathname !== '/mantenimiento') {
+      window.location.replace('/mantenimiento');
+    }
+  }
+};
+
 // Configurar interceptor de respuestas para manejar errores 403
 export const setupAxiosInterceptors = () => {
   if (typeof window !== 'undefined' && window.__axiosInterceptorsConfigured) {
@@ -92,6 +102,8 @@ export const setupAxiosInterceptors = () => {
         localStorage.removeItem('user');
         notifyAuthExpired();
         window.location.href = '/login';
+      } else if (error.response?.status === 503 && error.config?.url !== '/api/system/maintenance-status') {
+        notifyMaintenanceActive();
       }
       
       return Promise.reject(error);
@@ -130,6 +142,10 @@ export const setupFetchInterceptor = () => {
       localStorage.removeItem('user');
       notifyAuthExpired();
       window.location.href = '/login';
+    }
+
+    if (response.status === 503 && url !== '/api/system/maintenance-status') {
+      notifyMaintenanceActive();
     }
 
     return response;
