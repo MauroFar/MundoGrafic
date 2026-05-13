@@ -103,14 +103,8 @@ const Mantenimiento = () => {
         <p style={styles.text}>
           Si estabas trabajando en el sistema, esta pantalla se cerrará automáticamente cuando el servicio vuelva.
         </p>
+    
 
-        <button
-          type="button"
-          style={styles.button}
-          onClick={() => window.location.reload()}
-        >
-          Reintentar ahora
-        </button>
 
         <div style={styles.footer}>
           {returnPath !== '/welcome' ? `Volveremos a: ${returnPath}` : 'MundoGrafic'}
