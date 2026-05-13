@@ -77,7 +77,7 @@ function show_menu() {
   echo " 11) Activar modo MANTENIMIENTO (bloquea el sitio)"
   echo " 12) Desactivar modo MANTENIMIENTO (reactiva el sitio)"
   echo "  0) Salir"
-  echo "======================================================
+  echo "======================================================"
 }
 
 # ─── Iniciar / detener ──────────────────────────────────────────
