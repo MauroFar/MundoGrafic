@@ -49,6 +49,11 @@ GREEN_ENV_SYSTEM="/etc/mundografic/green.env"
 GREEN_ENV_LOCAL="$GREEN_DIR/backend/.env"
 
 NGINX_UPSTREAM_CONF="/etc/nginx/conf.d/mundografic_upstream.conf"
+
+# Mantenimiento (Green/Staging)
+MAINTENANCE_FLAG_GREEN="/var/www/mundografic/maintenance.green.on"
+MAINTENANCE_PAGE="/var/www/mundografic/maintenance.html"
+MAINTENANCE_SRC_GREEN="$BLUE_DIR/backend/public/maintenance.html"
 # ──────────────────────────────────────────────────────────────────
 
 # Colores para output
@@ -314,6 +319,8 @@ function setup_green_initial() {
       # Copiar .env de blue y ajustar los valores de green
       sed "s/^DB_NAME=.*/DB_NAME=$STAGING_DB/" "$BLUE_ENV_FILE" | \
         sed "s/^PORT=.*/PORT=$PORT_GREEN/" > "$GREEN_DIR/backend/.env"
+      # Ajustar flag de mantenimiento a green
+      sed -i 's|^MAINTENANCE_FLAG_FILE=.*|MAINTENANCE_FLAG_FILE=/var/www/mundografic/maintenance.green.on|' "$GREEN_DIR/backend/.env"
       # Agregar PORT si no existía
       grep -q '^PORT=' "$GREEN_DIR/backend/.env" || echo "PORT=$PORT_GREEN" >> "$GREEN_DIR/backend/.env"
       info ".env de green creado desde .env de blue (DB apunta a $STAGING_DB, PORT=$PORT_GREEN)"
@@ -373,37 +380,36 @@ MAINTENANCE_SRC="$BLUE_DIR/backend/public/maintenance.html"
 
 function enable_maintenance() {
   echo ""
-  warn "Esto activará el modo mantenimiento: los usuarios verán la página de mantenimiento."
+  warn "Esto activará el modo mantenimiento en GREEN: los usuarios verán la página de mantenimiento."
   read -rp "¿Confirmar? (s/N): " confirm
   [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
 
-  # Copiar la página de mantenimiento si no existe o si cambió
-  if [ -f "$MAINTENANCE_SRC" ]; then
-    sudo cp "$MAINTENANCE_SRC" "$MAINTENANCE_PAGE"
+  if [ -f "$MAINTENANCE_SRC_GREEN" ]; then
+    sudo cp "$MAINTENANCE_SRC_GREEN" "$MAINTENANCE_PAGE"
     info "Página de mantenimiento copiada a $MAINTENANCE_PAGE"
   else
-    warn "No se encontró $MAINTENANCE_SRC. Asegúrate de que existe el archivo en el repositorio."
+    warn "No se encontró $MAINTENANCE_SRC_GREEN. Asegúrate de que existe el archivo en el repositorio."
   fi
 
-  sudo touch "$MAINTENANCE_FLAG"
+  sudo touch "$MAINTENANCE_FLAG_GREEN"
   sudo nginx -t && sudo systemctl reload nginx
-  info "✅ Modo mantenimiento ACTIVADO."
+  info "✅ Modo mantenimiento ACTIVADO en GREEN."
   info "   Los usuarios verán la página de mantenimiento en lugar del sistema."
   info "   Para desactivar: ejecuta la opción 12."
 }
 
 function disable_maintenance() {
   echo ""
-  warn "Esto desactivará el modo mantenimiento: el sistema volverá a estar disponible."
+  warn "Esto desactivará el modo mantenimiento en GREEN: el sistema volverá a estar disponible."
   read -rp "¿Confirmar? (s/N): " confirm
   [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
 
-  if [ -f "$MAINTENANCE_FLAG" ]; then
-    sudo rm -f "$MAINTENANCE_FLAG"
+  if [ -f "$MAINTENANCE_FLAG_GREEN" ]; then
+    sudo rm -f "$MAINTENANCE_FLAG_GREEN"
     sudo nginx -t && sudo systemctl reload nginx
-    info "✅ Modo mantenimiento DESACTIVADO. El sistema está disponible."
+    info "✅ Modo mantenimiento DESACTIVADO en GREEN. El sistema está disponible."
   else
-    info "El modo mantenimiento no estaba activo."
+    info "El modo mantenimiento no estaba activo en GREEN."
   fi
 }
 # ─── Menú principal ─────────────────────────────────────────────
