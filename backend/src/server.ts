@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { Client } from "pg";
 import path from "path";
+import fs from "fs";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/api";
 import authRequired from "./middleware/auth";
@@ -15,11 +16,33 @@ import os from 'os';
 dotenv.config();
 
 const app = express();
+const maintenanceFlagFile = process.env.MAINTENANCE_FLAG_FILE || '/var/www/mundografic/maintenance.on';
+const maintenanceHtmlFile = path.join(__dirname, '../public/maintenance.html');
 
 // Middleware para logging
 app.use((req: any, res: any, next: any) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
+});
+
+// Si existe el flag de mantenimiento, bloquear todo el tráfico (incluye acceso directo por :4001)
+app.use((req: any, res: any, next: any) => {
+  if (!fs.existsSync(maintenanceFlagFile)) {
+    return next();
+  }
+
+  if (req.path.startsWith('/api/')) {
+    return res.status(503).json({
+      message: 'Sistema en mantenimiento',
+      status: 'maintenance',
+    });
+  }
+
+  return res.status(503).sendFile(maintenanceHtmlFile, (err: any) => {
+    if (err) {
+      res.status(503).send('Sistema en mantenimiento. Intenta nuevamente en unos minutos.');
+    }
+  });
 });
 
 app.use(cors());
