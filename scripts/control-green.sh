@@ -74,8 +74,10 @@ function show_menu() {
   echo "  8) Setup inicial green (primera vez)"
   echo "  9) Ver logs de backend green"
   echo " 10) Ver logs de frontend green"
+  echo " 11) Activar modo MANTENIMIENTO (bloquea el sitio)"
+  echo " 12) Desactivar modo MANTENIMIENTO (reactiva el sitio)"
   echo "  0) Salir"
-  echo "======================================================"
+  echo "======================================================
 }
 
 # ─── Iniciar / detener ──────────────────────────────────────────
@@ -364,7 +366,46 @@ function setup_green_initial() {
   info "  2) Prueba en http://$(hostname -I | awk '{print $1}'):$PORT_GREEN"
   info "  3) Si todo OK → Opción 4 (Promover a producción)"
 }
+# ─── Modo mantenimiento ───────────────────────────────────────────
+MAINTENANCE_FLAG="/var/www/mundografic/maintenance.on"
+MAINTENANCE_PAGE="/var/www/mundografic/maintenance.html"
+MAINTENANCE_SRC="$BLUE_DIR/backend/public/maintenance.html"
 
+function enable_maintenance() {
+  echo ""
+  warn "Esto activará el modo mantenimiento: los usuarios verán la página de mantenimiento."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+  # Copiar la página de mantenimiento si no existe o si cambió
+  if [ -f "$MAINTENANCE_SRC" ]; then
+    sudo cp "$MAINTENANCE_SRC" "$MAINTENANCE_PAGE"
+    info "Página de mantenimiento copiada a $MAINTENANCE_PAGE"
+  else
+    warn "No se encontró $MAINTENANCE_SRC. Asegúrate de que existe el archivo en el repositorio."
+  fi
+
+  sudo touch "$MAINTENANCE_FLAG"
+  sudo nginx -t && sudo systemctl reload nginx
+  info "✅ Modo mantenimiento ACTIVADO."
+  info "   Los usuarios verán la página de mantenimiento en lugar del sistema."
+  info "   Para desactivar: ejecuta la opción 12."
+}
+
+function disable_maintenance() {
+  echo ""
+  warn "Esto desactivará el modo mantenimiento: el sistema volverá a estar disponible."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+  if [ -f "$MAINTENANCE_FLAG" ]; then
+    sudo rm -f "$MAINTENANCE_FLAG"
+    sudo nginx -t && sudo systemctl reload nginx
+    info "✅ Modo mantenimiento DESACTIVADO. El sistema está disponible."
+  else
+    info "El modo mantenimiento no estaba activo."
+  fi
+}
 # ─── Menú principal ─────────────────────────────────────────────
 while true; do
   show_menu
@@ -380,6 +421,8 @@ while true; do
     8) setup_green_initial ;;
     9) show_backend_logs ;;
     10) show_frontend_logs ;;
+    11) enable_maintenance ;;
+    12) disable_maintenance ;;
     0) info "Saliendo."; exit 0 ;;
     *) warn "Opción inválida: $opt" ;;
   esac
