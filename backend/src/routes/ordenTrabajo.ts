@@ -666,7 +666,8 @@ export default (client: any) => {
     checkPermission(client, "ordenes_trabajo", "leer"),
     async (req, res): Promise<void> => {
       try {
-        const { busqueda, fechaDesde, fechaHasta, limite, tipo_orden, id_cotizacion } = req.query;
+        const { busqueda, concepto, material, fechaDesde, fechaHasta, limite, tipo_orden, id_cotizacion } = req.query;
+        const materialFiltro = String(material || "").trim();
         let query = `
         SELECT ot.id, ot.numero_orden, ot.nombre_cliente,
                COALESCE(
@@ -714,12 +715,60 @@ export default (client: any) => {
 
         if (busqueda) {
           where.push(`(
-          CAST(numero_orden AS TEXT) ILIKE $${paramCount} OR
-          nombre_cliente ILIKE $${paramCount}
+          CAST(ot.numero_orden AS TEXT) ILIKE $${paramCount} OR
+          ot.nombre_cliente ILIKE $${paramCount}
         )`);
           params.push(`%${busqueda}%`);
           paramCount++;
         }
+
+        if (concepto) {
+          where.push(`(
+            EXISTS (
+              SELECT 1
+              FROM productos_orden_digital pod
+              WHERE pod.orden_trabajo_id = ot.id
+                AND COALESCE(pod.producto, '') ILIKE $${paramCount}
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM productos_orden_offset poo
+              WHERE poo.orden_trabajo_id = ot.id
+                AND COALESCE(poo.concepto, '') ILIKE $${paramCount}
+            )
+          )`);
+          params.push(`%${concepto}%`);
+          paramCount++;
+        }
+
+        if (materialFiltro) {
+          where.push(`(
+            EXISTS (
+              SELECT 1
+              FROM productos_orden_offset poom
+              WHERE poom.orden_trabajo_id = ot.id
+                AND regexp_replace(upper(COALESCE(poom.material, '')), '[[:space:]]+', ' ', 'g')
+                    LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%'
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM detalle_orden_trabajo_digital dodm
+              WHERE dodm.orden_trabajo_id = ot.id
+                AND regexp_replace(upper(COALESCE(dodm.material, '')), '[[:space:]]+', ' ', 'g')
+                    LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%'
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM detalle_orden_trabajo_offset doom
+              WHERE doom.orden_trabajo_id = ot.id
+                AND regexp_replace(upper(COALESCE(doom.material, '')), '[[:space:]]+', ' ', 'g')
+                    LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%'
+            )
+          )`);
+          params.push(materialFiltro);
+          paramCount++;
+        }
+
         if (fechaDesde) {
           where.push(`fecha_creacion >= $${paramCount}`);
           params.push(fechaDesde);

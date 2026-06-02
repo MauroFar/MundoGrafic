@@ -32,7 +32,9 @@ const OrdenesVer: React.FC = () => {
 
   const [ordenes, setOrdenes] = useState<OrdenTrabajo[]>([]);
   const [filtros, setFiltros] = useState({
-    busqueda: "",
+    busquedaCliente: "",
+    busquedaConcepto: "",
+    busquedaMaterial: "",
     fechaDesde: "",
     fechaHasta: "",
   });
@@ -275,15 +277,25 @@ const OrdenesVer: React.FC = () => {
     // eslint-disable-next-line
   }, [location.search]);
 
-  const cargarOrdenes = async (reset = false, tipoSeleccionado?: 'todos' | 'offset' | 'digital') => {
+  const cargarOrdenes = async (
+    reset = false,
+    tipoSeleccionado?: 'todos' | 'offset' | 'digital',
+    filtrosOverride?: typeof filtros,
+  ) => {
     setLoading(true);
     try {
       const tipo = tipoSeleccionado || workflowType;
+      const filtrosActivos = filtrosOverride || filtros;
+      const busquedaCliente = (filtrosActivos.busquedaCliente || '').trim();
+      const busquedaConcepto = (filtrosActivos.busquedaConcepto || '').trim();
+      const busquedaMaterial = (filtrosActivos.busquedaMaterial || '').trim();
       const token = localStorage.getItem("token");
       const queryParams = new URLSearchParams();
-      if (filtros.busqueda) queryParams.append("busqueda", filtros.busqueda);
-      if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
-      if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
+      if (busquedaCliente) queryParams.append("busqueda", busquedaCliente);
+      if (busquedaConcepto) queryParams.append("concepto", busquedaConcepto);
+      if (busquedaMaterial) queryParams.append("material", busquedaMaterial);
+      if (filtrosActivos.fechaDesde) queryParams.append("fechaDesde", filtrosActivos.fechaDesde);
+      if (filtrosActivos.fechaHasta) queryParams.append("fechaHasta", filtrosActivos.fechaHasta);
       if (tipo !== 'todos') {
         queryParams.append("tipo_orden", tipo);
       }
@@ -321,10 +333,12 @@ const OrdenesVer: React.FC = () => {
     setFiltros(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleBusquedaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFiltros(prev => ({ ...prev, busqueda: e.target.value }));
+  const handleBusquedaTextoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const nuevosFiltros = { ...filtros, [name]: value };
+    setFiltros(nuevosFiltros);
     setPagina(1);
-    cargarOrdenes(true);
+    cargarOrdenes(true, undefined, nuevosFiltros);
   };
 
   const aplicarFiltros = (e: React.FormEvent) => {
@@ -334,13 +348,16 @@ const OrdenesVer: React.FC = () => {
   };
 
   const limpiarFiltros = () => {
-    setFiltros({
-      busqueda: "",
+    const filtrosLimpios = {
+      busquedaCliente: "",
+      busquedaConcepto: "",
+      busquedaMaterial: "",
       fechaDesde: "",
       fechaHasta: "",
-    });
+    };
+    setFiltros(filtrosLimpios);
     setPagina(1);
-    cargarOrdenes(true);
+    cargarOrdenes(true, undefined, filtrosLimpios);
   };
 
   const handleWorkflowTypeChange = (tipo: 'todos' | 'offset' | 'digital') => {
@@ -850,18 +867,43 @@ const OrdenesVer: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Órdenes de Trabajo</h1>
       <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por N° o Cliente</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
             <input
               type="text"
-              name="busqueda"
-              value={filtros.busqueda}
-              onChange={handleBusquedaChange}
+              name="busquedaCliente"
+              value={filtros.busquedaCliente}
+              onChange={handleBusquedaTextoChange}
               className="w-full border border-gray-300 rounded-md p-2"
-              placeholder="Número de orden o nombre del cliente"
+              placeholder="Nombre del cliente"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
+            <input
+              type="text"
+              name="busquedaConcepto"
+              value={filtros.busquedaConcepto}
+              onChange={handleBusquedaTextoChange}
+              className="w-full border border-gray-300 rounded-md p-2"
+              placeholder="Concepto del trabajo"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+            <input
+              type="text"
+              name="busquedaMaterial"
+              value={filtros.busquedaMaterial}
+              onChange={handleBusquedaTextoChange}
+              className="w-full border border-gray-300 rounded-md p-2"
+              placeholder="Material"
+            />
+          </div>
+
           <div className="flex flex-col items-start">
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>
             <input
