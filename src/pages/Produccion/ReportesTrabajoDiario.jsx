@@ -264,15 +264,16 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
 
   // ── Cargar reportes cuando cambia área o fecha ──────────────────────────────
   useEffect(() => {
+    if (soloVisualizacion && (!areaId || !filtroOperadorId || !fechaDetalleActiva)) { setReportes([]); return; }
     if (!soloVisualizacion && !areaId) { setReportes([]); return; }
     // En modo detalle de operador, sólo cargamos cuando hay fecha activa
     if (!soloVisualizacion && filtroOperadorId && !fechaDetalleActiva) { setReportes([]); return; }
-    const fechaUsada = !soloVisualizacion && filtroOperadorId ? fechaDetalleActiva : null;
+    const fechaUsada = filtroOperadorId ? fechaDetalleActiva : null;
     setCargando(true);
     setError("");
     const params = new URLSearchParams();
     if (areaId) params.append("area_id", areaId);
-    if (!soloVisualizacion && filtroOperadorId) params.append("operador_id", filtroOperadorId);
+    if (filtroOperadorId) params.append("operador_id", filtroOperadorId);
     if (fechaUsada) {
       params.append("fecha", fechaUsada);
     } else {
@@ -305,6 +306,10 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
     }
     return lista;
   }, [reportes, filtroOperadorId, busqueda]);
+
+  const totalSemanaOperador = useMemo(() => {
+    return fechasDeLaSemana.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
+  }, [fechasDeLaSemana]);
 
   const columnasPorArea = useMemo(() => {
     return areas.map((area) => {
@@ -570,7 +575,7 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
   };
 
   // ── Generar PDF ─────────────────────────────────────────────────────────────
-  const generarPDF = async () => {
+  const generarPDF = async ({ lista = reportesFiltrados, fecha = null } = {}) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const W = doc.internal.pageSize.getWidth(); // 210 mm
     const areaNombre = areas.find(a => String(a.id) === String(areaId))?.nombre || "";
@@ -625,9 +630,9 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
     doc.setFont("helvetica", "bold");
     doc.text("Fecha:", 14, 39);
     doc.setFont("helvetica", "normal");
-    const etiquetaFecha = filtroOperadorId
+    const etiquetaFecha = fecha || (filtroOperadorId
       ? (fechaDetalleActiva || "Selecciona una fecha")
-      : (fechaFiltro || "Todas");
+      : (fechaFiltro || "Todas"));
     doc.text(etiquetaFecha, 26, 39);
 
     // ── Tabla ──
@@ -670,7 +675,7 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
     doc.setFontSize(7.5);
     doc.setTextColor(30, 30, 30);
 
-    reportesFiltrados.forEach((d, idx) => {
+    lista.forEach((d, idx) => {
       const vals = [
         String(idx + 1),
         d.operador || "",
@@ -719,15 +724,33 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       const pH = doc.internal.pageSize.getHeight();
-      doc.text(`Total: ${reportesFiltrados.length} registro${reportesFiltrados.length !== 1 ? "s" : ""}`, 14, pH - 5);
+      doc.text(`Total: ${lista.length} registro${lista.length !== 1 ? "s" : ""}`, 14, pH - 5);
       doc.text(`Página ${i} de ${pages}`, W - 14, pH - 5, { align: "right" });
     }
 
-    const etiquetaArchivo = filtroOperadorId
+    const etiquetaArchivo = fecha || (filtroOperadorId
       ? (fechaDetalleActiva || "sin_fecha")
-      : `${fechaFiltro || "sin_fecha"}`;
+      : `${fechaFiltro || "sin_fecha"}`);
     const nombreArchivo = `reporte_${areaNombre.replace(/\s+/g, "_")}_${etiquetaArchivo}.pdf`;
     doc.save(nombreArchivo);
+  };
+
+  const descargarPDFPorFecha = async (fechaISO) => {
+    try {
+      const params = new URLSearchParams();
+      if (areaId) params.append("area_id", areaId);
+      if (filtroOperadorId) params.append("operador_id", filtroOperadorId);
+      params.append("fecha", fechaISO);
+
+      const res = await fetch(buildApiUrl(`/api/reportesTrabajo?${params}`), { headers: authHeaders() });
+      if (!res.ok) throw new Error("Error al cargar reportes del día");
+
+      const data = await res.json();
+      const listaDia = Array.isArray(data) ? data : [];
+      await generarPDF({ lista: listaDia, fecha: fechaISO });
+    } catch (e) {
+      setError(e.message || "No se pudo generar el PDF del día");
+    }
   };
 
   return (
@@ -843,93 +866,190 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
         {soloVisualizacion ? (
           <>
             <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 mb-5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-sm">
-              <div className="relative flex-1 max-w-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Buscar operador, proceso..."
-                  value={busqueda}
-                  onChange={e => setBusqueda(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Área:</label>
+                <select
+                  value={areaId}
+                  onChange={e => { setAreaId(e.target.value); setFiltroOperadorId(""); setFechaDetalleActiva(null); }}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[220px]"
+                >
+                  <option value="">-- Seleccionar área --</option>
+                  {areas.map(a => (
+                    <option key={a.id} value={a.id}>{a.nombre}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha:</label>
-                <input
-                  type="date"
-                  value={fechaFiltro}
-                  onChange={e => setFechaFiltro(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                {fechaFiltro !== hoy && (
-                  <button
-                    onClick={() => setFechaFiltro(hoy)}
-                    className="text-xs text-blue-600 hover:underline whitespace-nowrap"
-                  >
-                    Hoy
-                  </button>
-                )}
+                <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Operador:</label>
+                <select
+                  value={filtroOperadorId}
+                  onChange={e => { setFiltroOperadorId(e.target.value); setFechaDetalleActiva(null); }}
+                  disabled={!areaId}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[220px] disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  <option value="">{areaId ? "-- Seleccionar operador --" : "Selecciona un área primero"}</option>
+                  {operadoresDelArea.map(o => (
+                    <option key={o.id} value={o.id}>{nombreOperador(o)}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {cargando ? (
+            {!areaId ? (
               <div className="bg-white border border-gray-200 rounded-xl px-6 py-10 text-center text-gray-400">
-                Cargando reportes...
+                Selecciona un área para continuar.
+              </div>
+            ) : !filtroOperadorId ? (
+              <div className="bg-white border border-gray-200 rounded-xl px-6 py-10 text-center text-gray-400">
+                Selecciona un operador para ver sus reportes semanales.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {columnasPorArea.map((col) => (
-                  <div key={col.areaId} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <div className="text-sm font-bold text-gray-800">{col.areaNombre}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {col.total} registro{col.total !== 1 ? "s" : ""}
-                      </div>
+              <>
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Fecha de referencia:</label>
+                    <input
+                      type="date"
+                      value={fechaSemanaRef}
+                      onChange={e => { setFechaSemanaRef(e.target.value); setFechaDetalleActiva(null); }}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    {fechaSemanaRef !== hoy && (
+                      <button
+                        onClick={() => { setFechaSemanaRef(hoy); setFechaDetalleActiva(null); }}
+                        className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                      >
+                        Hoy
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 mb-3">
+                    <button
+                      onClick={() => moverSemana(-7)}
+                      className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
+                      title="Semana anterior"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+
+                    <div className="text-sm font-semibold text-gray-700">
+                      {semanaActual.lunes.toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
+                      {" — "}
+                      {semanaActual.domingo.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
                     </div>
 
-                    <div className="p-3 space-y-2 max-h-[520px] overflow-y-auto">
-                      {col.operadores.length === 0 ? (
-                        <div className="text-xs text-gray-400 py-3 text-center">Sin reportes en esta fecha.</div>
-                      ) : (
-                        col.operadores.map((op) => {
-                          const key = `${col.areaId}-${op.operador_id}`;
-                          const abierto = Boolean(tarjetasAbiertas[key]);
-                          return (
-                            <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
-                              <button
-                                onClick={() => toggleTarjetaOperador(col.areaId, op.operador_id)}
-                                className="w-full px-3 py-2.5 bg-white hover:bg-blue-50 text-left transition-colors"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-sm font-semibold text-gray-800">{op.operador}</span>
-                                  <span className="text-xs text-gray-500">{op.registros.length}</span>
-                                </div>
-                              </button>
+                    <button
+                      onClick={() => moverSemana(7)}
+                      className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
+                      title="Semana siguiente"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
 
-                              {abierto && (
-                                <div className="border-t border-gray-100 bg-gray-50 px-3 py-2 space-y-1.5">
-                                  {op.registros.map((r) => (
-                                    <div key={r.id} className="text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2">
-                                      <div className="font-semibold text-blue-700">{r.inicio} - {r.fin}</div>
-                                      <div className="font-medium text-gray-800 mt-0.5">{r.proceso}</div>
-                                      {r.solicitado_por && (
-                                        <div className="text-gray-500 mt-0.5">Solicitado por: {r.solicitado_por}</div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
+                    <span className="text-xs text-gray-500 ml-auto">
+                      {totalSemanaOperador} registro{totalSemanaOperador !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+
+                  {cargandoFechas ? (
+                    <div className="flex items-center gap-2 text-gray-400 text-sm py-4">Cargando fechas...</div>
+                  ) : fechasDeLaSemana.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4">Sin reportes en esta semana.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {[...fechasDeLaSemana].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))).map(item => {
+                        const { diaNombre, fechaDisplay } = formatearFecha(item.fecha);
+                        const activa = fechaDetalleActiva === item.fecha;
+                        return (
+                          <button
+                            key={item.fecha}
+                            onClick={() => {
+                              const fechaTarjeta = normalizarFechaISO(item.fecha) || hoy;
+                              setFechaSemanaRef(fechaTarjeta);
+                              setFechaDetalleActiva(activa ? null : fechaTarjeta);
+                            }}
+                            className={`flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all shadow-sm ${
+                              activa
+                                ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                                : "bg-white border-gray-200 text-gray-700 hover:border-blue-400 hover:bg-blue-50"
+                            }`}
+                          >
+                            <span className={`text-xs font-semibold uppercase tracking-wide ${activa ? "text-blue-100" : "text-blue-500"}`}>{diaNombre}</span>
+                            <span className="text-sm font-medium mt-0.5">{fechaDisplay}</span>
+                            <span className={`text-xs mt-0.5 ${activa ? "text-blue-200" : "text-gray-400"}`}>
+                              {item.total} registro{item.total !== 1 ? "s" : ""}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {fechaDetalleActiva && (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-700 text-sm">
+                          {(() => { const { diaNombre, fechaDisplay } = formatearFecha(fechaDetalleActiva); return `${diaNombre} ${fechaDisplay}`; })()}
+                          <span className="ml-2 text-gray-400 font-normal">
+                            — {nombreOperador(operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId)))}
+                          </span>
+                        </span>
+                        {reportes.length > 0 && (
+                          <button
+                            onClick={() => descargarPDFPorFecha(fechaDetalleActiva)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+                          >
+                            Descargar PDF
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {reportes.length} registro{reportes.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                            <th className="py-3 px-4 text-left font-semibold">Proceso</th>
+                            <th className="py-3 px-4 text-left font-semibold">Solicitado por</th>
+                            <th className="py-3 px-4 text-left font-semibold">Hora inicio</th>
+                            <th className="py-3 px-4 text-left font-semibold">Hora final</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {cargando ? (
+                            <tr>
+                              <td colSpan={4} className="text-center py-8 text-gray-400">Cargando registros...</td>
+                            </tr>
+                          ) : reportes.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="text-center py-8 text-gray-400">No hay registros para esta fecha.</td>
+                            </tr>
+                          ) : (
+                            reportes.map(d => (
+                              <tr key={d.id} className="hover:bg-blue-50 transition-colors">
+                                <td className="py-3 px-4 text-gray-700">{d.proceso}</td>
+                                <td className="py-3 px-4 text-gray-500">{d.solicitado_por || <span className="text-gray-300">—</span>}</td>
+                                <td className="py-3 px-4 text-gray-600">{d.inicio}</td>
+                                <td className="py-3 px-4 text-gray-600">{d.fin}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </>
         ) : areaId && filtroOperadorId ? (
@@ -1036,27 +1156,26 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
             {fechaDetalleActiva && (
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <span className="font-semibold text-gray-700 text-sm">
-                    {(() => { const { diaNombre, fechaDisplay } = formatearFecha(fechaDetalleActiva); return `${diaNombre} ${fechaDisplay}`; })()}
-                    <span className="ml-2 text-gray-400 font-normal">
-                      — {nombreOperador(operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId)))}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-gray-700 text-sm">
+                      {(() => { const { diaNombre, fechaDisplay } = formatearFecha(fechaDetalleActiva); return `${diaNombre} ${fechaDisplay}`; })()}
+                      <span className="ml-2 text-gray-400 font-normal">
+                        — {nombreOperador(operadoresDelArea.find(o => String(o.id) === String(filtroOperadorId)))}
+                      </span>
                     </span>
-                  </span>
+                    {reportes.length > 0 && (
+                      <button
+                        onClick={() => descargarPDFPorFecha(fechaDetalleActiva)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+                      >
+                        Descargar PDF
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-400">
                       {reportes.length} registro{reportes.length !== 1 ? "s" : ""}
                     </span>
-                    {reportes.length > 0 && (
-                      <button
-                        onClick={generarPDF}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h4a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                        </svg>
-                        Descargar PDF
-                      </button>
-                    )}
                   </div>
                 </div>
                 <div className="overflow-x-auto">
