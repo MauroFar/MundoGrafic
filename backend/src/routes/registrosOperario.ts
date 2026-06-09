@@ -49,7 +49,7 @@ export default (client: any) => {
   const router = express.Router();
 
   // GET /api/registros-operario
-  router.get("/", authRequired(["admin", "ejecutivo", "impresion"]), async (req: any, res: any) => {
+  router.get("/", authRequired(["admin", "ejecutivo", "impresion", "usuario"]), async (req: any, res: any) => {
     try {
       const { fechaDesde, fechaHasta, operario, maquina, actividad, limit } = req.query || {};
 
@@ -119,7 +119,7 @@ export default (client: any) => {
   });
 
   // POST /api/registros-operario
-  router.post("/", authRequired(["admin", "ejecutivo", "impresion"]), async (req: any, res: any) => {
+  router.post("/", authRequired(["admin", "ejecutivo", "impresion", "usuario"]), async (req: any, res: any) => {
     try {
       const {
         fecha,
