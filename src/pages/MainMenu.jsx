@@ -27,6 +27,7 @@ const MainMenu = () => {
 
   const allItems = [
     { key: 'produccion', label: 'Producción', onClick: () => navigate('/produccion/kanban'), color: 'bg-blue-600' },
+    { key: 'registro-operario', label: 'Registro Operario', onClick: () => navigate('/registros/operario'), color: 'bg-indigo-600' },
     { key: 'gestion-ti', label: 'Gestión TI', onClick: () => window.open('http://192.168.130.149:3100', '_blank'), color: 'bg-green-600' },
     { key: 'inventario', label: 'Inventario', onClick: () => navigate('/inventario'), color: 'bg-yellow-600' },
     { key: 'reportes', label: 'Reportes', onClick: () => navigate('/reportesTrabajoDiario'), color: 'bg-purple-600' },

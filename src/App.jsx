@@ -37,6 +37,7 @@ import MainLayout from "./layouts/MainLayout";
 import ClientesVer from "./pages/clientes/ClientesVer";
 import ClientesCrear from "./pages/clientes/ClientesCrear";
 import CotizacionItems from "./pages/cotizaciones/CotizacionItems";
+import RegistroOperario from "./pages/registros/RegistroOperario";
 
 function App() {
   // Inicializar el tema desde localStorage
@@ -124,6 +125,11 @@ function App() {
           <Route path="/produccion/control-calidad" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <GestionCalidadKanban />
+            </PrivateRoute>
+          } />
+          <Route path="/registros/operario" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <RegistroOperario />
             </PrivateRoute>
           } />
           <Route path="/produccion/seguimiento/:id" element={
