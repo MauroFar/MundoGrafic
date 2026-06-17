@@ -1186,10 +1186,11 @@ export default (client: any) => {
 
       try {
         const bloqueada = await ordenFueEnviadaAProduccion(id);
-        if (bloqueada) {
+        const esAdmin = String((req as any)?.user?.rol || "").toLowerCase() === "admin";
+        if (bloqueada && !esAdmin) {
           res.status(409).json({
             error:
-              "No se puede actualizar la orden porque ya fue enviada a producción. Usa 'Crear como Nueva' para generar una nueva orden basada en esta.",
+              "No se puede actualizar la orden porque ya fue enviada a producción. Solo un usuario admin puede editarla en este estado. Usa 'Crear como Nueva' para generar una nueva orden basada en esta.",
           });
           return;
         }

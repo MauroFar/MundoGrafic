@@ -347,7 +347,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const { cotizacionId, ordenId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const esAdmin = (() => {
+    const rolGuardado = String(localStorage.getItem('rol') || '').toLowerCase();
+    if (rolGuardado === 'admin') return true;
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      return String(user?.rol || '').toLowerCase() === 'admin';
+    } catch {
+      return false;
+    }
+  })();
   const ordenBloqueadaProduccion = Boolean(ordenId && ordenData?.enviada_produccion);
+  const puedeActualizarOrden = !ordenBloqueadaProduccion || esAdmin;
   const [showTipoOrdenModal, setShowTipoOrdenModal] = useState<boolean>(false);
   const [tipoOrdenSeleccionado, setTipoOrdenSeleccionado] = useState<string | null>(null); // 'offset' | 'digital'
 
@@ -1330,8 +1341,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Función para mostrar modal de confirmación de actualización
   const confirmarActualizacion = () => {
-    if (ordenBloqueadaProduccion) {
-      toast.info('Esta orden ya fue enviada a producción y no se puede actualizar. Usa Crear como Nueva.');
+    if (!puedeActualizarOrden) {
+      toast.info('Esta orden ya fue enviada a producción y solo un usuario admin puede actualizarla. Usa Crear como Nueva.');
       return;
     }
     setShowConfirmUpdateModal(true);
@@ -1342,8 +1353,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
     console.log('🚀 FRONTEND - Iniciando actualización de orden');
     console.log('📋 FRONTEND - ordenId:', ordenId);
 
-    if (ordenBloqueadaProduccion) {
-      toast.info('Esta orden ya fue enviada a producción y no se puede actualizar. Usa Crear como Nueva.');
+    if (!puedeActualizarOrden) {
+      toast.info('Esta orden ya fue enviada a producción y solo un usuario admin puede actualizarla. Usa Crear como Nueva.');
       return;
     }
     
@@ -2394,10 +2405,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      className={`text-white px-6 py-2 rounded transition-colors ${ordenBloqueadaProduccion ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+                      className={`text-white px-6 py-2 rounded transition-colors ${puedeActualizarOrden ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'}`}
                       onClick={confirmarActualizacion}
-                      disabled={ordenBloqueadaProduccion}
-                      title={ordenBloqueadaProduccion ? 'No se puede actualizar: esta orden ya fue enviada a producción' : 'Actualizar Orden'}
+                      disabled={!puedeActualizarOrden}
+                      title={puedeActualizarOrden ? 'Actualizar Orden' : 'No se puede actualizar: esta orden ya fue enviada a producción (solo admin)'}
                     >
                       Actualizar Orden
                     </button>
