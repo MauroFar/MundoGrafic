@@ -18,7 +18,7 @@ export default function(client) {
           c.total,
           cl.nombre_cliente,
           cl.empresa_cliente,
-          COALESCE(c.nombre_ejecutivo, u.nombre) AS nombre_ejecutivo,
+          COALESCE(c.nombre_ejecutivo, TRIM(CONCAT_WS(' ', u.nombre, u.apellido))) AS nombre_ejecutivo,
           r.id AS ruc_id,
           r.ruc,
           r.descripcion AS ruc_descripcion,

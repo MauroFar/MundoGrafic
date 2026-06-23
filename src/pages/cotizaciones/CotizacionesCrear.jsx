@@ -1772,14 +1772,15 @@ function CotizacionesCrear() {
                         <div
                           key={vendedor.id}
                           onClick={() => {
-                            setNombreEjecutivo(vendedor.nombre);
+                            const nombreCompletoVendedor = [vendedor.nombre, vendedor.apellido].filter(Boolean).join(' ');
+                            setNombreEjecutivo(nombreCompletoVendedor);
                             setCeluar(vendedor.celular || '');
                             setUsarCeluar(!!vendedor.celular);
                             setMostrarVendedores(false);
                           }}
                           className="px-4 py-2 hover:bg-blue-100 cursor-pointer text-sm"
                         >
-                          {vendedor.nombre}
+                          {[vendedor.nombre, vendedor.apellido].filter(Boolean).join(' ')}
                           {vendedor.email && <span className="text-xs text-gray-500 ml-2">({vendedor.email})</span>}
                         </div>
                       ))
