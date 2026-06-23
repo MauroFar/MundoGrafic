@@ -316,6 +316,8 @@ const VistaKanban = () => {
 
   const moverOrdenAColumna = async (orden, columnaOrigenId, columnaDestinoId) => {
     if (columnaOrigenId === columnaDestinoId) return;
+    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
+    const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
     // Actualizar UI de inmediato (optimistic update)
     setOrdenes((prev) => {
       const origen = (prev[columnaOrigenId] || []).filter((o) => o.id !== orden.id);
@@ -334,7 +336,7 @@ const VistaKanban = () => {
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ estado: columnaDestinoId }),
+        body: JSON.stringify({ estado: estadoPersistente }),
       });
       if (!response.ok) throw new Error('Error al actualizar estado');
     } catch (error) {
@@ -350,6 +352,8 @@ const VistaKanban = () => {
   };
 
   const moverPendienteAColumna = async (orden, columnaDestinoId) => {
+    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
+    const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
     // Actualizar UI de inmediato (optimistic update)
     setOrdenesPendientes((prev) => prev.filter((o) => o.id !== orden.id));
     setOrdenes((prev) => ({
@@ -363,7 +367,7 @@ const VistaKanban = () => {
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ estado: columnaDestinoId }),
+        body: JSON.stringify({ estado: estadoPersistente }),
       });
       if (!response.ok) throw new Error('Error al actualizar estado');
     } catch (error) {
@@ -455,7 +459,7 @@ const VistaKanban = () => {
         }
         console.log('🔁 Workflow desde backend:', json.workflow);
         // choose icons based on color mapping
-        const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle };
+        const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle, cyan: FaPlay, emerald: FaPlay };
         let cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
         // For digital workflows enforce the desired stage order:
         // preprensa, impresion, laminado, troquelado, terminado, producto liberado, entregado
@@ -503,14 +507,7 @@ const VistaKanban = () => {
                   cols.push({ id: exp.id, titulo: exp.titulo, color: exp.color, aliases: [exp.id], icono: iconMap[exp.color] || FaPlay });
                 }
               });
-          } else {
-          // For non-digital (offset) keep the backend order but ensure 'entregado' is visible first
-          const idx = cols.findIndex(c => c.id === 'entregado');
-          if (idx > -1) {
-            const [entregadoCol] = cols.splice(idx, 1);
-            cols.unshift(entregadoCol);
           }
-        }
         // Dedupe columns by id preserving order. Merge singular/plural duplicates (e.g. 'terminado' vs 'terminados')
         const uniqueCols = [];
         const normIndex = {}; // normalized id -> index in uniqueCols

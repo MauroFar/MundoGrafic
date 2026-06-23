@@ -93,16 +93,19 @@ type TrazabilidadProcesoItem = {
 
 type TrazabilidadProceso = {
   preprensa: TrazabilidadProcesoItem;
+  guillotinado: TrazabilidadProcesoItem;
   impresion: TrazabilidadProcesoItem;
   laminado: TrazabilidadProcesoItem;
   barnizado: TrazabilidadProcesoItem;
   troquelado_flexible: TrazabilidadProcesoItem;
   troquelado_plano: TrazabilidadProcesoItem;
+  pegado: TrazabilidadProcesoItem;
   rebobinado: TrazabilidadProcesoItem;
   refilado_termoencogible: TrazabilidadProcesoItem;
   sellado_termoencogible: TrazabilidadProcesoItem;
   corte_termoencogible: TrazabilidadProcesoItem;
   terminado: TrazabilidadProcesoItem;
+  terminados_externos: TrazabilidadProcesoItem;
   liberacion_producto: TrazabilidadProcesoItem;
 };
 
@@ -122,6 +125,26 @@ const DIGITAL_PROCESS_KEYS = [
 ] as const;
 
 type DigitalProcessKey = typeof DIGITAL_PROCESS_KEYS[number];
+
+const OFFSET_PROCESS_KEYS = [
+  'preprensa',
+  'guillotinado',
+  'impresion',
+  'barnizado',
+  'plastificado',
+  'troquelado',
+  'pegado',
+  'terminado',
+  'terminados_externos',
+] as const;
+
+type OffsetProcessKey = typeof OFFSET_PROCESS_KEYS[number];
+
+const DEFAULT_OFFSET_PROCESS_KEYS: OffsetProcessKey[] = [
+  'preprensa',
+  'impresion',
+  'terminado',
+];
 
 const normalizarProcesosDigitalSeleccionados = (valor: any): DigitalProcessKey[] => {
   if (!valor) return [];
@@ -158,6 +181,52 @@ const normalizarMostrarTotalMetros = (valor: any): boolean => {
   return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
 };
 
+const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] => {
+  if (!valor) return [...DEFAULT_OFFSET_PROCESS_KEYS];
+
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const lista = parsed?.procesos_offset_seleccionados;
+  if (!Array.isArray(lista)) return [...DEFAULT_OFFSET_PROCESS_KEYS];
+
+  const validos = lista.filter((item: any): item is OffsetProcessKey =>
+    typeof item === 'string' && (OFFSET_PROCESS_KEYS as readonly string[]).includes(item)
+  );
+
+  return validos.length > 0 ? validos : [...DEFAULT_OFFSET_PROCESS_KEYS];
+};
+
+const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
+  if (!valor) {
+    return {
+      guillotinado: '',
+      pegado: '',
+      terminados_externos: '',
+    };
+  }
+
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const personalizados = parsed?.responsables_offset_personalizados || {};
+  return {
+    guillotinado: String(personalizados.guillotinado || ''),
+    pegado: String(personalizados.pegado || ''),
+    terminados_externos: String(personalizados.terminados_externos || ''),
+  };
+};
+
 const crearTrazabilidadVacia = (): TrazabilidadProcesoItem => ({
   fecha_inicio: '',
   hora_inicio: '',
@@ -181,16 +250,19 @@ const crearTrazabilidadVacia = (): TrazabilidadProcesoItem => ({
 
 const crearTrazabilidadProcesoVacia = (): TrazabilidadProceso => ({
   preprensa: crearTrazabilidadVacia(),
+  guillotinado: crearTrazabilidadVacia(),
   impresion: crearTrazabilidadVacia(),
   laminado: crearTrazabilidadVacia(),
   barnizado: crearTrazabilidadVacia(),
   troquelado_flexible: crearTrazabilidadVacia(),
   troquelado_plano: crearTrazabilidadVacia(),
+  pegado: crearTrazabilidadVacia(),
   rebobinado: crearTrazabilidadVacia(),
   refilado_termoencogible: crearTrazabilidadVacia(),
   sellado_termoencogible: crearTrazabilidadVacia(),
   corte_termoencogible: crearTrazabilidadVacia(),
   terminado: crearTrazabilidadVacia(),
+  terminados_externos: crearTrazabilidadVacia(),
   liberacion_producto: crearTrazabilidadVacia(),
 });
 
@@ -207,16 +279,19 @@ const normalizarTrazabilidadProceso = (valor: any): TrazabilidadProceso => {
 
   return {
     preprensa: { ...base.preprensa, ...(safe.preprensa || {}) },
+    guillotinado: { ...base.guillotinado, ...(safe.guillotinado || {}) },
     impresion: { ...base.impresion, ...(safe.impresion || {}) },
     laminado: { ...base.laminado, ...(safe.laminado || {}) },
     barnizado: { ...base.barnizado, ...(safe.barnizado || {}) },
     troquelado_flexible: { ...base.troquelado_flexible, ...(safe.troquelado_flexible || safe.troquelado || {}) },
     troquelado_plano: { ...base.troquelado_plano, ...(safe.troquelado_plano || {}) },
+    pegado: { ...base.pegado, ...(safe.pegado || {}) },
     rebobinado: { ...base.rebobinado, ...(safe.rebobinado || {}) },
     refilado_termoencogible: { ...base.refilado_termoencogible, ...(safe.refilado_termoencogible || {}) },
     sellado_termoencogible: { ...base.sellado_termoencogible, ...(safe.sellado_termoencogible || {}) },
     corte_termoencogible: { ...base.corte_termoencogible, ...(safe.corte_termoencogible || {}) },
     terminado: { ...base.terminado, ...(safe.terminado || safe.terminados || {}) },
+    terminados_externos: { ...base.terminados_externos, ...(safe.terminados_externos || {}) },
     liberacion_producto: { ...base.liberacion_producto, ...(safe.liberacion_producto || {}) },
   };
 };
@@ -295,13 +370,22 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [corteTermoencogibleResponsable, setCorteTermoencogibleResponsable] = useState<string>('');
   const [terminadoResponsable, setTerminadoResponsable] = useState<string>('');
   const [liberacionProductoResponsable, setLiberacionProductoResponsable] = useState<string>('');
+  const [guillotinadoResponsable, setGuillotinadoResponsable] = useState<string>('');
+  const [pegadoResponsable, setPegadoResponsable] = useState<string>('');
+  const [terminadosExternosResponsable, setTerminadosExternosResponsable] = useState<string>('');
   const [procesosDigitalSeleccionados, setProcesosDigitalSeleccionados] = useState<DigitalProcessKey[]>([]);
   const [showProcesosDropdown, setShowProcesosDropdown] = useState<boolean>(false);
   const procesosDropdownRef = useRef<HTMLDivElement>(null);
+  const [procesosOffsetSeleccionados, setProcesosOffsetSeleccionados] = useState<OffsetProcessKey[]>([...DEFAULT_OFFSET_PROCESS_KEYS]);
+  const [showProcesosOffsetDropdown, setShowProcesosOffsetDropdown] = useState<boolean>(false);
+  const procesosOffsetDropdownRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (procesosDropdownRef.current && !procesosDropdownRef.current.contains(e.target as Node)) {
         setShowProcesosDropdown(false);
+      }
+      if (procesosOffsetDropdownRef.current && !procesosOffsetDropdownRef.current.contains(e.target as Node)) {
+        setShowProcesosOffsetDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -389,10 +473,28 @@ const OrdendeTrabajoEditar: React.FC = () => {
     );
   };
 
+  const toggleProcesoOffset = (proceso: OffsetProcessKey) => {
+    setProcesosOffsetSeleccionados((prev) =>
+      prev.includes(proceso)
+        ? prev.filter((p) => p !== proceso)
+        : [...prev, proceso],
+    );
+  };
+
   const construirTrazabilidadParaPayload = () => ({
     ...trazabilidadProceso,
     procesos_seleccionados: procesosDigitalSeleccionados,
     mostrar_total_metros: mostrarTotalMetrosDigital,
+  });
+
+  const construirTrazabilidadOffsetParaPayload = () => ({
+    ...trazabilidadProceso,
+    procesos_offset_seleccionados: procesosOffsetSeleccionados,
+    responsables_offset_personalizados: {
+      guillotinado: guillotinadoResponsable,
+      pegado: pegadoResponsable,
+      terminados_externos: terminadosExternosResponsable,
+    },
   });
 
   const actualizarCampoTrazabilidad = (
@@ -610,8 +712,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setCorteTermoencogibleResponsable('');
       setTerminadoResponsable('');
       setLiberacionProductoResponsable('');
+      setGuillotinadoResponsable('');
+      setPegadoResponsable('');
+      setTerminadosExternosResponsable('');
       setProcesosDigitalSeleccionados([]);
       setShowProcesosDropdown(false);
+      setProcesosOffsetSeleccionados([...DEFAULT_OFFSET_PROCESS_KEYS]);
+      setShowProcesosOffsetDropdown(false);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales
        // Limpiar nuevos campos
@@ -937,7 +1044,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
     setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
     setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
+    setProcesosOffsetSeleccionados(normalizarProcesosOffsetSeleccionados(detalleResponsables.trazabilidad_proceso));
     setMostrarTotalMetrosDigital(normalizarMostrarTotalMetros(detalleResponsables.trazabilidad_proceso));
+
+    const responsablesOffsetPersonalizados = normalizarResponsablesOffsetPersonalizados(detalleResponsables.trazabilidad_proceso);
+    setGuillotinadoResponsable(responsablesOffsetPersonalizados.guillotinado);
+    setPegadoResponsable(responsablesOffsetPersonalizados.pegado);
+    setTerminadosExternosResponsable(responsablesOffsetPersonalizados.terminados_externos);
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
     const estadoActual = ordenData.tipo_orden === 'digital'
@@ -1296,7 +1409,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         instrucciones_empacado: instruccionesEmpacado,
         observaciones: observaciones,
         prensa_seleccionada: prensaSeleccionada,
-        trazabilidad_proceso: trazabilidadProceso
+        trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
       }
     };
     
@@ -1456,7 +1569,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             instrucciones_empacado: instruccionesEmpacado,
             observaciones: observaciones,
             prensa_seleccionada: prensaSeleccionada,
-            trazabilidad_proceso: trazabilidadProceso
+            trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
           }
         }),
       });
@@ -1605,7 +1718,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           instrucciones_empacado: instruccionesEmpacado,
           observaciones: observaciones,
           prensa_seleccionada: prensaSeleccionada,
-          trazabilidad_proceso: trazabilidadProceso
+          trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
         }
       };
       
@@ -2213,6 +2326,40 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="relative inline-block" ref={procesosOffsetDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowProcesosOffsetDropdown((prev) => !prev)}
+                    className="px-3 py-2 border border-gray-300 rounded bg-gray-50 text-sm font-medium"
+                  >
+                    Procesos ({procesosOffsetSeleccionados.length}) ▾
+                  </button>
+                  {showProcesosOffsetDropdown && (
+                    <div className="absolute z-20 mt-1 w-80 bg-white border border-gray-200 rounded shadow-lg p-3 space-y-2">
+                      {[
+                        { key: 'preprensa', label: 'Pre prensa' },
+                        { key: 'guillotinado', label: 'Guillotinado' },
+                        { key: 'impresion', label: 'Prensa' },
+                        { key: 'barnizado', label: 'Barnizado' },
+                        { key: 'plastificado', label: 'Plastificado' },
+                        { key: 'troquelado', label: 'Troquelado' },
+                        { key: 'pegado', label: 'Pegado' },
+                        { key: 'terminado', label: 'Terminados MG' },
+                        { key: 'terminados_externos', label: 'Terminados externos' },
+                      ].map((proceso) => (
+                        <label key={proceso.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={procesosOffsetSeleccionados.includes(proceso.key as OffsetProcessKey)}
+                            onChange={() => toggleProcesoOffset(proceso.key as OffsetProcessKey)}
+                          />
+                          <span>{proceso.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="overflow-x-auto border border-gray-200 rounded-lg">
                   <table className="min-w-full text-xs">
                     <thead className="bg-gray-100">
@@ -2229,20 +2376,82 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     </thead>
                     <tbody>
                       {[
-                        { key: 'preprensa', label: 'Preprensa', responsable: preprensaResponsable, setResponsable: setPreprensaResponsable },
-                        { key: 'impresion', label: 'Impresion', responsable: impresionResponsable, setResponsable: setImpresionResponsable },
-                        { key: 'terminado', label: 'Terminado', responsable: terminadoResponsable, setResponsable: setTerminadoResponsable },
+                        {
+                          key: 'preprensa',
+                          trazabilidadKey: 'preprensa',
+                          label: 'Pre prensa',
+                          responsable: preprensaResponsable,
+                          setResponsable: setPreprensaResponsable,
+                        },
+                        {
+                          key: 'guillotinado',
+                          trazabilidadKey: 'guillotinado',
+                          label: 'Guillotinado',
+                          responsable: guillotinadoResponsable,
+                          setResponsable: setGuillotinadoResponsable,
+                        },
+                        {
+                          key: 'impresion',
+                          trazabilidadKey: 'impresion',
+                          label: 'Prensa',
+                          responsable: impresionResponsable,
+                          setResponsable: setImpresionResponsable,
+                        },
+                        {
+                          key: 'barnizado',
+                          trazabilidadKey: 'barnizado',
+                          label: 'Barnizado',
+                          responsable: barnizadoResponsable,
+                          setResponsable: setBarnizadoResponsable,
+                        },
+                        {
+                          key: 'plastificado',
+                          trazabilidadKey: 'laminado',
+                          label: 'Plastificado',
+                          responsable: laminadoResponsable,
+                          setResponsable: setLaminadoResponsable,
+                        },
+                        {
+                          key: 'troquelado',
+                          trazabilidadKey: 'troquelado_flexible',
+                          label: 'Troquelado',
+                          responsable: troqueladoFlexibleResponsable,
+                          setResponsable: setTroqueladoFlexibleResponsable,
+                        },
+                        {
+                          key: 'pegado',
+                          trazabilidadKey: 'pegado',
+                          label: 'Pegado',
+                          responsable: pegadoResponsable,
+                          setResponsable: setPegadoResponsable,
+                        },
+                        {
+                          key: 'terminado',
+                          trazabilidadKey: 'terminado',
+                          label: 'Terminados MG',
+                          responsable: terminadoResponsable,
+                          setResponsable: setTerminadoResponsable,
+                        },
+                        {
+                          key: 'terminados_externos',
+                          trazabilidadKey: 'terminados_externos',
+                          label: 'Terminados externos',
+                          responsable: terminadosExternosResponsable,
+                          setResponsable: setTerminadosExternosResponsable,
+                        },
                       ].map((proceso) => (
+                        procesosOffsetSeleccionados.includes(proceso.key as OffsetProcessKey) && (
                         <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
                           <td className="px-2 py-2 border font-medium">{proceso.label}</td>
                           <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={proceso.responsable} onChange={e => proceso.setResponsable(e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_inicio', e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_inicio', e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].fecha_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'fecha_fin', e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].hora_fin} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'hora_fin', e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].cantidad} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'cantidad', e.target.value)} /></td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.key as keyof TrazabilidadProceso].observaciones} onChange={e => actualizarCampoTrazabilidad(proceso.key as keyof TrazabilidadProceso, 'observaciones', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].fecha_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'fecha_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].hora_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'hora_inicio', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].fecha_fin} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'fecha_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].hora_fin} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'hora_fin', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].cantidad} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'cantidad', e.target.value)} /></td>
+                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].observaciones} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'observaciones', e.target.value)} /></td>
                         </tr>
+                        )
                       ))}
                     </tbody>
                   </table>
