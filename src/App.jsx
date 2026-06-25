@@ -19,6 +19,7 @@ import VistaKanban from "./pages/Produccion/VistaKanban";
 import GestionCalidadKanban from "./pages/Produccion/GestionCalidadKanban";
 import ProductosTerminados from "./pages/Produccion/ProductosTerminados";
 import ProductosEntregados from "./pages/Produccion/ProductosEntregados";
+import WorkstationPreprensa from "./pages/produccion/WorkstationPreprensa";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
 import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
 import Certificados from "./pages/certificados/Certificados";
@@ -120,6 +121,11 @@ function App() {
           <Route path="/produccion/kanban" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <VistaKanban />
+            </PrivateRoute>
+          } />
+          <Route path="/produccion/preprensa" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <WorkstationPreprensa />
             </PrivateRoute>
           } />
           <Route path="/produccion/control-calidad" element={

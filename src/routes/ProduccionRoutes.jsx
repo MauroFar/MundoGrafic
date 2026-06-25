@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 
 // Importar componentes de producción
 import VistaKanban from '../pages/produccion/VistaKanban';
+import WorkstationPreprensa from '../pages/produccion/WorkstationPreprensa';
 
 // Importar componentes existentes
 import CotizacionesVer from '../pages/cotizaciones/CotizacionesVer';
@@ -14,6 +15,7 @@ const ProduccionRoutes = () => {
       {/* Rutas de Producción */}
       <Route path="/produccion" element={<VistaKanban />} />
       <Route path="/produccion/kanban" element={<VistaKanban />} />
+      <Route path="/produccion/preprensa" element={<WorkstationPreprensa />} />
       <Route path="/produccion/seguimiento/:id" element={<OrdendeTrabajoEditar />} />
       
       {/* Rutas existentes de Cotizaciones */}
