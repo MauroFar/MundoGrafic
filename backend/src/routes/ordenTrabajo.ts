@@ -564,12 +564,12 @@ export default (client: any) => {
           INSERT INTO detalle_orden_trabajo_offset (
             orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
             tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
-            instrucciones_acabados, instrucciones_empacado, prensa_seleccionada,
+            instrucciones_acabados, instrucciones_empacado,
             material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, terminados, facturado,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final,
             trazabilidad_proceso
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb)
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25::jsonb)
         `,
             [
               ordenId,
@@ -583,7 +583,6 @@ export default (client: any) => {
               instruccionesImpresion || null,
               instruccionesAcabados || null,
               instruccionesEmpacado || null,
-              prensaSeleccionada || null,
               material || null,
               impresion || null,
               observaciones || null,
@@ -1367,22 +1366,21 @@ export default (client: any) => {
           INSERT INTO detalle_orden_trabajo_offset (
             orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
             tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
-            instrucciones_acabados, instrucciones_empacado, prensa_seleccionada,
+            instrucciones_acabados, instrucciones_empacado,
             material, impresion, observaciones, numero_salida,
             vendedor, preprensa, prensa, terminados, facturado,
             vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final, terminados_cantidad_final,
             trazabilidad_proceso
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb)
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25::jsonb)
           ON CONFLICT (orden_trabajo_id) DO UPDATE SET
             corte_material = $2, cantidad_pliegos_compra = $3, exceso = $4, total_pliegos = $5,
             tamano = $6, tamano_abierto_1 = $7, tamano_cerrado_1 = $8,
             instrucciones_impresion = $9, instrucciones_acabados = $10, instrucciones_empacado = $11,
-            prensa_seleccionada = $12,
-            material = $13, impresion = $14, observaciones = $15, numero_salida = $16,
-            vendedor = $17, preprensa = $18, prensa = $19, terminados = $20, facturado = $21,
-            vendedor_cantidad_final = $22, preprensa_cantidad_final = $23,
-            prensa_cantidad_final = $24, terminados_cantidad_final = $25,
-            trazabilidad_proceso = $26::jsonb,
+            material = $12, impresion = $13, observaciones = $14, numero_salida = $15,
+            vendedor = $16, preprensa = $17, prensa = $18, terminados = $19, facturado = $20,
+            vendedor_cantidad_final = $21, preprensa_cantidad_final = $22,
+            prensa_cantidad_final = $23, terminados_cantidad_final = $24,
+            trazabilidad_proceso = $25::jsonb,
             updated_at = CURRENT_TIMESTAMP
         `,
             [
@@ -1397,7 +1395,6 @@ export default (client: any) => {
               instruccionesImpresion || null,
               instruccionesAcabados || null,
               instruccionesEmpacado || null,
-              prensaSeleccionada || null,
               material || null,
               impresion || null,
               observaciones || null,
@@ -1944,10 +1941,6 @@ export default (client: any) => {
           <div class="seccion-titulo">Prensa y Observaciones</div>
           <div class="seccion-contenido">
             <div class="fila">
-              <div class="campo">
-                <div class="campo-label">SELECCIONAR PRENSA</div>
-                <div class="campo-valor">${detalle.prensa_seleccionada || ""}</div>
-              </div>
               <div class="campo" style="flex: 2;">
                 <div class="campo-label">OBSERVACIONES GENERALES</div>
                 <div class="campo-valor">${detalle.observaciones || ""}</div>
@@ -2989,7 +2982,6 @@ export default (client: any) => {
           dot.instrucciones_acabados,
           dot.instrucciones_empacado,
           dot.observaciones,
-          NULL::text AS prensa_seleccionada,
           (SELECT concepto FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS concepto,
           (SELECT cantidad::text FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
           ot.created_at,

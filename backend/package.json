@@ -12,7 +12,8 @@
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "backup": "node backup-current-db.js"
+    "backup": "node backup-current-db.js",
+    "validate:offset": "ts-node-dev --transpile-only scripts/validate_offset_fields.ts"
   },
   "keywords": [],
   "author": "",
