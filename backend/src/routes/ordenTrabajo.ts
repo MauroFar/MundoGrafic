@@ -380,7 +380,6 @@ export default (client: any) => {
       const instruccionesAcabados = detalle?.instrucciones_acabados;
       const instruccionesEmpacado = detalle?.instrucciones_empacado;
       const observaciones = detalle?.observaciones;
-      const prensaSeleccionada = detalle?.prensa_seleccionada;
       const numeroSalida = detalle?.numero_salida;
       const trazabilidadProceso = detalle?.trazabilidad_proceso;
 
@@ -1167,7 +1166,6 @@ export default (client: any) => {
       const instruccionesAcabados = detalle?.instrucciones_acabados;
       const instruccionesEmpacado = detalle?.instrucciones_empacado;
       const observaciones = detalle?.observaciones;
-      const prensaSeleccionada = detalle?.prensa_seleccionada;
       const numeroSalida = detalle?.numero_salida;
       const trazabilidadProceso = detalle?.trazabilidad_proceso;
 
@@ -2982,6 +2980,7 @@ export default (client: any) => {
           dot.instrucciones_acabados,
           dot.instrucciones_empacado,
           dot.observaciones,
+          NULL::text AS prensa_seleccionada,
           (SELECT concepto FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS concepto,
           (SELECT cantidad::text FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
           ot.created_at,
