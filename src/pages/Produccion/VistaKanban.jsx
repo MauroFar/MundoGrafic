@@ -18,11 +18,27 @@ import ModalRegistroEjecucion from './ModalRegistroEjecucion';
 
 // ─── Modal de confirmación al enviar a proceso ───────────────────────────────
 const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
+  const [observacion, setObservacion] = useState('');
+
+  useEffect(() => {
+    setObservacion('');
+  }, [datos?.orden?.id, datos?.columnaDestinoId, datos?.etapaTitulo]);
+
   if (!datos) return null;
   const { etapaTitulo, fecha, hora } = datos;
+
+  const confirmar = () => {
+    const texto = observacion.trim();
+    if (!texto) {
+      alert('Por favor ingresa una observación antes de confirmar.');
+      return;
+    }
+    onConfirmar(fecha, hora, texto);
+  };
+
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-base font-semibold text-gray-900">Confirmar envío a proceso</h3>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -51,8 +67,18 @@ const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
               </div>
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
+            <textarea
+              rows={3}
+              value={observacion}
+              onChange={(e) => setObservacion(e.target.value)}
+              placeholder="Describe cualquier novedad, incidencia o detalle del cambio de proceso"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+            />
+          </div>
           <p className="text-xs text-gray-400 italic">
-            Esta fecha y hora quedarán registradas como inicio de la etapa seleccionada.
+            Esta fecha y hora quedarán registradas como inicio de la etapa seleccionada, y la observación se guardará en el historial.
           </p>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
@@ -63,7 +89,7 @@ const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
             Cancelar
           </button>
           <button
-            onClick={() => onConfirmar(fecha, hora)}
+            onClick={confirmar}
             className="flex-1 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold transition-colors"
           >
             Confirmar
@@ -284,7 +310,7 @@ const VistaKanban = () => {
     setConfirmacionProceso({ orden, columnaOrigenId, columnaDestinoId, etapaTitulo, esPendiente, fecha, hora });
   };
 
-  const handleConfirmarProceso = (fecha, hora) => {
+  const handleConfirmarProceso = (fecha, hora, observacion = '') => {
     const { orden, columnaOrigenId, columnaDestinoId, esPendiente } = confirmacionProceso;
     // Guardar inicio para la etapa destino
     saveTimestamp(orden.id, columnaDestinoId, 'inicio', fecha, hora);
@@ -301,9 +327,9 @@ const VistaKanban = () => {
     }
     setConfirmacionProceso(null);
     if (esPendiente) {
-      moverPendienteAColumna(orden, columnaDestinoId);
+      moverPendienteAColumna(orden, columnaDestinoId, observacion);
     } else {
-      moverOrdenAColumna(orden, columnaOrigenId, columnaDestinoId);
+      moverOrdenAColumna(orden, columnaOrigenId, columnaDestinoId, observacion);
     }
   };
   // ─────────────────────────────────────────────────────────────────────────
@@ -314,7 +340,7 @@ const VistaKanban = () => {
     moverOrdenAColumna(orden, columnaActualId, columnas[idxActual + 1].id);
   };
 
-  const moverOrdenAColumna = async (orden, columnaOrigenId, columnaDestinoId) => {
+  const moverOrdenAColumna = async (orden, columnaOrigenId, columnaDestinoId, observacion = '') => {
     if (columnaOrigenId === columnaDestinoId) return;
     const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
     const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
@@ -351,7 +377,7 @@ const VistaKanban = () => {
     }
   };
 
-  const moverPendienteAColumna = async (orden, columnaDestinoId) => {
+  const moverPendienteAColumna = async (orden, columnaDestinoId, observacion = '') => {
     const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
     const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
     // Actualizar UI de inmediato (optimistic update)
@@ -367,7 +393,7 @@ const VistaKanban = () => {
       const response = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/${orden.id}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ estado: estadoPersistente }),
+        body: JSON.stringify({ estado: estadoPersistente, nota: observacion || null }),
       });
       if (!response.ok) throw new Error('Error al actualizar estado');
     } catch (error) {

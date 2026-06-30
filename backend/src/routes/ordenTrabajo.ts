@@ -3408,7 +3408,8 @@ export default (client: any) => {
     authRequired(),
     async (req: any, res: any) => {
       const { id } = req.params;
-      const { estado, preprensa, prensa, terminados } = req.body;
+      const { estado, preprensa, prensa, terminados, nota } = req.body;
+      const notaNormalizada = typeof nota === "string" ? nota.trim() : "";
 
       try {
         console.log(`🔄 Actualizando estado de orden ${id}:`, {
@@ -3603,7 +3604,7 @@ export default (client: any) => {
                 id,
                 updated.estado_orden_digital_id,
                 req.user?.id || null,
-                req.body.nota || null,
+                notaNormalizada || null,
               ],
             );
           } else if (!isDigitalOrder && updated.estado_orden_offset_id) {
@@ -3613,7 +3614,7 @@ export default (client: any) => {
                 id,
                 updated.estado_orden_offset_id,
                 req.user?.id || null,
-                req.body.nota || null,
+                notaNormalizada || null,
               ],
             );
           }
