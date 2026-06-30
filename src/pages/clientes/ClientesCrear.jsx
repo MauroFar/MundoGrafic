@@ -79,29 +79,6 @@ const ClientesCrear = () => {
       newErrors.email = "El email no es válido";
     }
 
-    // En edición se mantiene la validación histórica de campos obligatorios.
-    if (isEditMode) {
-      if (!formData.empresa.trim()) {
-        newErrors.empresa = "El nombre de la empresa es requerido";
-      }
-
-      if (!formData.telefono.trim()) {
-        newErrors.telefono = "El teléfono es requerido";
-      }
-
-      if (!formData.email.trim()) {
-        newErrors.email = "El email es requerido";
-      }
-
-      if (!formData.direccion.trim()) {
-        newErrors.direccion = "La dirección es requerida";
-      }
-
-      if (!formData.ruc_cedula.trim()) {
-        newErrors.ruc_cedula = "El RUC/Cédula es requerido";
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -193,7 +170,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaBuilding className="inline mr-2 text-blue-500" />
-              Nombre de la Empresa {isEditMode ? '*' : '(Opcional)'}
+              Nombre de la Empresa (Opcional)
             </label>
             <input
               type="text"
@@ -214,7 +191,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaPhone className="inline mr-2 text-blue-500" />
-              Teléfono {isEditMode ? '*' : '(Opcional)'}
+              Teléfono (Opcional)
             </label>
             <input
               type="text"
@@ -235,7 +212,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaEnvelope className="inline mr-2 text-blue-500" />
-              Email {isEditMode ? '*' : '(Opcional)'}
+              Email (Opcional)
             </label>
             <input
               type="email"
@@ -256,7 +233,7 @@ const ClientesCrear = () => {
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               <FaIdCard className="inline mr-2 text-blue-500" />
-              RUC/Cédula {isEditMode ? '*' : '(Opcional)'}
+              RUC/Cédula (Opcional)
             </label>
             <input
               type="text"
@@ -293,7 +270,7 @@ const ClientesCrear = () => {
           <div className="md:col-span-2">
             <label className="block text-gray-700 font-medium mb-2">
               <FaMapMarkerAlt className="inline mr-2 text-blue-500" />
-              Dirección {isEditMode ? '*' : '(Opcional)'}
+              Dirección (Opcional)
             </label>
             <input
               type="text"

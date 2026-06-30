@@ -1,4 +1,4 @@
-// ordenTrabajo.js
+  // ordenTrabajo.js
 import express, { Request, Response, RequestHandler } from "express";
 import path from "path";
 import fs from "fs/promises";
@@ -165,7 +165,7 @@ export default (client: any) => {
             AND (
               translate(lower(CAST(c.codigo_cotizacion AS TEXT)), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
               OR translate(lower(cl.nombre_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
-              OR translate(lower(cl.empresa_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
+               OR translate(lower(cl.empresa_cliente), 'áéíóúüñ', 'aeiouun') LIKE translate(lower($1), 'áéíóúüñ', 'aeiouun')
               OR EXISTS (
                 SELECT 1
                 FROM detalle_cotizacion dc
@@ -2961,7 +2961,7 @@ export default (client: any) => {
           dot.vendedor,
           dot.preprensa,
           dot.prensa,
-          dot.terminados,
+          dot.terminados, 
           dot.facturado,
           ot.id_cotizacion,
           ot.tipo_orden,
