@@ -37,6 +37,16 @@ const generarHTMLCotizacion = async (cotizacion, detalles) => {
     const cantidad = parseCantidadEntera(valor);
     return cantidad > 0 ? cantidad.toLocaleString('es-EC') : '';
   };
+
+  const formatearMonedaPDF = (valor: any, decimals = 2) => {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero) || numero <= 0) return '';
+
+    return numero.toLocaleString('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: Math.max(decimals, 6),
+    });
+  };
   
   // Función para convertir imagen a base64
   const getBase64Image = async (imagePath) => {
@@ -527,6 +537,21 @@ body {
   margin-top: -4px;
 }
 
+.escala-linea {
+  display: block;
+  min-height: 18px;
+  line-height: 1.35;
+  padding: 1px 0;
+}
+
+.escala-linea + .escala-linea {
+  margin-top: 4px;
+}
+
+.escala-linea-vacia {
+  visibility: hidden;
+}
+
 /* Footer */
 .cotizaciones-footer {
   left: 15mm;
@@ -870,10 +895,10 @@ body {
                 </tr>
               </thead>
               <tbody>
-                ${detallesConImagenes.map(d => `
-                  <tr>
-                    <td class="col-cant">${formatearCantidadPDF(d.cantidad)}</td>
-                    <td class="col-detalle">
+                ${detallesConImagenes.map(d => {
+                  const usaEscalas = d.usa_escalas === true;
+                  const escalas = Array.isArray(d.escalas) ? d.escalas : [];
+                  const detalleHTML = `
                       <div class="detalle-con-imagen ${d.posicion_imagen === 'derecha' ? 'layout-derecha' : 'layout-abajo'}">
                         ${d.posicion_imagen === 'derecha' && d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                           <!-- Layout: Texto a la izquierda, imagen a la derecha -->
@@ -909,13 +934,39 @@ body {
                           ` : ''}
                         `}
                       </div>
+                  `;
+
+                  const cantidadesEscalasHTML = usaEscalas && escalas.length > 0
+                    ? escalas.map((escala) => `
+                        <span class="escala-linea">${formatearCantidadPDF(escala.cantidad)}</span>
+                      `).join('')
+                    : '';
+
+                  const unitariosEscalasHTML = usaEscalas && escalas.length > 0
+                    ? escalas.map((escala) => `
+                        <span class="escala-linea">${formatearMonedaPDF(escala.valor_unitario, 2)}</span>
+                      `).join('')
+                    : '';
+
+                  const totalesEscalasHTML = usaEscalas && escalas.length > 0
+                    ? escalas.map((escala) => `
+                        <span class="escala-linea">${formatearMonedaPDF(escala.valor_total, 2)}</span>
+                      `).join('')
+                    : '';
+
+                  return `
+                  <tr>
+                    <td class="col-cant">${usaEscalas ? cantidadesEscalasHTML : formatearCantidadPDF(d.cantidad)}</td>
+                    <td class="col-detalle">
+                      ${detalleHTML}
                     </td>
                     <td class="col-unitario">
-                      ${Number(d.valor_unitario).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      ${usaEscalas ? unitariosEscalasHTML : Number(d.valor_unitario).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                     </td>
-                    <td class="col-total">${Number(d.valor_total).toFixed(2)}</td>
+                    <td class="col-total">${usaEscalas ? totalesEscalasHTML : Number(d.valor_total).toFixed(2)}</td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           </div>
@@ -1560,6 +1611,7 @@ const CotizacionDatos = (client: any) => {
           d.detalle, 
           d.valor_unitario, 
           d.valor_total,
+          d.usa_escalas,
           d.alineacion_imagenes,
           d.posicion_imagen,
           d.texto_negrita
@@ -1580,10 +1632,18 @@ const CotizacionDatos = (client: any) => {
             ORDER BY orden ASC
           `;
           const imagenesResult = await client.query(imagenesQuery, [detalle.id]);
+          const escalasResult = await client.query(
+            `SELECT id, detalle_cotizacion_id, cantidad, valor_unitario, valor_total, orden
+             FROM detalle_cotizacion_escalas
+             WHERE detalle_cotizacion_id = $1
+             ORDER BY orden ASC, id ASC`,
+            [detalle.id]
+          );
           
           return {
             ...detalle,
-            imagenes: imagenesResult.rows
+            imagenes: imagenesResult.rows,
+            escalas: escalasResult.rows
           };
         })
       );
@@ -1705,6 +1765,7 @@ const CotizacionDatos = (client: any) => {
           d.detalle, 
           d.valor_unitario, 
           d.valor_total,
+          d.usa_escalas,
           d.alineacion_imagenes,
           d.posicion_imagen,
           d.texto_negrita
@@ -1724,10 +1785,18 @@ const CotizacionDatos = (client: any) => {
             ORDER BY orden ASC
           `;
           const imagenesResult = await client.query(imagenesQuery, [detalle.id]);
+          const escalasResult = await client.query(
+            `SELECT id, detalle_cotizacion_id, cantidad, valor_unitario, valor_total, orden
+             FROM detalle_cotizacion_escalas
+             WHERE detalle_cotizacion_id = $1
+             ORDER BY orden ASC, id ASC`,
+            [detalle.id]
+          );
           
           return {
             ...detalle,
-            imagenes: imagenesResult.rows
+            imagenes: imagenesResult.rows,
+            escalas: escalasResult.rows
           };
         })
       );

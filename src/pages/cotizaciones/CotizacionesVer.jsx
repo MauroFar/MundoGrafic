@@ -1759,7 +1759,11 @@ function CotizacionesVer() {
                           <input type="checkbox" checked={!!estaSeleccionado} onChange={() => toggleSeleccionProducto(producto)} />
                           <div>
                             <div className="font-semibold">{primeraLinea || producto.detalle}</div>
-                            <div className="text-sm text-gray-500">Cantidad: {producto.cantidad} | Valor unitario: ${parseFloat(producto.valor_unitario).toFixed(2)}</div>
+                            <div className="text-sm text-gray-500">
+                              {producto.usa_escalas
+                                ? `Producto con ${Array.isArray(producto.escalas) ? producto.escalas.length : 0} escala(s)`
+                                : `Cantidad: ${producto.cantidad} | Valor unitario: $${parseFloat(producto.valor_unitario).toFixed(2)}`}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

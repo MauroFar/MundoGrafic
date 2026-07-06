@@ -27,6 +27,40 @@ const normalizarDimensionImagen = (valor: any, fallback: number) => {
   return entero > 0 ? entero : fallback;
 };
 
+const normalizarDecimal = (valor: any) => {
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0 ? numero : 0;
+};
+
+const normalizarEscalas = (escalas: any[] = []) => {
+  if (!Array.isArray(escalas)) return [];
+
+  return escalas.map((escala, index) => {
+    const cantidad = parseCantidadEntera(escala?.cantidad);
+    const valorUnitario = normalizarDecimal(escala?.valor_unitario);
+    const valorTotal = normalizarDecimal(escala?.valor_total);
+
+    return {
+      cantidad,
+      valor_unitario: valorUnitario,
+      valor_total: valorTotal || Number((cantidad * valorUnitario).toFixed(2)),
+      orden: Number.isFinite(Number(escala?.orden)) ? Number(escala.orden) : index,
+    };
+  }).filter((escala) => escala.cantidad > 0 || escala.valor_unitario > 0 || escala.valor_total > 0);
+};
+
+const obtenerEscalasDetalle = async (client: any, detalleId: number) => {
+  const escalasQuery = `
+    SELECT id, detalle_cotizacion_id, cantidad, valor_unitario, valor_total, orden
+    FROM detalle_cotizacion_escalas
+    WHERE detalle_cotizacion_id = $1
+    ORDER BY orden ASC, id ASC
+  `;
+
+  const escalasResult = await client.query(escalasQuery, [detalleId]);
+  return escalasResult.rows;
+};
+
 const createCotizacionDetalles = (client: any) => {
   // Obtener detalles de una cotización por ID
   router.get("/:id", async (req: any, res: any) => {
@@ -41,6 +75,7 @@ const createCotizacionDetalles = (client: any) => {
           detalle, 
           valor_unitario, 
           valor_total,
+          usa_escalas,
           alineacion_imagenes,
           posicion_imagen,
           texto_negrita
@@ -60,10 +95,12 @@ const createCotizacionDetalles = (client: any) => {
             ORDER BY orden ASC
           `;
           const imagenesResult = await client.query(imagenesQuery, [detalle.id]);
+          const escalas = await obtenerEscalasDetalle(client, detalle.id);
           
           return {
             ...detalle,
-            imagenes: imagenesResult.rows
+            imagenes: imagenesResult.rows,
+            escalas
           };
         })
       );
@@ -79,34 +116,62 @@ const createCotizacionDetalles = (client: any) => {
   // Ruta para crear detalles de cotización
   router.post("/", async (req: any, res: any) => {
     console.log("Recibiendo datos para crear detalle:", req.body);
-    const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita } = req.body;
+    const { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita, usa_escalas, escalas } = req.body;
     const cantidadNormalizada = parseCantidadEntera(cantidad);
+    const usaEscalas = Boolean(usa_escalas);
+    const escalasNormalizadas = normalizarEscalas(escalas);
 
-    if (!cotizacion_id || cantidad === undefined || cantidad === null || !detalle || valor_unitario === undefined || valor_unitario === null || valor_total === undefined || valor_total === null) {
-      console.error("Validación fallida:", { cotizacion_id, cantidad, detalle, valor_unitario, valor_total });
+    if (!cotizacion_id || !detalle) {
+      console.error("Validación fallida:", { cotizacion_id, cantidad, detalle, valor_unitario, valor_total, usaEscalas });
       return res.status(400).json({ error: "Faltan datos requeridos o son inválidos" });
+    }
+
+    if (usaEscalas && escalasNormalizadas.length === 0) {
+      return res.status(400).json({ error: "Debe agregar al menos una escala válida" });
+    }
+
+    if (!usaEscalas && (cantidad === undefined || cantidad === null || valor_unitario === undefined || valor_unitario === null || valor_total === undefined || valor_total === null)) {
+      return res.status(400).json({ error: "Faltan datos requeridos para un detalle sin escalas" });
     }
 
     try {
       // Insertar el detalle sin imágenes (las columnas de imagen están deprecated)
       const query = `
-        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, alineacion_imagenes, posicion_imagen, texto_negrita)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, alineacion_imagenes, posicion_imagen, texto_negrita
+        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, usa_escalas, alineacion_imagenes, posicion_imagen, texto_negrita)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, usa_escalas, alineacion_imagenes, posicion_imagen, texto_negrita
       `;
       
       const result = await client.query(query, [
         cotizacion_id,
-        cantidadNormalizada,
+        usaEscalas ? 0 : cantidadNormalizada,
         detalle,
-        valor_unitario,
-        valor_total,
+        usaEscalas ? 0 : normalizarDecimal(valor_unitario),
+        usaEscalas ? 0 : normalizarDecimal(valor_total),
+        usaEscalas,
         alineacion_imagenes || 'horizontal',
         posicion_imagen || 'abajo',
         texto_negrita || false
       ]);
 
       const detalleId = result.rows[0].id;
+
+      if (usaEscalas && escalasNormalizadas.length > 0) {
+        const escalaQuery = `
+          INSERT INTO detalle_cotizacion_escalas (detalle_cotizacion_id, cantidad, valor_unitario, valor_total, orden)
+          VALUES ($1, $2, $3, $4, $5)
+        `;
+
+        for (const escala of escalasNormalizadas) {
+          await client.query(escalaQuery, [
+            detalleId,
+            escala.cantidad,
+            escala.valor_unitario,
+            escala.valor_total,
+            escala.orden,
+          ]);
+        }
+      }
 
       // Si hay imágenes, insertarlas en la tabla de imágenes
       if (imagenes && Array.isArray(imagenes) && imagenes.length > 0) {
@@ -136,10 +201,12 @@ const createCotizacionDetalles = (client: any) => {
         ORDER BY orden ASC
       `;
       const imagenesResult = await client.query(imagenesQuery, [detalleId]);
+      const escalasDetalle = await obtenerEscalasDetalle(client, detalleId);
 
       res.json({
         ...result.rows[0],
-        imagenes: imagenesResult.rows
+        imagenes: imagenesResult.rows,
+        escalas: escalasDetalle
       });
     } catch (error: any) {
       console.error("Error al insertar detalle de cotización:", error);
@@ -164,34 +231,60 @@ const createCotizacionDetalles = (client: any) => {
 
       // Luego insertamos los nuevos detalles sin imágenes
       const query = `
-        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, alineacion_imagenes, posicion_imagen, texto_negrita)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, alineacion_imagenes, posicion_imagen, texto_negrita
+        INSERT INTO detalle_cotizacion (cotizacion_id, cantidad, detalle, valor_unitario, valor_total, usa_escalas, alineacion_imagenes, posicion_imagen, texto_negrita)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, cotizacion_id, cantidad, detalle, valor_unitario, valor_total, usa_escalas, alineacion_imagenes, posicion_imagen, texto_negrita
       `;
 
       const resultadosDetalles = [];
       for (const detalle of detalles) {
-        const { cantidad, detalle: descripcion, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita } = detalle;
+        const { cantidad, detalle: descripcion, valor_unitario, valor_total, imagenes, alineacion_imagenes, posicion_imagen, texto_negrita, usa_escalas, escalas } = detalle;
         const cantidadNormalizada = parseCantidadEntera(cantidad);
+        const usaEscalas = Boolean(usa_escalas);
+        const escalasNormalizadas = normalizarEscalas(escalas);
         
-        // Validar que todos los campos requeridos estén presentes y sean válidos
-        if (cantidad === undefined || descripcion === undefined || 
-            valor_unitario === undefined || valor_total === undefined) {
+        if (descripcion === undefined) {
+          throw new Error("Falta la descripción del detalle");
+        }
+
+        if (usaEscalas && escalasNormalizadas.length === 0) {
+          throw new Error("Cada detalle con escalas debe tener al menos una escala válida");
+        }
+
+        if (!usaEscalas && (cantidad === undefined || valor_unitario === undefined || valor_total === undefined)) {
           throw new Error("Faltan campos requeridos en los detalles");
         }
 
         const result = await client.query(query, [
           id,
-          cantidadNormalizada,
+          usaEscalas ? 0 : cantidadNormalizada,
           descripcion,
-          parseFloat(valor_unitario),
-          parseFloat(valor_total),
+          usaEscalas ? 0 : normalizarDecimal(valor_unitario),
+          usaEscalas ? 0 : normalizarDecimal(valor_total),
+          usaEscalas,
           alineacion_imagenes || 'horizontal',
           posicion_imagen || 'abajo',
           texto_negrita || false
         ]);
         
         const detalleId = result.rows[0].id;
+
+        if (usaEscalas && escalasNormalizadas.length > 0) {
+          const escalaQuery = `
+            INSERT INTO detalle_cotizacion_escalas (detalle_cotizacion_id, cantidad, valor_unitario, valor_total, orden)
+            VALUES ($1, $2, $3, $4, $5)
+          `;
+
+          for (const escala of escalasNormalizadas) {
+            await client.query(escalaQuery, [
+              detalleId,
+              escala.cantidad,
+              escala.valor_unitario,
+              escala.valor_total,
+              escala.orden,
+            ]);
+          }
+        }
 
         // Insertar las imágenes si existen
         if (imagenes && Array.isArray(imagenes) && imagenes.length > 0) {
@@ -221,10 +314,12 @@ const createCotizacionDetalles = (client: any) => {
           ORDER BY orden ASC
         `;
         const imagenesResult = await client.query(imagenesQuery, [detalleId]);
+        const escalasDetalle = await obtenerEscalasDetalle(client, detalleId);
 
         resultadosDetalles.push({
           ...result.rows[0],
-          imagenes: imagenesResult.rows
+          imagenes: imagenesResult.rows,
+          escalas: escalasDetalle
         });
       }
 

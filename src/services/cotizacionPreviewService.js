@@ -76,6 +76,15 @@ export const generarVistaPreviaPDF = async (cotizacionId, cotizacionData, detall
         detalle: d.detalle,
         valor_unitario: d.valor_unitario,
         valor_total: d.valor_total,
+        usa_escalas: d.usa_escalas || false,
+        escalas: Array.isArray(d.escalas)
+          ? d.escalas.map((escala) => ({
+              cantidad: escala.cantidad,
+              valor_unitario: escala.valor_unitario,
+              valor_total: escala.valor_total,
+              orden: escala.orden || 0,
+            }))
+          : [],
         alineacion_imagenes: d.alineacion_imagenes || 'horizontal',
         posicion_imagen: d.posicion_imagen || 'abajo',
         texto_negrita: d.texto_negrita || false,

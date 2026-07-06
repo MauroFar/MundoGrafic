@@ -148,6 +148,34 @@ function CotizacionesCrear() {
     return cantidad > 0 ? cantidad.toLocaleString('es-EC') : '';
   };
 
+  const crearEscalaVacia = () => ({
+    cantidad: '',
+    valor_unitario: '',
+    valor_total: 0
+  });
+
+  const calcularTotalEscala = (cantidad, valorUnitario) => {
+    const total = parseCantidadEntera(cantidad) * parseFloat(valorUnitario);
+    return isNaN(total) ? 0 : total;
+  };
+
+  const escalaEsValida = (escala) => (
+    parseCantidadEntera(escala?.cantidad) > 0 &&
+    (parseFloat(escala?.valor_unitario) || 0) > 0
+  );
+
+  const filaEsValidaParaGuardar = (fila) => {
+    if (!fila?.detalle || fila.detalle.trim() === '') return false;
+
+    if (fila.usa_escalas) {
+      return Array.isArray(fila.escalas) && fila.escalas.some(escalaEsValida);
+    }
+
+    return parseCantidadEntera(fila.cantidad) > 0 && (parseFloat(fila.valor_unitario) || 0) > 0;
+  };
+
+  const obtenerTotalizableFila = (fila) => (fila?.usa_escalas ? 0 : (parseFloat(fila?.valor_total) || 0));
+
   // Ref para el modal de éxito
   const successModalRef = useRef(null);
   const vendedoresDropdownRef = useRef(null);
@@ -418,6 +446,14 @@ function CotizacionesCrear() {
             detalle: detalle.detalle || "",
             valor_unitario: normalizarDecimalInput(valorUnitario),
             valor_total: valorTotal,
+            usa_escalas: detalle.usa_escalas || false,
+            escalas: Array.isArray(detalle.escalas)
+              ? detalle.escalas.map((escala) => ({
+                  cantidad: formatearCantidadEntera(escala.cantidad),
+                  valor_unitario: normalizarDecimalInput(escala.valor_unitario),
+                  valor_total: parseFloat(escala.valor_total) || calcularTotalEscala(escala.cantidad, escala.valor_unitario)
+                }))
+              : [],
             imagenes: imagenes,
             alineacion_imagenes: detalle.alineacion_imagenes || 'horizontal',
             posicion_imagen: detalle.posicion_imagen || 'abajo',
@@ -429,7 +465,7 @@ function CotizacionesCrear() {
         setFilas(filasActualizadas);
 
         // Calcular totales basados en los detalles
-        const subtotalCalculado = filasActualizadas.reduce((sum, fila) => sum + fila.valor_total, 0);
+        const subtotalCalculado = filasActualizadas.reduce((sum, fila) => sum + obtenerTotalizableFila(fila), 0);
         let ivaCalculado;
         if (cotizacionData && cotizacionData.iva != null) {
           ivaCalculado = parseFloat(cotizacionData.iva) || 0;
@@ -614,12 +650,10 @@ function CotizacionesCrear() {
       }
       // Validar que haya al menos un producto con detalle y valores
       const productosValidos = filas.filter(fila =>
-        fila.detalle && fila.detalle.trim() !== '' &&
-        parseCantidadEntera(fila.cantidad) > 0 &&
-        parseFloat(fila.valor_unitario) > 0
+        filaEsValidaParaGuardar(fila)
       );
       if (productosValidos.length === 0) {
-        alert('Debe agregar al menos un producto con detalle, cantidad y valor unitario para guardar la cotización.');
+        alert('Debe agregar al menos un producto válido. En modo normal requiere detalle, cantidad y valor unitario. En modo escalas requiere detalle y al menos una escala válida.');
         return;
       }
       // 2. Si hay un cliente seleccionado, usar su id directamente
@@ -688,10 +722,17 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
-        cantidad: parseCantidadEntera(fila.cantidad),
+        cantidad: fila.usa_escalas ? 0 : parseCantidadEntera(fila.cantidad),
         detalle: fila.detalle || "",
-        valor_unitario: parseFloat(fila.valor_unitario) || 0,
-        valor_total: parseFloat(fila.valor_total) || 0,
+        valor_unitario: fila.usa_escalas ? 0 : (parseFloat(fila.valor_unitario) || 0),
+        valor_total: fila.usa_escalas ? 0 : (parseFloat(fila.valor_total) || 0),
+        usa_escalas: fila.usa_escalas || false,
+        escalas: (fila.escalas || []).map((escala, index) => ({
+          cantidad: parseCantidadEntera(escala.cantidad),
+          valor_unitario: parseFloat(escala.valor_unitario) || 0,
+          valor_total: parseFloat(escala.valor_total) || 0,
+          orden: index,
+        })).filter((escala) => escala.cantidad > 0 || escala.valor_unitario > 0 || escala.valor_total > 0),
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
         posicion_imagen: fila.posicion_imagen || 'abajo',
         imagenes: (fila.imagenes && Array.isArray(fila.imagenes)) 
@@ -747,6 +788,8 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
+          usa_escalas: fila.usa_escalas,
+          escalas: fila.escalas,
           imagenes: fila.imagenes,
           posicion_imagen: fila.posicion_imagen,
           texto_negrita: fila.texto_negrita,
@@ -855,6 +898,11 @@ function CotizacionesCrear() {
         alert("El nombre del cliente es requerido");
         return;
       }
+      const productosValidos = filas.filter(filaEsValidaParaGuardar);
+      if (productosValidos.length === 0) {
+        alert('Debe agregar al menos un producto válido antes de guardar como nueva la cotización.');
+        return;
+      }
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
         await guardarCotizacionComoNueva(selectedClienteId);
@@ -934,6 +982,8 @@ function CotizacionesCrear() {
         detalle: detalleInicial,
         valor_unitario: '',
         valor_total: 0,
+        usa_escalas: false,
+        escalas: [],
         imagenes: [],  // Array vacío para múltiples imágenes
         alineacion_imagenes: 'horizontal',  // Alineación por defecto (horizontal/vertical)
         posicion_imagen: 'abajo',  // Posición por defecto (abajo/derecha)
@@ -976,6 +1026,8 @@ function CotizacionesCrear() {
         detalle: `${itemData.tipo_trabajo} - ${itemData.descripcion}\nTamaño: C:${itemData.tamano_cerrado} / A:${itemData.tamano_abierto}`,
         valor_unitario: normalizarDecimalInput(itemData.precio_unitario),
         valor_total: itemData.total,
+        usa_escalas: false,
+        escalas: [],
         // Guardar datos adicionales para referencia
         tipo_trabajo: itemData.tipo_trabajo,
         descripcion_trabajo: itemData.descripcion,
@@ -1223,6 +1275,114 @@ function CotizacionesCrear() {
     return isNaN(total) ? 0 : total;
   };
 
+  const toggleUsaEscalasFila = (index) => {
+    const nuevasFilas = [...filas];
+    const filaActual = nuevasFilas[index];
+    const activarEscalas = !filaActual.usa_escalas;
+
+    if (activarEscalas) {
+      const escalaInicial = (
+        parseCantidadEntera(filaActual.cantidad) > 0 || (parseFloat(filaActual.valor_unitario) || 0) > 0
+      ) ? {
+        cantidad: filaActual.cantidad,
+        valor_unitario: filaActual.valor_unitario,
+        valor_total: calcularTotalEscala(filaActual.cantidad, filaActual.valor_unitario)
+      } : crearEscalaVacia();
+
+      nuevasFilas[index] = {
+        ...filaActual,
+        usa_escalas: true,
+        escalas: filaActual.escalas && filaActual.escalas.length > 0 ? filaActual.escalas : [escalaInicial]
+      };
+    } else {
+      const primeraEscala = (filaActual.escalas || []).find(escalaEsValida) || filaActual.escalas?.[0] || crearEscalaVacia();
+      nuevasFilas[index] = {
+        ...filaActual,
+        usa_escalas: false,
+        cantidad: primeraEscala.cantidad || filaActual.cantidad || '1',
+        valor_unitario: primeraEscala.valor_unitario || filaActual.valor_unitario || '',
+        valor_total: calcularTotalFila(
+          primeraEscala.cantidad || filaActual.cantidad || '1',
+          primeraEscala.valor_unitario || filaActual.valor_unitario || ''
+        )
+      };
+    }
+
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+  };
+
+  const agregarEscalaFila = (filaIndex) => {
+    const nuevasFilas = [...filas];
+    const escalasActuales = Array.isArray(nuevasFilas[filaIndex].escalas) ? nuevasFilas[filaIndex].escalas : [];
+    nuevasFilas[filaIndex] = {
+      ...nuevasFilas[filaIndex],
+      escalas: [...escalasActuales, crearEscalaVacia()]
+    };
+    setFilas(nuevasFilas);
+  };
+
+  const eliminarEscalaFila = (filaIndex, escalaIndex) => {
+    const nuevasFilas = [...filas];
+    const escalasActuales = Array.isArray(nuevasFilas[filaIndex].escalas) ? nuevasFilas[filaIndex].escalas : [];
+    const escalasFiltradas = escalasActuales.filter((_, index) => index !== escalaIndex);
+    nuevasFilas[filaIndex] = {
+      ...nuevasFilas[filaIndex],
+      escalas: escalasFiltradas.length > 0 ? escalasFiltradas : [crearEscalaVacia()]
+    };
+    setFilas(nuevasFilas);
+  };
+
+  const handleEscalaCantidadChange = (filaIndex, escalaIndex, value) => {
+    const nuevasFilas = [...filas];
+    const nuevasEscalas = [...(nuevasFilas[filaIndex].escalas || [])];
+    nuevasEscalas[escalaIndex] = {
+      ...nuevasEscalas[escalaIndex],
+      cantidad: value,
+      valor_total: calcularTotalEscala(value, nuevasEscalas[escalaIndex].valor_unitario)
+    };
+    nuevasFilas[filaIndex] = { ...nuevasFilas[filaIndex], escalas: nuevasEscalas };
+    setFilas(nuevasFilas);
+  };
+
+  const normalizarCantidadEscala = (filaIndex, escalaIndex) => {
+    const nuevasFilas = [...filas];
+    const nuevasEscalas = [...(nuevasFilas[filaIndex].escalas || [])];
+    const cantidadFormateada = formatearCantidadEntera(nuevasEscalas[escalaIndex].cantidad);
+    nuevasEscalas[escalaIndex] = {
+      ...nuevasEscalas[escalaIndex],
+      cantidad: cantidadFormateada,
+      valor_total: calcularTotalEscala(cantidadFormateada, nuevasEscalas[escalaIndex].valor_unitario)
+    };
+    nuevasFilas[filaIndex] = { ...nuevasFilas[filaIndex], escalas: nuevasEscalas };
+    setFilas(nuevasFilas);
+  };
+
+  const handleValorUnitarioEscalaChange = (filaIndex, escalaIndex, value) => {
+    const nuevasFilas = [...filas];
+    const nuevasEscalas = [...(nuevasFilas[filaIndex].escalas || [])];
+    nuevasEscalas[escalaIndex] = {
+      ...nuevasEscalas[escalaIndex],
+      valor_unitario: value,
+      valor_total: calcularTotalEscala(nuevasEscalas[escalaIndex].cantidad, value)
+    };
+    nuevasFilas[filaIndex] = { ...nuevasFilas[filaIndex], escalas: nuevasEscalas };
+    setFilas(nuevasFilas);
+  };
+
+  const normalizarValorUnitarioEscala = (filaIndex, escalaIndex) => {
+    const nuevasFilas = [...filas];
+    const nuevasEscalas = [...(nuevasFilas[filaIndex].escalas || [])];
+    const valorNormalizado = normalizarDecimalInput(nuevasEscalas[escalaIndex].valor_unitario);
+    nuevasEscalas[escalaIndex] = {
+      ...nuevasEscalas[escalaIndex],
+      valor_unitario: valorNormalizado,
+      valor_total: calcularTotalEscala(nuevasEscalas[escalaIndex].cantidad, valorNormalizado)
+    };
+    nuevasFilas[filaIndex] = { ...nuevasFilas[filaIndex], escalas: nuevasEscalas };
+    setFilas(nuevasFilas);
+  };
+
   const handleCantidadChange = (index, value) => {
     const nuevasFilas = [...filas];
     nuevasFilas[index].cantidad = value;
@@ -1257,7 +1417,7 @@ function CotizacionesCrear() {
 
   const calcularTotales = (filasActuales) => {
     const subtotal = filasActuales.reduce((sum, fila) => {
-      const totalFila = parseFloat(fila.valor_total) || 0;
+      const totalFila = obtenerTotalizableFila(fila);
       return sum + totalFila;
     }, 0);
     const ivaCalculado = aplicarIva ? subtotal * 0.15 : 0;
@@ -1272,7 +1432,7 @@ function CotizacionesCrear() {
   // Actualiza el subtotal cuando cambian los productos
   useEffect(() => {
     const nuevoSubtotal = filas.reduce((acc, fila) => {
-      return acc + (parseFloat(fila.valor_total) || 0);
+      return acc + obtenerTotalizableFila(fila);
     }, 0);
     setSubtotal(nuevoSubtotal);
   }, [filas]); // Se ejecuta cada vez que `filas` cambia
@@ -1314,6 +1474,13 @@ function CotizacionesCrear() {
         detalle: fila.detalle,
         valor_unitario: fila.valor_unitario,
         valor_total: fila.valor_total,
+        usa_escalas: fila.usa_escalas || false,
+        escalas: (fila.escalas || []).map((escala, index) => ({
+          cantidad: parseCantidadEntera(escala.cantidad),
+          valor_unitario: parseFloat(escala.valor_unitario) || 0,
+          valor_total: parseFloat(escala.valor_total) || 0,
+          orden: index,
+        })),
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
         posicion_imagen: fila.posicion_imagen || 'abajo',
         texto_negrita: fila.texto_negrita || false,
@@ -1419,10 +1586,17 @@ function CotizacionesCrear() {
       const token = localStorage.getItem("token");
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
-        cantidad: parseCantidadEntera(fila.cantidad),
+        cantidad: fila.usa_escalas ? 0 : parseCantidadEntera(fila.cantidad),
         detalle: fila.detalle || "",
-        valor_unitario: parseFloat(fila.valor_unitario) || 0,
-        valor_total: parseFloat(fila.valor_total) || 0,
+        valor_unitario: fila.usa_escalas ? 0 : (parseFloat(fila.valor_unitario) || 0),
+        valor_total: fila.usa_escalas ? 0 : (parseFloat(fila.valor_total) || 0),
+        usa_escalas: fila.usa_escalas || false,
+        escalas: (fila.escalas || []).map((escala, index) => ({
+          cantidad: parseCantidadEntera(escala.cantidad),
+          valor_unitario: parseFloat(escala.valor_unitario) || 0,
+          valor_total: parseFloat(escala.valor_total) || 0,
+          orden: index,
+        })).filter((escala) => escala.cantidad > 0 || escala.valor_unitario > 0 || escala.valor_total > 0),
         alineacion_imagenes: fila.alineacion_imagenes || 'horizontal',
         posicion_imagen: fila.posicion_imagen || 'abajo',
         texto_negrita: fila.texto_negrita || false,
@@ -1483,6 +1657,8 @@ function CotizacionesCrear() {
           detalle: fila.detalle,
           valor_unitario: fila.valor_unitario,
           valor_total: fila.valor_total,
+          usa_escalas: fila.usa_escalas,
+          escalas: fila.escalas,
           alineacion_imagenes: fila.alineacion_imagenes,
           posicion_imagen: fila.posicion_imagen || 'abajo',
           texto_negrita: fila.texto_negrita || false,
@@ -1868,18 +2044,41 @@ function CotizacionesCrear() {
                       </button>
                     </td>
                     <td className="border border-gray-300 py-2 align-top">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={fila.cantidad}
-                        onChange={(e) => handleCantidadChange(index, e.target.value)}
-                        onBlur={() => normalizarCantidadFila(index)}
-                        onWheel={(e) => e.target.blur()}
-                        className="w-full border border-gray-300 rounded-md p-2 text-center"
-                        placeholder="Ej: 20.000"
-                      />
+                      {fila.usa_escalas ? (
+                        <div className="mx-1 rounded-md border border-dashed border-amber-300 bg-amber-50 p-2 text-center text-xs font-semibold text-amber-700">
+                          Se define en escalas
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={fila.cantidad}
+                          onChange={(e) => handleCantidadChange(index, e.target.value)}
+                          onBlur={() => normalizarCantidadFila(index)}
+                          onWheel={(e) => e.target.blur()}
+                          className="w-full border border-gray-300 rounded-md p-2 text-center"
+                          placeholder="Ej: 20.000"
+                        />
+                      )}
                     </td>
                     <td className="border border-gray-300 p-0 align-top">
+                      <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-3 py-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={fila.usa_escalas || false}
+                            onChange={() => toggleUsaEscalasFila(index)}
+                            className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          Usar escalas
+                        </label>
+                        {fila.usa_escalas && (
+                          <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                            No suma a totales
+                          </span>
+                        )}
+                      </div>
+
                       {/* Botón de negrita */}
                       <div className="flex items-center gap-3 mb-2">
                         <div className="flex flex-col items-center gap-1">
@@ -2113,6 +2312,60 @@ function CotizacionesCrear() {
                           boxShadow: 'inset 0 0 0 1px #d1d5db'
                         }}
                       />
+
+                      {fila.usa_escalas && (
+                        <div className="mx-2 mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <div>
+                              <h4 className="text-sm font-semibold text-amber-900">Escalas del producto</h4>
+                              <p className="text-xs text-amber-700">Estas opciones no alimentan subtotal ni total general.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => agregarEscalaFila(index)}
+                              className="rounded-md bg-amber-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
+                            >
+                              Agregar escala
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {(fila.escalas || []).map((escala, escalaIndex) => (
+                              <div key={`${index}-escala-${escalaIndex}`} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={escala.cantidad}
+                                  onChange={(e) => handleEscalaCantidadChange(index, escalaIndex, e.target.value)}
+                                  onBlur={() => normalizarCantidadEscala(index, escalaIndex)}
+                                  className="w-full rounded-md border border-amber-200 bg-white p-2 text-center"
+                                  placeholder="Cantidad"
+                                />
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={escala.valor_unitario}
+                                  onChange={(e) => handleValorUnitarioEscalaChange(index, escalaIndex, e.target.value)}
+                                  onBlur={() => normalizarValorUnitarioEscala(index, escalaIndex)}
+                                  className="w-full rounded-md border border-amber-200 bg-white p-2 text-right"
+                                  placeholder="V. unitario"
+                                />
+                                <div className="rounded-md border border-amber-200 bg-white p-2 text-right text-sm font-semibold text-gray-700">
+                                  ${formatearNumero(escala.valor_total)}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarEscalaFila(index, escalaIndex)}
+                                  className="rounded-md bg-red-500 px-3 py-2 text-sm text-white transition-colors hover:bg-red-600"
+                                  title="Eliminar escala"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Mostrar imágenes existentes */}
                       {fila.imagenes && fila.imagenes.length > 0 && (
@@ -2309,17 +2562,23 @@ function CotizacionesCrear() {
                       </div>
                     </td>
                     <td className="border border-gray-300 px-2 py-2 align-top">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={fila.valor_unitario}
-                        onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
-                        onBlur={() => normalizarValorUnitarioFila(index)}
-                        className="w-full border border-gray-300 rounded-md p-2 text-right"
-                      />
+                      {fila.usa_escalas ? (
+                        <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 p-2 text-center text-xs font-semibold text-amber-700">
+                          Se define en escalas
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={fila.valor_unitario}
+                          onChange={(e) => handleValorUnitarioChange(index, e.target.value)}
+                          onBlur={() => normalizarValorUnitarioFila(index)}
+                          className="w-full border border-gray-300 rounded-md p-2 text-right"
+                        />
+                      )}
                     </td>
                     <td className="border border-gray-300 px-2 py-2 text-right align-top whitespace-nowrap">
-                      ${formatearNumero(fila.valor_total)}
+                      {fila.usa_escalas ? 'Escalas' : `$${formatearNumero(fila.valor_total)}`}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center align-top">
                       <button
