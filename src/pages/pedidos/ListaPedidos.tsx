@@ -224,6 +224,43 @@ const ListaPedidos: React.FC = () => {
               Lista de Pedidos
             </h1>
           </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            <div className="border border-blue-400 bg-blue-200/60 p-2 text-center">
+              <p className="text-sm text-slate-700">Actividades</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalActividades}</p>
+            </div>
+
+            <div className="border border-slate-500 bg-slate-300/70 p-2 text-center">
+              <p className="text-sm text-slate-700">Sin Empezar</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalSinEmpezar}</p>
+            </div>
+
+            <div className="border border-yellow-500 bg-yellow-300/80 p-2 text-center">
+              <p className="text-sm text-slate-700">En Proceso</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalEnProceso}</p>
+            </div>
+
+            <div className="border border-orange-400 bg-orange-300/80 p-2 text-center">
+              <p className="text-sm text-slate-700">Atrasado</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalAtrasado}</p>
+            </div>
+
+            <div className="border border-green-400 bg-green-300/70 p-2 text-center">
+              <p className="text-sm text-slate-700">Completo</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalCompleto}</p>
+            </div>
+
+            <div className="border border-amber-200 bg-amber-100 p-2 text-center">
+              <p className="text-sm text-slate-700">% Avance</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{porcentajeAvance}%</p>
+            </div>
+
+            <div className="border border-red-500 bg-red-400/80 p-2 text-center">
+              <p className="text-sm text-slate-700">Rechazo</p>
+              <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalRechazo}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -376,45 +413,6 @@ const ListaPedidos: React.FC = () => {
                 </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 px-4 py-4 sm:px-5">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-              <div className="border border-blue-400 bg-blue-200/60 p-2 text-center">
-                <p className="text-sm text-slate-700">Actividades</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalActividades}</p>
-              </div>
-
-              <div className="border border-slate-500 bg-slate-300/70 p-2 text-center">
-                <p className="text-sm text-slate-700">Sin Empezar</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalSinEmpezar}</p>
-              </div>
-
-              <div className="border border-yellow-500 bg-yellow-300/80 p-2 text-center">
-                <p className="text-sm text-slate-700">En Proceso</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalEnProceso}</p>
-              </div>
-
-              <div className="border border-orange-400 bg-orange-300/80 p-2 text-center">
-                <p className="text-sm text-slate-700">Atrasado</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalAtrasado}</p>
-              </div>
-
-              <div className="border border-green-400 bg-green-300/70 p-2 text-center">
-                <p className="text-sm text-slate-700">Completo</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalCompleto}</p>
-              </div>
-
-              <div className="border border-amber-200 bg-amber-100 p-2 text-center">
-                <p className="text-sm text-slate-700">% Avance</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{porcentajeAvance}%</p>
-              </div>
-
-              <div className="border border-red-500 bg-red-400/80 p-2 text-center">
-                <p className="text-sm text-slate-700">Rechazo</p>
-                <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalRechazo}</p>
-              </div>
             </div>
           </div>
         </div>

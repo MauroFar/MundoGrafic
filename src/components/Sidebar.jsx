@@ -54,7 +54,6 @@ const Sidebar = () => {
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
-      { path: "/produccion/preprensa", label: "Módulo Offset / Preprensa" },
       { path: "/productosTerminados", label: "Productos Liberados" },
       { path: "/productosEntregados", label: "Productos Entregados" },
       { path: "/produccion/control-calidad", label: "Control de Calidad" },

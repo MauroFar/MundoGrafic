@@ -32,13 +32,6 @@ const AccionesRapidas = () => {
       ruta: '/produccion/kanban'
     },
     {
-      titulo: 'Módulo Preprensa',
-      descripcion: 'Gestión de archivos y preparación',
-      icono: <FaFileAlt className="h-8 w-8" />,
-      color: 'bg-purple-600 hover:bg-purple-700',
-      ruta: '/produccion/preprensa'
-    },
-    {
       titulo: 'Módulo Prensa',
       descripcion: 'Control de impresión',
       icono: <FaPrint className="h-8 w-8" />,
