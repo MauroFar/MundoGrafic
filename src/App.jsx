@@ -22,6 +22,7 @@ import ProductosEntregados from "./pages/Produccion/ProductosEntregados";
 import WorkstationPreprensa from "./pages/produccion/WorkstationPreprensa";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
 import OrdenesVer from "./pages/ordendeTrabajo/OrdenesVer";
+import ListaPedidos from "./pages/pedidos/ListaPedidos";
 import Certificados from "./pages/certificados/Certificados";
 import CertificadoForm from "./pages/certificados/CertificadoForm";
 import Inventario from "./pages/Inventario/Inventario";
@@ -177,6 +178,12 @@ function App() {
           <Route path="/ordendeTrabajo/ver" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
               <OrdenesVer />
+            </PrivateRoute>
+          } />
+
+          <Route path="/pedidos/lista" element={
+            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <ListaPedidos />
             </PrivateRoute>
           } />
 
