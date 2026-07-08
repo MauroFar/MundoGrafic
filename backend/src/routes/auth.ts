@@ -1,12 +1,14 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { createAuthRoutes } from '../presentation/routes/auth/authRoutes';
 
 const router = express.Router();
 
-const SECRET = process.env.JWT_SECRET || 'TU_SECRETO';
-
 export default (client: any) => {
+  const authRoutes = createAuthRoutes(client);
+
+  router.use(authRoutes);
+
   // Registro de usuario (solo para pruebas, restringir en producción)
   router.post('/register', async (req: any, res: any) => {
     const { email, password, nombre, rol, area_id } = req.body;
@@ -22,28 +24,5 @@ export default (client: any) => {
     }
   });
 
-  // Login de usuario
-  router.post('/login', async (req: any, res: any) => {
-    const { email, password } = req.body;
-    try {
-      // Buscar por email o por nombre_usuario
-      const result = await client.query('SELECT * FROM usuarios WHERE email = $1 OR nombre_usuario = $1', [email]);
-      const user = result.rows[0];
-      if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
-
-      const valid = await bcrypt.compare(password, user.password_hash);
-      if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
-
-      const token = jwt.sign(
-        { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email, celular: user.celular },
-        SECRET,
-        { expiresIn: '8h' }
-      );
-      res.json({ token, user: { id: user.id, rol: user.rol, nombre: user.nombre, email: user.email, celular: user.celular } });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   return router;
-}; 
+};

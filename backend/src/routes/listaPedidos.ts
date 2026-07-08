@@ -141,7 +141,7 @@ export default (client: any) => {
 
   router.post("/", authRequired(["admin", "ejecutivo", "impresion"]), async (req: any, res: any) => {
     const parsed = validarPayload(req.body || {});
-    if (!parsed.valid) {
+    if ("errors" in parsed) {
       return res.status(400).json({ error: "Datos invalidos.", detalles: parsed.errors });
     }
 
@@ -193,7 +193,7 @@ export default (client: any) => {
     }
 
     const parsed = validarPayload(req.body || {});
-    if (!parsed.valid) {
+    if ("errors" in parsed) {
       return res.status(400).json({ error: "Datos invalidos.", detalles: parsed.errors });
     }
 

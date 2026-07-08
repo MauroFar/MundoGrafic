@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-
-const SECRET = process.env.JWT_SECRET || 'TU_SECRETO';
+import { getJwtSecret } from '../shared/security/jwtConfig';
 
 function authRequired(roles: string[] = []) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -14,7 +13,7 @@ function authRequired(roles: string[] = []) {
 
     const token = authHeader.split(' ')[1];
     try {
-      const payload = jwt.verify(token, SECRET as string);
+      const payload = jwt.verify(token, getJwtSecret());
       req.user = payload;
       console.log('Auth middleware - Token válido, payload:', payload);
       if (roles.length && !roles.includes((payload as any).rol)) {

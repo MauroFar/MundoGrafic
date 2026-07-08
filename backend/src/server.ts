@@ -7,7 +7,7 @@ import fs from "fs";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/api";
 import authRequired from "./middleware/auth";
-import usuariosRoutes from './routes/usuarios';
+import { createUsuarioRoutes } from "./presentation/routes/usuarios/usuarioRoutes";
 import areasRoutes from './routes/areas';
 import rolesRoutes from './routes/roles';
 import cotizacionesRoutes from './routes/cotizaciones';
@@ -126,7 +126,7 @@ app.get('/api/clientes/direct', (req, res) => {
 });
 
 // Rutas de usuarios
-app.use('/api/usuarios', usuariosRoutes(client));
+app.use('/api/usuarios', createUsuarioRoutes(client));
 
 // Rutas de áreas
 app.use('/api/areas', areasRoutes(client));

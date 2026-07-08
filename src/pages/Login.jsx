@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildApiUrl, API_CONFIG } from "../config/api";
+import { loginRequest, persistSession } from "../services/authService";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
 function Login() {
@@ -9,31 +9,17 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // Construir URL de login usando configuración centralizada con fallback seguro
-  const loginUrl = buildApiUrl(API_CONFIG.ENDPOINTS.AUTH.LOGIN);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(loginUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("rol", data.user.rol);
-        localStorage.setItem("nombre", data.user.nombre);
-        try { localStorage.setItem("user", JSON.stringify(data.user)); } catch (_) {}
-        // Todos los usuarios van al menú principal
-        navigate("/welcome");
-      } else {
-        alert(data.error || "Credenciales incorrectas. Intenta nuevamente.");
-      }
+      const data = await loginRequest({ email, password });
+      persistSession(data);
+      // Todos los usuarios van al menú principal
+      navigate("/welcome");
     } catch (err) {
-      console.error("Error de conexión:", err);
-      alert("Error de conexión con el servidor");
+      console.error("Error de autenticacion:", err);
+      const message = err instanceof Error ? err.message : "Error de conexion con el servidor";
+      alert(message);
     }
   };
 
