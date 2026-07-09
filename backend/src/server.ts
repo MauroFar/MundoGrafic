@@ -8,9 +8,8 @@ import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/api";
 import authRequired from "./middleware/auth";
 import { createUsuarioRoutes } from "./presentation/routes/usuarios/usuarioRoutes";
-import areasRoutes from './routes/areas';
-import rolesRoutes from './routes/roles';
-import cotizacionesRoutes from './routes/cotizaciones';
+import { createAreaRoutes } from "./presentation/routes/areas/areaRoutes";
+import { createRolRoutes } from "./presentation/routes/roles/rolRoutes";
 import os from 'os';
 
 dotenv.config();
@@ -108,9 +107,6 @@ client.connect()
 // Rutas de autenticación
 app.use("/api/auth", authRoutes(client));
 
-// Rutas de cotizaciones
-app.use("/api/cotizaciones", cotizacionesRoutes(client));
-
 // Rutas protegidas por rol
 app.use("/api/ordenes-trabajo", authRequired(["admin", "ejecutivo", "impresion"]));
 
@@ -129,10 +125,10 @@ app.get('/api/clientes/direct', (req, res) => {
 app.use('/api/usuarios', createUsuarioRoutes(client));
 
 // Rutas de áreas
-app.use('/api/areas', areasRoutes(client));
+app.use('/api/areas', createAreaRoutes(client));
 
 // Rutas de roles
-app.use('/api/roles', rolesRoutes(client));
+app.use('/api/roles', createRolRoutes(client));
 
 // Rutas de firmas
 import firmasRouter from './routes/firmas';

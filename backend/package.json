@@ -13,7 +13,8 @@
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "backup": "node backup-current-db.js",
-    "validate:offset": "ts-node-dev --transpile-only scripts/validate_offset_fields.ts"
+    "validate:offset": "ts-node-dev --transpile-only scripts/validate_offset_fields.ts",
+    "test:smoke:clientes-areas": "node scripts/smoke_clientes_areas.js"
   },
   "keywords": [],
   "author": "",

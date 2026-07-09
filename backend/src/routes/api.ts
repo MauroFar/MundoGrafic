@@ -1,12 +1,11 @@
 // Importamos las rutas existentes
 import express from "express";
 import rucRoutes from "./rucs";
-import clientesRoutes from "./clientes";
-import cotizacionRoutes from "./cotizaciones";
-import cotizacionDetRoutes from "./cotizacionesDetalles";
-import cotizacionesEditar from "./cotizacionesEditar";
+import { createClienteRoutes } from "../presentation/routes/clientes/clienteRoutes";
+import { createCotizacionesModuleRoutes } from "../modules/produccion/cotizaciones/presentation/routes/cotizacionesModuleRoutes";
 import reportesTrabajoRoutes from "./reportesTrabajo";
 import ordenTrabajoRoutes from "./ordenTrabajo";
+import { createOrdenesTrabajoModuleRoutes } from "../modules/produccion/ordenes-trabajo/presentation/routes/ordenTrabajoModuleRoutes";
 import puppeteer from "puppeteer";
 import uploadRoutes from "./upload-simple";
 import chatRoutes from "./chat";
@@ -25,12 +24,11 @@ export default (client: any) => {
   router.use("/rucs", rucRoutes(client)); // /api/rucs
   console.log("✅ [API Routes] Ruta /rucs registrada");
 
-  router.use("/clientes", clientesRoutes(client)); // /api/clientes
+  router.use("/clientes", createClienteRoutes(client)); // /api/clientes
   console.log("✅ [API Routes] Ruta /clientes registrada");
-  router.use("/cotizaciones", cotizacionRoutes(client)); // /api/cotizaciones
-  router.use("/cotizacionesDetalles", cotizacionDetRoutes(client)); // /api/cotizacionesDetalles
-  router.use("/cotizacionesEditar", cotizacionesEditar(client));
-  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo
+  router.use("/", createCotizacionesModuleRoutes(client)); // /api/cotizaciones*
+  router.use("/ordenTrabajo", createOrdenesTrabajoModuleRoutes(client)); // /api/ordenTrabajo limpio
+  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo legacy fallback
   router.use("/reportesTrabajo", reportesTrabajoRoutes(client)); // /api/reportesTrabajo
   router.use("/upload", uploadRoutes); // /api/upload
   router.use("/chat", chatRoutes(client)); // /api/chat

@@ -26,7 +26,7 @@ const MainMenu = () => {
   }, []);
 
   const allItems = [
-    { key: 'lista-pedidos', label: 'Lista de Pedidos', onClick: () => navigate('/pedidos/lista'), color: 'bg-yellow-600' },
+    { key:  'lista-pedidos', label: 'Lista de Pedidos', onClick: () => navigate('/pedidos/lista'), color: 'bg-yellow-600' },
     { key: 'produccion', label: 'Producción', onClick: () => navigate('/produccion/kanban'), color: 'bg-blue-600' },
     { key: 'registro-operario', label: 'Registro Operario', onClick: () => navigate('/registros/operario'), color: 'bg-indigo-600' },
     { key: 'gestion-ti', label: 'Gestión TI', onClick: () => window.open('http://192.168.130.149:3100', '_blank'), color: 'bg-green-600' },
