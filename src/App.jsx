@@ -39,6 +39,7 @@ import ClientesVer from "./pages/clientes/ClientesVer";
 import ClientesCrear from "./pages/clientes/ClientesCrear";
 import CotizacionItems from "./pages/cotizaciones/CotizacionItems";
 import RegistroOperario from "./pages/registros/RegistroOperario";
+import TestRoute from "./pages/TestRoute";
 
 function App() {
   // Inicializar el tema desde localStorage
@@ -58,6 +59,7 @@ function App() {
 
         {/* Rutas del sistema con MainLayout global */}
         <Route element={<MainLayout />}>
+          <Route path="/test-ruta" element={<TestRoute />} />
           <Route path="/welcome" element={<MainMenu />} />
 
           {/* Clientes: admin y ejecutivo */}
@@ -149,10 +151,11 @@ function App() {
             </PrivateRoute>
           } />
           {/* Ordenes de trabajo */}
+          <Route path="/ordendeTrabajo" element={
+            <Navigate to="/ordendeTrabajo/ver" replace />
+          } />
           <Route path="/OrdendeTrabajo" element={
-            <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
-              <OrdenesVer />
-            </PrivateRoute>
+            <Navigate to="/ordendeTrabajo/ver" replace />
           } />
           <Route path="/ordendeTrabajo/crear/:cotizacionId" element={
             <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
@@ -207,8 +210,6 @@ function App() {
 
           {/* Ruta para no autorizado */}
           <Route path="/no-autorizado" element={<div className="text-center text-2xl mt-20">No tienes permisos para acceder a esta página.</div>} />
-          {/* Ruta por defecto */}
-          <Route path="*" element={<PageNotFound />} />
 
           <Route path="/admin/usuarios" element={
             <PrivateRoute requiredModule="usuarios">
@@ -262,6 +263,9 @@ function App() {
               <ReportesTrabajoDiario modo="completo" />
             </PrivateRoute>
           } />
+          
+          {/* Ruta por defecto - DEBE IR AL FINAL */}
+          <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>
     </Router>

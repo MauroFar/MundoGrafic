@@ -900,6 +900,11 @@ function CotizacionesVer() {
     await cargarCotizaciones(false);
   };
 
+  const irACrearOrdenTrabajo = (cotizacionId, state) => {
+    const params = new URLSearchParams({ cotizacionId: String(cotizacionId) });
+    navigate(`/ordendeTrabajo/crear?${params.toString()}`, { state });
+  };
+
   const generarOrdenTrabajo = async (cotizacionId) => {
     // Paso 1: seleccionar tipo de orden primero
     setCotizacionSeleccionada(cotizacionId);
@@ -926,7 +931,7 @@ function CotizacionesVer() {
         setSelectedProductos([]);
         setShowProductoModal(true);
       } else if (Array.isArray(detalles) && detalles.length === 1) {
-        navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto: detalles[0], tipoOrden: tipoSeleccionado } });
+        irACrearOrdenTrabajo(cotizacionSeleccionada, { producto: detalles[0], tipoOrden: tipoSeleccionado });
       } else {
         toast.error('La cotización no tiene productos para generar orden de trabajo.');
       }
@@ -942,7 +947,7 @@ function CotizacionesVer() {
     // Selección individual: navegar inmediatamente (comportamiento previo)
     setShowProductoModal(false);
     if (cotizacionSeleccionada && producto) {
-      navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { producto, id_detalle_cotizacion: producto.id, tipoOrden: tipoOrdenSeleccionado } });
+      irACrearOrdenTrabajo(cotizacionSeleccionada, { producto, id_detalle_cotizacion: producto.id, tipoOrden: tipoOrdenSeleccionado });
     }
   };
 
@@ -958,7 +963,7 @@ function CotizacionesVer() {
     if (!cotizacionSeleccionada || selectedProductos.length === 0) return;
     setShowProductoModal(false);
     // Navegar con array de productos en el state
-    navigate(`/ordendeTrabajo/crear/${cotizacionSeleccionada}`, { state: { productos: selectedProductos, tipoOrden: tipoOrdenSeleccionado } });
+    irACrearOrdenTrabajo(cotizacionSeleccionada, { productos: selectedProductos, tipoOrden: tipoOrdenSeleccionado });
   };
 
   const verOrdenesRelacionadas = (cotizacionId) => {

@@ -5,6 +5,20 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 const POLL_INTERVAL_MS = 8000;
 const RETURN_PATH_KEY = 'mg_return_path_after_maintenance';
 
+// Rutas válidas conocidas en la aplicación
+const VALID_PATH_PREFIXES = [
+  '/welcome', '/clientes', '/cotizaciones', '/ordendeTrabajo',
+  '/produccion', '/certificados', '/inventario', '/admin',
+  '/administracion', '/productosTerminados', '/productosEntregados',
+  '/reportesTrabajoDiario', '/pedidos', '/registros', '/mantenimiento',
+];
+
+const isValidAppPath = (path) => {
+  if (!path || typeof path !== 'string') return false;
+  if (!path.startsWith('/')) return false;
+  return VALID_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+};
+
 const getMaintenanceStatus = async () => {
   const response = await fetch(`${API_URL}/api/system/maintenance-status`, {
     cache: 'no-store',
@@ -15,10 +29,13 @@ const getMaintenanceStatus = async () => {
   });
 
   if (!response.ok) {
+    // Solo considerar mantenimiento si el servidor explícitamente devuelve 503
     return { maintenance: response.status === 503 };
   }
 
-  return response.json();
+  const data = await response.json();
+  // Asegurarse de que el campo maintenance sea explícitamente true (no truthy por error)
+  return { maintenance: data?.maintenance === true };
 };
 
 const MaintenanceWatcher = () => {
@@ -27,6 +44,12 @@ const MaintenanceWatcher = () => {
 
   useEffect(() => {
     let mounted = true;
+
+    // Limpiar sessionStorage corrupto al montar
+    const storedPath = sessionStorage.getItem(RETURN_PATH_KEY);
+    if (storedPath && !isValidAppPath(storedPath.split('?')[0])) {
+      sessionStorage.removeItem(RETURN_PATH_KEY);
+    }
 
     const syncMaintenance = async () => {
       try {
@@ -37,21 +60,26 @@ const MaintenanceWatcher = () => {
         const onMaintenancePage = window.location.pathname === '/mantenimiento';
 
         if (active && !onMaintenancePage) {
-          sessionStorage.setItem(
-            RETURN_PATH_KEY,
-            `${location.pathname}${location.search}${location.hash}`,
-          );
+          // Guardar solo la ruta base sin parámetros inválidos
+          const pathToSave = `${location.pathname}${location.search}${location.hash}`;
+          // Solo guardar si es una ruta válida de la app
+          if (isValidAppPath(location.pathname)) {
+            sessionStorage.setItem(RETURN_PATH_KEY, pathToSave);
+          }
           navigate('/mantenimiento', { replace: true });
           return;
         }
 
         if (!active && onMaintenancePage) {
-          const target = sessionStorage.getItem(RETURN_PATH_KEY) || '/welcome';
+          const rawTarget = sessionStorage.getItem(RETURN_PATH_KEY) || '/welcome';
           sessionStorage.removeItem(RETURN_PATH_KEY);
+          // Validar que el target sea una ruta conocida antes de navegar
+          const targetPath = rawTarget.split('?')[0];
+          const target = isValidAppPath(targetPath) ? rawTarget : '/welcome';
           navigate(target, { replace: true });
         }
       } catch {
-        // Si falla la red, esperamos al siguiente ciclo.
+        // Si falla la red, no hacer nada — esperamos al siguiente ciclo
       }
     };
 

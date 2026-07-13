@@ -13,7 +13,7 @@ const MainLayout = () => {
   const showSidebar = location.pathname.startsWith('/produccion') ||
     location.pathname.startsWith('/clientes') ||
     location.pathname.startsWith('/cotizaciones') ||
-    location.pathname.startsWith('/ordendeTrabajo') ||
+    location.pathname.toLowerCase().startsWith('/ordendetrabajo') ||
     location.pathname.startsWith('/certificados') ||
     location.pathname === '/dashboardGeneral' ||
     location.pathname === '/productosTerminados' ||

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
 import Logo from "../../components/Logo";
@@ -428,7 +428,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [cotizacionesVinculables, setCotizacionesVinculables] = useState<CotizacionVinculable[]>([]);
   const [loadingCotizacionesVinculables, setLoadingCotizacionesVinculables] = useState(false);
 
-  const { cotizacionId, ordenId } = useParams();
+  const { cotizacionId: cotizacionIdParam, ordenId } = useParams();
+  const [searchParams] = useSearchParams();
+  const cotizacionId = cotizacionIdParam || searchParams.get('cotizacionId') || undefined;
   const navigate = useNavigate();
   const location = useLocation();
   const esAdmin = (() => {
@@ -740,7 +742,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setOrdenData(null);
       setIdDetalleCotizacion(null);
       // Obtener el próximo número de orden
-      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => setNumero_orden(data.proximoNumero))
         .catch(() => setNumero_orden(''));
@@ -1085,7 +1090,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.log('📋 FRONTEND - ordenId:', ordenId);
       
       // Obtener el próximo número si estamos creando una nueva orden (con o sin cotización)
-      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`)
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
         .then(res => res.json())
         .then(data => {
           console.log('✅ FRONTEND - Próximo número obtenido:', data.proximoNumero);
@@ -1628,7 +1636,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
       console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
       
       // Obtener el próximo número de orden
-      const responseProximo = await fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`);
+      const responseProximo = await fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
       if (!responseProximo.ok) {
         throw new Error("Error al obtener el próximo número de orden");
       }

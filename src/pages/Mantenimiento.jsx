@@ -5,6 +5,25 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 const RETURN_PATH_KEY = 'mg_return_path_after_maintenance';
 const POLL_INTERVAL_MS = 10000;
 
+const VALID_PATH_PREFIXES = [
+  '/welcome', '/clientes', '/cotizaciones', '/ordendeTrabajo',
+  '/produccion', '/certificados', '/inventario', '/admin',
+  '/administracion', '/productosTerminados', '/productosEntregados',
+  '/reportesTrabajoDiario', '/pedidos', '/registros', '/mantenimiento',
+];
+
+const isValidAppPath = (path) => {
+  if (!path || typeof path !== 'string') return false;
+  if (!path.startsWith('/')) return false;
+  return VALID_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+};
+
+const getSafeReturnTarget = () => {
+  const raw = sessionStorage.getItem(RETURN_PATH_KEY) || '/welcome';
+  const pathOnly = raw.split('?')[0];
+  return isValidAppPath(pathOnly) ? raw : '/welcome';
+};
+
 const fetchMaintenanceStatus = async () => {
   const response = await fetch(`${API_URL}/api/system/maintenance-status`, {
     cache: 'no-store',
@@ -18,16 +37,15 @@ const fetchMaintenanceStatus = async () => {
     return { maintenance: response.status === 503 };
   }
 
-  return response.json();
+  const data = await response.json();
+  return { maintenance: data?.maintenance === true };
 };
 
 const Mantenimiento = () => {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [maintenanceActive, setMaintenanceActive] = useState(true);
-  const returnPath = useMemo(() => {
-    return sessionStorage.getItem(RETURN_PATH_KEY) || '/welcome';
-  }, []);
+  const returnPath = useMemo(() => getSafeReturnTarget(), []);
 
   useEffect(() => {
     let mounted = true;
@@ -42,7 +60,7 @@ const Mantenimiento = () => {
         setChecking(false);
 
         if (!active) {
-          const target = sessionStorage.getItem(RETURN_PATH_KEY) || '/welcome';
+          const target = getSafeReturnTarget();
           sessionStorage.removeItem(RETURN_PATH_KEY);
           navigate(target, { replace: true });
         }

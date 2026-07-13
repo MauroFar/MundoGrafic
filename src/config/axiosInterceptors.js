@@ -97,11 +97,16 @@ export const setupAxiosInterceptors = () => {
           source: 'axios',
         });
       } else if (error.response?.status === 401) {
-        toast.error('Sesión expirada. Por favor inicia sesión nuevamente.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        notifyAuthExpired();
-        window.location.href = '/login';
+        if (!window.__sessionExpiredHandled) {
+          window.__sessionExpiredHandled = true;
+          toast.error('Sesión expirada. Por favor inicia sesión nuevamente.');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          notifyAuthExpired();
+          // La ruta correcta del login es "/" no "/login"
+          window.location.replace('/');
+          setTimeout(() => { window.__sessionExpiredHandled = false; }, 3000);
+        }
       } else if (error.response?.status === 503 && error.config?.url !== '/api/system/maintenance-status') {
         notifyMaintenanceActive();
       }
@@ -137,14 +142,25 @@ export const setupFetchInterceptor = () => {
       });
     }
 
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      notifyAuthExpired();
-      window.location.href = '/login';
+    // Ignorar respuestas de mantenimiento y auth-status para no causar loops
+    const isMaintenanceUrl = url.includes('/api/system/maintenance-status');
+    const isAuthUrl = url.includes('/api/auth');
+
+    if (response.status === 401 && !isAuthUrl) {
+      // Evitar múltiples redirecciones simultáneas
+      if (!window.__sessionExpiredHandled) {
+        window.__sessionExpiredHandled = true;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        notifyAuthExpired();
+        // La ruta correcta del login es "/" no "/login"
+        window.location.replace('/');
+        // Resetear el flag después de un tiempo para futuros usos
+        setTimeout(() => { window.__sessionExpiredHandled = false; }, 3000);
+      }
     }
 
-    if (response.status === 503 && url !== '/api/system/maintenance-status') {
+    if (response.status === 503 && !isMaintenanceUrl) {
       notifyMaintenanceActive();
     }
 

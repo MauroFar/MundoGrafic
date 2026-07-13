@@ -29,7 +29,7 @@ const Sidebar = () => {
     all: [
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
-      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
+      { path: "/ordendeTrabajo/ver", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Producción" },
       { path: "/inventario", label: "Inventario" },
       { path: "/administracion", label: "Administración" },
@@ -52,7 +52,7 @@ const Sidebar = () => {
     produccion: [
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
-      { path: "/ordendeTrabajo", label: "Orden de Trabajo" },
+      { path: "/ordendeTrabajo/ver", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
       { path: "/productosTerminados", label: "Productos Liberados" },
       { path: "/productosEntregados", label: "Productos Entregados" },
@@ -81,7 +81,7 @@ const Sidebar = () => {
     return (
       location.pathname.startsWith("/clientes") ||
       location.pathname.startsWith("/cotizaciones") ||
-      location.pathname.startsWith("/ordendeTrabajo") ||
+      location.pathname.toLowerCase().startsWith("/ordendetrabajo") ||
       location.pathname.startsWith("/certificados") ||
       location.pathname.startsWith("/produccion") ||
       location.pathname.startsWith("/admin") ||
@@ -94,7 +94,7 @@ const Sidebar = () => {
   const getMenuItems = () => {
     if (location.pathname.startsWith("/clientes")) return menus.clientes;
     if (location.pathname.startsWith("/cotizaciones")) return menus.cotizaciones;
-    if (location.pathname.startsWith("/ordendeTrabajo") || location.pathname.startsWith("/certificados")) return menus.ordenTrabajo;
+    if (location.pathname.toLowerCase().startsWith("/ordendetrabajo") || location.pathname.startsWith("/certificados")) return menus.ordenTrabajo;
     if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
       return menus.administracion;
     }
