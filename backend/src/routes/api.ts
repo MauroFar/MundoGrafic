@@ -4,7 +4,6 @@ import rucRoutes from "./rucs";
 import { createClienteRoutes } from "../presentation/routes/clientes/clienteRoutes";
 import { createCotizacionesModuleRoutes } from "../modules/produccion/cotizaciones/presentation/routes/cotizacionesModuleRoutes";
 import reportesTrabajoRoutes from "./reportesTrabajo";
-import ordenTrabajoRoutes from "./ordenTrabajo";
 import { createOrdenesTrabajoModuleRoutes } from "../modules/produccion/ordenes-trabajo/presentation/routes/ordenTrabajoModuleRoutes";
 import puppeteer from "puppeteer";
 import uploadRoutes from "./upload-simple";
@@ -27,8 +26,7 @@ export default (client: any) => {
   router.use("/clientes", createClienteRoutes(client)); // /api/clientes
   console.log("✅ [API Routes] Ruta /clientes registrada");
   router.use("/", createCotizacionesModuleRoutes(client)); // /api/cotizaciones*
-  router.use("/ordenTrabajo", createOrdenesTrabajoModuleRoutes(client)); // /api/ordenTrabajo limpio
-  router.use("/ordenTrabajo", ordenTrabajoRoutes(client)); // /api/ordenTrabajo legacy fallback
+  router.use("/ordenTrabajo", createOrdenesTrabajoModuleRoutes(client)); // /api/ordenTrabajo
   router.use("/reportesTrabajo", reportesTrabajoRoutes(client)); // /api/reportesTrabajo
   router.use("/upload", uploadRoutes); // /api/upload
   router.use("/chat", chatRoutes(client)); // /api/chat
