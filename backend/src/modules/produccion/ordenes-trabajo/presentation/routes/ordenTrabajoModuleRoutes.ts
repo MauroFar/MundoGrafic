@@ -87,7 +87,107 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
     }
   );
 
-  // GET /ordenTrabajo/ - Listar órdenes con filtros
+  // GET /ordenTrabajo/listar - Listar órdenes con filtros completos (compatible con legacy)
+  // IMPORTANTE: debe estar ANTES de /:id para que Express no lo capture como id="listar"
+  router.get(
+    '/listar',
+    authRequired(),
+    checkPermission(client, 'ordenes_trabajo', 'leer'),
+    async (req, res) => {
+      try {
+        const { busqueda, concepto, material, fechaDesde, fechaHasta, limite, tipo_orden, id_cotizacion } = req.query;
+        const materialFiltro = String(material || '').trim();
+
+        let query = `
+          SELECT ot.id, ot.numero_orden, ot.nombre_cliente,
+                 COALESCE(
+                   (SELECT pod.producto FROM productos_orden_digital pod WHERE pod.orden_trabajo_id = ot.id ORDER BY pod.orden ASC LIMIT 1),
+                   (SELECT poo.concepto FROM productos_orden_offset poo WHERE poo.orden_trabajo_id = ot.id ORDER BY poo.orden ASC LIMIT 1)
+                 ) AS concepto,
+                 ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion, ot.artes_aprobados,
+                 ot.estado_orden_digital_id, eod.key AS estado_digital_key, eod.titulo AS estado_digital_titulo,
+                 ot.estado_orden_offset_id, eoo.key AS estado_offset_key, eoo.titulo AS estado_offset_titulo,
+                 (
+                   EXISTS (
+                     SELECT 1 FROM estado_orden_digital_historial eodh
+                     WHERE eodh.orden_trabajo_id = ot.id
+                       AND lower(coalesce(eodh.nota, '')) LIKE '%enviad%'
+                       AND lower(coalesce(eodh.nota, '')) LIKE '%producci%'
+                   )
+                   OR EXISTS (
+                     SELECT 1 FROM estado_orden_offset_historial eooh
+                     WHERE eooh.orden_trabajo_id = ot.id
+                       AND lower(coalesce(eooh.nota, '')) LIKE '%enviad%'
+                       AND lower(coalesce(eooh.nota, '')) LIKE '%producci%'
+                   )
+                 ) AS enviada_produccion
+          FROM orden_trabajo ot
+          LEFT JOIN estado_orden_digital eod ON ot.estado_orden_digital_id = eod.id
+          LEFT JOIN estado_orden_offset eoo ON ot.estado_orden_offset_id = eoo.id
+        `;
+
+        const where: string[] = [];
+        const params: any[] = [];
+        let paramCount = 1;
+
+        if (busqueda) {
+          where.push(`(CAST(ot.numero_orden AS TEXT) ILIKE $${paramCount} OR ot.nombre_cliente ILIKE $${paramCount})`);
+          params.push(`%${busqueda}%`);
+          paramCount++;
+        }
+
+        if (concepto) {
+          where.push(`(
+            EXISTS (SELECT 1 FROM productos_orden_digital pod WHERE pod.orden_trabajo_id = ot.id AND COALESCE(pod.producto, '') ILIKE $${paramCount})
+            OR EXISTS (SELECT 1 FROM productos_orden_offset poo WHERE poo.orden_trabajo_id = ot.id AND COALESCE(poo.concepto, '') ILIKE $${paramCount})
+          )`);
+          params.push(`%${concepto}%`);
+          paramCount++;
+        }
+
+        if (materialFiltro) {
+          where.push(`(
+            EXISTS (SELECT 1 FROM productos_orden_offset poom WHERE poom.orden_trabajo_id = ot.id AND regexp_replace(upper(COALESCE(poom.material, '')), '[[:space:]]+', ' ', 'g') LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%')
+            OR EXISTS (SELECT 1 FROM detalle_orden_trabajo_digital dodm WHERE dodm.orden_trabajo_id = ot.id AND regexp_replace(upper(COALESCE(dodm.material, '')), '[[:space:]]+', ' ', 'g') LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%')
+            OR EXISTS (SELECT 1 FROM detalle_orden_trabajo_offset doom WHERE doom.orden_trabajo_id = ot.id AND regexp_replace(upper(COALESCE(doom.material, '')), '[[:space:]]+', ' ', 'g') LIKE '%' || regexp_replace(upper($${paramCount}), '[[:space:]]+', ' ', 'g') || '%')
+          )`);
+          params.push(materialFiltro);
+          paramCount++;
+        }
+
+        if (fechaDesde) { where.push(`fecha_creacion >= $${paramCount}`); params.push(fechaDesde); paramCount++; }
+        if (fechaHasta) { where.push(`fecha_creacion <= $${paramCount}`); params.push(fechaHasta); paramCount++; }
+
+        if (tipo_orden) {
+          if (String(tipo_orden).toLowerCase() === 'digital') {
+            where.push(`ot.tipo_orden = $${paramCount}`); params.push('digital'); paramCount++;
+          } else {
+            where.push(`(ot.tipo_orden IS NULL OR ot.tipo_orden <> $${paramCount})`); params.push('digital'); paramCount++;
+          }
+        }
+
+        if (id_cotizacion !== undefined && id_cotizacion !== null && String(id_cotizacion).trim() !== '') {
+          const cotizacionIdNum = Number(id_cotizacion);
+          if (!Number.isInteger(cotizacionIdNum) || cotizacionIdNum <= 0) {
+            res.status(400).json({ error: 'id_cotizacion inválido' }); return;
+          }
+          where.push(`ot.id_cotizacion = $${paramCount}`); params.push(cotizacionIdNum); paramCount++;
+        }
+
+        if (where.length > 0) query += ' WHERE ' + where.join(' AND ');
+        query += ' ORDER BY ot.id DESC';
+        if (limite) { query += ` LIMIT $${paramCount}`; params.push(limite); }
+
+        const result = await client.query(query, params);
+        res.json(result.rows);
+      } catch (error: any) {
+        console.error('Error al listar órdenes de trabajo:', error);
+        res.status(500).json({ error: 'Error al listar órdenes de trabajo' });
+      }
+    }
+  );
+
+  // GET /ordenTrabajo/ - Listar órdenes con filtros (versión simplificada clean)
   router.get(
     '/',
     authRequired(),
@@ -173,9 +273,9 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
     }
   );
 
-  // GET /ordenTrabajo/:id - Obtener una orden por ID
+  // GET /ordenTrabajo/:id - Obtener una orden por ID (solo IDs numéricos)
   router.get(
-    '/:id',
+    '/:id(\\d+)',
     authRequired(),
     checkPermission(client, 'ordenes_trabajo', 'leer'),
     async (req, res) => {
@@ -195,9 +295,9 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
     }
   );
 
-  // PUT /ordenTrabajo/:id - Actualizar una orden base
+  // PUT /ordenTrabajo/:id - Actualizar una orden base (solo IDs numéricos)
   router.put(
-    '/:id',
+    '/:id(\\d+)',
     authRequired(),
     checkPermission(client, 'ordenes_trabajo', 'editar'),
     async (req, res) => {
