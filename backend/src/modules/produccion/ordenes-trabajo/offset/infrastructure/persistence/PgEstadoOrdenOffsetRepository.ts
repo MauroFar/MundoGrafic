@@ -6,14 +6,14 @@ export class PgEstadoOrdenOffsetRepository {
 
   async getActiveStates(): Promise<EstadoOrdenOffsetData[]> {
     const result = await this.client.query(
-      'SELECT id, key, titulo, orden, color, activo, created_at, updated_at FROM estado_orden_offset WHERE activo = TRUE ORDER BY orden'
+      'SELECT id, key, titulo, orden, color, activo FROM estado_orden_offset WHERE activo = TRUE ORDER BY orden'
     );
     return result.rows;
   }
 
   async getStateById(id: number): Promise<EstadoOrdenOffsetData | null> {
     const result = await this.client.query(
-      'SELECT id, key, titulo, orden, color, activo, created_at, updated_at FROM estado_orden_offset WHERE id = $1',
+      'SELECT id, key, titulo, orden, color, activo FROM estado_orden_offset WHERE id = $1',
       [id]
     );
     return result.rows[0] || null;
@@ -22,7 +22,7 @@ export class PgEstadoOrdenOffsetRepository {
   async getStateByKey(key: string): Promise<EstadoOrdenOffsetData | null> {
     const normalized = key.toString().trim().toLowerCase();
     const result = await this.client.query(
-      'SELECT id, key, titulo, orden, color, activo, created_at, updated_at FROM estado_orden_offset WHERE activo = TRUE AND lower(key) = $1 LIMIT 1',
+      'SELECT id, key, titulo, orden, color, activo FROM estado_orden_offset WHERE activo = TRUE AND lower(key) = $1 LIMIT 1',
       [normalized]
     );
     return result.rows[0] || null;
@@ -31,7 +31,7 @@ export class PgEstadoOrdenOffsetRepository {
   async findStateByKeyOrTitle(value: string): Promise<EstadoOrdenOffsetData | null> {
     const normalized = value.toString().trim().toLowerCase();
     const result = await this.client.query(
-      'SELECT id, key, titulo, orden, color, activo, created_at, updated_at FROM estado_orden_offset WHERE activo = TRUE'
+      'SELECT id, key, titulo, orden, color, activo FROM estado_orden_offset WHERE activo = TRUE'
     );
     return result.rows.find((row: any) => {
       const key = String(row.key || '').toLowerCase();

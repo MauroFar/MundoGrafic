@@ -148,8 +148,8 @@ const VistaKanban = () => {
     pendiente: [],
     en_preprensa: [],
     en_prensa: [],
-    en_acabados: [],
-    en_control_calidad: [],
+    terminados: [],
+    liberado: [],
     entregado: []
   });
   const [ordenesPendientes, setOrdenesPendientes] = useState([]);
@@ -161,12 +161,12 @@ const VistaKanban = () => {
   const [busquedaActiva, setBusquedaActiva] = useState('');
 
   const [columnas, setColumnas] = useState([
-    { id: 'entregado', titulo: 'Entregado', color: 'green', icono: FaCheckCircle, aliases: ['entregado','completado','facturado'] },
-    { id: 'pendiente', titulo: 'En Proceso', color: 'yellow', icono: FaClock, aliases: ['en producción','en proceso','pendiente'] },
-    { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue', icono: FaPlay, aliases: ['en preprensa','en pre-prensa','preprensa'] },
-    { id: 'en_prensa', titulo: 'Impresión', color: 'purple', icono: FaPlay, aliases: ['en prensa','en impresión'] },
-    { id: 'en_acabados', titulo: 'Acabados/Empacado', color: 'orange', icono: FaPlay, aliases: ['en acabados','en empacado'] },
-    { id: 'en_control_calidad', titulo: 'Listo p/Entrega', color: 'indigo', icono: FaCheckCircle, aliases: ['en control de calidad','listo para entrega'] }
+    { id: 'entregado',    titulo: 'Entregado',          color: 'green',  icono: FaCheckCircle, aliases: ['entregado','completado','facturado'] },
+    { id: 'pendiente',    titulo: 'En Proceso',          color: 'yellow', icono: FaClock,       aliases: ['en producción','en proceso','pendiente'] },
+    { id: 'en_preprensa', titulo: 'Preprensa',           color: 'blue',   icono: FaPlay,        aliases: ['en preprensa','en pre-prensa','preprensa'] },
+    { id: 'en_prensa',    titulo: 'Impresión',           color: 'purple', icono: FaPlay,        aliases: ['en prensa','en impresión'] },
+    { id: 'terminados',   titulo: 'Acabados/Empacado',   color: 'orange', icono: FaPlay,        aliases: ['terminados','en acabados','en empacado','acabados','empacado'] },
+    { id: 'liberado',     titulo: 'Listo p/Entrega',     color: 'indigo', icono: FaCheckCircle, aliases: ['liberado','en control de calidad','listo para entrega','producto liberado','en_control_calidad'] },
   ]);
   const [workflowType, setWorkflowType] = useState('digital');
   const [avisoKanban, setAvisoKanban] = useState('');

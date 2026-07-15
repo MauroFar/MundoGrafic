@@ -163,22 +163,36 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
   // Asignar logo por id exacto del RUC
   let logoBase64 = '';
   let logoFile = '';
-  if (cotizacion.ruc === '1710047984001') {
+  const rucNormalizado = String(cotizacion.ruc || '').trim();
+  if (rucNormalizado === '1710047984001') {
     logoFile = 'logo_jcp.png';
-  } else if (cotizacion.ruc === '1792668026001') {
+  } else if (rucNormalizado === '1792668026001') {
     logoFile = 'logo_cia.png';
   }
   if (logoFile) {
-    const logoPath = path.join(__dirname, '../../public/images/icons', logoFile);
+    // Usar __dirname para que la ruta sea correcta sin importar desde dónde se inicia el servidor
+    const logoPath = path.join(__dirname, '../../../../../../public/images/icons', logoFile);
+    console.log(`🖼️ Cargando logo para RUC [${rucNormalizado}]: ${logoPath}`);
     try {
       const logoBuffer = await fs.readFile(logoPath);
       logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      console.log(`✅ Logo cargado correctamente: ${logoFile}`);
     } catch (e: any) {
-      console.error('No se pudo leer el logo:', e);
-      logoBase64 = '';
+      console.error(`❌ No se pudo leer el logo (${logoPath}):`, e.message);
+      // Fallback: intentar con process.cwd()
+      try {
+        const fallbackPath = path.join(process.cwd(), 'public/images/icons', logoFile);
+        console.log(`🔄 Intentando fallback: ${fallbackPath}`);
+        const fallbackBuffer = await fs.readFile(fallbackPath);
+        logoBase64 = `data:image/png;base64,${fallbackBuffer.toString('base64')}`;
+        console.log(`✅ Logo cargado por fallback: ${logoFile}`);
+      } catch (e2: any) {
+        console.error(`❌ Fallback también falló:`, e2.message);
+        logoBase64 = '';
+      }
     }
   } else {
-    console.warn('No se encontró logo para el RUC:', cotizacion.ruc);
+    console.warn(`⚠️ No se encontró logo para el RUC: [${rucNormalizado}] (valor original: ${cotizacion.ruc})`);
     logoBase64 = '';
   }
 

@@ -53,7 +53,7 @@ export class OrdenPdfService {
 
   private async readAssetBase64(relativePath: string): Promise<string> {
     try {
-      const fullPath = path.join(__dirname, '../../../../../../public', relativePath);
+      const fullPath = path.join(process.cwd(), 'public', relativePath);
       const buffer = await fs.readFile(fullPath);
       const ext = path.extname(relativePath).replace('.', '');
       return `data:image/${ext};base64,${buffer.toString('base64')}`;
