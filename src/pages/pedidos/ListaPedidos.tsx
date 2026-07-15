@@ -101,6 +101,8 @@ const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
   };
 };
 
+type FiltroActividad = "todas" | "sin_empezar" | "en_proceso" | "atrasado" | "completo" | "rechazo";
+
 const ListaPedidos: React.FC = () => {
   const navigate = useNavigate();
   const [filas, setFilas] = useState<FilaPedido[]>([]);
@@ -108,6 +110,7 @@ const ListaPedidos: React.FC = () => {
   const [guardados, setGuardados] = useState<Record<number, boolean>>({});
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [guardandoFilaId, setGuardandoFilaId] = useState<number | null>(null);
+  const [filtroActivo, setFiltroActivo] = useState<FiltroActividad>("todas");
   const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({
     abierta: false,
     filaId: null,
@@ -343,6 +346,33 @@ const ListaPedidos: React.FC = () => {
     ? Math.round((totalCompleto / totalActividades) * 100)
     : 0;
 
+  const filasFiltradas = (() => {
+    switch (filtroActivo) {
+      case "sin_empezar":
+        return filas.filter((f) => {
+          const e = normalizarEstado(f.estado);
+          return e === "sin empezar" || e === "";
+        });
+      case "en_proceso":
+        return filas.filter((f) => normalizarEstado(f.estado) === "en proceso");
+      case "atrasado":
+        return filas.filter((f) => normalizarEstado(f.estado) === "atrasado");
+      case "completo":
+        return filas.filter((f) => normalizarEstado(f.estado) === "completo");
+      case "rechazo":
+        return filas.filter((f) => {
+          const e = normalizarEstado(f.estado);
+          return e === "rechazado" || e === "rechazo";
+        });
+      default:
+        return filas;
+    }
+  })();
+
+  const toggleFiltro = (filtro: FiltroActividad) => {
+    setFiltroActivo((actual) => (actual === filtro ? "todas" : filtro));
+  };
+
   return (
     <div className="-m-4 min-h-[calc(100vh-2rem)] w-full bg-white text-slate-900">
       <div className="relative overflow-hidden border-b border-slate-200 bg-white">
@@ -365,40 +395,101 @@ const ListaPedidos: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-            <div className="border border-blue-400 bg-blue-200/60 p-2 text-center">
+            {/* Actividades — muestra todas */}
+            <button
+              type="button"
+              onClick={() => setFiltroActivo("todas")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "todas"
+                  ? "border-blue-600 bg-blue-400/80 ring-2 ring-blue-300 scale-[1.03] shadow-md"
+                  : "border-blue-400 bg-blue-200/60 hover:bg-blue-300/70 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">Actividades</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalActividades}</p>
-            </div>
+              {filtroActivo === "todas" && <p className="mt-0.5 text-[10px] font-semibold text-blue-800 uppercase tracking-wide">Activo</p>}
+            </button>
 
-            <div className="border border-slate-500 bg-slate-300/70 p-2 text-center">
+            {/* Sin Empezar */}
+            <button
+              type="button"
+              onClick={() => toggleFiltro("sin_empezar")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "sin_empezar"
+                  ? "border-slate-700 bg-slate-400/80 ring-2 ring-slate-300 scale-[1.03] shadow-md"
+                  : "border-slate-500 bg-slate-300/70 hover:bg-slate-400/60 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">Sin Empezar</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalSinEmpezar}</p>
-            </div>
+              {filtroActivo === "sin_empezar" && <p className="mt-0.5 text-[10px] font-semibold text-slate-800 uppercase tracking-wide">Activo</p>}
+            </button>
 
-            <div className="border border-yellow-500 bg-yellow-300/80 p-2 text-center">
+            {/* En Proceso */}
+            <button
+              type="button"
+              onClick={() => toggleFiltro("en_proceso")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "en_proceso"
+                  ? "border-yellow-600 bg-yellow-400/90 ring-2 ring-yellow-300 scale-[1.03] shadow-md"
+                  : "border-yellow-500 bg-yellow-300/80 hover:bg-yellow-400/70 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">En Proceso</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalEnProceso}</p>
-            </div>
+              {filtroActivo === "en_proceso" && <p className="mt-0.5 text-[10px] font-semibold text-yellow-900 uppercase tracking-wide">Activo</p>}
+            </button>
 
-            <div className="border border-orange-400 bg-orange-300/80 p-2 text-center">
+            {/* Atrasado */}
+            <button
+              type="button"
+              onClick={() => toggleFiltro("atrasado")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "atrasado"
+                  ? "border-orange-600 bg-orange-400/90 ring-2 ring-orange-300 scale-[1.03] shadow-md"
+                  : "border-orange-400 bg-orange-300/80 hover:bg-orange-400/70 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">Atrasado</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalAtrasado}</p>
-            </div>
+              {filtroActivo === "atrasado" && <p className="mt-0.5 text-[10px] font-semibold text-orange-900 uppercase tracking-wide">Activo</p>}
+            </button>
 
-            <div className="border border-green-400 bg-green-300/70 p-2 text-center">
+            {/* Completo */}
+            <button
+              type="button"
+              onClick={() => toggleFiltro("completo")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "completo"
+                  ? "border-green-600 bg-green-400/80 ring-2 ring-green-300 scale-[1.03] shadow-md"
+                  : "border-green-400 bg-green-300/70 hover:bg-green-400/60 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">Completo</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalCompleto}</p>
-            </div>
+              {filtroActivo === "completo" && <p className="mt-0.5 text-[10px] font-semibold text-green-900 uppercase tracking-wide">Activo</p>}
+            </button>
 
-            <div className="border border-amber-200 bg-amber-100 p-2 text-center">
+            {/* % Avance — solo informativo, no filtra */}
+            <div className="border-2 border-amber-200 bg-amber-100 p-2 text-center rounded">
               <p className="text-sm text-slate-700">% Avance</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{porcentajeAvance}%</p>
             </div>
 
-            <div className="border border-red-500 bg-red-400/80 p-2 text-center">
+            {/* Rechazo */}
+            <button
+              type="button"
+              onClick={() => toggleFiltro("rechazo")}
+              className={`p-2 text-center transition-all border-2 rounded focus:outline-none ${
+                filtroActivo === "rechazo"
+                  ? "border-red-700 bg-red-500/90 ring-2 ring-red-300 scale-[1.03] shadow-md"
+                  : "border-red-500 bg-red-400/80 hover:bg-red-500/70 hover:scale-[1.02]"
+              }`}
+            >
               <p className="text-sm text-slate-700">Rechazo</p>
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalRechazo}</p>
-            </div>
+              {filtroActivo === "rechazo" && <p className="mt-0.5 text-[10px] font-semibold text-red-900 uppercase tracking-wide">Activo</p>}
+            </button>
           </div>
         </div>
       </div>
@@ -406,8 +497,21 @@ const ListaPedidos: React.FC = () => {
       <div className="px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50">
           <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
-            <div>
+            <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-slate-900">Registro de pedidos</h2>
+              {filtroActivo !== "todas" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-700">
+                  Filtro: {filtroActivo === "sin_empezar" ? "Sin Empezar" : filtroActivo === "en_proceso" ? "En Proceso" : filtroActivo === "atrasado" ? "Atrasado" : filtroActivo === "completo" ? "Completo" : "Rechazo"}
+                  <button
+                    type="button"
+                    onClick={() => setFiltroActivo("todas")}
+                    className="ml-0.5 text-cyan-500 hover:text-cyan-800 font-bold leading-none"
+                    title="Quitar filtro"
+                  >
+                    ✕
+                  </button>
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -421,7 +525,7 @@ const ListaPedidos: React.FC = () => {
 
           <div className="overflow-x-auto overflow-y-hidden p-4 sm:p-5">
             <div className="min-w-max space-y-2">
-              {filas.length > 0 && (
+              {filasFiltradas.length > 0 && (
                 <>
                   <div
                     className="grid gap-2 rounded-lg bg-slate-100 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-700"
@@ -435,7 +539,7 @@ const ListaPedidos: React.FC = () => {
                     <div className="truncate text-center">Accion</div>
                   </div>
 
-                  {filas.map((fila, index) => (
+                  {filasFiltradas.map((fila, index) => (
                     <div
                       key={fila.id}
                       className={`grid gap-2 rounded-lg border px-2 py-2 ${
@@ -560,10 +664,12 @@ const ListaPedidos: React.FC = () => {
                 </>
               )}
 
-              {filas.length === 0 && (
+              {filasFiltradas.length === 0 && (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
                   {loadingInicial
                     ? "Cargando pedidos..."
+                    : filtroActivo !== "todas"
+                    ? `No hay pedidos con estado "${filtroActivo === "sin_empezar" ? "Sin Empezar" : filtroActivo === "en_proceso" ? "En Proceso" : filtroActivo === "atrasado" ? "Atrasado" : filtroActivo === "completo" ? "Completo" : "Rechazo"}".`
                     : 'No hay pedidos registrados. Haz clic en "Agregar registro" para crear el primero.'}
                 </div>
               )}
