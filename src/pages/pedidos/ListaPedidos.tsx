@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaChevronDown, FaPlus } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
@@ -107,10 +107,12 @@ const ListaPedidos: React.FC = () => {
   const navigate = useNavigate();
   const [filas, setFilas] = useState<FilaPedido[]>([]);
   const [dropdownAbierto, setDropdownAbierto] = useState<{ id: number; campo: CampoConDropdown } | null>(null);
+  const [dropdownFiltroTexto, setDropdownFiltroTexto] = useState<string | null>(null);
   const [guardados, setGuardados] = useState<Record<number, boolean>>({});
   const [loadingInicial, setLoadingInicial] = useState(true);
   const [guardandoFilaId, setGuardandoFilaId] = useState<number | null>(null);
   const [filtroActivo, setFiltroActivo] = useState<FiltroActividad>("todas");
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({
     abierta: false,
     filaId: null,
@@ -173,6 +175,20 @@ const ListaPedidos: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    if (!dropdownAbierto) return;
+    const handleClickFuera = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Si el click fue dentro del dropdown portal o dentro de un wrapper de responsable, no cerrar
+      if (target.closest('[data-dropdown-portal]') || target.closest('.responsable-wrapper')) return;
+      setDropdownAbierto(null);
+      setDropdownFiltroTexto(null);
+    };
+    document.addEventListener('mousedown', handleClickFuera);
+    return () => document.removeEventListener('mousedown', handleClickFuera);
+  }, [dropdownAbierto]);
 
   const actualizarFila = (id: number, campo: ColumnaKey, valor: string) => {
     setFilas((actuales) =>
@@ -301,7 +317,21 @@ const ListaPedidos: React.FC = () => {
     return dropdownAbierto?.id === id && dropdownAbierto.campo === campo;
   };
 
-  const toggleDropdown = (id: number, campo: CampoConDropdown) => {
+  const toggleDropdown = (id: number, campo: CampoConDropdown, event?: React.MouseEvent<HTMLButtonElement>) => {
+    if (event) {
+      // Calcular posición del input para el dropdown fijo
+      const inputEl = (event.currentTarget as HTMLElement).closest('.responsable-wrapper')?.querySelector('input');
+      if (inputEl) {
+        const rect = inputEl.getBoundingClientRect();
+        const alturaSugerida = 220;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        const abrirArriba = espacioAbajo < alturaSugerida && rect.top > alturaSugerida;
+        const top = abrirArriba
+          ? rect.top + window.scrollY - alturaSugerida - 4
+          : rect.bottom + window.scrollY + 4;
+        setDropdownCoords({ top, left: rect.left + window.scrollX, width: rect.width });
+      }
+    }
     setDropdownAbierto((actual) => {
       if (actual?.id === id && actual.campo === campo) return null;
       return { id, campo };
@@ -310,10 +340,26 @@ const ListaPedidos: React.FC = () => {
 
   const cerrarDropdown = () => {
     setDropdownAbierto(null);
+    setDropdownFiltroTexto(null);
+  };
+
+  const abrirDropdownDesdeInput = (id: number, campo: CampoConDropdown, inputEl: HTMLInputElement, filtrarPorTexto = false) => {
+    const rect = inputEl.getBoundingClientRect();
+    const alturaSugerida = 220; // altura estimada del dropdown
+    const espacioAbajo = window.innerHeight - rect.bottom;
+    const abrirArriba = espacioAbajo < alturaSugerida && rect.top > alturaSugerida;
+    const top = abrirArriba
+      ? rect.top + window.scrollY - alturaSugerida - 4
+      : rect.bottom + window.scrollY + 4;
+    setDropdownCoords({ top, left: rect.left + window.scrollX, width: rect.width });
+    setDropdownAbierto({ id, campo });
+    // Solo filtrar por texto si viene de escritura manual; al abrir por click/focus mostrar todos
+    setDropdownFiltroTexto(filtrarPorTexto ? inputEl.value : null);
   };
 
   const obtenerResponsablesFiltrados = (valorActual: string) => {
-    const texto = valorActual.trim().toLowerCase();
+    // Si hay un texto de filtro activo (escritura manual), filtrar; si no, mostrar todos
+    const texto = (dropdownFiltroTexto ?? "").trim().toLowerCase();
     if (!texto) return responsablesSugeridos;
     return responsablesSugeridos.filter((nombre) => nombre.toLowerCase().includes(texto));
   };
@@ -494,8 +540,8 @@ const ListaPedidos: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50">
+      <div className="flex-1 px-2 py-3 sm:px-4">
+        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50" style={{ minHeight: 'calc(100vh - 280px)' }}>
           <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-slate-900">Registro de pedidos</h2>
@@ -523,7 +569,7 @@ const ListaPedidos: React.FC = () => {
             </button>
           </div>
 
-          <div className="overflow-x-auto overflow-y-hidden p-4 sm:p-5">
+          <div className="flex-1 overflow-x-auto p-3 sm:p-4">
             <div className="min-w-max space-y-2">
               {filasFiltradas.length > 0 && (
                 <>
@@ -550,49 +596,25 @@ const ListaPedidos: React.FC = () => {
                 {columnas.map((columna) => (
                   <div key={`${fila.id}-${columna.key}`} className="relative">
                     {columna.key === "responsable" ? (
-                      <div className="relative">
+                      <div className="relative responsable-wrapper">
                         <input
                           type="text"
                           value={fila.responsable}
-                          onFocus={() => setDropdownAbierto({ id: fila.id, campo: "responsable" })}
-                          onBlur={() => setTimeout(cerrarDropdown, 120)}
+                          onFocus={(e) => abrirDropdownDesdeInput(fila.id, "responsable", e.currentTarget, false)}
                           onChange={(event) => {
                             actualizarFila(fila.id, "responsable", event.target.value);
-                            setDropdownAbierto({ id: fila.id, campo: "responsable" });
+                            abrirDropdownDesdeInput(fila.id, "responsable", event.currentTarget, true);
                           }}
-                          className={`${inputBaseClassName} pr-8`}
+                          className={`${inputBaseClassName} w-full pr-8`}
                         />
                         <button
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => toggleDropdown(fila.id, "responsable")}
+                          onClick={(e) => toggleDropdown(fila.id, "responsable", e)}
                           className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500 hover:text-cyan-600"
                         >
                           <FaChevronDown className="h-3 w-3" />
                         </button>
-
-                        {estaDropdownAbierto(fila.id, "responsable") && (
-                          <div className="absolute z-30 mt-1 w-full rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
-                            {obtenerResponsablesFiltrados(fila.responsable).length === 0 ? (
-                              <div className="px-2 py-1 text-xs text-slate-500">Sin coincidencias</div>
-                            ) : (
-                              obtenerResponsablesFiltrados(fila.responsable).map((nombre) => (
-                                <button
-                                  key={nombre}
-                                  type="button"
-                                  onMouseDown={(event) => event.preventDefault()}
-                                  onClick={() => {
-                                    actualizarFila(fila.id, "responsable", nombre);
-                                    cerrarDropdown();
-                                  }}
-                                  className="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-cyan-50 hover:text-cyan-700"
-                                >
-                                  {nombre}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
                       </div>
                     ) : columna.key === "estado" ? (
                       <select
@@ -665,18 +687,65 @@ const ListaPedidos: React.FC = () => {
               )}
 
               {filasFiltradas.length === 0 && (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-                  {loadingInicial
-                    ? "Cargando pedidos..."
-                    : filtroActivo !== "todas"
-                    ? `No hay pedidos con estado "${filtroActivo === "sin_empezar" ? "Sin Empezar" : filtroActivo === "en_proceso" ? "En Proceso" : filtroActivo === "atrasado" ? "Atrasado" : filtroActivo === "completo" ? "Completo" : "Rechazo"}".`
-                    : 'No hay pedidos registrados. Haz clic en "Agregar registro" para crear el primero.'}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500" style={{ minHeight: 'calc(100vh - 380px)' }}>
+                  <div className="text-center px-6 py-12">
+                    {loadingInicial ? (
+                      <>
+                        <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                        <p>Cargando pedidos...</p>
+                      </>
+                    ) : filtroActivo !== "todas" ? (
+                      <>
+                        <p className="text-base font-medium text-slate-600 mb-1">Sin resultados</p>
+                        <p>No hay pedidos con estado <span className="font-semibold text-slate-700">"{filtroActivo === "sin_empezar" ? "Sin Empezar" : filtroActivo === "en_proceso" ? "En Proceso" : filtroActivo === "atrasado" ? "Atrasado" : filtroActivo === "completo" ? "Completo" : "Rechazo"}"</span>.</p>
+                        <button type="button" onClick={() => setFiltroActivo("todas")} className="mt-3 text-xs text-cyan-600 hover:underline">Ver todos los pedidos</button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-base font-medium text-slate-600 mb-1">No hay pedidos registrados</p>
+                        <p>Haz clic en <span className="font-semibold text-slate-700">"Agregar registro"</span> para crear el primero.</p>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Portal del dropdown de responsable — fixed para saltar cualquier overflow */}
+      {dropdownAbierto?.campo === "responsable" && (() => {
+        const filaActiva = filas.find((f) => f.id === dropdownAbierto.id);
+        const opciones = obtenerResponsablesFiltrados(filaActiva?.responsable ?? "");
+        return (
+          <div
+            data-dropdown-portal
+            className="fixed z-[9999] rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+            style={{ top: dropdownCoords.top, left: dropdownCoords.left, width: Math.max(dropdownCoords.width, 200) }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {opciones.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-slate-400">Sin coincidencias</div>
+            ) : (
+              opciones.map((nombre) => (
+                <button
+                  key={nombre}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    actualizarFila(dropdownAbierto.id, "responsable", nombre);
+                    cerrarDropdown();
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 transition-colors"
+                >
+                  {nombre}
+                </button>
+              ))
+            )}
+          </div>
+        );
+      })()}
 
       {confirmacionGuardar.abierta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
