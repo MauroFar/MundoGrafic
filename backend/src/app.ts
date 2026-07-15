@@ -57,9 +57,7 @@ app.use('/email-signature', express.static(path.join(__dirname, '../public/email
 // Middleware específico para rutas de firmas (aumentar límite)
 app.use('/api/usuarios/:id/firma', express.json({ limit: '50mb' }));
 
-// Importar y usar rutas de firmas
-import firmasRouter from './routes/firmas';
-app.use('/api/firmas', firmasRouter);
+// Rutas de firmas — montadas en server.ts vía createFirmasRoutes
 
 // Manejo de errores global
 app.use((err, req, res, next) => {

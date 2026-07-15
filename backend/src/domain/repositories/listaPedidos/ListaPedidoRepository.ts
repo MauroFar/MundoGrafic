@@ -1,0 +1,9 @@
+import { ListaPedido, ListaPedidoCreateInput, ListaPedidoUpdateInput } from "../../entities/listaPedidos/ListaPedido";
+
+export interface ListaPedidoRepository {
+  findAll(): Promise<ListaPedido[]>;
+  findById(id: number): Promise<ListaPedido | null>;
+  create(input: ListaPedidoCreateInput): Promise<ListaPedido>;
+  update(input: ListaPedidoUpdateInput): Promise<ListaPedido | null>;
+  delete(id: number): Promise<boolean>;
+}

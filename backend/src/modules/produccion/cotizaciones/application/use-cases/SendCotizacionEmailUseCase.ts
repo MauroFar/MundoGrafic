@@ -1,4 +1,4 @@
-import { generarHTMLCotizacion, generarPDF } from "../../../../../routes/cotizaciones-helpers";
+import { generarHTMLCotizacion, generarPDF } from "../../infrastructure/services/CotizacionPdfService";
 import { CotizacionDocumentDataService } from "../../infrastructure/services/CotizacionDocumentDataService";
 import { CotizacionEmailService, DestinatarioEmail } from "../../infrastructure/services/CotizacionEmailService";
 

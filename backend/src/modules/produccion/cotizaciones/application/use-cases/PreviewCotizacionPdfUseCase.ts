@@ -1,4 +1,4 @@
-import { generarHTMLCotizacion, generarPDF } from "../../../../../routes/cotizaciones-helpers";
+import { generarHTMLCotizacion, generarPDF } from "../../infrastructure/services/CotizacionPdfService";
 
 export class PreviewCotizacionPdfUseCase {
   async execute(cotizacion: any, detalles: any[]) {
