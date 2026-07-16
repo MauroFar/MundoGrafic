@@ -107,7 +107,8 @@ export class CotizacionDocumentController {
         success: true,
         pdf: `data:application/pdf;base64,${base64PDF}`,
       });
-    } catch (_) {
+    } catch (error: any) {
+      console.error("[PREVIEW PDF ERROR]", error);
       return res.status(500).json({
         success: false,
         error: "Error al generar la vista previa del PDF",
