@@ -1,3 +1,6 @@
+export const TIPOS_PERMITIDOS = ["offset", "digital"] as const;
+export type TipoPedido = (typeof TIPOS_PERMITIDOS)[number];
+
 export const ESTADOS_PERMITIDOS = [
   "Sin empezar",
   "En proceso",
@@ -29,6 +32,7 @@ export type FasePedido   = (typeof FASES_PERMITIDAS)[number];
 
 export interface ListaPedido {
   id: number;
+  tipo: TipoPedido;
   fecha_ingreso_pedido: string;
   fecha_entrega: string | null;
   responsable_nombre: string;
@@ -48,6 +52,7 @@ export interface ListaPedido {
 }
 
 export interface ListaPedidoCreateInput {
+  tipo: TipoPedido;
   fecha_ingreso_pedido: string;
   fecha_entrega: string | null;
   responsable_nombre: string;

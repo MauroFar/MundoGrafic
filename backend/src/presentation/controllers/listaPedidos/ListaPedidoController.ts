@@ -13,9 +13,11 @@ export class ListaPedidoController {
     private readonly deleteUseCase: DeletePedidoUseCase,
   ) {}
 
-  listar = async (_req: Request, res: Response) => {
+  listar = async (req: Request, res: Response) => {
     try {
-      const pedidos = await this.listUseCase.execute();
+      const tipo = req.query.tipo as string | undefined;
+      const tipoValidado = tipo === "offset" || tipo === "digital" ? tipo : undefined;
+      const pedidos = await this.listUseCase.execute(tipoValidado);
       res.json({ success: true, pedidos });
     } catch (e) { this._handle(res, e); }
   };
