@@ -254,7 +254,7 @@ export class CertificadoPdfService {
   // ── Puppeteer ───────────────────────────────────────────────────────────────
 
   async generatePdf(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({ headless: true as any, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    const browser = await puppeteer.launch({ headless: true as any, executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
     try {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
