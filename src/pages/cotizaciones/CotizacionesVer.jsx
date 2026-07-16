@@ -460,8 +460,16 @@ function CotizacionesVer() {
       setPreviewLoading(true);
 
       // Usar el servicio centralizado
-      const pdfUrl = await generarVistaPreviaPDF(id, null, null);
-      setPreviewUrl(pdfUrl);
+      const pdfDataUrl = await generarVistaPreviaPDF(id, null, null);
+
+      // Convertir data: URL a Blob URL para que funcione en todos los navegadores
+      const base64 = pdfDataUrl.split(',')[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewUrl(blobUrl);
 
     } catch (error) {
       console.error('Error en vista previa:', error);
@@ -1307,7 +1315,11 @@ function CotizacionesVer() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
               <button
-                onClick={() => { setShowPreview(false); setPreviewUrl(null); }}
+                onClick={() => { 
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setShowPreview(false); 
+                setPreviewUrl(null); 
+              }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 ×
