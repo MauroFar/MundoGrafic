@@ -1496,8 +1496,16 @@ function CotizacionesCrear() {
       }));
 
       // Siempre pasar los datos del formulario (null como ID para forzar uso de datos proporcionados)
-      const pdfUrl = await generarVistaPreviaPDF(null, cotizacionTemp, detallesTemp);
-      setPreviewUrl(pdfUrl);
+      const pdfDataUrl = await generarVistaPreviaPDF(null, cotizacionTemp, detallesTemp);
+
+      // Convertir data: URL a Blob URL para que funcione en todos los navegadores
+      const base64 = pdfDataUrl.split(',')[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setPreviewUrl(blobUrl);
       setShowPreview(true);
     } catch (error) {
       console.error('Error:', error);
@@ -1509,6 +1517,7 @@ function CotizacionesCrear() {
 
   // Función para cerrar la vista previa
   const cerrarVistaPrevia = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setShowPreview(false);
     setPreviewUrl(null);
   };
