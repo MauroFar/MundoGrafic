@@ -26,6 +26,7 @@ export class CotizacionDocumentController {
       res.setHeader("Content-Disposition", `attachment; filename=cotizacion-${result.cotizacion.codigo_cotizacion}.pdf`);
       return res.send(result.pdfBuffer);
     } catch (error: any) {
+      console.error("[PDF ERROR]", error);
       return res.status(500).json({ error: `Error al generar el PDF: ${error?.message || "desconocido"}` });
     }
   };
