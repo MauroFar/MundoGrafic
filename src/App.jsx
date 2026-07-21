@@ -171,7 +171,7 @@ function App() {
 
             {/* Pedidos */}
             <Route path="/pedidos/lista" element={
-              <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+              <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion', 'operador']}>
                 <ListaPedidos />
               </PrivateRoute>
             } />

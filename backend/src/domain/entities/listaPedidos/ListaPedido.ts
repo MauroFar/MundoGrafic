@@ -34,6 +34,7 @@ export interface ListaPedido {
   id: number;
   tipo: TipoPedido;
   fecha_ingreso_pedido: string;
+  fecha_aprobacion: string | null;
   fecha_entrega: string | null;
   responsable_nombre: string;
   cliente: string;
@@ -54,6 +55,7 @@ export interface ListaPedido {
 export interface ListaPedidoCreateInput {
   tipo: TipoPedido;
   fecha_ingreso_pedido: string;
+  fecha_aprobacion: string | null;
   fecha_entrega: string | null;
   responsable_nombre: string;
   cliente: string;

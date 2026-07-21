@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Client } from "pg";
 import authRequired from "../../../middleware/auth";
+import { checkPermission } from "../../../middleware/checkPermission";
 import { PgListaPedidoRepository } from "../../../infrastructure/persistence/repositories/listaPedidos/PgListaPedidoRepository";
 import { ListPedidosUseCase } from "../../../application/use-cases/listaPedidos/ListPedidosUseCase";
 import { CreatePedidoUseCase } from "../../../application/use-cases/listaPedidos/CreatePedidoUseCase";
@@ -18,12 +19,10 @@ export const createListaPedidoRoutes = (client: Client) => {
   const deleteUseCase = new DeletePedidoUseCase(repo);
   const controller    = new ListaPedidoController(listUseCase, createUseCase, updateUseCase, deleteUseCase);
 
-  const roles = ["admin", "ejecutivo", "impresion"] as string[];
-
-  router.get("/",      authRequired(roles), controller.listar);
-  router.post("/",     authRequired(roles), controller.crear);
-  router.put("/:id",   authRequired(roles), controller.editar);
-  router.delete("/:id", authRequired(roles), controller.eliminar);
+  router.get("/",       authRequired(), checkPermission(client, "lista_pedidos", "leer"),     controller.listar);
+  router.post("/",      authRequired(), checkPermission(client, "lista_pedidos", "crear"),    controller.crear);
+  router.put("/:id",    authRequired(), checkPermission(client, "lista_pedidos", "editar"),   controller.editar);
+  router.delete("/:id", authRequired(), checkPermission(client, "lista_pedidos", "eliminar"), controller.eliminar);
 
   return router;
 };

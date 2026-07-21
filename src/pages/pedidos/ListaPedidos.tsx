@@ -9,6 +9,7 @@ type CampoConDropdown = "responsable";
 
 const columnas = [
   { key: "fecha_ingreso_pedido", label: "Fecha ingreso pedido", type: "date" },
+  { key: "fecha_aprobacion",     label: "Fecha aprobación",     type: "date" },
   { key: "fecha_entrega",        label: "Fecha entrega",        type: "date" },
   { key: "responsable",          label: "Responsable",          type: "text" },
   { key: "cliente",              label: "Cliente",              type: "text" },
@@ -44,7 +45,7 @@ const fasesSugeridas = [
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
   id, servidor_id: null, tipo,
-  fecha_ingreso_pedido: "", fecha_entrega: "", responsable: "", cliente: "",
+  fecha_ingreso_pedido: "", fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
   descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
   estado: "", fase: "", no_factura: "", observaciones: "",
 });
@@ -57,6 +58,7 @@ const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
     servidor_id: Number.isFinite(sid) ? sid : null,
     tipo: row.tipo === "digital" ? "digital" : "offset",
     fecha_ingreso_pedido: row.fecha_ingreso_pedido ? String(row.fecha_ingreso_pedido).slice(0, 10) : "",
+    fecha_aprobacion:     row.fecha_aprobacion     ? String(row.fecha_aprobacion).slice(0, 10) : "",
     fecha_entrega:        row.fecha_entrega        ? String(row.fecha_entrega).slice(0, 10) : "",
     responsable:          row.responsable_nombre   ? String(row.responsable_nombre) : "",
     cliente:              row.cliente              ? String(row.cliente) : "",
@@ -149,6 +151,7 @@ const ListaPedidos: React.FC = () => {
     const payload = {
       tipo: fila.tipo,
       fecha_ingreso_pedido: fila.fecha_ingreso_pedido,
+      fecha_aprobacion: fila.fecha_aprobacion || null,
       fecha_entrega: fila.fecha_entrega || null,
       responsable_nombre: fila.responsable,
       cliente: fila.cliente,
@@ -276,7 +279,7 @@ const ListaPedidos: React.FC = () => {
 
   const inputBase = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100";
   const inputFull = `w-full ${inputBase}`;
-  const colsGrid  = "170px 170px 220px 220px 560px 120px 120px 120px 170px 230px 160px 320px 132px";
+  const colsGrid  = "170px 170px 170px 220px 220px 560px 120px 120px 120px 170px 230px 160px 320px 132px";
   const esOffset  = tipoPedido === "offset";
 
   return (

@@ -10,6 +10,7 @@ export interface CrudPermissionModule {
 // Para agregar una nueva interfaz administrable por permisos,
 // basta con registrarla aqui y usar checkPermission en sus rutas.
 export const CRUD_PERMISSION_MODULES: CrudPermissionModule[] = [
+  { id: 'lista_pedidos', nombre: 'Lista de Pedidos', descripcion: 'Gestion de la lista de pedidos offset y digital' },
   { id: 'clientes', nombre: 'Clientes', descripcion: 'Gestion de clientes' },
   { id: 'cotizaciones', nombre: 'Cotizaciones', descripcion: 'Crear y gestionar cotizaciones' },
   { id: 'ordenes_trabajo', nombre: 'Ordenes de Trabajo', descripcion: 'Gestion de ordenes de trabajo' },

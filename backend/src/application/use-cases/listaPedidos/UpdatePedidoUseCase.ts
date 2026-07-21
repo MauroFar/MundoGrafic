@@ -18,8 +18,9 @@ export class UpdatePedidoUseCase {
   async execute(id: number, body: any, userId: number | null) {
     const errors: string[] = [];
     const tipoRaw         = sanitize(body?.tipo, 20).toLowerCase();
-    const fechaIngreso    = sanitize(body?.fecha_ingreso_pedido, 10);
-    const fechaEntregaRaw = sanitize(body?.fecha_entrega, 10);
+    const fechaIngreso       = sanitize(body?.fecha_ingreso_pedido, 10);
+    const fechaAprobacionRaw = sanitize(body?.fecha_aprobacion, 10);
+    const fechaEntregaRaw   = sanitize(body?.fecha_entrega, 10);
     const responsable     = sanitize(body?.responsable_nombre, 180);
     const cliente         = sanitize(body?.cliente, 180);
     const descripcion     = sanitize(body?.descripcion_producto, 2000);
@@ -37,6 +38,8 @@ export class UpdatePedidoUseCase {
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIngreso))
       errors.push("fecha_ingreso_pedido debe tener formato YYYY-MM-DD.");
+    if (fechaAprobacionRaw && !/^\d{4}-\d{2}-\d{2}$/.test(fechaAprobacionRaw))
+      errors.push("fecha_aprobacion debe tener formato YYYY-MM-DD.");
     if (fechaEntregaRaw && !/^\d{4}-\d{2}-\d{2}$/.test(fechaEntregaRaw))
       errors.push("fecha_entrega debe tener formato YYYY-MM-DD.");
     if (!responsable) errors.push("responsable_nombre es obligatorio.");
@@ -61,6 +64,7 @@ export class UpdatePedidoUseCase {
       id,
       tipo: tipo!,
       fecha_ingreso_pedido: fechaIngreso,
+      fecha_aprobacion: fechaAprobacionRaw || null,
       fecha_entrega: fechaEntregaRaw || null,
       responsable_nombre: responsable,
       cliente,
