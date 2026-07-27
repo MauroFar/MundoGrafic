@@ -1080,8 +1080,8 @@ export const generarPDF = async (htmlContent: string) => {
     const page = await browser.newPage();
     
     await page.setContent(htmlContent, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000
+      waitUntil: 'load',
+      timeout: 60000
     });
     
     const pdfBuffer = await page.pdf({
