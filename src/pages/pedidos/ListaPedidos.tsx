@@ -34,6 +34,7 @@ type FilaPedido = Record<ColumnaKey, string> & {
 const responsablesSugeridos = [
   "Andres Rivera", "Oscar Rivadeneira", "Marco Calvache",
   "Xavier Nuñez", "Patricio Nuñez", "Geovanny Simbaña", "Escarlet Guambuguete",
+  "Juan Carlos Panchi", "Henry Calderon", "Gustavo Calderon",
 ];
 const estadosSugeridos = ["Sin empezar", "En proceso", "Atrasado", "Completo", "Rechazado"];
 const fasesSugeridas = [
