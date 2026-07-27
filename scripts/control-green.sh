@@ -139,8 +139,8 @@ function deploy_to_green() {
   info "Compilando backend (TypeScript)…"
   sudo -u "$REAL_USER" bash -c "cd '$GREEN_DIR/backend' && npm run build"
 
-  info "Ejecutando migraciones de BD staging ($STAGING_DB)…"
-  run_migrations_green || warn "No se pudieron ejecutar migraciones (revisa manualmente)."
+  info "🗄️  Migraciones de base de datos: OMITIDAS (ejecución manual)"
+  info "ℹ️  Ejecuta manualmente los .sql de backend/migrations cuando corresponda"
 
   info "Reiniciando servicio green…"
   sudo systemctl daemon-reload
