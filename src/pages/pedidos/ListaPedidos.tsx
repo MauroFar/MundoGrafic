@@ -253,15 +253,38 @@ const ListaPedidos: React.FC = () => {
   };
 
   const norm = (e: string) => e.toLowerCase().trim();
-  const filasConDatos = filas.filter((f) =>
-    Object.entries(f).some(([k, v]) => !["id", "servidor_id", "tipo"].includes(k) && String(v).trim() !== "")
-  );
-  const totalActividades = filasConDatos.length;
-  const totalSinEmpezar  = filasConDatos.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; }).length;
-  const totalEnProceso   = filasConDatos.filter((f) => norm(f.estado) === "en proceso").length;
-  const totalAtrasado    = filasConDatos.filter((f) => norm(f.estado) === "atrasado").length;
-  const totalCompleto    = filasConDatos.filter((f) => norm(f.estado) === "completo").length;
-  const totalRechazo     = filasConDatos.filter((f) => { const e = norm(f.estado); return e === "rechazado" || e === "rechazo"; }).length;
+
+  // ── Base filtrada: fecha_entrega + búsqueda (sin filtro de estado, para que los indicadores reflejen todos los estados del rango)
+  // Solo incluye filas con datos para los contadores de los indicadores
+  const filasBaseFiltradas = (() => {
+    let resultado = filas.filter((f) =>
+      Object.entries(f).some(([k, v]) => !["id", "servidor_id", "tipo"].includes(k) && String(v).trim() !== "")
+    );
+
+    if (filtroFechaDesde) {
+      resultado = resultado.filter((f) => f.fecha_entrega && f.fecha_entrega >= filtroFechaDesde);
+    }
+    if (filtroFechaHasta) {
+      resultado = resultado.filter((f) => f.fecha_entrega && f.fecha_entrega <= filtroFechaHasta);
+    }
+    if (filtroBusqueda.trim()) {
+      const q = filtroBusqueda.trim().toLowerCase();
+      resultado = resultado.filter((f) =>
+        f.cliente.toLowerCase().includes(q) ||
+        f.descripcion_producto.toLowerCase().includes(q)
+      );
+    }
+
+    return resultado;
+  })();
+
+  // ── Indicadores calculados sobre la base filtrada
+  const totalActividades = filasBaseFiltradas.length;
+  const totalSinEmpezar  = filasBaseFiltradas.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; }).length;
+  const totalEnProceso   = filasBaseFiltradas.filter((f) => norm(f.estado) === "en proceso").length;
+  const totalAtrasado    = filasBaseFiltradas.filter((f) => norm(f.estado) === "atrasado").length;
+  const totalCompleto    = filasBaseFiltradas.filter((f) => norm(f.estado) === "completo").length;
+  const totalRechazo     = filasBaseFiltradas.filter((f) => { const e = norm(f.estado); return e === "rechazado" || e === "rechazo"; }).length;
   const porcentajeAvance = totalActividades > 0 ? Math.round((totalCompleto / totalActividades) * 100) : 0;
 
   const toggleFiltro = (filtro: FiltroActividad) => setFiltroActivo((prev) => prev === filtro ? "todas" : filtro);
@@ -272,30 +295,32 @@ const ListaPedidos: React.FC = () => {
     };
     return mapa[f] ?? "";
   };
+
+  // ── Filas para la tabla: aplica todos los filtros sobre el total de filas,
+  //    incluyendo filas vacías recién creadas (para que "Agregar registro" funcione)
   const filasFiltradas = (() => {
     let resultado = filas;
 
-    // Filtro por estado (tarjetas de indicadores)
+    // Filtro por estado
     if (filtroActivo === "sin_empezar") resultado = resultado.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; });
     else if (filtroActivo === "en_proceso")  resultado = resultado.filter((f) => norm(f.estado) === "en proceso");
     else if (filtroActivo === "atrasado")    resultado = resultado.filter((f) => norm(f.estado) === "atrasado");
     else if (filtroActivo === "completo")    resultado = resultado.filter((f) => norm(f.estado) === "completo");
     else if (filtroActivo === "rechazo")     resultado = resultado.filter((f) => { const e = norm(f.estado); return e === "rechazado" || e === "rechazo"; });
 
-    // Filtro por fecha desde (sobre fecha_ingreso_pedido)
+    // Filtro por fecha_entrega: solo aplica a filas que ya tienen fecha_entrega asignada
     if (filtroFechaDesde) {
-      resultado = resultado.filter((f) => f.fecha_ingreso_pedido && f.fecha_ingreso_pedido >= filtroFechaDesde);
+      resultado = resultado.filter((f) => !f.fecha_entrega || f.fecha_entrega >= filtroFechaDesde);
     }
-
-    // Filtro por fecha hasta (sobre fecha_ingreso_pedido)
     if (filtroFechaHasta) {
-      resultado = resultado.filter((f) => f.fecha_ingreso_pedido && f.fecha_ingreso_pedido <= filtroFechaHasta);
+      resultado = resultado.filter((f) => !f.fecha_entrega || f.fecha_entrega <= filtroFechaHasta);
     }
 
-    // Filtro por búsqueda: cliente o descripción de producto
+    // Filtro por búsqueda: solo aplica a filas que ya tienen cliente o descripción
     if (filtroBusqueda.trim()) {
       const q = filtroBusqueda.trim().toLowerCase();
       resultado = resultado.filter((f) =>
+        (!f.cliente && !f.descripcion_producto) ||
         f.cliente.toLowerCase().includes(q) ||
         f.descripcion_producto.toLowerCase().includes(q)
       );
@@ -310,10 +335,10 @@ const ListaPedidos: React.FC = () => {
   const esOffset  = tipoPedido === "offset";
 
   return (
-    <div className="-m-4 min-h-[calc(100vh-2rem)] w-full bg-white text-slate-900">
+    <div className="min-h-screen w-full bg-white text-slate-900" style={{ margin: '-1rem', width: 'calc(100% + 2rem)' }}>
 
-      {/* ── HEADER ── */}
-      <div className="relative overflow-hidden border-b border-slate-200 bg-white">
+      {/* ── HEADER sticky ── se pega al tope del scroll container (.layout-content) */}
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
         <div className="relative flex flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
 
           {/* Fila superior: atrás | título + botones tipo (centrado) */}
@@ -378,7 +403,7 @@ const ListaPedidos: React.FC = () => {
           <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             {/* Fecha desde */}
             <div className="flex flex-col gap-1 min-w-[160px]">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha desde</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha entrega desde</label>
               <input
                 type="date"
                 value={filtroFechaDesde}
@@ -389,7 +414,7 @@ const ListaPedidos: React.FC = () => {
 
             {/* Fecha hasta */}
             <div className="flex flex-col gap-1 min-w-[160px]">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha hasta</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha entrega hasta</label>
               <input
                 type="date"
                 value={filtroFechaHasta}
