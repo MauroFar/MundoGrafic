@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaChevronDown, FaPlus } from "react-icons/fa";
+import { FaArrowLeft, FaChevronDown, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
 
 type TipoPedido = "offset" | "digital";
@@ -88,6 +88,9 @@ const ListaPedidos: React.FC = () => {
   const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({ abierta: false, filaId: null });
   const [modalExito, setModalExito]           = useState<string | null>(null);
   const [modalError, setModalError]           = useState<string | null>(null);
+  const [filtroFechaDesde, setFiltroFechaDesde] = useState<string>("");
+  const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
+  const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
 
   // Recargar al cambiar tipo
   useEffect(() => {
@@ -270,12 +273,35 @@ const ListaPedidos: React.FC = () => {
     return mapa[f] ?? "";
   };
   const filasFiltradas = (() => {
-    if (filtroActivo === "sin_empezar") return filas.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; });
-    if (filtroActivo === "en_proceso")  return filas.filter((f) => norm(f.estado) === "en proceso");
-    if (filtroActivo === "atrasado")    return filas.filter((f) => norm(f.estado) === "atrasado");
-    if (filtroActivo === "completo")    return filas.filter((f) => norm(f.estado) === "completo");
-    if (filtroActivo === "rechazo")     return filas.filter((f) => { const e = norm(f.estado); return e === "rechazado" || e === "rechazo"; });
-    return filas;
+    let resultado = filas;
+
+    // Filtro por estado (tarjetas de indicadores)
+    if (filtroActivo === "sin_empezar") resultado = resultado.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; });
+    else if (filtroActivo === "en_proceso")  resultado = resultado.filter((f) => norm(f.estado) === "en proceso");
+    else if (filtroActivo === "atrasado")    resultado = resultado.filter((f) => norm(f.estado) === "atrasado");
+    else if (filtroActivo === "completo")    resultado = resultado.filter((f) => norm(f.estado) === "completo");
+    else if (filtroActivo === "rechazo")     resultado = resultado.filter((f) => { const e = norm(f.estado); return e === "rechazado" || e === "rechazo"; });
+
+    // Filtro por fecha desde (sobre fecha_ingreso_pedido)
+    if (filtroFechaDesde) {
+      resultado = resultado.filter((f) => f.fecha_ingreso_pedido && f.fecha_ingreso_pedido >= filtroFechaDesde);
+    }
+
+    // Filtro por fecha hasta (sobre fecha_ingreso_pedido)
+    if (filtroFechaHasta) {
+      resultado = resultado.filter((f) => f.fecha_ingreso_pedido && f.fecha_ingreso_pedido <= filtroFechaHasta);
+    }
+
+    // Filtro por búsqueda: cliente o descripción de producto
+    if (filtroBusqueda.trim()) {
+      const q = filtroBusqueda.trim().toLowerCase();
+      resultado = resultado.filter((f) =>
+        f.cliente.toLowerCase().includes(q) ||
+        f.descripcion_producto.toLowerCase().includes(q)
+      );
+    }
+
+    return resultado;
   })();
 
   const inputBase = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100";
@@ -346,6 +372,67 @@ const ListaPedidos: React.FC = () => {
               <p className="text-5xl font-light leading-none text-white drop-shadow-sm">{totalRechazo}</p>
               {filtroActivo === "rechazo" && <p className="mt-0.5 text-[10px] font-semibold text-red-900 uppercase tracking-wide">Activo</p>}
             </button>
+          </div>
+
+          {/* ── FILTROS ── */}
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            {/* Fecha desde */}
+            <div className="flex flex-col gap-1 min-w-[160px]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha desde</label>
+              <input
+                type="date"
+                value={filtroFechaDesde}
+                onChange={(e) => setFiltroFechaDesde(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              />
+            </div>
+
+            {/* Fecha hasta */}
+            <div className="flex flex-col gap-1 min-w-[160px]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Fecha hasta</label>
+              <input
+                type="date"
+                value={filtroFechaHasta}
+                onChange={(e) => setFiltroFechaHasta(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              />
+            </div>
+
+            {/* Búsqueda por cliente o descripción */}
+            <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cliente o descripción de producto</label>
+              <div className="relative">
+                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por cliente o producto..."
+                  value={filtroBusqueda}
+                  onChange={(e) => setFiltroBusqueda(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                />
+                {filtroBusqueda && (
+                  <button
+                    type="button"
+                    onClick={() => setFiltroBusqueda("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <FaTimes className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Botón limpiar todo */}
+            {(filtroFechaDesde || filtroFechaHasta || filtroBusqueda) && (
+              <button
+                type="button"
+                onClick={() => { setFiltroFechaDesde(""); setFiltroFechaHasta(""); setFiltroBusqueda(""); }}
+                className="self-end inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:border-slate-400"
+              >
+                <FaTimes className="h-3 w-3" /> Limpiar filtros
+              </button>
+            )}
           </div>
 
         </div>
@@ -451,11 +538,11 @@ const ListaPedidos: React.FC = () => {
                         <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
                         <p>Cargando pedidos {tipoPedido}...</p>
                       </>
-                    ) : filtroActivo !== "todas" ? (
+                    ) : filtroActivo !== "todas" || filtroFechaDesde || filtroFechaHasta || filtroBusqueda ? (
                       <>
                         <p className="text-base font-medium text-slate-600 mb-1">Sin resultados</p>
-                        <p>No hay pedidos <strong>{tipoPedido}</strong> con estado <strong>"{labelFiltro(filtroActivo)}"</strong>.</p>
-                        <button type="button" onClick={() => setFiltroActivo("todas")} className="mt-3 text-xs text-cyan-600 hover:underline">Ver todos</button>
+                        <p>No hay pedidos <strong>{tipoPedido}</strong> que coincidan con los filtros aplicados.</p>
+                        <button type="button" onClick={() => { setFiltroActivo("todas"); setFiltroFechaDesde(""); setFiltroFechaHasta(""); setFiltroBusqueda(""); }} className="mt-3 text-xs text-cyan-600 hover:underline">Limpiar todos los filtros</button>
                       </>
                     ) : (
                       <>
