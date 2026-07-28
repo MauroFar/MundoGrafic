@@ -46,7 +46,8 @@ const fasesSugeridas = [
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
   id, servidor_id: null, tipo,
-  fecha_ingreso_pedido: "", fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
+  fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
+  fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
   descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
   estado: "", fase: "", no_factura: "", observaciones: "",
 });
