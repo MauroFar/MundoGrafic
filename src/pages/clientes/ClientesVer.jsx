@@ -19,6 +19,8 @@ const ClientesVer = () => {
   const [detallesNoEliminar, setDetallesNoEliminar] = useState(null);
   const [clienteNoEliminar, setClienteNoEliminar] = useState(null);
 
+  const normalizarTexto = (valor) => String(valor ?? "").trim().toLowerCase();
+
   // Cargar clientes desde la base de datos
   useEffect(() => {
     cargarClientes();
@@ -40,23 +42,28 @@ const ClientesVer = () => {
 
   // Filtrar clientes según el término de búsqueda y estado
   useEffect(() => {
-    let filtered = clientes;
+    let filtered = Array.isArray(clientes) ? clientes : [];
 
     // Filtrar por estado
     if (filtroEstado !== "todos") {
-      filtered = filtered.filter(cliente => cliente.estado === filtroEstado);
+      filtered = filtered.filter(cliente => cliente?.estado === filtroEstado);
     }
 
     // Filtrar por término de búsqueda
     if (searchTerm.trim() !== "") {
-      filtered = filtered.filter(
-        (cliente) =>
-          cliente.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cliente.empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cliente.ruc_cedula.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const query = normalizarTexto(searchTerm);
+
+      filtered = filtered.filter((cliente) => {
+        const searchableValues = [
+          cliente?.codigo,
+          cliente?.nombre,
+          cliente?.empresa,
+          cliente?.email,
+          cliente?.ruc_cedula,
+        ].map(normalizarTexto);
+
+        return searchableValues.some((value) => value.includes(query));
+      });
     }
 
     setFilteredClientes(filtered);
