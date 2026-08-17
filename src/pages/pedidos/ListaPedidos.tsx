@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaChevronDown, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
@@ -92,6 +92,26 @@ const ListaPedidos: React.FC = () => {
   const [filtroFechaDesde, setFiltroFechaDesde] = useState<string>("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
   const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
+
+  // Refs para scroll horizontal sincronizado (arriba ↔ abajo)
+  const scrollTopRef    = useRef<HTMLDivElement>(null);
+  const scrollBottomRef = useRef<HTMLDivElement>(null);
+  const syncingRef      = useRef(false);
+
+  // Sincroniza el ancho del div fantasma superior con el contenido real cada vez
+  // que cambian las filas, para que la barra de scroll superior sea correcta.
+  const ghostTopRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const syncWidth = () => {
+      if (scrollBottomRef.current && ghostTopRef.current) {
+        ghostTopRef.current.style.width = `${scrollBottomRef.current.scrollWidth}px`;
+      }
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    if (scrollBottomRef.current) observer.observe(scrollBottomRef.current);
+    return () => observer.disconnect();
+  });
 
   // Recargar al cambiar tipo
   useEffect(() => {
@@ -491,7 +511,32 @@ const ListaPedidos: React.FC = () => {
           </div>
 
           {/* Grid */}
-          <div className="flex-1 overflow-x-auto p-3 sm:p-4">
+          {/* Barra de scroll SUPERIOR – espejo sincronizado */}
+          <div
+            ref={scrollTopRef}
+            className="overflow-x-auto px-3 sm:px-4 pt-2"
+            style={{ overflowY: "hidden" }}
+            onScroll={() => {
+              if (syncingRef.current) return;
+              syncingRef.current = true;
+              if (scrollBottomRef.current) scrollBottomRef.current.scrollLeft = scrollTopRef.current!.scrollLeft;
+              syncingRef.current = false;
+            }}
+          >
+            {/* div fantasma con el mismo ancho mínimo que el contenido real */}
+            <div ref={ghostTopRef} className="h-[1px]" aria-hidden="true" />
+          </div>
+
+          <div
+            ref={scrollBottomRef}
+            className="flex-1 overflow-x-auto p-3 sm:p-4"
+            onScroll={() => {
+              if (syncingRef.current) return;
+              syncingRef.current = true;
+              if (scrollTopRef.current) scrollTopRef.current.scrollLeft = scrollBottomRef.current!.scrollLeft;
+              syncingRef.current = false;
+            }}
+          >
             <div className="min-w-max space-y-2">
               {filasFiltradas.length > 0 && (
                 <>
