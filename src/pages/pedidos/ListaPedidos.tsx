@@ -93,19 +93,32 @@ const ListaPedidos: React.FC = () => {
   const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
   const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
 
-  // Refs para scroll horizontal sincronizado (arriba ↔ abajo)
+  // Refs para scroll horizontal sincronizado (arriba ↔ abajo ↔ header sticky)
   const scrollTopRef    = useRef<HTMLDivElement>(null);
   const scrollBottomRef = useRef<HTMLDivElement>(null);
+  const scrollHeaderRef = useRef<HTMLDivElement>(null);
   const syncingRef      = useRef(false);
 
-  // Sincroniza el ancho del div fantasma superior con el contenido real cada vez
-  // que cambian las filas, para que la barra de scroll superior sea correcta.
+  // Ref del header principal para medir su altura dinámica
+  const mainHeaderRef = useRef<HTMLDivElement>(null);
+  const [mainHeaderHeight, setMainHeaderHeight] = useState(0);
+  useEffect(() => {
+    const el = mainHeaderRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => setMainHeaderHeight(el.offsetHeight));
+    obs.observe(el);
+    setMainHeaderHeight(el.offsetHeight);
+    return () => obs.disconnect();
+  }, []);
+
+  // Sincroniza el ancho del div fantasma superior y el header sticky con el contenido real.
   const ghostTopRef = useRef<HTMLDivElement>(null);
+  const ghostHeaderRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const syncWidth = () => {
-      if (scrollBottomRef.current && ghostTopRef.current) {
-        ghostTopRef.current.style.width = `${scrollBottomRef.current.scrollWidth}px`;
-      }
+      const w = scrollBottomRef.current?.scrollWidth ?? 0;
+      if (ghostTopRef.current)    ghostTopRef.current.style.width    = `${w}px`;
+      if (ghostHeaderRef.current) ghostHeaderRef.current.style.width = `${w}px`;
     };
     syncWidth();
     const observer = new ResizeObserver(syncWidth);
@@ -356,11 +369,11 @@ const ListaPedidos: React.FC = () => {
   const esOffset  = tipoPedido === "offset";
 
   return (
-    <div className="min-h-screen w-full bg-white text-slate-900" style={{ margin: '-1rem', width: 'calc(100% + 2rem)' }}>
+    <div className="min-h-screen w-full bg-white text-slate-900">
 
-      {/* ── HEADER sticky ── se pega al tope del scroll container (.layout-content) */}
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
-        <div className="relative flex flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+      {/* ── HEADER fixed ── se queda fijo mientras se hace scroll vertical ── */}
+      <div ref={mainHeaderRef} className="fixed left-0 right-0 z-20 bg-white shadow-sm" style={{ top: 56 }}>
+        <div className="relative flex flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8 xl:px-10 border-b border-slate-200">
 
           {/* Fila superior: atrás | título + botones tipo (centrado) */}
           <div className="relative flex items-center justify-between gap-3">
@@ -482,71 +495,81 @@ const ListaPedidos: React.FC = () => {
           </div>
 
         </div>
-      </div>
 
-      {/* ── TABLA ── */}
-      <div className="flex-1 px-2 py-3 sm:px-4">
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-lg shadow-slate-200/50" style={{ minHeight: 'calc(100vh - 280px)' }}>
+        {/* ── Barra "Registro de pedidos + Agregar registro" ── */}
+        <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-6 lg:px-8 xl:px-10">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Registro de pedidos
+              <span className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${esOffset ? "bg-cyan-100 text-cyan-700" : "bg-violet-100 text-violet-700"}`}>
+                {esOffset ? "Offset" : "Digital"}
+              </span>
+            </h2>
+            {filtroActivo !== "todas" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-700">
+                Filtro: {labelFiltro(filtroActivo)}
+                <button type="button" onClick={() => setFiltroActivo("todas")} className="ml-0.5 text-cyan-500 hover:text-cyan-800 font-bold">✕</button>
+              </span>
+            )}
+          </div>
+          <button type="button" onClick={agregarFila}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
+            <FaPlus className="h-4 w-4" /> Agregar registro
+          </button>
+        </div>
 
-          {/* Barra superior tabla */}
-          <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Registro de pedidos
-                <span className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${esOffset ? "bg-cyan-100 text-cyan-700" : "bg-violet-100 text-violet-700"}`}>
-                  {esOffset ? "Offset" : "Digital"}
-                </span>
-              </h2>
-              {filtroActivo !== "todas" && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-700">
-                  Filtro: {labelFiltro(filtroActivo)}
-                  <button type="button" onClick={() => setFiltroActivo("todas")} className="ml-0.5 text-cyan-500 hover:text-cyan-800 font-bold">✕</button>
-                </span>
-              )}
+        {/* ── Barra de scroll SUPERIOR ── */}
+        <div
+          ref={scrollTopRef}
+          className="overflow-x-auto px-3 sm:px-4 pt-1 pb-0"
+          style={{ overflowY: "hidden" }}
+          onScroll={() => {
+            if (syncingRef.current) return;
+            syncingRef.current = true;
+            const left = scrollTopRef.current!.scrollLeft;
+            if (scrollBottomRef.current) scrollBottomRef.current.scrollLeft = left;
+            if (scrollHeaderRef.current) scrollHeaderRef.current.scrollLeft = left;
+            syncingRef.current = false;
+          }}
+        >
+          <div ref={ghostTopRef} className="h-[1px]" aria-hidden="true" />
+        </div>
+
+        {/* ── Encabezado de columnas ── */}
+        <div
+          ref={scrollHeaderRef}
+          className="overflow-x-hidden border-b border-slate-200 bg-slate-100"
+        >
+          <div ref={ghostHeaderRef} className="px-3 sm:px-4 py-0">
+            <div
+              className="grid gap-2 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-700"
+              style={{ gridTemplateColumns: colsGrid }}
+            >
+              {columnas.map((col) => <div key={col.key} className="truncate">{col.label}</div>)}
+              <div className="truncate text-center">Acción</div>
             </div>
-            <button type="button" onClick={agregarFila}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
-              <FaPlus className="h-4 w-4" /> Agregar registro
-            </button>
           </div>
+        </div>
 
-          {/* Grid */}
-          {/* Barra de scroll SUPERIOR – espejo sincronizado */}
-          <div
-            ref={scrollTopRef}
-            className="overflow-x-auto px-3 sm:px-4 pt-2"
-            style={{ overflowY: "hidden" }}
-            onScroll={() => {
-              if (syncingRef.current) return;
-              syncingRef.current = true;
-              if (scrollBottomRef.current) scrollBottomRef.current.scrollLeft = scrollTopRef.current!.scrollLeft;
-              syncingRef.current = false;
-            }}
-          >
-            {/* div fantasma con el mismo ancho mínimo que el contenido real */}
-            <div ref={ghostTopRef} className="h-[1px]" aria-hidden="true" />
-          </div>
+      </div>{/* fin sticky */}
 
-          <div
-            ref={scrollBottomRef}
-            className="flex-1 overflow-x-auto p-3 sm:p-4"
-            onScroll={() => {
-              if (syncingRef.current) return;
-              syncingRef.current = true;
-              if (scrollTopRef.current) scrollTopRef.current.scrollLeft = scrollBottomRef.current!.scrollLeft;
-              syncingRef.current = false;
-            }}
-          >
-            <div className="min-w-max space-y-2">
+      {/* ── TABLA – solo filas ── */}
+      <div className="px-2 py-3 sm:px-4" style={{ paddingTop: mainHeaderHeight > 0 ? `${mainHeaderHeight + 8}px` : '12px' }}>
+        <div
+          ref={scrollBottomRef}
+          className="overflow-x-auto p-3 sm:p-4"
+          onScroll={() => {
+            if (syncingRef.current) return;
+            syncingRef.current = true;
+            const left = scrollBottomRef.current!.scrollLeft;
+            if (scrollTopRef.current)    scrollTopRef.current.scrollLeft    = left;
+            if (scrollHeaderRef.current) scrollHeaderRef.current.scrollLeft = left;
+            syncingRef.current = false;
+          }}
+        >
+          <div className="min-w-max space-y-2">
               {filasFiltradas.length > 0 && (
                 <>
-                  {/* Encabezado columnas */}
-                  <div className="grid gap-2 rounded-lg bg-slate-100 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-700"
-                    style={{ gridTemplateColumns: colsGrid }}>
-                    {columnas.map((col) => <div key={col.key} className="truncate">{col.label}</div>)}
-                    <div className="truncate text-center">Acción</div>
-                  </div>
-
                   {/* Filas */}
                   {filasFiltradas.map((fila, index) => (
                     <div key={fila.id}
@@ -627,7 +650,6 @@ const ListaPedidos: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* ── DROPDOWN RESPONSABLE PORTAL ── */}
       {dropdownAbierto?.campo === "responsable" && (() => {
