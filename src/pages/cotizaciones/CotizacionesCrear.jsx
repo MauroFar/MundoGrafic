@@ -219,6 +219,26 @@ function CotizacionesCrear() {
     return null;
   };
 
+  const normalizarDetalleHtml = (html) => {
+    if (!html) return '';
+
+    let texto = String(html)
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\u00A0/gi, ' ')
+      .replace(/<o:p[^>]*>/gi, '')
+      .replace(/<\/o:p>/gi, '')
+      .replace(/\s+(class|style|lang|dir|align|xmlns|mso-[^=]+)="[^"]*"/gi, '')
+      .replace(/<(\/?)p\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
+      .replace(/<(\/?)div\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
+      .replace(/<(\/?)span\b[^>]*>/gi, '$1')
+      .replace(/<(\/?)font\b[^>]*>/gi, '$1')
+      .replace(/<br\s*\/?>\s*(?:<br\s*\/?>\s*)+/gi, '<br>')
+      .replace(/\s*<br>\s*/gi, '<br>')
+      .replace(/\r\n/g, '\n');
+
+    return texto.trim();
+  };
+
   const obtenerTotalizableFila = (fila) => (fila?.usa_escalas ? 0 : (parseFloat(fila?.valor_total) || 0));
 
   // Ref para el modal de éxito
@@ -2312,7 +2332,7 @@ function CotizacionesCrear() {
                         suppressContentEditableWarning
                         onInput={(e) => {
                           const nuevasFilas = [...filas];
-                          nuevasFilas[index].detalle = e.currentTarget.innerHTML;
+                          nuevasFilas[index].detalle = normalizarDetalleHtml(e.currentTarget.innerHTML);
                           setFilas(nuevasFilas);
                           autoResizeDetalleEditor(e.currentTarget);
                         }}

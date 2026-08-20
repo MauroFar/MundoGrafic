@@ -55,6 +55,26 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
       maximumFractionDigits: Math.max(decimals, 6),
     });
   };
+
+  const normalizarDetalleHtmlPdf = (detalle: any) => {
+    if (!detalle) return '';
+
+    let html = String(detalle)
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\u00A0/gi, ' ')
+      .replace(/<o:p[^>]*>/gi, '')
+      .replace(/<\/o:p>/gi, '')
+      .replace(/\s+(class|style|lang|dir|align|xmlns|mso-[^=]+)="[^"]*"/gi, '')
+      .replace(/<(\/?)p\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
+      .replace(/<(\/?)div\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
+      .replace(/<(\/?)span\b[^>]*>/gi, '$1')
+      .replace(/<(\/?)font\b[^>]*>/gi, '$1')
+      .replace(/<br\s*\/?>\s*(?:<br\s*\/?>\s*)+/gi, '<br>')
+      .replace(/\s*<br>\s*/gi, '<br>')
+      .replace(/\r\n/g, '\n');
+
+    return html.trim();
+  };
   
   // Función para convertir imagen a base64
   const getBase64Image = async (imagePath: string) => {
@@ -918,11 +938,12 @@ body {
                 ${detallesConImagenes.map(d => {
                   const usaEscalas = d.usa_escalas === true;
                   const escalas = Array.isArray(d.escalas) ? d.escalas : [];
+                  const detalleNormalizado = normalizarDetalleHtmlPdf(d.detalle);
                   const detalleHTML = `
                       <div class="detalle-con-imagen ${d.posicion_imagen === 'derecha' ? 'layout-derecha' : 'layout-abajo'}">
                         ${d.posicion_imagen === 'derecha' && d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                           <!-- Layout: Texto a la izquierda, imagen a la derecha -->
-                          <div class="texto-izquierda">${d.detalle.replace(/\n/g, '<br>')}</div>
+                          <div class="texto-izquierda">${detalleNormalizado.replace(/\n/g, '<br>')}</div>
                           <div class="imagenes-derecha">
                             ${d.imagenesBase64.map((img: any) => `
                               <div style="position: relative; width: ${img.width}px; height: ${img.height}px; overflow: hidden;">
@@ -937,7 +958,7 @@ body {
                           </div>
                         ` : `
                           <!-- Layout: Texto arriba, imagen(es) debajo -->
-                          <div class="detalle-texto">${d.detalle.replace(/\n/g, '<br>')}</div>
+                          <div class="detalle-texto">${detalleNormalizado.replace(/\n/g, '<br>')}</div>
                           ${d.imagenesBase64 && d.imagenesBase64.length > 0 ? `
                             <div class="imagenes-container" style="display: flex; flex-direction: ${d.alineacion_imagenes === 'vertical' ? 'column' : 'row'}; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 0;">
                               ${d.imagenesBase64.map((img: any) => `
