@@ -64,20 +64,36 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
       .replace(/\u00A0/gi, ' ')
       .replace(/<o:p[^>]*>/gi, '')
       .replace(/<\/o:p>/gi, '')
-      .replace(/\s+(class|style|lang|dir|align|xmlns|mso-[^=]+)="[^"]*"/gi, '')
-      .replace(/<(\/?)p\b[^>]*>/gi, ' ')
-      .replace(/<(\/?)div\b[^>]*>/gi, ' ')
-      .replace(/<(\/?)span\b[^>]*>/gi, '$1')
-      .replace(/<(\/?)font\b[^>]*>/gi, '$1')
+      .replace(/<\s*(?:xml|style|script)[^>]*>.*?<\/\s*(?:xml|style|script)\s*>/gi, '')
+      .replace(/<(\/?)p\b[^>]*>/gi, '\n')
+      .replace(/<(\/?)div\b[^>]*>/gi, '\n')
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/\r\n/g, '\n')
+      .replace(/style=(['"])(.*?)\1/gi, (match: string, quote: string, style: string) => {
+        const limpio = style
+          .replace(/mso-[^;:]+:[^;]*;?/gi, '')
+          .replace(/margin[^;]*;?/gi, '')
+          .replace(/padding[^;]*;?/gi, '')
+          .replace(/line-height[^;]*;?/gi, '')
+          .replace(/font-family[^;]*;?/gi, '')
+          .replace(/font-size[^;]*;?/gi, '')
+          .replace(/text-indent[^;]*;?/gi, '')
+          .replace(/word-spacing[^;]*;?/gi, '')
+          .replace(/letter-spacing[^;]*;?/gi, '')
+          .replace(/tab-stops[^;]*;?/gi, '')
+          .replace(/;\s*$/g, '')
+          .trim();
+
+        return limpio ? ` style=${quote}${limpio}${quote}` : '';
+      })
+      .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=['"][^'"]*['"]/gi, '')
+      .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=\S+/gi, '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/[ \t]*\n[ \t]*/g, '\n')
       .replace(/\s{2,}/g, ' ')
       .replace(/\n /g, '\n')
       .replace(/ \n/g, '\n');
 
-    return html.replace(/<[^>]*>/g, '').trim();
+    return html.trim();
   };
   
   // Función para convertir imagen a base64
