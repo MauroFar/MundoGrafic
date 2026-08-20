@@ -222,30 +222,47 @@ function CotizacionesCrear() {
   const normalizarDetalleHtml = (html) => {
     if (!html) return '';
 
+    const limpiarStyle = (style = '') => {
+      const estilosPermitidos = new Set([
+        'font-weight',
+        'color',
+        'text-decoration',
+        'font-style',
+        'font-size',
+        'font-family',
+        'white-space',
+        'background-color',
+        'display',
+        'vertical-align'
+      ]);
+
+      return style
+        .split(';')
+        .map((parte) => parte.trim())
+        .filter(Boolean)
+        .map((parte) => {
+          const index = parte.indexOf(':');
+          if (index === -1) return null;
+          const nombre = parte.slice(0, index).trim().toLowerCase();
+          const valor = parte.slice(index + 1).trim();
+          if (!valor || !estilosPermitidos.has(nombre)) return null;
+          return `${nombre}:${valor}`;
+        })
+        .filter(Boolean)
+        .join('; ');
+    };
+
     let texto = String(html)
       .replace(/&nbsp;/gi, ' ')
       .replace(/\u00A0/gi, ' ')
       .replace(/<o:p[^>]*>/gi, '')
       .replace(/<\/o:p>/gi, '')
       .replace(/<\s*(?:xml|style|script)[^>]*>.*?<\/\s*(?:xml|style|script)\s*>/gi, '')
-      .replace(/<(\/?)p\b[^>]*>/gi, '\n')
-      .replace(/<(\/?)div\b[^>]*>/gi, '\n')
-      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<(\/?)p\b[^>]*>/gi, '<br>')
+      .replace(/<(\/?)div\b[^>]*>/gi, '<br>')
+      .replace(/<br\s*\/?>/gi, '<br>')
       .replace(/style=(['"])(.*?)\1/gi, (match, quote, style) => {
-        const limpio = style
-          .replace(/mso-[^;:]+:[^;]*;?/gi, '')
-          .replace(/margin[^;]*;?/gi, '')
-          .replace(/padding[^;]*;?/gi, '')
-          .replace(/line-height[^;]*;?/gi, '')
-          .replace(/font-family[^;]*;?/gi, '')
-          .replace(/font-size[^;]*;?/gi, '')
-          .replace(/text-indent[^;]*;?/gi, '')
-          .replace(/word-spacing[^;]*;?/gi, '')
-          .replace(/letter-spacing[^;]*;?/gi, '')
-          .replace(/tab-stops[^;]*;?/gi, '')
-          .replace(/;\s*$/g, '')
-          .trim();
-
+        const limpio = limpiarStyle(style);
         return limpio ? ` style=${quote}${limpio}${quote}` : '';
       })
       .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=['"][^'"]*['"]/gi, '')
