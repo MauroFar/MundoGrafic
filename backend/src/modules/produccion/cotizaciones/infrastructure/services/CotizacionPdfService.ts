@@ -59,56 +59,31 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
   const normalizarDetalleHtmlPdf = (detalle: any) => {
     if (!detalle) return '';
 
-    const limpiarStyle = (style = '') => {
-      const estilosPermitidos = new Set([
-        'font-weight',
-        'color',
-        'text-decoration',
-        'font-style',
-        'font-size',
-        'font-family',
-        'white-space',
-        'background-color',
-        'display',
-        'vertical-align'
-      ]);
-
-      return style
-        .split(';')
-        .map((parte) => parte.trim())
-        .filter(Boolean)
-        .map((parte) => {
-          const index = parte.indexOf(':');
-          if (index === -1) return null;
-          const nombre = parte.slice(0, index).trim().toLowerCase();
-          const valor = parte.slice(index + 1).trim();
-          if (!valor || !estilosPermitidos.has(nombre)) return null;
-          return `${nombre}:${valor}`;
-        })
-        .filter(Boolean)
-        .join('; ');
-    };
-
     let html = String(detalle)
       .replace(/&nbsp;/gi, ' ')
       .replace(/\u00A0/gi, ' ')
       .replace(/<o:p[^>]*>/gi, '')
       .replace(/<\/o:p>/gi, '')
       .replace(/<\s*(?:xml|style|script)[^>]*>.*?<\/\s*(?:xml|style|script)\s*>/gi, '')
-      .replace(/<(\/?)p\b[^>]*>/gi, '<br>')
-      .replace(/<(\/?)div\b[^>]*>/gi, '<br>')
-      .replace(/<br\s*\/?>/gi, '<br>')
-      .replace(/style=(['"])(.*?)\1/gi, (match: string, quote: string, style: string) => {
-        const limpio = limpiarStyle(style);
-        return limpio ? ` style=${quote}${limpio}${quote}` : '';
+      .replace(/<\/?(?:p|div)\b[^>]*>/gi, '\n')
+      .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=(?:"[^"]*"|'[^']*'|\S+)/gi, '')
+      .replace(/style=(?:"[^"]*"|'[^']*')/gi, (match) => {
+        const style = match.slice(7, -1);
+        const limpio = style
+          .split(';')
+          .map((parte) => parte.trim())
+          .filter(Boolean)
+          .filter((parte) => {
+            const [prop] = parte.split(':');
+            const nombre = prop.trim().toLowerCase();
+            return ['font-weight', 'color', 'text-decoration', 'font-style', 'font-size', 'font-family', 'background-color', 'white-space'].includes(nombre);
+          })
+          .join('; ');
+        return limpio ? ` style="${limpio}"` : '';
       })
-      .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=['"][^'"]*['"]/gi, '')
-      .replace(/\s+(class|lang|dir|align|xmlns|mso-[^=]+)=\S+/gi, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/[ \t]*\n[ \t]*/g, '\n')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\n /g, '\n')
-      .replace(/ \n/g, '\n');
+      .replace(/\n\s*\n+/g, '\n')
+      .replace(/\r\n/g, '\n')
+      .replace(/^\n+|\n+$/g, '');
 
     return html.trim();
   };
