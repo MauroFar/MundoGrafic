@@ -174,6 +174,51 @@ function CotizacionesCrear() {
     return parseCantidadEntera(fila.cantidad) > 0 && (parseFloat(fila.valor_unitario) || 0) > 0;
   };
 
+  const obtenerErrorValidacionFila = (fila, index) => {
+    const numeroFila = index + 1;
+    const detalleSinHtml = typeof fila?.detalle === 'string'
+      ? fila.detalle.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+      : '';
+
+    if (!detalleSinHtml) {
+      return `Fila ${numeroFila}: falta el detalle del producto.`;
+    }
+
+    if (fila?.usa_escalas) {
+      if (!Array.isArray(fila.escalas) || fila.escalas.length === 0) {
+        return `Fila ${numeroFila}: en modo escalas debe haber al menos una escala válida.`;
+      }
+
+      const escalaInvalida = fila.escalas.find((escala, escalaIndex) => {
+        const cantidad = parseCantidadEntera(escala?.cantidad);
+        const valorUnitario = parseFloat(escala?.valor_unitario) || 0;
+        if (cantidad <= 0) {
+          return true;
+        }
+        return valorUnitario <= 0;
+      });
+
+      if (escalaInvalida) {
+        const escalaIndex = fila.escalas.indexOf(escalaInvalida) + 1;
+        return `Fila ${numeroFila}: la escala ${escalaIndex} tiene cantidad o valor unitario vacío/inválido.`;
+      }
+
+      return null;
+    }
+
+    const cantidad = parseCantidadEntera(fila?.cantidad);
+    if (cantidad <= 0) {
+      return `Fila ${numeroFila}: la cantidad debe ser mayor a 0.`;
+    }
+
+    const valorUnitario = parseFloat(fila?.valor_unitario) || 0;
+    if (valorUnitario <= 0) {
+      return `Fila ${numeroFila}: el valor unitario debe ser mayor a 0.`;
+    }
+
+    return null;
+  };
+
   const obtenerTotalizableFila = (fila) => (fila?.usa_escalas ? 0 : (parseFloat(fila?.valor_total) || 0));
 
   // Ref para el modal de éxito
@@ -636,7 +681,6 @@ function CotizacionesCrear() {
       return;
     }
 
-    setIsSaving(true);
     console.log("Iniciando guardado de cotización...");
     try {
       // Validaciones iniciales
@@ -649,13 +693,17 @@ function CotizacionesCrear() {
         return;
       }
       // Validar que haya al menos un producto con detalle y valores
-      const productosValidos = filas.filter(fila =>
-        filaEsValidaParaGuardar(fila)
-      );
-      if (productosValidos.length === 0) {
-        alert('Debe agregar al menos un producto válido. En modo normal requiere detalle, cantidad y valor unitario. En modo escalas requiere detalle y al menos una escala válida.');
+      const erroresProductos = filas
+        .map((fila, index) => obtenerErrorValidacionFila(fila, index))
+        .filter(Boolean);
+
+      if (erroresProductos.length > 0) {
+        alert(`No se puede guardar la cotización:\n- ${erroresProductos.slice(0, 3).join('\n- ')}`);
         return;
       }
+
+      setIsSaving(true);
+
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
         await continuarGuardadoCotizacion(selectedClienteId);
@@ -695,7 +743,7 @@ function CotizacionesCrear() {
       
       // Cliente no encontrado - Mostrar modal de confirmación primero
       setNuevoClienteDatos({ 
-        nombre: '', 
+        nombre: contacto || '', 
         empresa: nombreCliente,
         direccion: '', 
         telefono: '', 
@@ -886,11 +934,10 @@ function CotizacionesCrear() {
       console.log("Ya se está guardando, ignorando clic adicional");
       return; // Prevenir doble guardado
     }
-    setIsSaving(true);
     console.log("Iniciando guardado como nueva cotización...");
     try {
       // Validaciones iniciales
-      if (!selectedRuc.id) {
+      if (!selectedRuc || !selectedRuc.id) {
         alert("Selecciona un RUC para la cotización");
         return;
       }
@@ -898,11 +945,17 @@ function CotizacionesCrear() {
         alert("El nombre del cliente es requerido");
         return;
       }
-      const productosValidos = filas.filter(filaEsValidaParaGuardar);
-      if (productosValidos.length === 0) {
-        alert('Debe agregar al menos un producto válido antes de guardar como nueva la cotización.');
+      const erroresProductos = filas
+        .map((fila, index) => obtenerErrorValidacionFila(fila, index))
+        .filter(Boolean);
+
+      if (erroresProductos.length > 0) {
+        alert(`No se puede guardar como nueva la cotización:\n- ${erroresProductos.slice(0, 3).join('\n- ')}`);
         return;
       }
+
+      setIsSaving(true);
+
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
         await guardarCotizacionComoNueva(selectedClienteId);
@@ -944,7 +997,7 @@ function CotizacionesCrear() {
       
       // Cliente no encontrado - Mostrar modal de confirmación primero
       setNuevoClienteDatos({ 
-        nombre: '', 
+        nombre: contacto || '', 
         empresa: nombreCliente,
         direccion: '', 
         telefono: '', 
