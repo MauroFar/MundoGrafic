@@ -65,15 +65,19 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
       .replace(/<o:p[^>]*>/gi, '')
       .replace(/<\/o:p>/gi, '')
       .replace(/\s+(class|style|lang|dir|align|xmlns|mso-[^=]+)="[^"]*"/gi, '')
-      .replace(/<(\/?)p\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
-      .replace(/<(\/?)div\b[^>]*>/gi, (_, cierre) => cierre ? '<br>' : '')
+      .replace(/<(\/?)p\b[^>]*>/gi, ' ')
+      .replace(/<(\/?)div\b[^>]*>/gi, ' ')
       .replace(/<(\/?)span\b[^>]*>/gi, '$1')
       .replace(/<(\/?)font\b[^>]*>/gi, '$1')
-      .replace(/<br\s*\/?>\s*(?:<br\s*\/?>\s*)+/gi, '<br>')
-      .replace(/\s*<br>\s*/gi, '<br>')
-      .replace(/\r\n/g, '\n');
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\n /g, '\n')
+      .replace(/ \n/g, '\n');
 
-    return html.trim();
+    return html.replace(/<[^>]*>/g, '').trim();
   };
   
   // Función para convertir imagen a base64
