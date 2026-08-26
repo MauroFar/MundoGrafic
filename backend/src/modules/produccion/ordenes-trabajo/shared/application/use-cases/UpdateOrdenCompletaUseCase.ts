@@ -149,6 +149,7 @@ export class UpdateOrdenCompletaUseCase {
         tamano_papel_ancho: p.tamano_papel_ancho ?? null,
         tamano_papel_largo: p.tamano_papel_largo ?? null,
         numero_salida: p.numero_salida ?? null,
+        info_tecnica: p.info_tecnica ?? null,
       });
     }
   }

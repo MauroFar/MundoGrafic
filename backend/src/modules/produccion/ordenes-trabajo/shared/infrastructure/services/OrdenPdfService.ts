@@ -210,6 +210,64 @@ export class OrdenPdfService {
   }
 
 
+  // ─── INFO TÉCNICA ESPECÍFICA POR PRODUCTO ────────────────────────────────
+
+  /**
+   * Genera los bloques HTML de Información Técnica específica por producto.
+   * Solo renderiza los productos que tengan info_tecnica != null en la BD.
+   */
+  private buildInfoTecnicaEspecificaHtml(productos: any[]): string {
+    const conInfo = productos.filter((p: any) => {
+      if (!p.info_tecnica) return false;
+      // info_tecnica puede llegar como objeto (pg parsea JSONB automáticamente)
+      // o como string si por algún motivo no se parseó
+      const it = typeof p.info_tecnica === 'string'
+        ? (() => { try { return JSON.parse(p.info_tecnica); } catch { return null; } })()
+        : p.info_tecnica;
+      return it && typeof it === 'object';
+    });
+
+    if (!conInfo.length) return '';
+
+    return conInfo.map((p: any) => {
+      const it = typeof p.info_tecnica === 'string'
+        ? JSON.parse(p.info_tecnica)
+        : p.info_tecnica;
+
+      const nombreProducto = it.nombreProducto || p.producto || `Producto ${p.orden || ''}`;
+
+      const campo = (lbl: string, val: string) =>
+        `<div class="campo"><div class="lbl">${lbl}</div><div class="val">${val || ''}</div></div>`;
+
+      return `
+<div class="sec" style="border-left:3px solid #3b82f6">
+  <div class="sec-t" style="background:#eff6ff">
+    Información Técnica &mdash;
+    <span style="color:#1d4ed8;font-weight:700">${nombreProducto}</span>
+  </div>
+  <div class="sec-c">
+    <div class="grid3">
+      ${campo('ADHERENCIA',           it.adherencia          || '')}
+      ${campo('MATERIAL',             it.material            || '')}
+      ${campo('PROVEEDOR MATERIAL',   it.proveedorMaterial   || '')}
+      ${campo('ESPESOR (Micras)',      it.espesor             || '')}
+      ${campo('LOTE MATERIAL',        it.loteMaterial        || '')}
+      ${campo('IMPRESIÓN',            it.impresion           || '')}
+      ${campo('TIPO IMPRESIÓN',       it.tipoImpresion       || '')}
+      ${campo('TROQUEL',              it.troquel             || '')}
+      ${campo('CÓDIGO TROQUEL',       it.codigoTroquel       || '')}
+      ${campo('TERMINADO ETIQUETA',   it.terminadoEtiqueta   || '')}
+      ${campo('TERMINADOS ESPECIALES',it.terminadosEspeciales|| '')}
+      ${campo('CANTIDAD POR ROLLO',   it.cantidadPorRollo    || '')}
+    </div>
+    ${it.observaciones ? `<div class="fila" style="margin-top:8px">
+      ${campo('OBSERVACIONES', it.observaciones)}
+    </div>` : ''}
+  </div>
+</div>`;
+    }).join('');
+  }
+
   // ─── HTML DIGITAL ────────────────────────────────────────────────────────
 
   private buildHtmlDigital(orden: any, detalle: any, logo: string, salida: string): string {
@@ -306,6 +364,7 @@ ${mostrarTotal ? `<tfoot><tr><td colspan="10"></td><td class="tc" style="font-we
 </div><div class="fila" style="margin-top:10px">
 <div class="campo"><div class="lbl">OBSERVACIONES</div><div class="val">${detalle.observaciones||orden.notas_observaciones||''}</div></div>
 </div></div></div>
+${this.buildInfoTecnicaEspecificaHtml(productos)}
 <div class="sec pb"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
 <table class="trz"><thead><tr>

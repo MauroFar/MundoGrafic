@@ -65,6 +65,8 @@ export interface CreateProductoDigitalFullInput {
   tamano_papel_ancho?: string | null;
   tamano_papel_largo?: string | null;
   numero_salida?: string | null;
+  /** Información técnica específica del producto (JSONB). NULL = hereda el cuadro general. */
+  info_tecnica?: Record<string, any> | null;
 }
 
 export class PgOrdenDigitalRepository {
@@ -187,12 +189,14 @@ export class PgOrdenDigitalRepository {
   }
 
   async createProductoFull(input: CreateProductoDigitalFullInput): Promise<void> {
+    const infoTecnicaJson = input.info_tecnica ? JSON.stringify(input.info_tecnica) : null;
     await this.client.query(
       `INSERT INTO productos_orden_digital (
         orden_trabajo_id, cantidad, cod_mg, cod_cliente, producto, avance,
         medida_ancho, medida_alto, cavidad, metros_impresos, orden,
-        gap_horizontal, gap_vertical, tamano_papel_ancho, tamano_papel_largo, numero_salida
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        gap_horizontal, gap_vertical, tamano_papel_ancho, tamano_papel_largo,
+        numero_salida, info_tecnica
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb)`,
       [
         input.orden_trabajo_id,
         input.cantidad ?? null,
@@ -210,6 +214,7 @@ export class PgOrdenDigitalRepository {
         input.tamano_papel_ancho ?? null,
         input.tamano_papel_largo ?? null,
         input.numero_salida ?? null,
+        infoTecnicaJson,
       ],
     );
   }

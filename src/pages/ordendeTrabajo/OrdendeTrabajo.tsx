@@ -7,6 +7,7 @@ import Logo from "../../components/Logo";
 import SelectorPrensa from '../../components/SelectorPrensa';
 import FormularioOrdenOffset from '../../components/FormularioOrdenOffset';
 import FormularioOrdenDigital from '../../components/FormularioOrdenDigital';
+import type { InfoTecnicaProducto } from '../../components/FormularioOrdenDigital';
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -450,6 +451,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Estados específicos para formulario DIGITAL
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
+  const [infoTecnicaProductosDigital, setInfoTecnicaProductosDigital] = useState<InfoTecnicaProducto[]>([]);
   const [adherencia, setAdherencia] = useState<string>('');
   const [materialDigital, setMaterialDigital] = useState<string>('');
   const [proveedorMaterial, setProveedorMaterial] = useState<string>('');
@@ -986,7 +988,39 @@ const OrdendeTrabajoEditar: React.FC = () => {
             console.log('📦 Es array?:', Array.isArray(productos));
             console.log('📦 Cantidad de productos:', Array.isArray(productos) ? productos.length : 'N/A');
             // Asegurar que siempre sea un array
-            setProductosDigital(Array.isArray(productos) ? productos : []);
+            const productosArr = Array.isArray(productos) ? productos : [];
+            setProductosDigital(productosArr);
+
+            // Restaurar infoTecnicaProductosDigital desde info_tecnica de cada producto
+            const infoTecnicaRestaurada: InfoTecnicaProducto[] = productosArr
+              .map((p: any, i: number) => {
+                if (!p.info_tecnica) return null;
+                const it = typeof p.info_tecnica === 'string'
+                  ? (() => { try { return JSON.parse(p.info_tecnica); } catch { return null; } })()
+                  : p.info_tecnica;
+                if (!it || typeof it !== 'object') return null;
+                return {
+                  productoIndex: i,
+                  nombreProducto: it.nombreProducto || p.producto || `Producto ${i + 1}`,
+                  adherencia:           String(it.adherencia           ?? ''),
+                  material:             String(it.material             ?? ''),
+                  materialUnit:         String(it.materialUnit         ?? ''),
+                  proveedorMaterial:    String(it.proveedorMaterial    ?? ''),
+                  impresion:            String(it.impresion            ?? ''),
+                  tipoImpresion:        String(it.tipoImpresion        ?? ''),
+                  troquel:              String(it.troquel              ?? ''),
+                  codigoTroquel:        String(it.codigoTroquel        ?? ''),
+                  loteMaterial:         String(it.loteMaterial         ?? ''),
+                  terminadoEtiqueta:    String(it.terminadoEtiqueta    ?? ''),
+                  terminadoUnit:        String(it.terminadoUnit        ?? ''),
+                  terminadosEspeciales: String(it.terminadosEspeciales ?? ''),
+                  cantidadPorRollo:     String(it.cantidadPorRollo     ?? ''),
+                  observaciones:        String(it.observaciones        ?? ''),
+                  espesor:              String(it.espesor              ?? ''),
+                } as InfoTecnicaProducto;
+              })
+              .filter((it): it is InfoTecnicaProducto => it !== null);
+            setInfoTecnicaProductosDigital(infoTecnicaRestaurada);
           } catch (e) {
             console.error('❌ Error al parsear productos digitales:', e);
             console.error('❌ Valor que causó error:', ordenData.detalle?.productos_digital);
@@ -1383,7 +1417,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // Detalle técnico (depende del tipo de orden)
       detalle: tipoOrdenSeleccionado === 'digital' ? {
         // Datos específicos de digital
-        productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
+        productos_digital: productosDigital.map((p, i) => ({
+          ...p,
+          info_tecnica: infoTecnicaProductosDigital.find((it) => it.productoIndex === i) ?? null,
+        })), // ⭐ Enviar array con info_tecnica por producto
         adherencia,
         material: materialDigital,
         proveedor_material: proveedorMaterial,
@@ -1544,7 +1581,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
           // Detalle técnico (depende del tipo de orden)
           detalle: tipoOrdenSeleccionado === 'digital' ? {
             // Datos específicos de digital
-            productos_digital: productosDigital, // ⭐ Enviar array directamente, NO JSON.stringify
+            productos_digital: productosDigital.map((p, i) => ({
+              ...p,
+              info_tecnica: infoTecnicaProductosDigital.find((it) => it.productoIndex === i) ?? null,
+            })), // ⭐ Enviar array con info_tecnica por producto
             adherencia,
             material: materialDigital,
             proveedor_material: proveedorMaterial,
@@ -1708,8 +1748,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
           terminado_etiqueta: terminadoEtiqueta,
           terminados_especiales: terminadosEspeciales,
           cantidad_por_rollo: cantidadPorRollo,
-          productos_digital: productosDigital
-          ,
+          productos_digital: productosDigital.map((p, i) => ({
+            ...p,
+            info_tecnica: infoTecnicaProductosDigital.find((it) => it.productoIndex === i) ?? null,
+          })),
           espesor: espesorDigital,
           trazabilidad_proceso: construirTrazabilidadParaPayload()
         } : {
@@ -2020,6 +2062,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setObservaciones={setObservacionesDigital}
               espesor={espesorDigital}
               setEspesor={setEspesorDigital}
+              infoTecnicaProductos={infoTecnicaProductosDigital}
+              setInfoTecnicaProductos={setInfoTecnicaProductosDigital}
             />
           ) : (
             <FormularioOrdenOffset

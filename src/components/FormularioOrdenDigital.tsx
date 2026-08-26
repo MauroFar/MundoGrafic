@@ -1,4 +1,26 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
+
+// Información técnica específica por producto (copia independiente del cuadro general)
+export interface InfoTecnicaProducto {
+  productoIndex: number;
+  nombreProducto: string;
+  adherencia: string;
+  material: string;
+  materialUnit: string;
+  proveedorMaterial: string;
+  impresion: string;
+  tipoImpresion: string;
+  troquel: string;
+  codigoTroquel: string;
+  loteMaterial: string;
+  terminadoEtiqueta: string;
+  terminadoUnit: string;
+  terminadosEspeciales: string;
+  cantidadPorRollo: string;
+  observaciones: string;
+  espesor: string;
+}
 
 interface ProductoDigital {
   id?: number;
@@ -55,6 +77,9 @@ interface FormularioOrdenDigitalProps {
   setObservaciones: (value: string) => void;
   espesor: string;
   setEspesor: (value: string) => void;
+  /** Info técnica específica por producto (estado controlado desde el padre) */
+  infoTecnicaProductos: InfoTecnicaProducto[];
+  setInfoTecnicaProductos: (value: InfoTecnicaProducto[]) => void;
 }
 
 const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
@@ -90,6 +115,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setObservaciones,
   espesor,
   setEspesor,
+  infoTecnicaProductos,
+  setInfoTecnicaProductos,
 }) => {
   // Asegurar que productos siempre sea un array
   const productosArray = Array.isArray(productos) ? productos : [];
@@ -106,6 +133,80 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
   const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('1000');
   const productosContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Dropdown de acciones por fila de producto (índice del menú abierto, -1 = ninguno)
+  const [accionesMenuAbierto, setAccionesMenuAbierto] = React.useState<number>(-1);
+  const [accionesMenuPos, setAccionesMenuPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const accionesMenuRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+
+  // Información técnica específica por producto — controlada desde el padre vía props
+
+  // Cerrar dropdown de acciones al hacer click fuera o al hacer scroll
+  React.useEffect(() => {
+    if (accionesMenuAbierto === -1) return;
+    const close = (e: Event) => {
+      // Si el click fue dentro del portal del menú, no cerrar
+      const portalEl = document.getElementById('acciones-menu-portal');
+      if (portalEl && portalEl.contains(e.target as Node)) return;
+      setAccionesMenuAbierto(-1);
+    };
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', close);
+      document.addEventListener('scroll', close, { capture: true });
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('scroll', close, true);
+    };
+  }, [accionesMenuAbierto]);
+
+  const generarInfoTecnicaProducto = (index: number) => {
+    // Si ya existe una info técnica para este producto, no duplicar
+    const yaExiste = infoTecnicaProductos.some((it) => it.productoIndex === index);
+    if (yaExiste) {
+      setAccionesMenuAbierto(-1);
+      return;
+    }
+    const producto = productosArray[index];
+    const nuevaInfo: InfoTecnicaProducto = {
+      productoIndex: index,
+      nombreProducto: producto?.producto || `Producto ${index + 1}`,
+      adherencia,
+      material,
+      materialUnit,
+      proveedorMaterial,
+      impresion,
+      tipoImpresion,
+      troquel,
+      codigoTroquel,
+      loteMaterial,
+      terminadoEtiqueta,
+      terminadoUnit,
+      terminadosEspeciales,
+      cantidadPorRollo,
+      observaciones,
+      espesor,
+    };
+    setInfoTecnicaProductos([...infoTecnicaProductos, nuevaInfo]);
+    setAccionesMenuAbierto(-1);
+  };
+
+  const eliminarInfoTecnicaProducto = (productoIndex: number) => {
+    setInfoTecnicaProductos(infoTecnicaProductos.filter((it) => it.productoIndex !== productoIndex));
+  };
+
+  const actualizarInfoTecnicaProducto = (
+    productoIndex: number,
+    campo: keyof InfoTecnicaProducto,
+    valor: string,
+  ) => {
+    setInfoTecnicaProductos(
+      infoTecnicaProductos.map((it) =>
+        it.productoIndex === productoIndex ? { ...it, [campo]: valor } : it,
+      ),
+    );
+  };
 
   // Adherencia options and dropdown state
   const adherenciaOptions = React.useMemo(() => ['MULTIPROPOSITO','P1', 'P3H', 'P4', 'TERMICO', 'SIN ADH.'], []);
@@ -665,14 +766,34 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                       />
                     </td>
                     <td className="px-2 py-2 border border-gray-300 text-center">
-                      <button
-                        type="button"
-                        onClick={() => eliminarProducto(index)}
-                        className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
-                        title="Eliminar producto"
+                      <div
+                        className="relative inline-block"
+                        ref={(el) => { accionesMenuRefs.current[index] = el; }}
                       >
-                        🗑️
-                      </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (accionesMenuAbierto === index) {
+                              setAccionesMenuAbierto(-1);
+                              return;
+                            }
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                            setAccionesMenuPos({
+                              top: rect.bottom + window.scrollY + 4,
+                              left: rect.right + window.scrollX - 208, // 208 = w-52
+                            });
+                            setAccionesMenuAbierto(index);
+                          }}
+                          className="p-1.5 rounded border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors text-gray-600"
+                          title="Acciones"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <circle cx="10" cy="4" r="1.5" />
+                            <circle cx="10" cy="10" r="1.5" />
+                            <circle cx="10" cy="16" r="1.5" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -1043,7 +1164,394 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           />
         </div>
       </div>
+
+      {/* Información Técnica específica por producto */}
+      {infoTecnicaProductos.map((info) => (
+        <InfoTecnicaProductoCard
+          key={info.productoIndex}
+          info={info}
+          MATERIALS={MATERIALS}
+          TERMINADOS={TERMINADOS}
+          adherenciaOptions={adherenciaOptions}
+          troquelOptions={troquelOptions}
+          proveedorOptions={proveedorOptions}
+          impresionOptions={impresionOptions}
+          tipoImpresionOptions={tipoImpresionOptions}
+          onChange={actualizarInfoTecnicaProducto}
+          onEliminar={eliminarInfoTecnicaProducto}
+        />
+      ))}
+
+      {/* Portal: menú de acciones flotante, se renderiza sobre toda la UI */}
+      {accionesMenuAbierto !== -1 && ReactDOM.createPortal(
+        <div
+          id="acciones-menu-portal"
+          style={{
+            position: 'absolute',
+            top: accionesMenuPos.top,
+            left: accionesMenuPos.left,
+            zIndex: 9999,
+            width: '13rem',
+          }}
+          className="bg-white border border-gray-200 rounded shadow-xl overflow-hidden"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const idx = accionesMenuAbierto;
+              setAccionesMenuAbierto(-1);
+              generarInfoTecnicaProducto(idx);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Generar información técnica
+          </button>
+          <div className="border-t border-gray-100" />
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const idx = accionesMenuAbierto;
+              setAccionesMenuAbierto(-1);
+              eliminarProducto(idx);
+              eliminarInfoTecnicaProducto(idx);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Eliminar
+          </button>
+        </div>,
+        document.body,
+      )}
     </>
+  );
+};
+
+// Subcomponente para cada cuadro de Información Técnica específica por producto
+interface InfoTecnicaProductoCardProps {
+  info: InfoTecnicaProducto;
+  MATERIALS: { name: string; display: string; unit: string }[];
+  TERMINADOS: { name: string; display: string; unit: string }[];
+  adherenciaOptions: string[];
+  troquelOptions: string[];
+  proveedorOptions: string[];
+  impresionOptions: string[];
+  tipoImpresionOptions: string[];
+  onChange: (productoIndex: number, campo: keyof InfoTecnicaProducto, valor: string) => void;
+  onEliminar: (productoIndex: number) => void;
+}
+
+const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
+  info,
+  MATERIALS,
+  TERMINADOS,
+  adherenciaOptions,
+  troquelOptions,
+  proveedorOptions,
+  impresionOptions,
+  tipoImpresionOptions,
+  onChange,
+  onEliminar,
+}) => {
+  const [showAdherencia, setShowAdherencia] = React.useState(false);
+  const [showMaterial, setShowMaterial] = React.useState(false);
+  const [showProveedor, setShowProveedor] = React.useState(false);
+  const [showImpresion, setShowImpresion] = React.useState(false);
+  const [showTipoImpresion, setShowTipoImpresion] = React.useState(false);
+  const [showTroquel, setShowTroquel] = React.useState(false);
+  const [showTerminado, setShowTerminado] = React.useState(false);
+
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowAdherencia(false);
+        setShowMaterial(false);
+        setShowProveedor(false);
+        setShowImpresion(false);
+        setShowTipoImpresion(false);
+        setShowTroquel(false);
+        setShowTerminado(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const computeEspesor = (matUnit: string, termUnit: string) => {
+    const m = parseFloat(matUnit || '0') || 0;
+    const t = parseFloat(termUnit || '0') || 0;
+    const s = m + t;
+    return s > 0 ? String(Number(s.toFixed(3))) : '';
+  };
+
+  const materialDisplay = MATERIALS.find((m) => m.name === info.material)?.display ?? info.material;
+  const terminadoDisplay = TERMINADOS.find((t) => t.name === info.terminadoEtiqueta)?.display ?? info.terminadoEtiqueta;
+
+  const set = (campo: keyof InfoTecnicaProducto) => (valor: string) =>
+    onChange(info.productoIndex, campo, valor);
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-blue-400">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+        <h3 className="text-lg font-bold text-gray-800">
+          Información Técnica{' '}
+          <span className="text-blue-600 font-semibold">— {info.nombreProducto || `Producto ${info.productoIndex + 1}`}</span>
+        </h3>
+        <button
+          type="button"
+          onClick={() => onEliminar(info.productoIndex)}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
+          title="Eliminar información técnica específica"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Quitar
+        </button>
+      </div>
+
+      <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Adherencia */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Adherencia</label>
+          <div className="flex">
+            <input
+              placeholder="Seleccionar o escribir..."
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={info.adherencia}
+              onChange={(e) => set('adherencia')(e.target.value)}
+            />
+            <button type="button" onClick={() => setShowAdherencia((s) => !s)}
+              className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
+          </div>
+          {showAdherencia && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+              {adherenciaOptions.map((opt) => (
+                <li key={opt} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onMouseDown={(e) => { e.preventDefault(); set('adherencia')(opt); setShowAdherencia(false); }}>{opt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Material */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+          <div className="flex">
+            <input
+              placeholder="Seleccionar o escribir..."
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={materialDisplay}
+              onChange={(e) => { set('material')(e.target.value); set('materialUnit')(''); set('espesor')(computeEspesor('', info.terminadoUnit)); }}
+            />
+            <button type="button" onClick={() => setShowMaterial((s) => !s)}
+              className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
+          </div>
+          {showMaterial && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
+              {MATERIALS.map((opt) => (
+                <li key={opt.name} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    set('material')(opt.name);
+                    set('materialUnit')(opt.unit || '');
+                    set('espesor')(computeEspesor(opt.unit || '', info.terminadoUnit));
+                    setShowMaterial(false);
+                  }}>{opt.display}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Proveedor de Material */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor de Material</label>
+          <div className="flex">
+            <input
+              placeholder="Seleccionar o escribir..."
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={info.proveedorMaterial}
+              onChange={(e) => set('proveedorMaterial')(e.target.value)}
+            />
+            <button type="button" onClick={() => setShowProveedor((s) => !s)}
+              className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
+          </div>
+          {showProveedor && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+              {proveedorOptions.map((opt) => (
+                <li key={opt} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onMouseDown={(e) => { e.preventDefault(); set('proveedorMaterial')(opt); setShowProveedor(false); }}>{opt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Espesor */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Espesor</label>
+          <input type="text" placeholder="mm"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.espesor}
+            onChange={(e) => set('espesor')(e.target.value)}
+          />
+        </div>
+
+        {/* Lote Material */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Lote Material/Codigo Material</label>
+          <input type="text"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.loteMaterial}
+            onChange={(e) => set('loteMaterial')(e.target.value)}
+          />
+        </div>
+
+        {/* Impresión */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
+          <div className="flex">
+            <input placeholder="Seleccione opción"
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+              value={info.impresion}
+              onChange={(e) => set('impresion')(e.target.value)}
+            />
+            <button type="button" onClick={() => setShowImpresion((s) => !s)}
+              className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50">▾</button>
+          </div>
+          {showImpresion && (
+            <ul className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 bg-white rounded max-h-40 overflow-auto">
+              {impresionOptions.map((opt) => (
+                <li key={opt} className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-center"
+                  onClick={() => { set('impresion')(opt); setShowImpresion(false); }}>{opt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Tipo de Impresión */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Impresión</label>
+          <div className="flex">
+            <input placeholder="Seleccione opción"
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+              value={info.tipoImpresion}
+              onChange={(e) => set('tipoImpresion')(e.target.value)}
+            />
+            <button type="button" onClick={() => setShowTipoImpresion((s) => !s)}
+              className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50">▾</button>
+          </div>
+          {showTipoImpresion && (
+            <ul className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 bg-white rounded max-h-40 overflow-auto">
+              {tipoImpresionOptions.map((opt) => (
+                <li key={opt} className="px-2 py-1 hover:bg-gray-100 cursor-pointer text-center"
+                  onClick={() => { set('tipoImpresion')(opt); setShowTipoImpresion(false); }}>{opt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Troquel */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Troquel</label>
+          <div className="flex">
+            <input placeholder="Seleccionar o escribir..."
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={info.troquel}
+              onChange={(e) => set('troquel')(e.target.value)}
+            />
+            <button type="button" onClick={() => setShowTroquel((s) => !s)}
+              className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
+          </div>
+          {showTroquel && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-40 overflow-auto">
+              {troquelOptions.map((opt) => (
+                <li key={opt} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onMouseDown={(e) => { e.preventDefault(); set('troquel')(opt); setShowTroquel(false); }}>{opt}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Código Troquel */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Código Troquel</label>
+          <input type="text"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.codigoTroquel}
+            onChange={(e) => set('codigoTroquel')(e.target.value)}
+          />
+        </div>
+
+        {/* Terminado de Etiqueta */}
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Terminado de Etiqueta</label>
+          <div className="flex">
+            <input placeholder="Seleccionar o escribir..."
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={terminadoDisplay}
+              onChange={(e) => { set('terminadoEtiqueta')(e.target.value); set('terminadoUnit')(''); set('espesor')(computeEspesor(info.materialUnit, '')); }}
+            />
+            <button type="button" onClick={() => setShowTerminado((s) => !s)}
+              className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
+          </div>
+          {showTerminado && (
+            <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-48 overflow-auto">
+              {TERMINADOS.map((opt) => (
+                <li key={opt.name} className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    set('terminadoEtiqueta')(opt.name);
+                    set('terminadoUnit')(opt.unit || '');
+                    set('espesor')(computeEspesor(info.materialUnit, opt.unit || ''));
+                    setShowTerminado(false);
+                  }}>{opt.display}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Terminados Especiales */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Terminados Especiales</label>
+          <input type="text"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.terminadosEspeciales}
+            onChange={(e) => set('terminadosEspeciales')(e.target.value)}
+          />
+        </div>
+
+        {/* Cantidad por Rollo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad por Rollo</label>
+          <input type="text"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.cantidadPorRollo}
+            onChange={(e) => set('cantidadPorRollo')(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Observaciones */}
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+        <textarea
+          className="w-full px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          rows={3}
+          value={info.observaciones}
+          onChange={(e) => set('observaciones')(e.target.value)}
+          placeholder="Observaciones adicionales sobre la orden..."
+        />
+      </div>
+    </div>
   );
 };
 
