@@ -150,10 +150,10 @@ export class OrdenPdfService {
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:8px}
 .hdr img{height:35px}.hdr-r{text-align:right;font-size:8px}.hdr-n{font-size:14px;font-weight:bold}
 .tit{text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px}
-.sec{margin-bottom:6px;border:1px solid #ddd}.sec-t{background:#f0f0f0;padding:3px 6px;font-weight:bold;font-size:9px;border-bottom:1px solid #ddd}
+.sec{margin-bottom:6px;border:1px solid #ddd;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f0f0f0;padding:3px 6px;font-weight:bold;font-size:9px;border-bottom:1px solid #ddd}
 .sec-c{padding:5px}.fila{display:flex;gap:6px;margin-bottom:3px}.campo{flex:1}
 .lbl{font-size:7px;color:#666;margin-bottom:1px;font-weight:bold}.val{border:1px solid #ddd;padding:3px 5px;font-size:8px;background:white;min-height:20px}
-.pb{page-break-before:always;break-before:page}.trz{width:100%;border-collapse:collapse}
+.trz{width:100%;border-collapse:collapse}
 .tc{border:1px solid #d7d7d7;padding:4px;font-size:8px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}
 .tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:60px;height:30px}`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
@@ -189,7 +189,7 @@ export class OrdenPdfService {
 <div class="campo"><div class="lbl">INSTRUCCIONES ACABADOS</div><div class="val">${detalle.instrucciones_acabados||''}</div></div>
 <div class="campo"><div class="lbl">INSTRUCCIONES EMPACADO</div><div class="val">${detalle.instrucciones_empacado||''}</div></div>
 </div></div></div>
-<div class="sec pb"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
+<div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
 <table class="trz"><thead><tr>
 <th class="tc th">Proceso</th><th class="tc th">Responsable</th><th class="tc th">F. Inicio</th>
@@ -315,12 +315,12 @@ export class OrdenPdfService {
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:15px}
 .hdr img{height:45px}.hdr-r{text-align:right;font-size:10px}.hdr-n{font-size:18px;font-weight:bold}
 .tit{text-align:center;font-size:16px;font-weight:bold;margin-bottom:12px}
-.sec{margin-bottom:12px;border:1px solid #ddd}.sec-t{background:#f0f0f0;padding:6px 10px;font-weight:bold;font-size:11px;border-bottom:1px solid #ddd}
+.sec{margin-bottom:12px;border:1px solid #ddd;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f0f0f0;padding:6px 10px;font-weight:bold;font-size:11px;border-bottom:1px solid #ddd}
 .sec-c{padding:10px}.fila{display:flex;gap:10px;margin-bottom:6px}.campo{flex:1}
 .lbl{font-size:9px;color:#666;margin-bottom:3px;font-weight:bold}.val{border:1px solid #ddd;padding:5px 8px;font-size:10px;background:white;min-height:28px}
 .tp-tbl{width:100%;border-collapse:collapse;margin-top:8px}.th{background:#f5f5f5;font-size:9px;font-weight:bold;text-align:center}
 .tc{border:1px solid #ddd;padding:4px 6px;font-size:9px;text-align:center}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pb{page-break-before:always;break-before:page}.trz{width:100%;border-collapse:collapse;margin-top:8px}
+.trz{width:100%;border-collapse:collapse;margin-top:8px}
 .tp{font-weight:bold;white-space:nowrap}.to{min-width:160px}.tf{min-width:60px;height:30px}`;
 
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
@@ -330,16 +330,19 @@ export class OrdenPdfService {
 <div>Orden de Compra: ${orden.orden_compra||''}</div><div>Cotización Nº: ${orden.numero_cotizacion||''}</div></div></div>
 <div class="tit">ORDEN DE TRABAJO - DIGITAL</div>
 <div class="sec"><div class="sec-t">Información del Cliente</div><div class="sec-c">
-<div class="fila">
-<div class="campo"><div class="lbl">CLIENTE</div><div class="val">${orden.nombre_cliente||''}</div></div>
-<div class="campo"><div class="lbl">CONTACTO</div><div class="val">${orden.contacto||''}</div></div>
-</div><div class="fila">
-<div class="campo"><div class="lbl">TELÉFONO</div><div class="val">${orden.telefono||''}</div></div>
-<div class="campo"><div class="lbl">EMAIL</div><div class="val">${orden.email||''}</div></div>
-</div><div class="fila">
-<div class="campo"><div class="lbl">FECHA CREACIÓN</div><div class="val">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
-<div class="campo"><div class="lbl">FECHA ENTREGA</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
-</div></div></div>
+<div style="display:flex;gap:10px;align-items:stretch">
+  <div style="flex:2;display:flex;flex-direction:column;gap:5px">
+    <div class="campo"><div class="lbl">CLIENTE</div><div class="val" style="min-height:22px">${orden.nombre_cliente||''}</div></div>
+    <div class="campo"><div class="lbl">CONTACTO</div><div class="val" style="min-height:22px">${orden.contacto||''}</div></div>
+  </div>
+  <div style="flex:1.4;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start">
+    <div class="campo"><div class="lbl">TELÉFONO</div><div class="val" style="min-height:22px">${orden.telefono||''}</div></div>
+    <div class="campo"><div class="lbl">EMAIL</div><div class="val" style="min-height:22px;font-size:8px">${orden.email||''}</div></div>
+    <div class="campo"><div class="lbl">FECHA CREACIÓN</div><div class="val" style="min-height:22px">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
+    <div class="campo"><div class="lbl">FECHA ENTREGA</div><div class="val" style="min-height:22px">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
+  </div>
+</div>
+</div></div>
 <div class="sec"><div class="sec-t">Productos ${salida ? `<img src="${salida}" style="height:30px;float:right">` : ''}</div><div class="sec-c">
 <table class="tp-tbl"><thead><tr class="th">
 <th class="tc">#</th><th class="tc">Cantidad</th><th class="tc">Cod MG</th><th class="tc">Cod Cliente</th>
@@ -365,7 +368,7 @@ ${mostrarTotal ? `<tfoot><tr><td colspan="10"></td><td class="tc" style="font-we
 <div class="campo"><div class="lbl">OBSERVACIONES</div><div class="val">${detalle.observaciones||orden.notas_observaciones||''}</div></div>
 </div></div></div>
 ${this.buildInfoTecnicaEspecificaHtml(productos)}
-<div class="sec pb"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
+<div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
 <table class="trz"><thead><tr>
 <th class="tc th">Proceso</th><th class="tc th">Responsable</th><th class="tc th">F. Inicio</th><th class="tc th">H. Inicio</th>
