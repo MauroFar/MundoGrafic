@@ -182,6 +182,22 @@ const normalizarMostrarTotalMetros = (valor: any): boolean => {
   return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
 };
 
+const normalizarMostrarObservacionesInfoTecnica = (valor: any): boolean => {
+  if (!valor) return true;
+
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const mostrar = parsed?.mostrar_observaciones_info_tecnica;
+  if (mostrar === undefined || mostrar === null) return true;
+  return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
+};
+
 const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] => {
   if (!valor) return [...DEFAULT_OFFSET_PROCESS_KEYS];
 
@@ -465,6 +481,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [terminadosEspeciales, setTerminadosEspeciales] = useState<string>('');
   const [cantidadPorRollo, setCantidadPorRollo] = useState<string>('');
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
+  const [mostrarObservacionesInfoTecnicaDigital, setMostrarObservacionesInfoTecnicaDigital] = useState<boolean>(true);
   const [espesorDigital, setEspesorDigital] = useState<string>('');
   const [mostrarTotalMetrosDigital, setMostrarTotalMetrosDigital] = useState<boolean>(false);
   const [trazabilidadProceso, setTrazabilidadProceso] = useState<TrazabilidadProceso>(crearTrazabilidadProcesoVacia());
@@ -489,6 +506,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     ...trazabilidadProceso,
     procesos_seleccionados: procesosDigitalSeleccionados,
     mostrar_total_metros: mostrarTotalMetrosDigital,
+    mostrar_observaciones_info_tecnica: mostrarObservacionesInfoTecnicaDigital,
   });
 
   const construirTrazabilidadOffsetParaPayload = () => ({
@@ -723,6 +741,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setShowProcesosDropdown(false);
       setProcesosOffsetSeleccionados([...DEFAULT_OFFSET_PROCESS_KEYS]);
       setShowProcesosOffsetDropdown(false);
+      setMostrarObservacionesInfoTecnicaDigital(true);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales
        // Limpiar nuevos campos
@@ -1016,6 +1035,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   terminadosEspeciales: String(it.terminadosEspeciales ?? ''),
                   cantidadPorRollo:     String(it.cantidadPorRollo     ?? ''),
                   observaciones:        String(it.observaciones        ?? ''),
+                  mostrarObservaciones: !(it.mostrarObservaciones === false || it.mostrarObservaciones === 'false' || it.mostrarObservaciones === 0 || it.mostrarObservaciones === '0'),
                   espesor:              String(it.espesor              ?? ''),
                 } as InfoTecnicaProducto;
               })
@@ -1085,6 +1105,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
     setProcesosOffsetSeleccionados(normalizarProcesosOffsetSeleccionados(detalleResponsables.trazabilidad_proceso));
     setMostrarTotalMetrosDigital(normalizarMostrarTotalMetros(detalleResponsables.trazabilidad_proceso));
+    setMostrarObservacionesInfoTecnicaDigital(normalizarMostrarObservacionesInfoTecnica(detalleResponsables.trazabilidad_proceso));
 
     const responsablesOffsetPersonalizados = normalizarResponsablesOffsetPersonalizados(detalleResponsables.trazabilidad_proceso);
     setGuillotinadoResponsable(responsablesOffsetPersonalizados.guillotinado);
@@ -2060,6 +2081,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setCantidadPorRollo={setCantidadPorRollo}
               observaciones={observacionesDigital}
               setObservaciones={setObservacionesDigital}
+              mostrarObservacionesGeneral={mostrarObservacionesInfoTecnicaDigital}
+              setMostrarObservacionesGeneral={setMostrarObservacionesInfoTecnicaDigital}
               espesor={espesorDigital}
               setEspesor={setEspesorDigital}
               infoTecnicaProductos={infoTecnicaProductosDigital}

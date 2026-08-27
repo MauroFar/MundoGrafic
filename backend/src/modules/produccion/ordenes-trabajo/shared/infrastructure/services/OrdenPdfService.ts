@@ -104,7 +104,7 @@ export class OrdenPdfService {
     const empty = { fecha_inicio:'', hora_inicio:'', fecha_fin:'', hora_fin:'',
       cantidad:'', observaciones:'', firma:'' };
     keys.forEach(k => { base[k] = { ...empty }; });
-    if (!raw) return { ...base, procesos_seleccionados: [...keys], mostrar_total_metros: false };
+    if (!raw) return { ...base, procesos_seleccionados: [...keys], mostrar_total_metros: false, mostrar_observaciones_info_tecnica: true };
     let parsed = raw;
     if (typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch { parsed = {}; } }
     const result: any = {};
@@ -114,6 +114,7 @@ export class OrdenPdfService {
     result.procesos_seleccionados = Array.isArray(parsed.procesos_seleccionados)
       ? parsed.procesos_seleccionados.filter((k: any) => keys.includes(k)) : [...keys];
     result.mostrar_total_metros = parsed.mostrar_total_metros === true || parsed.mostrar_total_metros === 'true';
+    result.mostrar_observaciones_info_tecnica = parsed.mostrar_observaciones_info_tecnica !== false && parsed.mostrar_observaciones_info_tecnica !== 'false' && parsed.mostrar_observaciones_info_tecnica !== 0 && parsed.mostrar_observaciones_info_tecnica !== '0';
     return result;
   }
 
@@ -260,7 +261,7 @@ export class OrdenPdfService {
       ${campo('TERMINADOS ESPECIALES',it.terminadosEspeciales|| '')}
       ${campo('CANTIDAD POR ROLLO',   it.cantidadPorRollo    || '')}
     </div>
-    ${it.observaciones ? `<div class="fila" style="margin-top:8px">
+    ${(it.mostrarObservaciones !== false && it.mostrarObservaciones !== 'false' && it.mostrarObservaciones !== 0 && it.mostrarObservaciones !== '0') ? `<div class="fila" style="margin-top:8px">
       ${campo('OBSERVACIONES', it.observaciones)}
     </div>` : ''}
   </div>
@@ -364,9 +365,9 @@ ${mostrarTotal ? `<tfoot><tr><td colspan="10"></td><td class="tc" style="font-we
 <div class="campo"><div class="lbl">CÓDIGO TROQUEL</div><div class="val">${detalle.codigo_troquel||''}</div></div>
 <div class="campo"><div class="lbl">TERMINADO ETIQUETA</div><div class="val">${detalle.terminado_etiqueta||''}</div></div>
 <div class="campo"><div class="lbl">TERMINADOS ESPECIALES</div><div class="val">${detalle.terminados_especiales||''}</div></div>
-</div><div class="fila" style="margin-top:10px">
+</div>${traza.mostrar_observaciones_info_tecnica !== false ? `<div class="fila" style="margin-top:10px">
 <div class="campo"><div class="lbl">OBSERVACIONES</div><div class="val">${detalle.observaciones||orden.notas_observaciones||''}</div></div>
-</div></div></div>
+</div>` : ''}</div></div>
 ${this.buildInfoTecnicaEspecificaHtml(productos)}
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>

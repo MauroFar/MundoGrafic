@@ -19,6 +19,7 @@ export interface InfoTecnicaProducto {
   terminadosEspeciales: string;
   cantidadPorRollo: string;
   observaciones: string;
+  mostrarObservaciones: boolean;
   espesor: string;
 }
 
@@ -75,11 +76,13 @@ interface FormularioOrdenDigitalProps {
   setCantidadPorRollo: (value: string) => void;
   observaciones: string;
   setObservaciones: (value: string) => void;
+  mostrarObservacionesGeneral: boolean;
+  setMostrarObservacionesGeneral: (value: boolean) => void;
   espesor: string;
   setEspesor: (value: string) => void;
   /** Info técnica específica por producto (estado controlado desde el padre) */
   infoTecnicaProductos: InfoTecnicaProducto[];
-  setInfoTecnicaProductos: (value: InfoTecnicaProducto[]) => void;
+  setInfoTecnicaProductos: React.Dispatch<React.SetStateAction<InfoTecnicaProducto[]>>;
 }
 
 const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
@@ -113,6 +116,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setCantidadPorRollo,
   observaciones,
   setObservaciones,
+  mostrarObservacionesGeneral,
+  setMostrarObservacionesGeneral,
   espesor,
   setEspesor,
   infoTecnicaProductos,
@@ -162,12 +167,6 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   }, [accionesMenuAbierto]);
 
   const generarInfoTecnicaProducto = (index: number) => {
-    // Si ya existe una info técnica para este producto, no duplicar
-    const yaExiste = infoTecnicaProductos.some((it) => it.productoIndex === index);
-    if (yaExiste) {
-      setAccionesMenuAbierto(-1);
-      return;
-    }
     const producto = productosArray[index];
     const nuevaInfo: InfoTecnicaProducto = {
       productoIndex: index,
@@ -186,23 +185,28 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
       terminadosEspeciales,
       cantidadPorRollo,
       observaciones,
+      mostrarObservaciones: true,
       espesor,
     };
-    setInfoTecnicaProductos([...infoTecnicaProductos, nuevaInfo]);
+    setInfoTecnicaProductos((prev) => {
+      // Si ya existe una info técnica para este producto, no duplicar
+      if (prev.some((it) => it.productoIndex === index)) return prev;
+      return [...prev, nuevaInfo];
+    });
     setAccionesMenuAbierto(-1);
   };
 
   const eliminarInfoTecnicaProducto = (productoIndex: number) => {
-    setInfoTecnicaProductos(infoTecnicaProductos.filter((it) => it.productoIndex !== productoIndex));
+    setInfoTecnicaProductos((prev) => prev.filter((it) => it.productoIndex !== productoIndex));
   };
 
   const actualizarInfoTecnicaProducto = (
     productoIndex: number,
     campo: keyof InfoTecnicaProducto,
-    valor: string,
+    valor: string | boolean,
   ) => {
-    setInfoTecnicaProductos(
-      infoTecnicaProductos.map((it) =>
+    setInfoTecnicaProductos((prev) =>
+      prev.map((it) =>
         it.productoIndex === productoIndex ? { ...it, [campo]: valor } : it,
       ),
     );
@@ -1154,6 +1158,15 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
         {/* Observaciones */}
         <div className="mt-4">
+          <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={mostrarObservacionesGeneral}
+              onChange={(e) => setMostrarObservacionesGeneral(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Mostrar observaciones en PDF
+          </label>
           <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
           <textarea
             className="w-full px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
@@ -1244,7 +1257,7 @@ interface InfoTecnicaProductoCardProps {
   proveedorOptions: string[];
   impresionOptions: string[];
   tipoImpresionOptions: string[];
-  onChange: (productoIndex: number, campo: keyof InfoTecnicaProducto, valor: string) => void;
+  onChange: (productoIndex: number, campo: keyof InfoTecnicaProducto, valor: string | boolean) => void;
   onEliminar: (productoIndex: number) => void;
 }
 
@@ -1296,7 +1309,7 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
   const materialDisplay = MATERIALS.find((m) => m.name === info.material)?.display ?? info.material;
   const terminadoDisplay = TERMINADOS.find((t) => t.name === info.terminadoEtiqueta)?.display ?? info.terminadoEtiqueta;
 
-  const set = (campo: keyof InfoTecnicaProducto) => (valor: string) =>
+  const set = (campo: Exclude<keyof InfoTecnicaProducto, 'mostrarObservaciones'>) => (valor: string) =>
     onChange(info.productoIndex, campo, valor);
 
   return (
@@ -1542,6 +1555,15 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
       {/* Observaciones */}
       <div className="mt-4">
+        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={info.mostrarObservaciones}
+            onChange={(e) => onChange(info.productoIndex, 'mostrarObservaciones', e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Mostrar observaciones en PDF
+        </label>
         <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
         <textarea
           className="w-full px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
