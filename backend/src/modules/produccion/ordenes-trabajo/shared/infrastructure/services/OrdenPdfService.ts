@@ -104,7 +104,7 @@ export class OrdenPdfService {
     const empty = { fecha_inicio:'', hora_inicio:'', fecha_fin:'', hora_fin:'',
       cantidad:'', observaciones:'', firma:'' };
     keys.forEach(k => { base[k] = { ...empty }; });
-    if (!raw) return { ...base, procesos_seleccionados: [...keys], mostrar_total_metros: false, mostrar_observaciones_info_tecnica: true };
+    if (!raw) return { ...base, procesos_seleccionados: [...keys], mostrar_total_cantidades: true, mostrar_total_metros: true, mostrar_observaciones_info_tecnica: true };
     let parsed = raw;
     if (typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch { parsed = {}; } }
     const result: any = {};
@@ -113,7 +113,12 @@ export class OrdenPdfService {
     result.terminados = { ...empty, ...(parsed.terminado || parsed.terminados || {}) };
     result.procesos_seleccionados = Array.isArray(parsed.procesos_seleccionados)
       ? parsed.procesos_seleccionados.filter((k: any) => keys.includes(k)) : [...keys];
-    result.mostrar_total_metros = parsed.mostrar_total_metros === true || parsed.mostrar_total_metros === 'true';
+    result.mostrar_total_cantidades = parsed.mostrar_total_cantidades === undefined || parsed.mostrar_total_cantidades === null
+      ? true
+      : parsed.mostrar_total_cantidades === true || parsed.mostrar_total_cantidades === 'true';
+    result.mostrar_total_metros = parsed.mostrar_total_metros === undefined || parsed.mostrar_total_metros === null
+      ? true
+      : parsed.mostrar_total_metros === true || parsed.mostrar_total_metros === 'true';
     result.mostrar_observaciones_info_tecnica = parsed.mostrar_observaciones_info_tecnica !== false && parsed.mostrar_observaciones_info_tecnica !== 'false' && parsed.mostrar_observaciones_info_tecnica !== 0 && parsed.mostrar_observaciones_info_tecnica !== '0';
     return result;
   }
@@ -281,11 +286,17 @@ export class OrdenPdfService {
         : (typeof detalle.productos_digital === 'string' ? JSON.parse(detalle.productos_digital) : []);
     } catch { productos = []; }
 
+    const mostrarTotalCantidad = traza.mostrar_total_cantidades === true || traza.mostrar_total_cantidades === 'true';
     const mostrarTotal = traza.mostrar_total_metros === true || traza.mostrar_total_metros === 'true';
+    const totalCantidad = productos.reduce((acc: number, p: any) => {
+      const v = parseFloat(String(p?.cantidad || '').replace(',','.').trim());
+      return acc + (isFinite(v) ? v : 0);
+    }, 0);
     const totalMetros = productos.reduce((acc: number, p: any) => {
       const v = parseFloat(String(p?.metros_impresos||'').replace(',','.').trim());
       return acc + (isFinite(v) ? v : 0);
     }, 0);
+    const totalCantidadDisplay = Number.isInteger(totalCantidad) ? String(totalCantidad) : totalCantidad.toFixed(2);
     const totalDisplay = Number.isInteger(totalMetros) ? String(totalMetros) : totalMetros.toFixed(2);
 
     const filasProductos = productos.map((p: any, i: number) =>
@@ -351,7 +362,11 @@ export class OrdenPdfService {
 <th class="tc">Producto</th><th class="tc">Gap H</th><th class="tc">Ancho</th><th class="tc">Gap V</th>
 <th class="tc">Alto</th><th class="tc">Cabida</th><th class="tc">Metros Imp.</th><th class="tc">Nº Salida</th>
 </tr></thead><tbody>${filasProductos||'<tr><td colspan="12" class="tc">Sin productos</td></tr>'}</tbody>
-${mostrarTotal ? `<tfoot><tr><td colspan="10"></td><td class="tc" style="font-weight:bold">Total: ${totalDisplay}</td><td></td></tr></tfoot>` : ''}
+<tfoot><tr>
+<td class="tc" style="font-weight:bold"></td><td class="tc" style="font-weight:bold">${mostrarTotalCantidad ? `Total: ${totalCantidadDisplay}` : ''}</td>
+<td class="tc"></td><td class="tc"></td><td class="tc"></td><td class="tc"></td><td class="tc"></td><td class="tc"></td><td class="tc"></td><td class="tc"></td>
+<td class="tc" style="font-weight:bold">${mostrarTotal ? `Total: ${totalDisplay}` : ''}</td><td class="tc"></td>
+</tr></tfoot>
 </table></div></div>
 <div class="sec"><div class="sec-t">Información Técnica</div><div class="sec-c"><div class="grid3">
 <div class="campo"><div class="lbl">ADHERENCIA</div><div class="val">${detalle.adherencia||''}</div></div>

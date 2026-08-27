@@ -168,7 +168,7 @@ const normalizarProcesosDigitalSeleccionados = (valor: any): DigitalProcessKey[]
 };
 
 const normalizarMostrarTotalMetros = (valor: any): boolean => {
-  if (!valor) return false;
+  if (!valor) return true;
 
   const parsed = typeof valor === 'string' ? (() => {
     try {
@@ -179,6 +179,23 @@ const normalizarMostrarTotalMetros = (valor: any): boolean => {
   })() : valor;
 
   const mostrar = parsed?.mostrar_total_metros;
+  if (mostrar === undefined || mostrar === null) return true;
+  return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
+};
+
+const normalizarMostrarTotalCantidades = (valor: any): boolean => {
+  if (!valor) return true;
+
+  const parsed = typeof valor === 'string' ? (() => {
+    try {
+      return JSON.parse(valor);
+    } catch {
+      return {};
+    }
+  })() : valor;
+
+  const mostrar = parsed?.mostrar_total_cantidades;
+  if (mostrar === undefined || mostrar === null) return true;
   return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
 };
 
@@ -196,6 +213,16 @@ const normalizarMostrarObservacionesInfoTecnica = (valor: any): boolean => {
   const mostrar = parsed?.mostrar_observaciones_info_tecnica;
   if (mostrar === undefined || mostrar === null) return true;
   return mostrar === true || mostrar === 'true' || mostrar === 1 || mostrar === '1';
+};
+
+const calcularTotalCantidadDigital = (productos: any[]): string => {
+  const total = (Array.isArray(productos) ? productos : []).reduce((acumulado, producto) => {
+    const valorNormalizado = String(producto?.cantidad || '').replace(',', '.').trim();
+    const cantidad = parseFloat(valorNormalizado);
+    return acumulado + (Number.isFinite(cantidad) ? cantidad : 0);
+  }, 0);
+
+  return Number.isInteger(total) ? String(total) : total.toFixed(2);
 };
 
 const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] => {
@@ -483,7 +510,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [observacionesDigital, setObservacionesDigital] = useState<string>('');
   const [mostrarObservacionesInfoTecnicaDigital, setMostrarObservacionesInfoTecnicaDigital] = useState<boolean>(true);
   const [espesorDigital, setEspesorDigital] = useState<string>('');
-  const [mostrarTotalMetrosDigital, setMostrarTotalMetrosDigital] = useState<boolean>(false);
+  const [mostrarTotalCantidadesDigital, setMostrarTotalCantidadesDigital] = useState<boolean>(true);
+  const [mostrarTotalMetrosDigital, setMostrarTotalMetrosDigital] = useState<boolean>(true);
   const [trazabilidadProceso, setTrazabilidadProceso] = useState<TrazabilidadProceso>(crearTrazabilidadProcesoVacia());
 
   const toggleProcesoDigital = (proceso: DigitalProcessKey) => {
@@ -505,6 +533,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const construirTrazabilidadParaPayload = () => ({
     ...trazabilidadProceso,
     procesos_seleccionados: procesosDigitalSeleccionados,
+    mostrar_total_cantidades: mostrarTotalCantidadesDigital,
     mostrar_total_metros: mostrarTotalMetrosDigital,
     mostrar_observaciones_info_tecnica: mostrarObservacionesInfoTecnicaDigital,
   });
@@ -741,7 +770,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setShowProcesosDropdown(false);
       setProcesosOffsetSeleccionados([...DEFAULT_OFFSET_PROCESS_KEYS]);
       setShowProcesosOffsetDropdown(false);
+      setMostrarTotalCantidadesDigital(true);
       setMostrarObservacionesInfoTecnicaDigital(true);
+      setMostrarTotalMetrosDigital(true);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       // Limpiar cantidades finales
        // Limpiar nuevos campos
@@ -1105,6 +1136,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
     setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
     setProcesosOffsetSeleccionados(normalizarProcesosOffsetSeleccionados(detalleResponsables.trazabilidad_proceso));
+    setMostrarTotalCantidadesDigital(normalizarMostrarTotalCantidades(detalleResponsables.trazabilidad_proceso));
     setMostrarTotalMetrosDigital(normalizarMostrarTotalMetros(detalleResponsables.trazabilidad_proceso));
     setMostrarObservacionesInfoTecnicaDigital(normalizarMostrarObservacionesInfoTecnica(detalleResponsables.trazabilidad_proceso));
 
@@ -1394,9 +1426,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     // tomamos valores por defecto desde el primer producto digital
     const cantidadParaBackend =
       tipoOrdenSeleccionado === 'digital'
-        ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
-          ? productosDigital[0].cantidad
-          : '0')
+        ? calcularTotalCantidadDigital(productosDigital)
         : cantidad;
 
     const conceptoParaBackend =
@@ -1555,9 +1585,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // Reusar misma lógica de cantidad/concepto que en la creación
       const cantidadParaBackend =
         tipoOrdenSeleccionado === 'digital'
-          ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
-            ? productosDigital[0].cantidad
-            : '0')
+          ? calcularTotalCantidadDigital(productosDigital)
           : cantidad;
 
       const conceptoParaBackend =
@@ -1712,9 +1740,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // Reusar misma lógica de cantidad/concepto que en la creación
       const cantidadParaBackend =
         tipoOrdenSeleccionado === 'digital'
-          ? (productosDigital[0]?.cantidad && !isNaN(Number(productosDigital[0].cantidad))
-            ? productosDigital[0].cantidad
-            : '0')
+          ? calcularTotalCantidadDigital(productosDigital)
           : cantidad;
 
       const conceptoParaBackend =
@@ -2054,6 +2080,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
             <FormularioOrdenDigital
               productos={productosDigital}
               setProductos={setProductosDigital}
+              mostrarTotalCantidades={mostrarTotalCantidadesDigital}
+              setMostrarTotalCantidades={setMostrarTotalCantidadesDigital}
               mostrarTotalMetros={mostrarTotalMetrosDigital}
               setMostrarTotalMetros={setMostrarTotalMetrosDigital}
               adherencia={adherencia}
