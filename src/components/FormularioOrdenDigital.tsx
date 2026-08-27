@@ -14,6 +14,7 @@ export interface InfoTecnicaProducto {
   troquel: string;
   codigoTroquel: string;
   loteMaterial: string;
+  loteProduccion: string;
   terminadoEtiqueta: string;
   terminadoUnit: string;
   terminadosEspeciales: string;
@@ -171,22 +172,23 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
     const nuevaInfo: InfoTecnicaProducto = {
       productoIndex: index,
       nombreProducto: producto?.producto || `Producto ${index + 1}`,
-      adherencia,
-      material,
-      materialUnit,
-      proveedorMaterial,
-      impresion,
-      tipoImpresion,
-      troquel,
-      codigoTroquel,
-      loteMaterial,
-      terminadoEtiqueta,
-      terminadoUnit,
-      terminadosEspeciales,
-      cantidadPorRollo,
-      observaciones,
+      adherencia: '',
+      material: '',
+      materialUnit: '',
+      proveedorMaterial: '',
+      impresion: '',
+      tipoImpresion: '',
+      troquel: '',
+      codigoTroquel: '',
+      loteMaterial: '',
+      loteProduccion,
+      terminadoEtiqueta: '',
+      terminadoUnit: '',
+      terminadosEspeciales: '',
+      cantidadPorRollo: '',
+      observaciones: '',
       mostrarObservaciones: true,
-      espesor,
+      espesor: '',
     };
     setInfoTecnicaProductos((prev) => {
       // Si ya existe una info técnica para este producto, no duplicar
@@ -1425,6 +1427,16 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
             value={info.loteMaterial}
             onChange={(e) => set('loteMaterial')(e.target.value)}
+          />
+        </div>
+
+        {/* Lote de Producción */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Lote de Producción</label>
+          <input type="text"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={info.loteProduccion}
+            onChange={(e) => set('loteProduccion')(e.target.value)}
           />
         </div>
 

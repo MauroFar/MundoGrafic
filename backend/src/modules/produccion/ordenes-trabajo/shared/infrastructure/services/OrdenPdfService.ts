@@ -253,6 +253,7 @@ export class OrdenPdfService {
       ${campo('PROVEEDOR MATERIAL',   it.proveedorMaterial   || '')}
       ${campo('ESPESOR (Micras)',      it.espesor             || '')}
       ${campo('LOTE MATERIAL',        it.loteMaterial        || '')}
+      ${campo('LOTE PRODUCCION',      it.loteProduccion      || '')}
       ${campo('IMPRESIÓN',            it.impresion           || '')}
       ${campo('TIPO IMPRESIÓN',       it.tipoImpresion       || '')}
       ${campo('TROQUEL',              it.troquel             || '')}

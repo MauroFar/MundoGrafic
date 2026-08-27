@@ -1030,6 +1030,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
                   troquel:              String(it.troquel              ?? ''),
                   codigoTroquel:        String(it.codigoTroquel        ?? ''),
                   loteMaterial:         String(it.loteMaterial         ?? ''),
+                  loteProduccion:       String(it.loteProduccion       ?? ''),
                   terminadoEtiqueta:    String(it.terminadoEtiqueta    ?? ''),
                   terminadoUnit:        String(it.terminadoUnit        ?? ''),
                   terminadosEspeciales: String(it.terminadosEspeciales ?? ''),
