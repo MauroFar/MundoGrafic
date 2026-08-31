@@ -15,7 +15,7 @@ export class UpdateClienteUseCase {
     }
 
     const normalizedInput = {
-      nombre: input?.nombre ? String(input.nombre).trim() : currentClient.nombre,
+      nombre: input?.nombre !== undefined ? String(input.nombre).trim() || null : currentClient.nombre,
       empresa: input?.empresa !== undefined ? String(input.empresa).trim() || null : currentClient.empresa,
       direccion: input?.direccion !== undefined ? String(input.direccion).trim() || null : currentClient.direccion,
       telefono: input?.telefono !== undefined ? String(input.telefono).trim() || null : currentClient.telefono,
@@ -26,24 +26,16 @@ export class UpdateClienteUseCase {
     };
 
     const hasRelations = await this.clienteRepository.hasRelatedDocuments(id);
-    const protectedFields = [
-      "nombre",
-      "empresa",
-      "direccion",
-      "telefono",
-      "email",
-      "ruc_cedula",
-      "notas",
-    ] as const;
+    const protectedFields = ["nombre", "empresa", "ruc_cedula"] as const;
 
-    const isOnlyStatusChange = protectedFields.every((field) => {
+    const hasProtectedChanges = protectedFields.some((field) => {
       const currentValue = String(currentClient[field as keyof typeof currentClient] ?? "").trim();
       const nextValue = String(normalizedInput[field] ?? "").trim();
-      return currentValue === nextValue;
+      return currentValue !== nextValue;
     });
 
-    if (hasRelations && !isOnlyStatusChange) {
-      throw new AppError("No se puede editar un cliente con cotizaciones u órdenes de trabajo asociadas", 409);
+    if (hasRelations && hasProtectedChanges) {
+      throw new AppError("No se puede editar el nombre, la empresa o el RUC/Cédula de un cliente con cotizaciones u órdenes de trabajo asociadas", 409);
     }
 
     const nombre = String(normalizedInput.nombre || "").trim();
