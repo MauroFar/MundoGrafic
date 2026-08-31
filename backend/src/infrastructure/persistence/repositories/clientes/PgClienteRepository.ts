@@ -116,16 +116,21 @@ export class PgClienteRepository implements ClienteRepository {
   }
 
   async update(input: ClienteUpdateInput): Promise<{ id: number; nombre_cliente: string; email_cliente: string | null } | null> {
-    const checkResult = await this.client.query(
-      `
-      SELECT id FROM clientes
-      WHERE (email_cliente = $1 OR ruc_cedula_cliente = $2) AND id != $3
-      `,
-      [input.email, input.ruc_cedula, input.id],
-    );
+    const email = input.email ? String(input.email).trim() : null;
+    const ruc_cedula = input.ruc_cedula ? String(input.ruc_cedula).trim() : null;
 
-    if (checkResult.rows.length > 0) {
-      throw new AppError("Ya existe otro cliente con ese email o RUC/Cédula", 409);
+    if (email || ruc_cedula) {
+      const checkResult = await this.client.query(
+        `
+        SELECT id FROM clientes
+        WHERE ((email_cliente = $1 AND $1 IS NOT NULL) OR (ruc_cedula_cliente = $2 AND $2 IS NOT NULL)) AND id != $3
+        `,
+        [email, ruc_cedula, input.id],
+      );
+
+      if (checkResult.rows.length > 0) {
+        throw new AppError("Ya existe otro cliente con ese email o RUC/Cédula", 409);
+      }
     }
 
     const result = await this.client.query(
@@ -150,8 +155,8 @@ export class PgClienteRepository implements ClienteRepository {
         input.empresa,
         input.direccion,
         input.telefono,
-        input.email,
-        input.ruc_cedula,
+        email,
+        ruc_cedula,
         input.estado || "activo",
         input.notas,
         input.userId || null,
