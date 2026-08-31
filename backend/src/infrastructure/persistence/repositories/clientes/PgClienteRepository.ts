@@ -62,12 +62,26 @@ export class PgClienteRepository implements ClienteRepository {
   }
 
   async create(input: ClienteCreateInput): Promise<{ id: number; codigo_cliente: string; nombre_cliente: string; email_cliente: string | null }> {
-    const email = input.email ? String(input.email).trim() : "";
+    const email = this.normalizeOptionalString(input.email);
+    const ruc_cedula = this.normalizeOptionalString(input.ruc_cedula);
 
     if (email) {
-      const duplicateByEmail = await this.client.query("SELECT id FROM clientes WHERE email_cliente = $1 LIMIT 1", [email]);
+      const duplicateByEmail = await this.client.query(
+        "SELECT id FROM clientes WHERE lower(NULLIF(trim(email_cliente), '')) = lower($1) LIMIT 1",
+        [email],
+      );
       if (duplicateByEmail.rows.length > 0) {
         throw new AppError("Ya existe un cliente con ese email", 409);
+      }
+    }
+
+    if (ruc_cedula && ruc_cedula.toUpperCase() !== "N/A") {
+      const duplicateByRuc = await this.client.query(
+        "SELECT id FROM clientes WHERE lower(NULLIF(trim(ruc_cedula_cliente), '')) = lower($1) LIMIT 1",
+        [ruc_cedula],
+      );
+      if (duplicateByRuc.rows.length > 0) {
+        throw new AppError("Ya existe un cliente con ese RUC/Cédula", 409);
       }
     }
 
@@ -91,13 +105,13 @@ export class PgClienteRepository implements ClienteRepository {
       `,
       [
         input.nombre,
-        input.empresa,
-        input.direccion,
-        input.telefono,
-        input.email,
-        input.ruc_cedula,
+        this.normalizeOptionalString(input.empresa),
+        this.normalizeOptionalString(input.direccion),
+        this.normalizeOptionalString(input.telefono),
+        email,
+        ruc_cedula,
         input.estado || "activo",
-        input.notas,
+        this.normalizeOptionalString(input.notas),
         input.userId || null,
       ],
     );
@@ -111,74 +125,119 @@ export class PgClienteRepository implements ClienteRepository {
       id: clienteId,
       codigo_cliente: codigoCliente,
       nombre_cliente: input.nombre,
-      email_cliente: input.email || null,
+      email_cliente: email,
     };
   }
 
   async update(input: ClienteUpdateInput): Promise<{ id: number; nombre_cliente: string; email_cliente: string | null } | null> {
-    const email = input.email ? String(input.email).trim() : null;
-    const ruc_cedula = input.ruc_cedula ? String(input.ruc_cedula).trim() : null;
+    const email = this.normalizeOptionalString(input.email);
+    const ruc_cedula = this.normalizeOptionalString(input.ruc_cedula);
 
-    if (email || ruc_cedula) {
-      const checkResult = await this.client.query(
+    try {
+      if (email || (ruc_cedula && ruc_cedula.toUpperCase() !== "N/A")) {
+        const normalizedEmail = email ? email.toLowerCase() : null;
+        const normalizedRuc = ruc_cedula && ruc_cedula.toUpperCase() !== "N/A" ? ruc_cedula.toLowerCase() : null;
+
+        const checkResult = await this.client.query(
+          `
+          SELECT id FROM clientes
+          WHERE (
+            (lower(NULLIF(trim(email_cliente), '')) = lower($1) AND $1 IS NOT NULL)
+            OR
+            (lower(NULLIF(trim(ruc_cedula_cliente), '')) = lower($2) AND $2 IS NOT NULL)
+          ) AND id != $3
+          `,
+          [normalizedEmail, normalizedRuc, input.id],
+        );
+
+        if (checkResult.rows.length > 0) {
+          throw new AppError("Ya existe otro cliente con ese email o RUC/Cédula", 409);
+        }
+      }
+
+      const result = await this.client.query(
         `
-        SELECT id FROM clientes
-        WHERE ((email_cliente = $1 AND $1 IS NOT NULL) OR (ruc_cedula_cliente = $2 AND $2 IS NOT NULL)) AND id != $3
+        UPDATE clientes
+        SET
+          nombre_cliente = $1,
+          empresa_cliente = $2,
+          direccion_cliente = $3,
+          telefono_cliente = $4,
+          email_cliente = $5,
+          ruc_cedula_cliente = $6,
+          estado_cliente = $7,
+          notas_cliente = $8,
+          updated_by = $9,
+          updated_at = NOW()
+        WHERE id = $10
+        RETURNING id, nombre_cliente, email_cliente
         `,
-        [email, ruc_cedula, input.id],
+        [
+          input.nombre,
+          this.normalizeOptionalString(input.empresa),
+          this.normalizeOptionalString(input.direccion),
+          this.normalizeOptionalString(input.telefono),
+          email,
+          ruc_cedula,
+          input.estado || "activo",
+          this.normalizeOptionalString(input.notas),
+          input.userId || null,
+          input.id,
+        ],
       );
 
-      if (checkResult.rows.length > 0) {
-        throw new AppError("Ya existe otro cliente con ese email o RUC/Cédula", 409);
-      }
+      return result.rows[0] ?? null;
+    } catch (error) {
+      console.error("❌ Error en PgClienteRepository.update:", error);
+      throw error;
     }
+  }
 
-    const result = await this.client.query(
-      `
-      UPDATE clientes
-      SET
-        nombre_cliente = $1,
-        empresa_cliente = $2,
-        direccion_cliente = $3,
-        telefono_cliente = $4,
-        email_cliente = $5,
-        ruc_cedula_cliente = $6,
-        estado_cliente = $7,
-        notas_cliente = $8,
-        updated_by = $9,
-        updated_at = NOW()
-      WHERE id = $10
-      RETURNING id, nombre_cliente, email_cliente
-      `,
-      [
-        input.nombre,
-        input.empresa,
-        input.direccion,
-        input.telefono,
-        email,
-        ruc_cedula,
-        input.estado || "activo",
-        input.notas,
-        input.userId || null,
-        input.id,
-      ],
-    );
-
-    return result.rows[0] ?? null;
+  private normalizeOptionalString(value: unknown): string | null {
+    if (value === null || value === undefined) return null;
+    const normalized = String(value).trim();
+    return normalized === "" ? null : normalized;
   }
 
   async hasRelatedDocuments(id: number): Promise<boolean> {
-    const result = await this.client.query(
+    const tableCheck = await this.client.query(
       `
       SELECT
-        (SELECT COUNT(*) FROM cotizaciones WHERE cliente_id = $1) as cotizaciones,
-        (SELECT COUNT(*) FROM ordenes_trabajo WHERE cliente_id = $1) as ordenes
+        EXISTS (
+          SELECT 1 FROM information_schema.tables WHERE table_name = 'cotizaciones'
+        ) AS cotizaciones_table_exists,
+        EXISTS (
+          SELECT 1 FROM information_schema.tables WHERE table_name = 'ordenes_trabajo'
+        ) AS ordenes_table_exists
       `,
-      [id],
     );
 
-    const cotizaciones = Number(result.rows[0]?.cotizaciones || 0);
-    const ordenes = Number(result.rows[0]?.ordenes || 0);
+    const cotizacionesTableExists = Boolean(tableCheck.rows[0]?.cotizaciones_table_exists);
+    const ordenesTableExists = Boolean(tableCheck.rows[0]?.ordenes_table_exists);
+
+    if (!cotizacionesTableExists && !ordenesTableExists) {
+      return false;
+    }
+
+    let cotizaciones = 0;
+    let ordenes = 0;
+
+    if (cotizacionesTableExists) {
+      const cotizacionesResult = await this.client.query(
+        `SELECT COUNT(*)::int AS count FROM cotizaciones WHERE cliente_id = $1`,
+        [id],
+      );
+      cotizaciones = Number(cotizacionesResult.rows[0]?.count || 0);
+    }
+
+    if (ordenesTableExists) {
+      const ordenesResult = await this.client.query(
+        `SELECT COUNT(*)::int AS count FROM ordenes_trabajo WHERE cliente_id = $1`,
+        [id],
+      );
+      ordenes = Number(ordenesResult.rows[0]?.count || 0);
+    }
+
     return cotizaciones > 0 || ordenes > 0;
   }
 

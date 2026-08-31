@@ -96,6 +96,8 @@ export class ClienteController {
         cliente,
       });
     } catch (error) {
+      console.error("❌ Error al editar cliente:", error);
+
       if (error instanceof AppError) {
         return res.status(error.statusCode).json({
           error: error.statusCode === 409 ? "No se puede editar el cliente" : "Faltan campos requeridos",

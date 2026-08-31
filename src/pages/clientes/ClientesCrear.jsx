@@ -105,19 +105,23 @@ const ClientesCrear = () => {
       navigate("/clientes/ver");
     } catch (error) {
       console.error("Error al guardar cliente:", error);
-      // El error 403 (sin permisos) es manejado por el interceptor de axios
+      const errorMessage =
+        error?.response?.data?.details ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Error al procesar la solicitud. Intenta nuevamente.';
+
       if (error.response?.status === 403) {
-        // No mostrar toast adicional, el interceptor ya lo maneja
         return;
       }
       if (error.response?.status === 409) {
-        toast.error('Ya existe un cliente con ese email');
+        toast.error(errorMessage);
       } else if (error.response?.status === 400) {
         toast.error('Por favor verifica los campos obligatorios');
       } else if (error.response?.status === 401) {
         toast.error('Tu sesión ha expirado, por favor inicia sesión nuevamente');
       } else {
-        toast.error('Error al procesar la solicitud. Intenta nuevamente.');
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);
