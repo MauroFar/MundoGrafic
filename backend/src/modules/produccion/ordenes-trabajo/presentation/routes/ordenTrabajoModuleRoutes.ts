@@ -280,7 +280,11 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
           },
         });
         const result = await useCase.execute(req.body, userId);
-        res.status(201).json({ message: 'Orden de trabajo creada correctamente', numero_orden: result.numero_orden });
+        res.status(201).json({
+          message: 'Orden de trabajo creada correctamente',
+          id: result.id,
+          numero_orden: result.numero_orden,
+        });
       } catch (err) { handle(res, err); }
     },
   );

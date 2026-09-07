@@ -38,6 +38,7 @@ export interface ListaPedido {
   fecha_entrega: string | null;
   responsable_nombre: string;
   cliente: string;
+  cliente_id: number | null;
   descripcion_producto: string;
   cantidad: number;
   no_oc: string | null;
@@ -59,6 +60,7 @@ export interface ListaPedidoCreateInput {
   fecha_entrega: string | null;
   responsable_nombre: string;
   cliente: string;
+  cliente_id: number | null;
   descripcion_producto: string;
   cantidad: number;
   no_oc: string | null;

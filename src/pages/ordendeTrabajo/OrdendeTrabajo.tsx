@@ -461,6 +461,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [showConfirmSinArtesModal, setShowConfirmSinArtesModal] = useState(false);
   const [accionPendienteSinArtes, setAccionPendienteSinArtes] = useState<'crear' | 'crear_nueva' | null>(null);
   const [ordenGuardadaNumero, setOrdenGuardadaNumero] = useState<string | null>(null);
+  const [ordenGuardadaId, setOrdenGuardadaId] = useState<number | null>(null);
   const [idDetalleCotizacion, setIdDetalleCotizacion] = useState<number | null>(null);
   const [showClientesModal, setShowClientesModal] = useState(false);
   const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
@@ -725,8 +726,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setShowTipoOrdenModal(false);
     }
 
+    const tieneContextoPedido = Boolean(
+      (location.state as any)?.clienteId ||
+      (location.state as any)?.pedidoCliente ||
+      (location.state as any)?.pedidoId
+    );
+
     // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
-    if (!cotizacionId && !ordenId) {
+    // salvo cuando viene desde un pedido ya guardado, en cuyo caso necesitamos conservar el cliente del pedido.
+    if (!cotizacionId && !ordenId && !tieneContextoPedido) {
       setConcepto('');
       setCantidad('');
       setNombre_cliente('');
@@ -781,26 +789,23 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setMostrarObservacionesInfoTecnicaDigital(true);
       setMostrarTotalMetrosDigital(true);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
-      // Limpiar cantidades finales
-       // Limpiar nuevos campos
-               setMaterial('');
-        setCorteMaterial('');
-        setCantidadPliegosCompra('');
-        setExceso('');
-        setTotalPliegos('');
-        setTamano('');
-                 setTamanoAbierto1('');
-         setTamanoCerrado1('');
-        setImpresion('');
-        setInstruccionesImpresion('');
-        setInstruccionesAcabados('');
-        setInstruccionesEmpacado('');
-        setObservaciones('');
-        setPrensaSeleccionada('');
-        setEspesorDigital('');
+      setMaterial('');
+      setCorteMaterial('');
+      setCantidadPliegosCompra('');
+      setExceso('');
+      setTotalPliegos('');
+      setTamano('');
+      setTamanoAbierto1('');
+      setTamanoCerrado1('');
+      setImpresion('');
+      setInstruccionesImpresion('');
+      setInstruccionesAcabados('');
+      setInstruccionesEmpacado('');
+      setObservaciones('');
+      setPrensaSeleccionada('');
+      setEspesorDigital('');
       setOrdenData(null);
       setIdDetalleCotizacion(null);
-      // Obtener el próximo número de orden
       const token = localStorage.getItem('token');
       fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -808,7 +813,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         .then(res => res.json())
         .then(data => setNumero_orden(data.proximoNumero))
         .catch(() => setNumero_orden(''));
-      // Si no tenemos tipo de orden aún, mostrar modal de selección
       if (!tipoInicial) {
         setShowTipoOrdenModal(true);
       }
@@ -843,6 +847,35 @@ const OrdendeTrabajoEditar: React.FC = () => {
           console.error("Error al cargar orden existente:", error);
           toast.error('Error al cargar la orden');
         });
+    } else if ((location.state as any)?.clienteId || (location.state as any)?.pedidoCliente || (location.state as any)?.pedidoId) {
+      const clienteIdState = (location.state as any)?.clienteId ?? null;
+      const clienteNombreState = (location.state as any)?.pedidoCliente ?? '';
+      const pedidoIdState = (location.state as any)?.pedidoId ?? null;
+      if (clienteIdState) {
+        void cargarClientePorId(clienteIdState);
+      } else if (clienteNombreState) {
+        void buscarClientePorNombre(clienteNombreState);
+      } else if (pedidoIdState) {
+        void cargarPedidoPorId(pedidoIdState);
+      }
+      if ((location.state as any)?.pedidoDescripcion) {
+        setConcepto((location.state as any).pedidoDescripcion || '');
+      }
+      if ((location.state as any)?.pedidoCantidad) {
+        setCantidad(String((location.state as any).pedidoCantidad));
+      }
+      setOrdenData({
+        nombre_cliente: clienteNombreState || '',
+        concepto: (location.state as any)?.pedidoDescripcion || '',
+        cantidad: (location.state as any)?.pedidoCantidad ? String((location.state as any).pedidoCantidad) : '',
+      } as OrdenData);
+      const token = localStorage.getItem('token');
+      fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => setNumero_orden(data.proximoNumero))
+        .catch(() => setNumero_orden(''));
     } else if (cotizacionId) {
       // NUEVO: Si hay cotizacionId, cargar datos del cliente y cotización
       console.log('🔍 Detectado cotizacionId, cargando datos...', cotizacionId);
@@ -1274,6 +1307,85 @@ const OrdendeTrabajoEditar: React.FC = () => {
   };
 
   // Función para cargar todos los clientes para el modal
+  const cargarPedidoPorId = async (pedidoId: number | string | null) => {
+    if (!pedidoId) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/lista-pedidos/${pedidoId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const response = await res.json();
+      const pedido = response?.pedido ?? null;
+      if (!pedido) return;
+      if (pedido.cliente_id) {
+        void cargarClientePorId(pedido.cliente_id);
+      } else if (pedido.cliente) {
+        void buscarClientePorNombre(pedido.cliente);
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar pedido desde la base de datos:', error);
+    }
+  };
+
+  const cargarClientePorId = async (clienteId: number | string | null) => {
+    if (!clienteId) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/clientes/${clienteId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const cliente = await res.json();
+      if (!cliente) return;
+      const nombreEmpresa = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || '';
+      setNombre_cliente(nombreEmpresa || (location.state as any)?.pedidoCliente || '');
+      setContacto(cliente.nombre_cliente || cliente.nombre || '');
+      setTelefono_cliente(cliente.telefono || cliente.telefono_cliente || '');
+      setEmail_cliente(cliente.email || cliente.email_cliente || '');
+      setDireccion_cliente(cliente.direccion || cliente.direccion_cliente || '');
+      setClienteIdSeleccionado(Number(clienteId));
+    } catch (error) {
+      console.error('❌ Error al cargar cliente desde la base de datos:', error);
+    }
+  };
+
+  const buscarClientePorNombre = async (nombre: string) => {
+    const texto = (nombre || '').trim();
+    if (!texto) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/clientes/buscar?q=${encodeURIComponent(texto)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const clientes = await res.json();
+      const cliente = Array.isArray(clientes) && clientes.length > 0 ? clientes[0] : null;
+      if (!cliente) {
+        setNombre_cliente(texto);
+        setContacto('');
+        setTelefono_cliente('');
+        setEmail_cliente('');
+        setDireccion_cliente('');
+        return;
+      }
+      const nombreEmpresa = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || texto;
+      setNombre_cliente(nombreEmpresa);
+      setContacto(cliente.nombre_cliente || cliente.nombre || '');
+      setTelefono_cliente(cliente.telefono || cliente.telefono_cliente || '');
+      setEmail_cliente(cliente.email || cliente.email_cliente || '');
+      setDireccion_cliente(cliente.direccion || cliente.direccion_cliente || '');
+      setClienteIdSeleccionado(Number(cliente.id));
+    } catch (error) {
+      console.error('❌ Error al buscar cliente por nombre:', error);
+      setNombre_cliente(texto);
+      setContacto('');
+      setTelefono_cliente('');
+      setEmail_cliente('');
+      setDireccion_cliente('');
+    }
+  };
+
   const cargarTodosLosClientes = async () => {
     setLoadingClientes(true);
     try {
@@ -1541,7 +1653,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       
       const data = await response.json();
       console.log('✅ FRONTEND - Orden creada exitosamente:', data);
-      setOrdenGuardadaNumero(data.numero_orden);
+      setOrdenGuardadaNumero(data.numero_orden || null);
+      setOrdenGuardadaId(data.id || null);
       setShowSuccessModal(true);
       // Notificación global para todos los usuarios
       window.dispatchEvent(new CustomEvent("nueva-notificacion", {
@@ -1853,7 +1966,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       const data = await response.json();
       console.log('✅ FRONTEND - Nueva orden creada exitosamente:', data);
       
-      setOrdenGuardadaNumero(data.numero_orden);
+      setOrdenGuardadaNumero(data.numero_orden || null);
+      setOrdenGuardadaId(data.id || null);
       setShowSuccessModal(true);
       
       // Notificación global para todos los usuarios
@@ -2786,12 +2900,29 @@ const OrdendeTrabajoEditar: React.FC = () => {
                  Los artes no estan aprobados. No se podra iniciar la produccion hasta aprobarlos.
                </div>
              )}
-                           <button
-                className="bg-blue-500 text-white px-4 py-2 rounded"
-                onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
-              >
-                Ir al listado de órdenes
-              </button>
+             {ordenGuardadaId ? (
+               <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                 <button
+                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                   onClick={() => { setShowSuccessModal(false); navigate(`/ordendeTrabajo/editar/${ordenGuardadaId}`); }}
+                 >
+                   Ver orden de trabajo
+                 </button>
+                 <button
+                   className="bg-blue-500 text-white px-4 py-2 rounded"
+                   onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
+                 >
+                   Ir al listado
+                 </button>
+               </div>
+             ) : (
+               <button
+                 className="bg-blue-500 text-white px-4 py-2 rounded"
+                 onClick={() => { setShowSuccessModal(false); navigate('/ordendeTrabajo/ver'); }}
+               >
+                 Ir al listado de órdenes
+               </button>
+             )}
             </div>
           </div>
         )}

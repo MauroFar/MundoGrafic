@@ -4,6 +4,7 @@ import { ListPedidosUseCase } from "../../../application/use-cases/listaPedidos/
 import { CreatePedidoUseCase } from "../../../application/use-cases/listaPedidos/CreatePedidoUseCase";
 import { UpdatePedidoUseCase } from "../../../application/use-cases/listaPedidos/UpdatePedidoUseCase";
 import { DeletePedidoUseCase } from "../../../application/use-cases/listaPedidos/DeletePedidoUseCase";
+import { GetPedidoByIdUseCase } from "../../../application/use-cases/listaPedidos/GetPedidoByIdUseCase";
 
 export class ListaPedidoController {
   constructor(
@@ -11,6 +12,7 @@ export class ListaPedidoController {
     private readonly createUseCase: CreatePedidoUseCase,
     private readonly updateUseCase: UpdatePedidoUseCase,
     private readonly deleteUseCase: DeletePedidoUseCase,
+    private readonly getByIdUseCase?: GetPedidoByIdUseCase,
   ) {}
 
   listar = async (req: Request, res: Response) => {
@@ -19,6 +21,17 @@ export class ListaPedidoController {
       const tipoValidado = tipo === "offset" || tipo === "digital" ? tipo : undefined;
       const pedidos = await this.listUseCase.execute(tipoValidado);
       res.json({ success: true, pedidos });
+    } catch (e) { this._handle(res, e); }
+  };
+
+  obtenerPorId = async (req: Request, res: Response) => {
+    try {
+      const id = Number.parseInt(req.params.id, 10);
+      if (!Number.isInteger(id) || id <= 0)
+        return res.status(400).json({ error: "ID inválido." });
+      if (!this.getByIdUseCase) return res.status(500).json({ error: "Servicio no disponible." });
+      const pedido = await this.getByIdUseCase.execute(id);
+      res.json({ success: true, pedido });
     } catch (e) { this._handle(res, e); }
   };
 

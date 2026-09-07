@@ -23,6 +23,8 @@ export class CreatePedidoUseCase {
     const fechaEntregaRaw  = sanitize(body?.fecha_entrega, 10);
     const responsable     = sanitize(body?.responsable_nombre, 180);
     const cliente         = sanitize(body?.cliente, 180);
+    const clienteIdRaw    = body?.cliente_id;
+    const clienteId       = clienteIdRaw === undefined || clienteIdRaw === null || clienteIdRaw === "" ? null : Number(clienteIdRaw);
     const descripcion     = sanitize(body?.descripcion_producto, 2000);
     const noOc            = sanitize(body?.no_oc, 100);
     const noOp            = sanitize(body?.no_op, 100);
@@ -44,6 +46,9 @@ export class CreatePedidoUseCase {
       errors.push("fecha_entrega debe tener formato YYYY-MM-DD.");
     if (!responsable) errors.push("responsable_nombre es obligatorio.");
     if (!cliente)     errors.push("cliente es obligatorio.");
+    if (clienteIdRaw !== undefined && clienteIdRaw !== null && clienteIdRaw !== "" && (!Number.isInteger(clienteId) || clienteId! <= 0)) {
+      errors.push("cliente_id inválido.");
+    }
     if (!descripcion) errors.push("descripcion_producto es obligatorio.");
 
     const cantidadNum = Number(body?.cantidad);
@@ -67,6 +72,7 @@ export class CreatePedidoUseCase {
       fecha_entrega: fechaEntregaRaw || null,
       responsable_nombre: responsable,
       cliente,
+      cliente_id: clienteId,
       descripcion_producto: descripcion,
       cantidad: Number(cantidadNum.toFixed(2)),
       no_oc: noOc || null,

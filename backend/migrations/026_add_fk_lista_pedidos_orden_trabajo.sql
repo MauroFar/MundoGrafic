@@ -7,6 +7,7 @@
 BEGIN;
 
 ALTER TABLE lista_pedidos
+  ADD COLUMN IF NOT EXISTS cliente_id BIGINT NULL,
   ADD COLUMN IF NOT EXISTS orden_trabajo_id BIGINT NULL;
 
 UPDATE lista_pedidos lp
@@ -21,6 +22,18 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint
+    WHERE conname = 'fk_lista_pedidos_clientes'
+  ) THEN
+    ALTER TABLE lista_pedidos
+      ADD CONSTRAINT fk_lista_pedidos_clientes
+      FOREIGN KEY (cliente_id)
+      REFERENCES clientes(id)
+      ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
     WHERE conname = 'fk_lista_pedidos_orden_trabajo'
   ) THEN
     ALTER TABLE lista_pedidos
@@ -30,6 +43,9 @@ BEGIN
       ON DELETE SET NULL;
   END IF;
 END $$;
+
+CREATE INDEX IF NOT EXISTS idx_lista_pedidos_cliente_id
+  ON lista_pedidos (cliente_id);
 
 CREATE INDEX IF NOT EXISTS idx_lista_pedidos_orden_trabajo_id
   ON lista_pedidos (orden_trabajo_id);

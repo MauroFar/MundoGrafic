@@ -39,6 +39,7 @@ type ClienteCatalogo = {
 type FilaPedido = Record<ColumnaKey, string> & {
   id: number;
   servidor_id: number | null;
+  cliente_id: number | null;
   tipo: TipoPedido;
 };
 
@@ -56,7 +57,7 @@ const fasesSugeridas = [
 ];
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
-  id, servidor_id: null, tipo,
+  id, servidor_id: null, cliente_id: null, tipo,
   fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
   fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
   descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
@@ -66,9 +67,11 @@ const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
 const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
   const row = (pedido ?? {}) as Record<string, unknown>;
   const sid = Number(row.id);
+  const clienteId = row.cliente_id != null && row.cliente_id !== '' ? Number(row.cliente_id) : null;
   return {
     id: Number.isFinite(sid) ? sid : Date.now() + Math.floor(Math.random() * 10000),
     servidor_id: Number.isFinite(sid) ? sid : null,
+    cliente_id: Number.isFinite(clienteId) ? clienteId : null,
     tipo: row.tipo === "digital" ? "digital" : "offset",
     fecha_ingreso_pedido: row.fecha_ingreso_pedido ? String(row.fecha_ingreso_pedido).slice(0, 10) : "",
     fecha_aprobacion:     row.fecha_aprobacion     ? String(row.fecha_aprobacion).slice(0, 10) : "",
@@ -210,6 +213,19 @@ const ListaPedidos: React.FC = () => {
     setGuardados((prev) => ({ ...prev, [id]: false }));
   };
 
+  const resolverClienteId = async (nombre: string): Promise<number | null> => {
+    const texto = nombre.trim();
+    if (!texto) return null;
+    const resultados = await buscarClientesApi(texto);
+    if (!resultados.length) return null;
+    const clave = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const match = resultados.find((cliente) => {
+      const nombreCliente = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || "";
+      return clave(nombreCliente) === clave(texto);
+    }) ?? resultados[0];
+    return match ? Number(match.id) : null;
+  };
+
   const guardarFila = async (id: number) => {
     const fila = filas.find((f) => f.id === id);
     if (!fila) return;
@@ -217,6 +233,15 @@ const ListaPedidos: React.FC = () => {
       setModalError("Completa los campos obligatorios: Fecha ingreso pedido, Responsable, Cliente y Descripción producto.");
       return;
     }
+
+    let clienteId = fila.cliente_id ?? null;
+    if (!clienteId && fila.cliente.trim()) {
+      clienteId = await resolverClienteId(fila.cliente);
+      if (clienteId) {
+        setFilas((prev) => prev.map((f) => f.id === id ? { ...f, cliente_id: clienteId } : f));
+      }
+    }
+
     const token = localStorage.getItem("token");
     const payload = {
       tipo: fila.tipo,
@@ -225,6 +250,7 @@ const ListaPedidos: React.FC = () => {
       fecha_entrega: fila.fecha_entrega || null,
       responsable_nombre: fila.responsable,
       cliente: fila.cliente,
+      cliente_id: clienteId ?? null,
       descripcion_producto: fila.descripcion_producto,
       cantidad: fila.cantidad,
       no_oc: fila.no_oc,
@@ -371,6 +397,7 @@ const ListaPedidos: React.FC = () => {
   const aplicarClienteSeleccionado = (id: number, cliente: ClienteCatalogo) => {
     const nombre = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || "";
     actualizarFila(id, "cliente", nombre);
+    setFilas((prev) => prev.map((fila) => fila.id === id ? { ...fila, cliente_id: Number(cliente.id) || null } : fila));
     setClientesSugeridosPorFila((prev) => ({ ...prev, [id]: [] }));
     setClienteDropdownFilaId(null);
     setClienteModalFilaId(null);
@@ -415,6 +442,7 @@ const ListaPedidos: React.FC = () => {
       state: {
         tipoOrden,
         pedidoId: fila.servidor_id,
+        clienteId: fila.cliente_id,
         pedidoCliente: fila.cliente,
         pedidoDescripcion: fila.descripcion_producto,
         pedidoCantidad: fila.cantidad,

@@ -7,6 +7,7 @@ import { ListPedidosUseCase } from "../../../application/use-cases/listaPedidos/
 import { CreatePedidoUseCase } from "../../../application/use-cases/listaPedidos/CreatePedidoUseCase";
 import { UpdatePedidoUseCase } from "../../../application/use-cases/listaPedidos/UpdatePedidoUseCase";
 import { DeletePedidoUseCase } from "../../../application/use-cases/listaPedidos/DeletePedidoUseCase";
+import { GetPedidoByIdUseCase } from "../../../application/use-cases/listaPedidos/GetPedidoByIdUseCase";
 import { ListaPedidoController } from "../../controllers/listaPedidos/ListaPedidoController";
 
 export const createListaPedidoRoutes = (client: Client) => {
@@ -17,9 +18,11 @@ export const createListaPedidoRoutes = (client: Client) => {
   const createUseCase = new CreatePedidoUseCase(repo);
   const updateUseCase = new UpdatePedidoUseCase(repo);
   const deleteUseCase = new DeletePedidoUseCase(repo);
-  const controller    = new ListaPedidoController(listUseCase, createUseCase, updateUseCase, deleteUseCase);
+  const getByIdUseCase = new GetPedidoByIdUseCase(repo);
+  const controller    = new ListaPedidoController(listUseCase, createUseCase, updateUseCase, deleteUseCase, getByIdUseCase);
 
   router.get("/",       authRequired(), checkPermission(client, "lista_pedidos", "leer"),     controller.listar);
+  router.get("/:id",    authRequired(), checkPermission(client, "lista_pedidos", "leer"),     controller.obtenerPorId);
   router.post("/",      authRequired(), checkPermission(client, "lista_pedidos", "crear"),    controller.crear);
   router.put("/:id",    authRequired(), checkPermission(client, "lista_pedidos", "editar"),   controller.editar);
   router.delete("/:id", authRequired(), checkPermission(client, "lista_pedidos", "eliminar"), controller.eliminar);
