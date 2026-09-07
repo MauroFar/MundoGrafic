@@ -6,22 +6,30 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
   constructor(private readonly client: Client) {}
 
   async findAll(tipo?: TipoPedido): Promise<ListaPedido[]> {
-    if (tipo) {
-      const r = await this.client.query(
-        "SELECT * FROM lista_pedidos WHERE tipo = $1 ORDER BY created_at DESC, id DESC",
-        [tipo]
-      );
-      return r.rows;
-    }
-    const r = await this.client.query(
-      "SELECT * FROM lista_pedidos ORDER BY created_at DESC, id DESC"
-    );
+    const query = `
+      SELECT lp.*, 
+             COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase
+      FROM lista_pedidos lp
+      LEFT JOIN orden_trabajo ot ON ot.id = lp.orden_trabajo_id
+      LEFT JOIN estado_orden_offset eoo ON eoo.id = ot.estado_orden_offset_id
+      LEFT JOIN estado_orden_digital eod ON eod.id = ot.estado_orden_digital_id
+      ${tipo ? 'WHERE lp.tipo = $1' : ''}
+      ORDER BY lp.created_at DESC, lp.id DESC
+    `;
+    const params = tipo ? [tipo] : [];
+    const r = await this.client.query(query, params);
     return r.rows;
   }
 
   async findById(id: number): Promise<ListaPedido | null> {
     const r = await this.client.query(
-      "SELECT * FROM lista_pedidos WHERE id = $1",
+      `SELECT lp.*, 
+              COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase
+       FROM lista_pedidos lp
+       LEFT JOIN orden_trabajo ot ON ot.id = lp.orden_trabajo_id
+       LEFT JOIN estado_orden_offset eoo ON eoo.id = ot.estado_orden_offset_id
+       LEFT JOIN estado_orden_digital eod ON eod.id = ot.estado_orden_digital_id
+       WHERE lp.id = $1`,
       [id]
     );
     return r.rows[0] ?? null;

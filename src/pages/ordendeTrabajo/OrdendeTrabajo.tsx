@@ -147,6 +147,15 @@ const DEFAULT_OFFSET_PROCESS_KEYS: OffsetProcessKey[] = [
   'terminado',
 ];
 
+const normalizarCantidadFormulario = (valor: unknown): string => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const texto = String(valor).trim().replace(',', '.');
+  if (!texto) return '';
+  const numero = Number(texto);
+  if (!Number.isFinite(numero)) return '';
+  return String(Number.isInteger(numero) ? numero : Math.trunc(numero));
+};
+
 const normalizarProcesosDigitalSeleccionados = (valor: any): DigitalProcessKey[] => {
   if (!valor) return [];
   const parsed = typeof valor === 'string' ? (() => {
@@ -862,7 +871,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setConcepto((location.state as any).pedidoDescripcion || '');
       }
       if ((location.state as any)?.pedidoCantidad) {
-        setCantidad(String((location.state as any).pedidoCantidad));
+        setCantidad(normalizarCantidadFormulario((location.state as any).pedidoCantidad));
       }
       setOrdenData({
         nombre_cliente: clienteNombreState || '',

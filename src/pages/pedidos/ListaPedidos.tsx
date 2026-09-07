@@ -49,12 +49,6 @@ const responsablesSugeridos = [
   "Juan Carlos Panchi", "Henry Calderon", "Gustavo Calderon",
 ];
 const estadosSugeridos = ["Sin empezar", "En proceso", "Atrasado", "Completo", "Rechazado"];
-const fasesSugeridas = [
-  "Aprobación de ficha técnica", "Preprensa", "Guillotinado", "Prensa",
-  "Barnizado", "Plastificado", "Troquelado", "Pegado", "Terminados MG",
-  "Terminados externos", "Empaque", "Liberado", "Facturado", "Entregado",
-  "Entrega incompleta",
-];
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
   id, servidor_id: null, cliente_id: null, tipo,
@@ -95,6 +89,7 @@ const ListaPedidos: React.FC = () => {
   const [filas, setFilas]                     = useState<FilaPedido[]>([]);
   const [guardados, setGuardados]             = useState<Record<number, boolean>>({});
   const [loadingInicial, setLoadingInicial]   = useState(true);
+  const [loadingActualizar, setLoadingActualizar] = useState(false);
   const [guardandoFilaId, setGuardandoFilaId] = useState<number | null>(null);
   const [filtroActivo, setFiltroActivo]       = useState<FiltroActividad>("todas");
   const [dropdownAbierto, setDropdownAbierto] = useState<{ id: number; campo: CampoConDropdown } | null>(null);
@@ -149,35 +144,43 @@ const ListaPedidos: React.FC = () => {
     return () => observer.disconnect();
   });
 
-  // Recargar al cambiar tipo
+  const cargarListaPedidos = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(buildApiUrl(`/api/lista-pedidos?tipo=${tipoPedido}`), {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo cargar la lista de pedidos.");
+      const pedidos: unknown[] = Array.isArray(data?.pedidos) ? data.pedidos : [];
+      const fb: FilaPedido[] = pedidos.map(mapPedidoBackendAFila);
+      setFilas((prev) => {
+        const localesNoGuardados = prev.filter((f) => f.servidor_id === null);
+        return [...localesNoGuardados, ...fb];
+      });
+      const g: Record<number, boolean> = {};
+      fb.forEach((f) => { g[f.id] = true; });
+      setGuardados(g);
+      return fb;
+    } catch (err: any) {
+      setModalError(err?.message || "No se pudo cargar la lista de pedidos.");
+      throw err;
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     setLoadingInicial(true);
     setFilas([]);
     setGuardados({});
     setFiltroActivo("todas");
-    const cargar = async () => {
-      const token = localStorage.getItem("token");
+    void (async () => {
       try {
-        const res = await fetch(buildApiUrl(`/api/lista-pedidos?tipo=${tipoPedido}`), {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || "No se pudo cargar la lista de pedidos.");
-        if (!isMounted) return;
-        const pedidos: unknown[] = Array.isArray(data?.pedidos) ? data.pedidos : [];
-        const fb: FilaPedido[] = pedidos.map(mapPedidoBackendAFila);
-        setFilas(fb);
-        const g: Record<number, boolean> = {};
-        fb.forEach((f) => { g[f.id] = true; });
-        setGuardados(g);
-      } catch (err: any) {
-        if (isMounted) setModalError(err?.message || "No se pudo cargar la lista de pedidos.");
+        await cargarListaPedidos();
       } finally {
         if (isMounted) setLoadingInicial(false);
       }
-    };
-    void cargar();
+    })();
     return () => { isMounted = false; };
   }, [tipoPedido]);
 
@@ -404,6 +407,18 @@ const ListaPedidos: React.FC = () => {
     setClienteModalBusqueda("");
     setClienteModalClientes([]);
     setClienteModalLoading(false);
+  };
+
+  const manejarActualizarLista = async () => {
+    setLoadingActualizar(true);
+    try {
+      await cargarListaPedidos();
+      setModalExito("Lista actualizada desde la base de datos.");
+    } catch {
+      // El error ya se muestra en el modal de error.
+    } finally {
+      setLoadingActualizar(false);
+    }
   };
 
   const abrirMenuAccion = (id: number, triggerEl: HTMLButtonElement) => {
@@ -681,10 +696,16 @@ const ListaPedidos: React.FC = () => {
               </span>
             )}
           </div>
-          <button type="button" onClick={agregarFila}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
-            <FaPlus className="h-4 w-4" /> Agregar registro
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={manejarActualizarLista} disabled={loadingActualizar}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+              {loadingActualizar ? "Actualizando..." : "Actualizar"}
+            </button>
+            <button type="button" onClick={agregarFila}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
+              <FaPlus className="h-4 w-4" /> Agregar registro
+            </button>
+          </div>
         </div>
 
         {/* ── Barra de scroll SUPERIOR ── */}
@@ -797,10 +818,13 @@ const ListaPedidos: React.FC = () => {
                               {estadosSugeridos.map((s) => <option key={s} value={s}>{s}</option>)}
                             </select>
                           ) : col.key === "fase" ? (
-                            <select value={fila.fase} onChange={(e) => actualizarFila(fila.id, "fase", e.target.value)} className={inputFull}>
-                              <option value="">Seleccionar</option>
-                              {fasesSugeridas.map((f) => <option key={f} value={f}>{f}</option>)}
-                            </select>
+                            <input
+                              type="text"
+                              value={fila.fase}
+                              readOnly
+                              placeholder="Sin estado"
+                              className={`${inputFull} cursor-not-allowed bg-slate-100 text-slate-600`}
+                            />
                           ) : col.key === "no_op" ? (
                             <input
                               type="text"

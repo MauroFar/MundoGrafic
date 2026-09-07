@@ -4,6 +4,15 @@ import { PgOrdenOffsetRepository, UpsertDetalleOffsetInput } from '../../../offs
 import { PgEstadoOrdenDigitalRepository } from '../../../digital/infrastructure/persistence/PgEstadoOrdenDigitalRepository';
 import { PgEstadoOrdenOffsetRepository } from '../../../offset/infrastructure/persistence/PgEstadoOrdenOffsetRepository';
 
+const normalizarCantidadEntera = (value: any): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const texto = String(value).trim().replace(',', '.');
+  if (!texto) return null;
+  const numero = Number(texto);
+  if (!Number.isFinite(numero)) return null;
+  return Number.isInteger(numero) ? numero : Math.trunc(numero);
+};
+
 export interface CreateOrdenCompletaDeps {
   ordenRepo: IOrdenLegacyRepository;
   detalleDigitalRepo: PgOrdenDigitalRepository;
@@ -178,7 +187,7 @@ export class CreateOrdenCompletaUseCase {
       await this.deps.detalleDigitalRepo.createProductoFull({
         orden_trabajo_id: ordenId,
         orden: i + 1,
-        cantidad: p.cantidad ?? null,
+        cantidad: normalizarCantidadEntera(p.cantidad),
         cod_mg: p.cod_mg ?? null,
         cod_cliente: p.cod_cliente ?? null,
         producto: p.producto ?? null,
@@ -210,7 +219,7 @@ export class CreateOrdenCompletaUseCase {
           orden_trabajo_id: ordenId,
           orden: i + 1,
           concepto: p.concepto ?? null,
-          cantidad: p.cantidad ?? null,
+          cantidad: normalizarCantidadEntera(p.cantidad),
           tamano_abierto: p.tamano_abierto ?? null,
           tamano_cerrado: p.tamano_cerrado ?? null,
           material: p.material ?? null,
@@ -221,7 +230,7 @@ export class CreateOrdenCompletaUseCase {
         orden_trabajo_id: ordenId,
         orden: 1,
         concepto: concepto ?? null,
-        cantidad: cantidad ?? null,
+        cantidad: normalizarCantidadEntera(cantidad),
       });
     }
   }
