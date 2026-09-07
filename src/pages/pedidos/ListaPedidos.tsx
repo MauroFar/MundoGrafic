@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaChevronDown, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaChevronDown, FaEllipsisV, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
 
 type TipoPedido = "offset" | "digital";
@@ -24,6 +24,17 @@ const columnas = [
 ] as const;
 
 type ColumnaKey = typeof columnas[number]["key"];
+
+type ClienteCatalogo = {
+  id: number;
+  nombre_cliente?: string | null;
+  empresa_cliente?: string | null;
+  empresa?: string | null;
+  nombre?: string | null;
+  email_cliente?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+};
 
 type FilaPedido = Record<ColumnaKey, string> & {
   id: number;
@@ -86,12 +97,21 @@ const ListaPedidos: React.FC = () => {
   const [dropdownAbierto, setDropdownAbierto] = useState<{ id: number; campo: CampoConDropdown } | null>(null);
   const [dropdownFiltroTexto, setDropdownFiltroTexto] = useState<string | null>(null);
   const [dropdownCoords, setDropdownCoords]   = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [clienteDropdownFilaId, setClienteDropdownFilaId] = useState<number | null>(null);
+  const [clienteDropdownCoords, setClienteDropdownCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+  const [menuAccionAbierto, setMenuAccionAbierto] = useState<number | null>(null);
+  const [menuAccionCoords, setMenuAccionCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({ abierta: false, filaId: null });
   const [modalExito, setModalExito]           = useState<string | null>(null);
   const [modalError, setModalError]           = useState<string | null>(null);
   const [filtroFechaDesde, setFiltroFechaDesde] = useState<string>("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
   const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
+  const [clientesSugeridosPorFila, setClientesSugeridosPorFila] = useState<Record<number, ClienteCatalogo[]>>({});
+  const [clienteModalFilaId, setClienteModalFilaId] = useState<number | null>(null);
+  const [clienteModalBusqueda, setClienteModalBusqueda] = useState<string>("");
+  const [clienteModalClientes, setClienteModalClientes] = useState<ClienteCatalogo[]>([]);
+  const [clienteModalLoading, setClienteModalLoading] = useState(false);
 
   // Refs para scroll horizontal sincronizado (arriba ↔ abajo ↔ header sticky)
   const scrollTopRef    = useRef<HTMLDivElement>(null);
@@ -160,16 +180,28 @@ const ListaPedidos: React.FC = () => {
 
   // Cerrar dropdown al click fuera
   useEffect(() => {
-    if (!dropdownAbierto) return;
+    if (!dropdownAbierto && clienteDropdownFilaId === null) return;
     const handler = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (t.closest('[data-dropdown-portal]') || t.closest('.responsable-wrapper')) return;
+      if (t.closest('[data-dropdown-portal]') || t.closest('.responsable-wrapper') || t.closest('.cliente-wrapper')) return;
       setDropdownAbierto(null);
       setDropdownFiltroTexto(null);
+      setClienteDropdownFilaId(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [dropdownAbierto]);
+  }, [dropdownAbierto, clienteDropdownFilaId]);
+
+  useEffect(() => {
+    if (menuAccionAbierto === null) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('[data-accion-menu]') || t.closest('.accion-menu-trigger')) return;
+      setMenuAccionAbierto(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuAccionAbierto]);
 
   const agregarFila = () => setFilas((prev) => [...prev, crearFilaVacia(Date.now(), tipoPedido)]);
 
@@ -263,6 +295,102 @@ const ListaPedidos: React.FC = () => {
     setDropdownFiltroTexto(filtrarPorTexto ? inputEl.value : null);
   };
 
+  const abrirClienteDropdown = (id: number, inputEl: HTMLInputElement) => {
+    const rect = inputEl.getBoundingClientRect();
+    const h = 220;
+    const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
+    setClienteDropdownCoords({
+      top: abrirArriba ? rect.top + window.scrollY - h - 4 : rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+    setClienteDropdownFilaId(id);
+  };
+
+  const normalizarCliente = (cliente: any): ClienteCatalogo => ({
+    id: Number(cliente.id),
+    nombre_cliente: cliente.nombre_cliente ?? cliente.nombre ?? null,
+    empresa_cliente: cliente.empresa_cliente ?? cliente.empresa ?? null,
+    empresa: cliente.empresa ?? cliente.empresa_cliente ?? null,
+    nombre: cliente.nombre ?? cliente.nombre_cliente ?? null,
+    email_cliente: cliente.email_cliente ?? cliente.email ?? null,
+    email: cliente.email ?? cliente.email_cliente ?? null,
+    telefono: cliente.telefono ?? cliente.telefono_cliente ?? null,
+  });
+
+  const cargarTodosLosClientes = async (): Promise<ClienteCatalogo[]> => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(buildApiUrl("/api/clientes"), {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) throw new Error(data?.error || "No se pudo cargar clientes");
+      return Array.isArray(data) ? data.map(normalizarCliente) : [];
+    } catch (err) {
+      console.error("Error cargando clientes:", err);
+      return [];
+    }
+  };
+
+  const buscarClientesApi = async (query: string): Promise<ClienteCatalogo[]> => {
+    const texto = query.trim();
+    const token = localStorage.getItem("token");
+    try {
+      if (!texto) {
+        return await cargarTodosLosClientes();
+      }
+      const res = await fetch(buildApiUrl(`/api/clientes/buscar?q=${encodeURIComponent(texto)}`), {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) throw new Error(data?.error || "No se pudo buscar clientes");
+      return Array.isArray(data) ? data.map(normalizarCliente) : [];
+    } catch (err) {
+      console.error("Error buscando clientes:", err);
+      return [];
+    }
+  };
+
+  const buscarClientesEnFila = async (id: number, valor: string) => {
+    const q = valor.trim();
+    const resultados = await buscarClientesApi(q);
+    setClientesSugeridosPorFila((prev) => ({ ...prev, [id]: resultados.slice(0, 6) }));
+  };
+
+  const abrirModalClientes = async (id: number, valorActual: string) => {
+    setClienteModalFilaId(id);
+    setClienteModalBusqueda(valorActual);
+    setClienteModalLoading(true);
+    setClienteModalClientes([]);
+    const resultados = await buscarClientesApi(valorActual.trim() || "");
+    setClienteModalClientes(resultados.slice(0, 30));
+    setClienteModalLoading(false);
+  };
+
+  const aplicarClienteSeleccionado = (id: number, cliente: ClienteCatalogo) => {
+    const nombre = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || "";
+    actualizarFila(id, "cliente", nombre);
+    setClientesSugeridosPorFila((prev) => ({ ...prev, [id]: [] }));
+    setClienteDropdownFilaId(null);
+    setClienteModalFilaId(null);
+    setClienteModalBusqueda("");
+    setClienteModalClientes([]);
+    setClienteModalLoading(false);
+  };
+
+  const abrirMenuAccion = (id: number, triggerEl: HTMLButtonElement) => {
+    const rect = triggerEl.getBoundingClientRect();
+    const h = 110;
+    const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
+    setMenuAccionCoords({
+      top: abrirArriba ? rect.top + window.scrollY - h - 8 : rect.bottom + window.scrollY + 6,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+    setMenuAccionAbierto((prev) => (prev === id ? null : id));
+  };
+
   const toggleDropdown = (id: number, campo: CampoConDropdown, e: React.MouseEvent<HTMLButtonElement>) => {
     const inputEl = (e.currentTarget as HTMLElement).closest('.responsable-wrapper')?.querySelector('input') as HTMLInputElement | null;
     if (inputEl) {
@@ -280,6 +408,19 @@ const ListaPedidos: React.FC = () => {
   };
 
   const cerrarDropdown = () => { setDropdownAbierto(null); setDropdownFiltroTexto(null); };
+
+  const abrirOrdenTrabajo = (fila: FilaPedido) => {
+    const tipoOrden = fila.tipo === "digital" ? "digital" : "offset";
+    navigate(`/ordendeTrabajo/crear?tipo=${tipoOrden}`, {
+      state: {
+        tipoOrden,
+        pedidoId: fila.servidor_id,
+        pedidoCliente: fila.cliente,
+        pedidoDescripcion: fila.descripcion_producto,
+        pedidoCantidad: fila.cantidad,
+      },
+    });
+  };
 
   const obtenerResponsablesFiltrados = () => {
     const texto = (dropdownFiltroTexto ?? "").trim().toLowerCase();
@@ -557,7 +698,7 @@ const ListaPedidos: React.FC = () => {
       <div className="px-2 py-3 sm:px-4" style={{ paddingTop: mainHeaderHeight > 0 ? `${mainHeaderHeight + 8}px` : '12px' }}>
         <div
           ref={scrollBottomRef}
-          className="overflow-x-auto p-3 sm:p-4"
+          className="overflow-x-auto overflow-y-visible p-3 sm:p-4"
           onScroll={() => {
             if (syncingRef.current) return;
             syncingRef.current = true;
@@ -567,7 +708,7 @@ const ListaPedidos: React.FC = () => {
             syncingRef.current = false;
           }}
         >
-          <div className="min-w-max space-y-2">
+          <div className="min-w-max space-y-2 overflow-visible">
               {filasFiltradas.length > 0 && (
                 <>
                   {/* Filas */}
@@ -589,6 +730,39 @@ const ListaPedidos: React.FC = () => {
                                 <FaChevronDown className="h-3 w-3" />
                               </button>
                             </div>
+                          ) : col.key === "cliente" ? (
+                            <div className="relative z-[40] cliente-wrapper">
+                              <input
+                                type="text"
+                                value={fila.cliente}
+                                onChange={async (e) => {
+                                  const valor = e.target.value;
+                                  actualizarFila(fila.id, "cliente", valor);
+                                  setClienteDropdownFilaId(fila.id);
+                                  abrirClienteDropdown(fila.id, e.currentTarget);
+                                  await buscarClientesEnFila(fila.id, valor);
+                                }}
+                                onFocus={async (e) => {
+                                  setClienteDropdownFilaId(fila.id);
+                                  abrirClienteDropdown(fila.id, e.currentTarget);
+                                  await buscarClientesEnFila(fila.id, fila.cliente);
+                                }}
+                                className={`${inputBase} relative z-10 w-full pr-9`}
+                                placeholder="Cliente"
+                              />
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={async () => {
+                                  await abrirModalClientes(fila.id, fila.cliente);
+                                }}
+                                className="absolute inset-y-0 right-0 z-10 flex items-center pr-3 text-slate-500 hover:text-cyan-600"
+                                title="Buscar cliente"
+                                aria-label="Buscar cliente"
+                              >
+                                <FaSearch className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           ) : col.key === "estado" ? (
                             <select value={fila.estado} onChange={(e) => actualizarFila(fila.id, "estado", e.target.value)} className={inputFull}>
                               <option value="">Seleccionar</option>
@@ -599,6 +773,14 @@ const ListaPedidos: React.FC = () => {
                               <option value="">Seleccionar</option>
                               {fasesSugeridas.map((f) => <option key={f} value={f}>{f}</option>)}
                             </select>
+                          ) : col.key === "no_op" ? (
+                            <input
+                              type="text"
+                              value={fila.no_op}
+                              readOnly
+                              placeholder="Sin OT"
+                              className={`${inputFull} cursor-not-allowed bg-slate-100 text-slate-600`}
+                            />
                           ) : col.key === "observaciones" ? (
                             <textarea value={fila.observaciones} onChange={(e) => actualizarFila(fila.id, "observaciones", e.target.value)} className={inputFull} rows={2} />
                           ) : (
@@ -607,16 +789,51 @@ const ListaPedidos: React.FC = () => {
                           )}
                         </div>
                       ))}
-                      <div className="flex flex-col items-stretch justify-start gap-2">
-                        <button type="button" disabled={guardandoFilaId === fila.id}
-                          onClick={() => setConfirmacionGuardar({ abierta: true, filaId: fila.id })}
-                          className={`w-full rounded-lg px-3 py-2 text-xs font-semibold transition ${guardados[fila.id] ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : esOffset ? "bg-cyan-500 text-white hover:bg-cyan-400" : "bg-violet-500 text-white hover:bg-violet-400"}`}>
-                          {guardandoFilaId === fila.id ? "Guardando..." : guardados[fila.id] ? "Guardado" : "Guardar"}
-                        </button>
-                        <button type="button" onClick={() => { void eliminarFila(fila.id); }}
-                          className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100">
-                          Eliminar
-                        </button>
+                      <div className="flex items-center justify-center">
+                        <div className="relative">
+                          <button
+                            type="button"
+                            className="accion-menu-trigger flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                            onClick={(e) => abrirMenuAccion(fila.id, e.currentTarget)}
+                            aria-label="Acciones del pedido"
+                          >
+                            <FaEllipsisV className="h-3.5 w-3.5" />
+                          </button>
+                          {menuAccionAbierto === fila.id && (
+                            <div
+                              data-accion-menu
+                              className="fixed z-[9999] w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+                              style={{ top: menuAccionCoords.top, left: menuAccionCoords.left, width: Math.max(menuAccionCoords.width, 160) }}
+                              onMouseDown={(e) => e.preventDefault()}
+                            >
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { setMenuAccionAbierto(null); if (!guardandoFilaId) void guardarFila(fila.id); }}
+                                className="w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-cyan-50 hover:text-cyan-700"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                disabled={!guardados[fila.id] || guardandoFilaId === fila.id}
+                                onClick={() => { setMenuAccionAbierto(null); if (guardados[fila.id]) abrirOrdenTrabajo(fila); }}
+                                className={`w-full px-3 py-2 text-left text-xs transition ${!guardados[fila.id] || guardandoFilaId === fila.id ? "cursor-not-allowed text-slate-400" : "text-slate-700 hover:bg-violet-50 hover:text-violet-700"}`}
+                              >
+                                Orden de trabajo
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { setMenuAccionAbierto(null); void eliminarFila(fila.id); }}
+                                className="w-full px-3 py-2 text-left text-xs text-red-600 transition hover:bg-red-50"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -672,6 +889,34 @@ const ListaPedidos: React.FC = () => {
         );
       })()}
 
+      {/* ── DROPDOWN CLIENTES PORTAL ── */}
+      {clienteDropdownFilaId !== null && Array.isArray(clientesSugeridosPorFila[clienteDropdownFilaId]) && clientesSugeridosPorFila[clienteDropdownFilaId].length > 0 && (
+        <div
+          data-dropdown-portal
+          className="fixed z-[9999] rounded-lg border border-slate-200 bg-white p-1 shadow-[0_20px_45px_rgba(15,23,42,0.18)]"
+          style={{ top: clienteDropdownCoords.top, left: clienteDropdownCoords.left, width: Math.max(clienteDropdownCoords.width, 200) }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {clientesSugeridosPorFila[clienteDropdownFilaId].map((cliente) => {
+            const nombre = cliente.empresa_cliente || cliente.empresa || cliente.nombre_cliente || cliente.nombre || "Cliente";
+            return (
+              <button
+                key={`${clienteDropdownFilaId}-${cliente.id}`}
+                type="button"
+                className="w-full rounded-md px-2 py-1.5 text-left text-[11px] text-slate-700 transition hover:bg-cyan-50 hover:text-cyan-700"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => aplicarClienteSeleccionado(clienteDropdownFilaId, cliente)}
+              >
+                <span className="block font-medium">{nombre}</span>
+                {(cliente.nombre_cliente || cliente.nombre) && (
+                  <span className="block text-[10px] text-slate-500">Contacto: {cliente.nombre_cliente || cliente.nombre}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── MODAL CONFIRMACIÓN GUARDAR ── */}
       {confirmacionGuardar.abierta && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -712,6 +957,78 @@ const ListaPedidos: React.FC = () => {
                 className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition">
                 Aceptar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL CLIENTES ── */}
+      {clienteModalFilaId !== null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Seleccionar cliente</h3>
+              <button type="button" onClick={() => setClienteModalFilaId(null)} className="text-xl text-slate-500 hover:text-slate-800">×</button>
+            </div>
+
+            <div className="mb-4">
+              <input
+                type="text"
+                value={clienteModalBusqueda}
+                onChange={async (e) => {
+                  const valor = e.target.value;
+                  setClienteModalBusqueda(valor);
+                  const resultados = await buscarClientesApi(valor);
+                  setClienteModalClientes(resultados.slice(0, 30));
+                }}
+                placeholder="Buscar por nombre, empresa o correo..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+              />
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
+              {clienteModalLoading ? (
+                <div className="flex items-center justify-center py-10 text-sm text-slate-500">Cargando clientes...</div>
+              ) : clienteModalClientes.length === 0 ? (
+                <div className="flex items-center justify-center py-10 text-sm text-slate-500">No se encontraron clientes.</div>
+              ) : (
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-700">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Nombre</th>
+                      <th className="px-3 py-2 font-semibold">Empresa</th>
+                      <th className="px-3 py-2 font-semibold">Correo</th>
+                      <th className="px-3 py-2 font-semibold">Teléfono</th>
+                      <th className="px-3 py-2 font-semibold text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clienteModalClientes.map((cliente) => {
+                      const nombre = cliente.nombre_cliente || cliente.nombre || "-";
+                      const empresa = cliente.empresa_cliente || cliente.empresa || "-";
+                      const email = cliente.email_cliente || cliente.email || "-";
+                      const telefono = cliente.telefono || "-";
+                      return (
+                        <tr key={cliente.id} className="border-t border-slate-200 hover:bg-slate-50">
+                          <td className="px-3 py-2">{nombre}</td>
+                          <td className="px-3 py-2">{empresa}</td>
+                          <td className="px-3 py-2">{email}</td>
+                          <td className="px-3 py-2">{telefono}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => aplicarClienteSeleccionado(clienteModalFilaId, cliente)}
+                              className="rounded-lg bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-400"
+                            >
+                              Seleccionar
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>

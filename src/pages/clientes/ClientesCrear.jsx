@@ -4,7 +4,7 @@ import { FaSave, FaTimes, FaUser, FaBuilding, FaPhone, FaEnvelope, FaMapMarkerAl
 import { toast } from 'react-toastify';
 import { obtenerClientePorId, crearCliente, actualizarCliente } from "../../services/clientesService";
 
-const ClientesCrear = () => {
+  const ClientesCrear = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
@@ -330,5 +330,4 @@ const ClientesCrear = () => {
     </div>
   );
 };
-
 export default ClientesCrear;

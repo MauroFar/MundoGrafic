@@ -713,9 +713,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Detectar si hay cotizacionId o no para saber qué hacer
   useEffect(() => {
-    // Si venimos navegando con tipoOrden, guardarlo
-    if (location.state && (location.state as any).tipoOrden) {
-      setTipoOrdenSeleccionado((location.state as any).tipoOrden);
+    const tipoDesdeQuery = searchParams.get('tipo');
+    const tipoDesdeState = (location.state as any)?.tipoOrden;
+    const tipoInicial = tipoDesdeState === 'offset' || tipoDesdeState === 'digital'
+      ? tipoDesdeState
+      : (tipoDesdeQuery === 'offset' || tipoDesdeQuery === 'digital' ? tipoDesdeQuery : null);
+
+    // Si venimos navegando con tipoOrden en query o state, guardarlo
+    if (tipoInicial) {
+      setTipoOrdenSeleccionado(tipoInicial);
+      setShowTipoOrdenModal(false);
     }
 
     // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
@@ -802,7 +809,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         .then(data => setNumero_orden(data.proximoNumero))
         .catch(() => setNumero_orden(''));
       // Si no tenemos tipo de orden aún, mostrar modal de selección
-      if (!tipoOrdenSeleccionado) {
+      if (!tipoInicial) {
         setShowTipoOrdenModal(true);
       }
       return;
@@ -1465,6 +1472,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // Campos adicionales para orden digital
       id_cotizacion: cotizacionId || null,
       id_detalle_cotizacion: idDetalleCotizacion,
+      pedido_id: (location.state as any)?.pedidoId ?? null,
       tipo_orden: tipoOrdenSeleccionado || 'offset', // Agregar tipo de orden
       // Detalle técnico (depende del tipo de orden)
       detalle: tipoOrdenSeleccionado === 'digital' ? {

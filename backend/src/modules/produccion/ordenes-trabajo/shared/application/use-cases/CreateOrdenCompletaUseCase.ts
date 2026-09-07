@@ -14,6 +14,8 @@ export interface CreateOrdenCompletaDeps {
   runInTransaction: <T>(fn: () => Promise<T>) => Promise<T>;
   /** Verificar existencia de cotización (raw query necesario) */
   checkCotizacionExists: (id: number) => Promise<boolean>;
+  /** Vincula un pedido existente con la OT creada para autocompletar no_op */
+  linkPedidoToOrden?: (pedidoId: number, ordenId: number, numeroOrden: string) => Promise<void>;
 }
 
 export class CreateOrdenCompletaUseCase {
@@ -31,11 +33,19 @@ export class CreateOrdenCompletaUseCase {
       vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
       laminado_barnizado_cantidad_final, troquelado_cantidad_final, terminados_cantidad_final,
       liberacion_producto_cantidad_final, id_cotizacion, id_detalle_cotizacion, tipo_orden, detalle,
+      pedido_id,
     } = body;
 
     const tipoOrden: string = tipo_orden || 'offset';
     const artesAprobados = Boolean(artes_aprobados);
     const fechaEntregaPersistida = artesAprobados ? (fecha_entrega || null) : null;
+    const pedidoIdNorm =
+      pedido_id === null || pedido_id === undefined || pedido_id === ''
+        ? null
+        : Number(pedido_id);
+    if (pedidoIdNorm !== null && (!Number.isInteger(pedidoIdNorm) || pedidoIdNorm <= 0)) {
+      throw new Error('pedido_id inválido');
+    }
 
     // Validar cotización si se indica
     const idCotizacionNorm =
@@ -151,6 +161,10 @@ export class CreateOrdenCompletaUseCase {
         };
         await this.deps.detalleOffsetRepo.upsertDetalleCompleto(detalleInput);
         await this._insertProductosOffset(ordenId, detalle?.productos_offset, concepto, cantidad);
+      }
+
+      if (pedidoIdNorm !== null && this.deps.linkPedidoToOrden) {
+        await this.deps.linkPedidoToOrden(pedidoIdNorm, ordenId, ordenRow.numero_orden);
       }
 
       return { id: ordenId, numero_orden: ordenRow.numero_orden };

@@ -268,6 +268,16 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
             const r = await client.query('SELECT 1 FROM cotizaciones WHERE id = $1 LIMIT 1', [id]);
             return r.rows.length > 0;
           },
+          linkPedidoToOrden: async (pedidoId, ordenId, numeroOrden) => {
+            await client.query(
+              `UPDATE lista_pedidos
+               SET orden_trabajo_id = $1,
+                   no_op = $2,
+                   updated_at = NOW()
+               WHERE id = $3`,
+              [ordenId, numeroOrden, pedidoId],
+            );
+          },
         });
         const result = await useCase.execute(req.body, userId);
         res.status(201).json({ message: 'Orden de trabajo creada correctamente', numero_orden: result.numero_orden });
