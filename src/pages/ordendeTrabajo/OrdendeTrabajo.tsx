@@ -1578,8 +1578,15 @@ const OrdendeTrabajoEditar: React.FC = () => {
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
       notas_observaciones: notasObservaciones,
       vendedor,
+      // Mapear responsables tanto con sufijos (usados por vistas digitales)
+      // como con nombres esperados por el backend para offset (preprensa, prensa, terminados)
       preprensa_responsable: preprensaResponsable,
       impresion_responsable: impresionResponsable,
+      // Campos esperados por el upsert de detalle offset
+      preprensa: preprensaResponsable,
+      prensa: impresionResponsable,
+      terminados: terminadoResponsable,
+      facturado: null,
       laminado_responsable: laminadoResponsable,
       barnizado_responsable: barnizadoResponsable,
       troquelado_flexible_responsable: troqueladoFlexibleResponsable,

@@ -40,6 +40,7 @@ type FilaPedido = Record<ColumnaKey, string> & {
   id: number;
   servidor_id: number | null;
   cliente_id: number | null;
+  orden_trabajo_id?: number | null;
   tipo: TipoPedido;
 };
 
@@ -51,7 +52,7 @@ const responsablesSugeridos = [
 const estadosSugeridos = ["Sin empezar", "En proceso", "Atrasado", "Completo", "Rechazado"];
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
-  id, servidor_id: null, cliente_id: null, tipo,
+  id, servidor_id: null, cliente_id: null, orden_trabajo_id: null, tipo,
   fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
   fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
   descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
@@ -76,6 +77,7 @@ const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
     cantidad:     row.cantidad === 0 || row.cantidad ? String(row.cantidad) : "",
     no_oc:        row.no_oc       ? String(row.no_oc) : "",
     no_op:        row.no_op       ? String(row.no_op) : "",
+    orden_trabajo_id: row.orden_trabajo_id != null && row.orden_trabajo_id !== '' ? Number(row.orden_trabajo_id) : null,
     estado:       row.estado      ? String(row.estado) : "",
     fase:         row.fase        ? String(row.fase) : "",
     no_factura:   row.no_factura  ? String(row.no_factura) : "",
@@ -866,15 +868,26 @@ const ListaPedidos: React.FC = () => {
                               >
                                 Guardar
                               </button>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                disabled={!guardados[fila.id] || guardandoFilaId === fila.id}
-                                onClick={() => { setMenuAccionAbierto(null); if (guardados[fila.id]) abrirOrdenTrabajo(fila); }}
-                                className={`w-full px-3 py-2 text-left text-xs transition ${!guardados[fila.id] || guardandoFilaId === fila.id ? "cursor-not-allowed text-slate-400" : "text-slate-700 hover:bg-violet-50 hover:text-violet-700"}`}
-                              >
-                                Orden de trabajo
-                              </button>
+                              {fila.orden_trabajo_id ? (
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => { setMenuAccionAbierto(null); navigate(`/ordendeTrabajo/editar/${fila.orden_trabajo_id}`); }}
+                                  className={`w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50 hover:text-slate-800`}
+                                >
+                                  Ver orden de trabajo
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  disabled={!guardados[fila.id] || guardandoFilaId === fila.id}
+                                  onClick={() => { setMenuAccionAbierto(null); if (guardados[fila.id]) abrirOrdenTrabajo(fila); }}
+                                  className={`w-full px-3 py-2 text-left text-xs transition ${!guardados[fila.id] || guardandoFilaId === fila.id ? "cursor-not-allowed text-slate-400" : "text-slate-700 hover:bg-violet-50 hover:text-violet-700"}`}
+                                >
+                                  Orden de trabajo
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
