@@ -107,6 +107,8 @@ const VistaKanban = () => {
   const QA_STORAGE_KEY = 'mg.qa.gates.v1';
   const QA_QUEUE_KEY = 'mg.qa.queue.v1';
   const ETAPA_TIMESTAMPS_KEY = 'mg.etapa.timestamps.v1';
+  const OFFSET_SUBSTAGE_OVERRIDES_KEY = 'mg.kanban.offset.substages.v1';
+  const OFFSET_WORKFLOW_SIGNATURE_KEY = 'mg.kanban.offset.workflow.v1';
 
   // Refs para sincronizar scroll horizontal arriba y abajo
   const scrollTopRef = useRef(null);
@@ -208,9 +210,9 @@ const VistaKanban = () => {
     );
   };
 
-  // En workflow digital ocultamos estas columnas en la vista Kanban,
-  // pero se mantienen en el flujo interno para no romper transiciones/QA.
-  const columnasVisibles = workflowType === 'digital'
+  // En workflow offset ocultamos las columnas de 'liberado' y 'entregado'
+  // en la vista Kanban (se mostrarán únicamente en las vistas específicas).
+  const columnasVisibles = workflowType === 'offset'
     ? columnas.filter((c) => !['liberado', 'entregado'].includes(c.id))
     : columnas;
 
@@ -219,6 +221,32 @@ const VistaKanban = () => {
     try { return JSON.parse(localStorage.getItem(ETAPA_TIMESTAMPS_KEY) || '{}'); }
     catch { return {}; }
   };
+
+  // Substage overrides for offset workflow (client-side persistence)
+  const loadOffsetSubstageOverrides = () => {
+    try { return JSON.parse(localStorage.getItem(OFFSET_SUBSTAGE_OVERRIDES_KEY) || '{}'); }
+    catch { return {}; }
+  };
+  const saveOffsetSubstageOverrides = (map) => {
+    try { localStorage.setItem(OFFSET_SUBSTAGE_OVERRIDES_KEY, JSON.stringify(map)); }
+    catch (e) { console.warn('No se pudo guardar overrides de sub-etapas', e); }
+  };
+  const setOffsetSubstageOverride = (ordenId, columnaId) => {
+    const all = loadOffsetSubstageOverrides();
+    if (columnaId) all[ordenId] = columnaId;
+    else delete all[ordenId];
+    saveOffsetSubstageOverrides(all);
+  };
+  const getOffsetSubstageOverride = (ordenId) => loadOffsetSubstageOverrides()[ordenId];
+
+  const loadOffsetWorkflowSignature = () => {
+    try { return localStorage.getItem(OFFSET_WORKFLOW_SIGNATURE_KEY) || ''; }
+    catch { return ''; }
+  };
+  const saveOffsetWorkflowSignature = (sig) => {
+    try { localStorage.setItem(OFFSET_WORKFLOW_SIGNATURE_KEY, sig); } catch (e) { /* ignore */ }
+  };
+  const clearOffsetSubstageOverrides = () => saveOffsetSubstageOverrides({});
   const saveTimestamp = (ordenId, etapaId, tipo, fecha, hora) => {
     const all = getAllTimestamps();
     const key = `${ordenId}:${etapaId}`;
@@ -342,8 +370,11 @@ const VistaKanban = () => {
 
   const moverOrdenAColumna = async (orden, columnaOrigenId, columnaDestinoId, observacion = '') => {
     if (columnaOrigenId === columnaDestinoId) return;
-    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
-    const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
+    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId || String(c.id) === String(columnaDestinoId));
+    // Prefer numeric id when backend provided it, otherwise use db_estado (key) or fallback to id
+    let estadoPersistente;
+    if (columnaDestino && typeof columnaDestino.id === 'number') estadoPersistente = columnaDestino.id;
+    else estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
     // Actualizar UI de inmediato (optimistic update)
     setOrdenes((prev) => {
       const origen = (prev[columnaOrigenId] || []).filter((o) => o.id !== orden.id);
@@ -364,7 +395,29 @@ const VistaKanban = () => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: estadoPersistente }),
       });
-      if (!response.ok) throw new Error('Error al actualizar estado');
+      if (!response.ok) {
+        let json;
+        try { json = await response.json(); } catch (e) { json = null; }
+        console.error('Respuesta error backend:', json || response.status);
+        if (json && json.allowed) {
+          const allowed = (json.allowed || []).map(a => a.key || a.id || a.titulo).join(', ');
+          toast.error(`Estado no reconocido. Estados permitidos: ${allowed}`);
+          throw new Error('Estado no reconocido');
+        }
+        const msg = (json && (json.error || json.message)) ? (json.error || json.message) : 'Error al actualizar estado';
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      // Notify other parts of the app that the order state changed
+      try { window.dispatchEvent(new CustomEvent('orden-estado-cambiado', { detail: { ordenId: orden.id, destino: columnaDestinoId } })); } catch (e) {}
+
+      // Si la actualización en backend fue exitosa y estamos en offset,
+      // guardamos una override local para mantener la tarjeta en la sub-columna visual (solo cliente)
+      if (workflowType === 'offset') {
+        if (columnaDestino?.db_estado) setOffsetSubstageOverride(orden.id, columnaDestino.id);
+        else setOffsetSubstageOverride(orden.id, null);
+      }
     } catch (error) {
       console.error('Error al persistir estado en BD:', error);
       // Revertir UI si falló
@@ -373,13 +426,15 @@ const VistaKanban = () => {
         const origen = [{ ...orden, estado: columnaOrigenId }, ...(prev[columnaOrigenId] || [])];
         return { ...prev, [columnaOrigenId]: origen, [columnaDestinoId]: destino };
       });
-      alert('Error al guardar el cambio de estado. Intenta de nuevo.');
+      toast.error(error?.message || 'Error al guardar el cambio de estado. Intenta de nuevo.');
     }
   };
 
   const moverPendienteAColumna = async (orden, columnaDestinoId, observacion = '') => {
-    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId);
-    const estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
+    const columnaDestino = columnas.find((c) => c.id === columnaDestinoId || String(c.id) === String(columnaDestinoId));
+    let estadoPersistente;
+    if (columnaDestino && typeof columnaDestino.id === 'number') estadoPersistente = columnaDestino.id;
+    else estadoPersistente = columnaDestino?.db_estado || columnaDestinoId;
     // Actualizar UI de inmediato (optimistic update)
     setOrdenesPendientes((prev) => prev.filter((o) => o.id !== orden.id));
     setOrdenes((prev) => ({
@@ -395,7 +450,28 @@ const VistaKanban = () => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: estadoPersistente, nota: observacion || null }),
       });
-      if (!response.ok) throw new Error('Error al actualizar estado');
+      if (!response.ok) {
+        let json;
+        try { json = await response.json(); } catch (e) { json = null; }
+        console.error('Respuesta error backend:', json || response.status);
+        if (json && json.allowed) {
+          const allowed = (json.allowed || []).map(a => a.key || a.id || a.titulo).join(', ');
+          toast.error(`Estado no reconocido. Estados permitidos: ${allowed}`);
+          throw new Error('Estado no reconocido');
+        }
+        const msg = (json && (json.error || json.message)) ? (json.error || json.message) : 'Error al actualizar estado';
+        toast.error(msg);
+        throw new Error(msg);
+      }
+
+      // Notify other parts of the app that the order state changed
+      try { window.dispatchEvent(new CustomEvent('orden-estado-cambiado', { detail: { ordenId: orden.id, destino: columnaDestinoId } })); } catch (e) {}
+
+      // Guardar override local para offset
+      if (workflowType === 'offset') {
+        if (columnaDestino?.db_estado) setOffsetSubstageOverride(orden.id, columnaDestino.id);
+        else setOffsetSubstageOverride(orden.id, null);
+      }
     } catch (error) {
       console.error('Error al persistir estado en BD:', error);
       // Revertir UI si falló
@@ -404,7 +480,7 @@ const VistaKanban = () => {
         ...prev,
         [columnaDestinoId]: (prev[columnaDestinoId] || []).filter((o) => o.id !== orden.id),
       }));
-      alert('Error al guardar el cambio de estado. Intenta de nuevo.');
+      toast.error(error?.message || 'Error al guardar el cambio de estado. Intenta de nuevo.');
     }
   };
 
@@ -487,6 +563,72 @@ const VistaKanban = () => {
         // choose icons based on color mapping
         const iconMap = { yellow: FaClock, blue: FaPlay, purple: FaPlay, orange: FaPlay, indigo: FaCheckCircle, green: FaCheckCircle, teal: FaPlay, gray: FaExclamationTriangle, cyan: FaPlay, emerald: FaPlay };
         let cols = json.workflow.map(s => ({ ...s, icono: iconMap[s.color] || FaPlay }));
+
+        // If requesting offset workflow, enforce exact desired columns and order (only these)
+        if ((tipo || '').toString().toLowerCase() === 'offset') {
+          const desiredOrder = [
+            'pendiente',
+            'en_preprensa',
+            'guillotinado',
+            'en_prensa',
+            'barnizado',
+            'plastificado',
+            'troquelado',
+            'pegado',
+            'terminados_mg',
+            'terminados_externos',
+            'liberado',
+            'entregado',
+            'cancelado'
+          ];
+
+          const normalize = (s) => {
+            if (!s) return '';
+            try {
+              return s.toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim().replace(/[_\s]+/g, ' ');
+            } catch (e) {
+              return s.toString().toLowerCase().trim().replace(/[_\s]+/g, ' ');
+            }
+          };
+
+          const colsByMatch = [];
+          const remaining = [...cols];
+          desiredOrder.forEach(desId => {
+            const desNorm = normalize(desId);
+            let foundIndex = remaining.findIndex(c => normalize(c.id || '') === desNorm);
+            if (foundIndex === -1) foundIndex = remaining.findIndex(c => normalize(c.titulo || '').includes(desNorm) || desNorm.includes(normalize(c.titulo || '')));
+            if (foundIndex === -1) foundIndex = remaining.findIndex(c => (c.aliases || []).map(a => normalize(a)).some(a => a === desNorm || a.includes(desNorm) || desNorm.includes(a)));
+            if (foundIndex > -1) {
+              colsByMatch.push(remaining[foundIndex]);
+              remaining.splice(foundIndex, 1);
+            }
+          });
+
+          // Use only the matched desired columns (drop any other columns)
+          cols = colsByMatch;
+          // Ensure expected stages exist even if backend omitted them: add lightweight fallbacks
+          const expected = [
+            { id: 'pendiente', titulo: 'En Proceso', color: 'yellow' },
+            { id: 'en_preprensa', titulo: 'Preprensa', color: 'blue' },
+            { id: 'guillotinado', titulo: 'Guillotinado', color: 'cyan' },
+            { id: 'en_prensa', titulo: 'Impresión', color: 'purple' },
+            { id: 'barnizado', titulo: 'Barnizado', color: 'orange' },
+            { id: 'plastificado', titulo: 'Plastificado', color: 'teal' },
+            { id: 'troquelado', titulo: 'Troquelado', color: 'teal' },
+            { id: 'pegado', titulo: 'Pegado', color: 'teal' },
+            { id: 'terminados_mg', titulo: 'Terminados MG', color: 'amber' },
+            { id: 'terminados_externos', titulo: 'Terminados Externos', color: 'amber' },
+            { id: 'liberado', titulo: 'Producto Liberado', color: 'gray' },
+            { id: 'entregado', titulo: 'Producto Entregado', color: 'green' },
+            { id: 'cancelado', titulo: 'Cancelado', color: 'red' }
+          ];
+          const existingIds = new Set(cols.map(c => c.id));
+          expected.forEach(exp => {
+            if (!existingIds.has(exp.id)) {
+              cols.push({ id: exp.id, titulo: exp.titulo, color: exp.color, aliases: [exp.id], icono: FaPlay });
+            }
+          });
+        }
         // For digital workflows enforce the desired stage order:
         // preprensa, impresion, laminado, troquelado, terminado, producto liberado, entregado
         if ((tipo || '').toString().toLowerCase() === 'digital') {
@@ -571,6 +713,20 @@ const VistaKanban = () => {
         });
 
         console.log('🔁 Columnas procesadas para Kanban (unicas):', uniqueCols.map(c => ({ id: c.id, titulo: c.titulo })));
+        // Si estamos en offset, comprobar si el workflow cambió y limpiar overrides locales
+        try {
+          if ((tipo || '').toString().toLowerCase() === 'offset') {
+            const newSig = uniqueCols.map(c => c.id).join(',');
+            const oldSig = loadOffsetWorkflowSignature();
+            if (oldSig !== newSig) {
+              console.log('🧹 Workflow offset cambió: limpiando overrides locales');
+              clearOffsetSubstageOverrides();
+              saveOffsetWorkflowSignature(newSig);
+            }
+          }
+        } catch (e) {
+          console.warn('Error comprobando workflow signature', e);
+        }
         setColumnas(uniqueCols);
         return uniqueCols;
       }
@@ -730,6 +886,36 @@ const VistaKanban = () => {
       }
 
       console.log('✅ Órdenes agrupadas:', ordenesAgrupadas);
+      // Aplicar overrides locales de sub-etapa para workflow offset (solo visual, cliente)
+      try {
+        if ((workflowType || '').toString().toLowerCase() === 'offset') {
+          const overrides = loadOffsetSubstageOverrides();
+          Object.entries(overrides).forEach(([ordenId, overrideColId]) => {
+            if (!overrideColId) return;
+            for (const colId of Object.keys(ordenesAgrupadas)) {
+              const idx = (ordenesAgrupadas[colId] || []).findIndex(o => String(o.id) === String(ordenId));
+              if (idx >= 0) {
+                const order = ordenesAgrupadas[colId][idx];
+                const targetCol = (colsToUse || []).find(c => c.id === overrideColId);
+                if (targetCol) {
+                  const orderEstadoKey = (order.estado_offset_key || order.estado || order.estado_digital_key || '').toString().toLowerCase();
+                  const targetDbEstado = (targetCol.db_estado || targetCol.id || '').toString().toLowerCase();
+                  if (targetDbEstado && (orderEstadoKey.includes(targetDbEstado) || targetDbEstado.includes(orderEstadoKey))) {
+                    // mover al override
+                    ordenesAgrupadas[colId].splice(idx, 1);
+                    if (!ordenesAgrupadas[targetCol.id]) ordenesAgrupadas[targetCol.id] = [];
+                    ordenesAgrupadas[targetCol.id].unshift(order);
+                  }
+                }
+                break;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Error aplicando overrides de sub-etapa', e);
+      }
+
       setOrdenes(ordenesAgrupadas);
 
       // ── Sincronizar qaGates desde el backend (fuente de verdad) ─────────
@@ -1084,18 +1270,35 @@ const VistaKanban = () => {
                               style={{ top: dropdownCoords.top, left: dropdownCoords.left, minWidth: dropdownCoords.width }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {columnasVisibles.map((etapa) => (
-                                <button
-                                  key={etapa.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    abrirConfirmacionProceso(orden, null, etapa.id, etapa.titulo, true);
-                                  }}
-                                  className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors"
-                                >
-                                  {etapa.titulo}
-                                </button>
-                              ))}
+                              {(() => {
+                                const opciones = [...columnasVisibles];
+                                if (workflowType === 'offset') {
+                                  const must = ['terminados_mg','terminados_externos','liberado','entregado'];
+                                  must.forEach(id => {
+                                    if (!opciones.find(o => o.id === id)) {
+                                      const f = columnas.find(c => c.id === id);
+                                      if (f) opciones.push(f);
+                                    }
+                                  });
+                                }
+                                return opciones.map((etapa) => {
+                                  const key = (etapa.id || '').toString().toLowerCase();
+                                  const tituloFallback = key === 'liberado' ? 'Producto Liberado'
+                                    : key === 'entregado' ? 'Producto Terminado' : etapa.titulo || etapa.id;
+                                  return (
+                                    <button
+                                      key={etapa.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirConfirmacionProceso(orden, null, etapa.id, tituloFallback, true);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-[11px] text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors"
+                                    >
+                                      {tituloFallback}
+                                    </button>
+                                  );
+                                });
+                              })()}
                             </div>
                           )}
                         </div>
@@ -1223,7 +1426,17 @@ const VistaKanban = () => {
                               const selectorKey = `${orden.id}:${columna.id}`;
                               const selectorAbierto = selectorProcesoAbierto === selectorKey;
                               // Solo mostrar etapas POSTERIORES a la actual (no permite retroceder)
-                              const etapasDestino = columnas.filter((_, i) => i > idxActual);
+                              let etapasDestino = columnas.filter((_, i) => i > idxActual);
+                              // For offset workflow, ensure specific final stages exist in the options
+                              if (workflowType === 'offset') {
+                                const mustHave = ['terminados_mg', 'terminados_externos', 'liberado', 'entregado'];
+                                mustHave.forEach((needId) => {
+                                  if (!etapasDestino.find(e => e.id === needId)) {
+                                    const found = columnas.find(c => c.id === needId || (c.id || '').toString().toLowerCase() === needId);
+                                    if (found && found.id !== columna.id) etapasDestino.push(found);
+                                  }
+                                });
+                              }
                               return (
                                 <div className="relative">
                                   <button

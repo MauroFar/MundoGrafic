@@ -107,6 +107,7 @@ const ModalConfirmacionProceso = ({ datos, onConfirmar, onCancelar }) => {
 const ProductosTerminados = () => {
   const navigate = useNavigate();
   const apiUrl = import.meta.env.VITE_API_URL;
+  const [workflowType, setWorkflowType] = useState('digital');
 
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -116,6 +117,8 @@ const ProductosTerminados = () => {
 
   const [confirmacionProceso, setConfirmacionProceso] = useState(null);
   const [etapasDestino, setEtapasDestino] = useState([ETAPA_ENTREGADO]);
+  const [offsetLiberadoId, setOffsetLiberadoId] = useState(null);
+  const [offsetEntregadoId, setOffsetEntregadoId] = useState(null);
 
   // Modal detalle
   const [showModal, setShowModal] = useState(false);
@@ -133,15 +136,22 @@ const ProductosTerminados = () => {
     localStorage.setItem(ETAPA_TIMESTAMPS_KEY, JSON.stringify(all));
   };
 
-  const cargarWorkflowDigital = async () => {
+  const cargarWorkflowDigital = async (tipo = 'digital') => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/workflow?tipo=digital`, {
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/workflow?tipo=${encodeURIComponent(tipo)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
       const data = await res.json();
       const workflow = Array.isArray(data?.workflow) ? data.workflow : [];
+      // if offset, capture numeric ids for liberado/entregado
+      if ((tipo || '').toString().toLowerCase() === 'offset') {
+        const lib = workflow.find((e) => normalizeKey(e.key || e.id) === ETAPA_LIBERADO.id || normalizeKey(e.id) === ETAPA_LIBERADO.id || normalizeKey(e.titulo) === ETAPA_LIBERADO.id);
+        const ent = workflow.find((e) => normalizeKey(e.key || e.id) === ETAPA_ENTREGADO.id || normalizeKey(e.id) === ETAPA_ENTREGADO.id || normalizeKey(e.titulo) === ETAPA_ENTREGADO.id);
+        setOffsetLiberadoId(lib?.db_id ?? lib?.id ?? null);
+        setOffsetEntregadoId(ent?.db_id ?? ent?.id ?? null);
+      }
       const idxLiberado = workflow.findIndex((e) => normalizeKey(e.id) === ETAPA_LIBERADO.id);
       const siguientes = idxLiberado >= 0
         ? workflow.slice(idxLiberado + 1)
@@ -162,7 +172,7 @@ const ProductosTerminados = () => {
     }
   };
 
-  const cargarOrdenes = async () => {
+  const cargarOrdenes = async (tipo = workflowType) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -178,11 +188,16 @@ const ProductosTerminados = () => {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
 
-      const filtrados = arr.filter(
-        (o) =>
-          normalizeKey(o.tipo_orden) === 'digital' &&
-          ESTADOS_TERMINADO.includes(o.estado_digital_key)
-      );
+      const filtrados = arr.filter((o) => {
+        const tipoOrden = normalizeKey(o.tipo_orden || 'offset');
+        if ((tipo || '').toString().toLowerCase() === 'digital') {
+          return tipoOrden === 'digital' && ESTADOS_TERMINADO.includes(o.estado_digital_key);
+        }
+        // offset: filter by numeric estado id when available
+        const estadoOffsetId = o.estado_orden_offset_id ?? null;
+        if (offsetLiberadoId) return tipoOrden !== 'digital' && Number(estadoOffsetId) === Number(offsetLiberadoId);
+        return tipoOrden !== 'digital' && ESTADOS_TERMINADO.includes(o.estado_offset_key);
+      });
       setOrdenes(filtrados);
     } catch (err) {
       console.error(err);
@@ -196,6 +211,18 @@ const ProductosTerminados = () => {
     cargarOrdenes();
     cargarWorkflowDigital();
   }, []);
+
+  useEffect(() => {
+    const onCambio = (e) => { cargarOrdenes(); };
+    window.addEventListener('orden-estado-cambiado', onCambio);
+    return () => window.removeEventListener('orden-estado-cambiado', onCambio);
+  }, []);
+
+  // reload when workflow changes
+  useEffect(() => {
+    cargarOrdenes(workflowType);
+    cargarWorkflowDigital(workflowType);
+  }, [workflowType]);
 
   const abrirDetalle = async (id) => {
     try {
@@ -248,6 +275,9 @@ const ProductosTerminados = () => {
       });
       if (!resEstado.ok) throw new Error('Error al actualizar estado');
 
+      // Notificar a otras vistas que la orden cambió de estado
+      try { window.dispatchEvent(new CustomEvent('orden-estado-cambiado', { detail: { ordenId: orden.id, destino: etapaDestinoId } })); } catch (e) {}
+
       setConfirmacionProceso(null);
       toast.success(`Orden ${orden.numero_orden} enviada a ${etapaDestinoTitulo}`);
       await cargarOrdenes();
@@ -281,13 +311,29 @@ const ProductosTerminados = () => {
               <p className="text-green-100 text-sm mt-0.5">Órdenes digitales con estado Producto Liberado</p>
             </div>
           </div>
-          <button
-            onClick={async () => { await cargarOrdenes(); await cargarWorkflowDigital(); }}
-            className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
-          >
-            <FaSync className={loading ? 'animate-spin' : ''} />
-            Actualizar
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center rounded-full bg-white/10 p-1">
+              <button
+                onClick={() => setWorkflowType('offset')}
+                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${workflowType==='offset' ? 'bg-white text-green-800 font-semibold' : 'text-white hover:bg-white/20'}`}
+              >
+                Offset
+              </button>
+              <button
+                onClick={() => setWorkflowType('digital')}
+                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${workflowType==='digital' ? 'bg-white text-green-800 font-semibold' : 'text-white hover:bg-white/20'}`}
+              >
+                Digital
+              </button>
+            </div>
+            <button
+              onClick={async () => { await cargarOrdenes(workflowType); await cargarWorkflowDigital(workflowType); }}
+              className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
+            >
+              <FaSync className={loading ? 'animate-spin' : ''} />
+              Actualizar
+            </button>
+          </div>
         </div>
       </div>
 

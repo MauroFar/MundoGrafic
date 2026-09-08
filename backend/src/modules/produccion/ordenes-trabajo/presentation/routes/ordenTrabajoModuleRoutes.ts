@@ -589,7 +589,8 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
         }));
         return res.json({ success: true, workflow });
       }
-      res.json({ success: true, workflow: produccionRepo.getWorkflowOffset() });
+      const offsetWorkflow = await produccionRepo.getWorkflowOffset();
+      res.json({ success: true, workflow: offsetWorkflow });
     } catch (err) { handle(res, err); }
   });
 

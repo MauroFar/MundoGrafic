@@ -88,19 +88,14 @@ export class PgProduccionRepository {
     return result.rows;
   }
 
-  getWorkflowOffset(): any[] {
-    return [
-      { id: 'preprensa',          db_estado: 'en_preprensa', titulo: 'Pre prensa',          color: 'blue',    aliases: ['preprensa','pre prensa','en preprensa','en_preprensa'] },
-      { id: 'guillotinado',       db_estado: 'en_preprensa', titulo: 'Guillotinado',         color: 'indigo',  aliases: ['guillotinado','guillotina'] },
-      { id: 'prensa',             db_estado: 'en_prensa',    titulo: 'Prensa',               color: 'purple',  aliases: ['prensa','impresion','impresión','en_prensa','en prensa'] },
-      { id: 'barnizado',          db_estado: 'terminados',   titulo: 'Barnizado',            color: 'orange',  aliases: ['barnizado'] },
-      { id: 'plastificado',       db_estado: 'terminados',   titulo: 'Plastificado',         color: 'teal',    aliases: ['plastificado','laminado'] },
-      { id: 'troquelado',         db_estado: 'terminados',   titulo: 'Troquelado',           color: 'cyan',    aliases: ['troquelado','troquel'] },
-      { id: 'pegado',             db_estado: 'terminados',   titulo: 'Pegado',               color: 'emerald', aliases: ['pegado'] },
-      { id: 'terminados_mg',      db_estado: 'terminados',   titulo: 'Terminados MG',        color: 'yellow',  aliases: ['terminados mg','terminado mg','terminados','terminado'] },
-      { id: 'terminados_externos',db_estado: 'terminados',   titulo: 'Terminados externos',  color: 'gray',    aliases: ['terminados externos','terminado externo'] },
-      { id: 'entregado',          db_estado: 'entregado',    titulo: 'Entregado',            color: 'green',   aliases: ['entregado','completado','facturado'] },
-    ];
+  async getWorkflowOffset(): Promise<any[]> {
+    const result = await this.client.query(
+      `SELECT id, key, titulo, orden, color, activo
+       FROM estado_orden_offset
+       WHERE activo = TRUE AND key <> 'pendiente'
+       ORDER BY orden ASC`,
+    );
+    return result.rows.map((r: any) => ({ id: r.key, db_id: r.id, db_estado: r.key, titulo: r.titulo, color: r.color || 'gray', aliases: [r.key, r.titulo] }));
   }
 
   // ─── MÉTRICAS ─────────────────────────────────────────────────────────────

@@ -780,7 +780,7 @@ const ListaPedidos: React.FC = () => {
                               </button>
                             </div>
                           ) : col.key === "cliente" ? (
-                            <div className="relative z-[40] cliente-wrapper">
+                            <div className="relative cliente-wrapper">
                               <input
                                 type="text"
                                 value={fila.cliente}
@@ -796,7 +796,7 @@ const ListaPedidos: React.FC = () => {
                                   abrirClienteDropdown(fila.id, e.currentTarget);
                                   await buscarClientesEnFila(fila.id, fila.cliente);
                                 }}
-                                className={`${inputBase} relative z-10 w-full pr-9`}
+                                className={`${inputBase} w-full pr-9`}
                                 placeholder="Cliente"
                               />
                               <button
@@ -805,7 +805,7 @@ const ListaPedidos: React.FC = () => {
                                 onClick={async () => {
                                   await abrirModalClientes(fila.id, fila.cliente);
                                 }}
-                                className="absolute inset-y-0 right-0 z-10 flex items-center pr-3 text-slate-500 hover:text-cyan-600"
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-cyan-600"
                                 title="Buscar cliente"
                                 aria-label="Buscar cliente"
                               >

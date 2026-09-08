@@ -50,6 +50,7 @@ const formatDate = (d) => {
 const ProductosEntregados = () => {
   const navigate = useNavigate();
   const apiUrl = import.meta.env.VITE_API_URL;
+  const [workflowType, setWorkflowType] = useState('digital');
 
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,6 +58,7 @@ const ProductosEntregados = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [qaGates, setQaGates] = useState({});
+  const [offsetEntregadoId, setOffsetEntregadoId] = useState(null);
 
   const gateKey = (ordenId, etapaId) => `${ordenId}:${etapaId}`;
 
@@ -85,6 +87,24 @@ const ProductosEntregados = () => {
     }
   };
 
+  const cargarWorkflowOffset = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/produccion/workflow?tipo=offset`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const workflow = Array.isArray(json?.workflow) ? json.workflow : [];
+      const ent = workflow.find((e) => normalizeKey(e.key || e.id) === 'entregado' || normalizeKey(e.id) === 'entregado' || normalizeKey(e.titulo) === 'entregado');
+      // prefer numeric DB id if backend provided it
+      setOffsetEntregadoId(ent?.db_id ?? ent?.id ?? null);
+    } catch (err) {
+      console.error('No se pudo cargar workflow offset', err);
+      setOffsetEntregadoId(null);
+    }
+  };
+
   const getQaState = (ordenId, etapaId) => qaGates[gateKey(ordenId, etapaId)] || null;
 
   const cargarOrdenes = async () => {
@@ -104,11 +124,16 @@ const ProductosEntregados = () => {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
 
-      const filtrados = arr.filter(
-        (o) =>
-          normalizeKey(o.tipo_orden) === 'digital' &&
-          ESTADOS_ENTREGADO.includes(o.estado_digital_key)
-      );
+      const filtrados = arr.filter((o) => {
+        const tipoOrden = normalizeKey(o.tipo_orden || 'offset');
+        if (workflowType === 'digital') {
+          return tipoOrden === 'digital' && ESTADOS_ENTREGADO.includes(o.estado_digital_key);
+        }
+        // offset: if we have numeric id for 'entregado', filter by estado_orden_offset_id
+        const estadoOffsetId = o.estado_orden_offset_id ?? null;
+        if (offsetEntregadoId) return tipoOrden !== 'digital' && Number(estadoOffsetId) === Number(offsetEntregadoId);
+        return tipoOrden !== 'digital' && ESTADOS_ENTREGADO.includes(o.estado_offset_key);
+      });
       setOrdenes(filtrados);
     } catch (err) {
       console.error(err);
@@ -121,7 +146,22 @@ const ProductosEntregados = () => {
   useEffect(() => {
     cargarOrdenes();
     loadQaFromBackend();
+    cargarWorkflowOffset();
   }, []);
+
+  useEffect(() => {
+    const onCambio = (e) => { cargarOrdenes(); };
+    window.addEventListener('orden-estado-cambiado', onCambio);
+    return () => window.removeEventListener('orden-estado-cambiado', onCambio);
+  }, []);
+
+  useEffect(() => {
+    cargarOrdenes();
+    loadQaFromBackend();
+    // Al cambiar el workflow (digital/offset) recargar workflow offset
+    // para obtener el id numérico de 'entregado' antes de filtrar
+    cargarWorkflowOffset();
+  }, [workflowType]);
 
   useEffect(() => {
     const refreshQa = () => { loadQaFromBackend(); };
@@ -156,13 +196,29 @@ const ProductosEntregados = () => {
               <p className="text-teal-100 text-sm mt-0.5">Órdenes digitales — Entregado / Facturado</p>
             </div>
           </div>
-          <button
-            onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
-            className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
-          >
-            <FaSync className={loading ? 'animate-spin' : ''} />
-            Actualizar
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center rounded-full bg-white/10 p-1">
+              <button
+                onClick={() => setWorkflowType('offset')}
+                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${workflowType==='offset' ? 'bg-white text-teal-800 font-semibold' : 'text-white hover:bg-white/20'}`}
+              >
+                Offset
+              </button>
+              <button
+                onClick={() => setWorkflowType('digital')}
+                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${workflowType==='digital' ? 'bg-white text-teal-800 font-semibold' : 'text-white hover:bg-white/20'}`}
+              >
+                Digital
+              </button>
+            </div>
+            <button
+              onClick={async () => { await cargarOrdenes(); await loadQaFromBackend(); }}
+              className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-xl backdrop-blur-sm transition-all font-medium"
+            >
+              <FaSync className={loading ? 'animate-spin' : ''} />
+              Actualizar
+            </button>
+          </div>
         </div>
       </div>
 
