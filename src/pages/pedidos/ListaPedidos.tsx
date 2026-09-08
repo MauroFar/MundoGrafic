@@ -732,13 +732,13 @@ const ListaPedidos: React.FC = () => {
           ref={scrollHeaderRef}
           className="overflow-x-hidden border-b border-slate-200 bg-slate-100"
         >
-          <div ref={ghostHeaderRef} className="px-3 sm:px-4 py-0">
+          <div ref={ghostHeaderRef} className="px-4 sm:px-6 py-0">
             <div
-              className="grid gap-2 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-700"
+              className="grid gap-2 px-4 py-2 sm:px-6 text-[10px] font-semibold uppercase tracking-wide text-slate-700"
               style={{ gridTemplateColumns: colsGrid }}
             >
-              {columnas.map((col) => <div key={col.key} className="truncate">{col.label}</div>)}
-              <div className="truncate text-center">Acción</div>
+              {columnas.map((col) => <div key={col.key} className="truncate pl-3">{col.label}</div>)}
+              <div className="truncate text-center pl-3">Acción</div>
             </div>
           </div>
         </div>
@@ -746,7 +746,7 @@ const ListaPedidos: React.FC = () => {
       </div>{/* fin sticky */}
 
       {/* ── TABLA – solo filas ── */}
-      <div className="px-2 py-3 sm:px-4" style={{ paddingTop: mainHeaderHeight > 0 ? `${mainHeaderHeight + 8}px` : '12px' }}>
+      <div className="px-4 py-3 sm:px-6" style={{ paddingTop: mainHeaderHeight > 0 ? `${mainHeaderHeight + 8}px` : '12px' }}>
         <div
           ref={scrollBottomRef}
           className="overflow-x-auto overflow-y-visible p-3 sm:p-4"
@@ -765,7 +765,7 @@ const ListaPedidos: React.FC = () => {
                   {/* Filas */}
                   {filasFiltradas.map((fila, index) => (
                     <div key={fila.id}
-                      className={`grid gap-2 rounded-lg border px-2 py-2 ${index % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}
+                      className={`grid gap-2 rounded-lg border px-4 py-2 sm:px-6 ${index % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}
                       style={{ gridTemplateColumns: colsGrid }}>
                       {columnas.map((col) => (
                         <div key={`${fila.id}-${col.key}`} className="relative">

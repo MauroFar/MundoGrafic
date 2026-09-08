@@ -210,11 +210,10 @@ const VistaKanban = () => {
     );
   };
 
-  // En workflow offset ocultamos las columnas de 'liberado' y 'entregado'
-  // en la vista Kanban (se mostrarán únicamente en las vistas específicas).
-  const columnasVisibles = workflowType === 'offset'
-    ? columnas.filter((c) => !['liberado', 'entregado'].includes(c.id))
-    : columnas;
+  // Ocultar siempre las columnas de 'liberado' y 'entregado' en la vista Kanban
+  // (esas vistas tienen interfaces propias en el menú). Esto aplica tanto a
+  // 'offset' como a 'digital'.
+  const columnasVisibles = columnas.filter((c) => !['liberado', 'entregado'].includes(c.id));
 
   // ── Timestamps de inicio/fin por etapa (persistidos en localStorage) ──────
   const getAllTimestamps = () => {
