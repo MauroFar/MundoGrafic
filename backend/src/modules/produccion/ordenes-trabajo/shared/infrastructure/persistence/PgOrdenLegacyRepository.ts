@@ -297,14 +297,31 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
       `UPDATE orden_trabajo
          SET artes_aprobados = TRUE,
              fecha_entrega = $1,
+             fecha_aprobacion_artes = CURRENT_TIMESTAMP,
              updated_by = $2,
              updated_at = CURRENT_TIMESTAMP
        WHERE id = $3
-       RETURNING id, numero_orden, artes_aprobados, fecha_entrega, tipo_orden,
+       RETURNING id, numero_orden, artes_aprobados, fecha_entrega,
+                 fecha_aprobacion_artes, tipo_orden,
                  estado_orden_digital_id, estado_orden_offset_id`,
       [fechaEntrega, userId, id],
     );
-    return result.rows[0] ?? null;
+    const orden = result.rows[0] ?? null;
+
+    // Propagar fecha_aprobacion y fecha_entrega al pedido vinculado (si existe)
+    if (orden) {
+      await this.client.query(
+        `UPDATE lista_pedidos
+           SET fecha_aprobacion = $1::date,
+               fecha_entrega    = $2::date,
+               updated_at       = NOW()
+         WHERE orden_trabajo_id = $3
+           AND fecha_aprobacion IS NULL`,
+        [orden.fecha_aprobacion_artes, orden.fecha_entrega, id],
+      );
+    }
+
+    return orden;
   }
 
   // ─── VINCULAR COTIZACION ──────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaChevronDown, FaEllipsisV, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaChevronDown, FaEllipsisV, FaFilePdf, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
 
 type TipoPedido = "offset" | "digital";
@@ -42,6 +42,8 @@ type FilaPedido = Record<ColumnaKey, string> & {
   cliente_id: number | null;
   orden_trabajo_id?: number | null;
   tipo: TipoPedido;
+  /** true cuando fecha_aprobacion proviene de la OT vinculada (artes aprobados) */
+  aprobacion_desde_ot?: boolean;
 };
 
 const responsablesSugeridos = [
@@ -53,11 +55,19 @@ const estadosSugeridos = ["Sin empezar", "En proceso", "Atrasado", "Completo", "
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
   id, servidor_id: null, cliente_id: null, orden_trabajo_id: null, tipo,
+  aprobacion_desde_ot: false,
   fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
   fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
   descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
   estado: "", fase: "", no_factura: "", observaciones: "",
 });
+
+const formatearCantidadDesdeBackend = (valor: unknown): string => {
+  if (valor === null || valor === undefined || valor === "") return "";
+  const texto = String(valor).trim();
+  if (!texto || texto === "null" || texto === "undefined") return "";
+  return texto.replace(/(\.\d*?[1-9])0+$/g, "$1").replace(/\.0+$/g, "");
+};
 
 const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
   const row = (pedido ?? {}) as Record<string, unknown>;
@@ -74,10 +84,11 @@ const mapPedidoBackendAFila = (pedido: unknown): FilaPedido => {
     responsable:          row.responsable_nombre   ? String(row.responsable_nombre) : "",
     cliente:              row.cliente              ? String(row.cliente) : "",
     descripcion_producto: row.descripcion_producto ? String(row.descripcion_producto) : "",
-    cantidad:     row.cantidad === 0 || row.cantidad ? String(row.cantidad) : "",
+    cantidad:     formatearCantidadDesdeBackend(row.cantidad),
     no_oc:        row.no_oc       ? String(row.no_oc) : "",
     no_op:        row.no_op       ? String(row.no_op) : "",
     orden_trabajo_id: row.orden_trabajo_id != null && row.orden_trabajo_id !== '' ? Number(row.orden_trabajo_id) : null,
+    aprobacion_desde_ot: row.aprobacion_desde_ot === true || row.aprobacion_desde_ot === 't',
     estado:       row.estado      ? String(row.estado) : "",
     fase:         row.fase        ? String(row.fase) : "",
     no_factura:   row.no_factura  ? String(row.no_factura) : "",
@@ -104,6 +115,7 @@ const ListaPedidos: React.FC = () => {
   const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({ abierta: false, filaId: null });
   const [modalExito, setModalExito]           = useState<string | null>(null);
   const [modalError, setModalError]           = useState<string | null>(null);
+  const [pdfPreviewOpen, setPdfPreviewOpen]   = useState(false);
   const [filtroFechaDesde, setFiltroFechaDesde] = useState<string>("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
   const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
@@ -463,6 +475,7 @@ const ListaPedidos: React.FC = () => {
         pedidoCliente: fila.cliente,
         pedidoDescripcion: fila.descripcion_producto,
         pedidoCantidad: fila.cantidad,
+        pedidoFechaEntrega: fila.fecha_entrega || null,
       },
     });
   };
@@ -473,6 +486,8 @@ const ListaPedidos: React.FC = () => {
   };
 
   const norm = (e: string) => e.toLowerCase().trim();
+  const pedidoCompletado = (estado: string) => norm(estado) === "completo";
+  const pedidoOcultoPorEstado = (fila: FilaPedido) => pedidoCompletado(fila.estado) && guardados[fila.id] === true;
 
   // ── Base filtrada: fecha_entrega + búsqueda (sin filtro de estado, para que los indicadores reflejen todos los estados del rango)
   // Solo incluye filas con datos para los contadores de los indicadores
@@ -480,6 +495,11 @@ const ListaPedidos: React.FC = () => {
     let resultado = filas.filter((f) =>
       Object.entries(f).some(([k, v]) => !["id", "servidor_id", "tipo"].includes(k) && String(v).trim() !== "")
     );
+
+    // Por defecto la interfaz muestra solo pedidos en curso; los completos quedan ocultos pero siguen guardados en la BD.
+    if (filtroActivo === "todas") {
+      resultado = resultado.filter((f) => !pedidoOcultoPorEstado(f));
+    }
 
     if (filtroFechaDesde) {
       resultado = resultado.filter((f) => f.fecha_entrega && f.fecha_entrega >= filtroFechaDesde);
@@ -521,6 +541,11 @@ const ListaPedidos: React.FC = () => {
   const filasFiltradas = (() => {
     let resultado = filas;
 
+    // Por defecto no se muestran los pedidos ya guardados como completados. Si el usuario elige el filtro "Completo" sí los puede ver.
+    if (filtroActivo !== "completo") {
+      resultado = resultado.filter((f) => !pedidoOcultoPorEstado(f));
+    }
+
     // Filtro por estado
     if (filtroActivo === "sin_empezar") resultado = resultado.filter((f) => { const e = norm(f.estado); return e === "sin empezar" || e === ""; });
     else if (filtroActivo === "en_proceso")  resultado = resultado.filter((f) => norm(f.estado) === "en proceso");
@@ -548,6 +573,91 @@ const ListaPedidos: React.FC = () => {
 
     return resultado;
   })();
+
+  const pdfPreviewHtml = (() => {
+    const lista = filasFiltradas.length > 0 ? filasFiltradas : [];
+
+    const filasHtml = lista.map((fila) => `
+      <tr>
+        <td>${fila.fecha_ingreso_pedido || "-"}</td>
+        <td>${fila.fecha_aprobacion || "-"}</td>
+        <td>${fila.fecha_entrega || "-"}</td>
+        <td>${fila.responsable || "-"}</td>
+        <td>${fila.cliente || "-"}</td>
+        <td>${fila.descripcion_producto || "-"}</td>
+        <td>${fila.cantidad || "-"}</td>
+        <td>${fila.no_oc || "-"}</td>
+        <td>${fila.no_op || "-"}</td>
+        <td>${fila.estado || "-"}</td>
+        <td>${fila.fase || "-"}</td>
+        <td>${fila.no_factura || "-"}</td>
+        <td>${fila.observaciones || "-"}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Lista de pedidos ${tipoPedido}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+            .header { margin-bottom: 18px; }
+            h1 { font-size: 22px; margin: 0 0 8px; }
+            .meta { font-size: 12px; color: #475569; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 12px; }
+            th, td { border: 1px solid #cbd5e1; padding: 6px 5px; text-align: left; vertical-align: top; }
+            th { background: #e2e8f0; }
+            .empty { padding: 24px; text-align: center; color: #64748b; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Lista de pedidos - ${tipoPedido === "offset" ? "Offset" : "Digital"}</h1>
+            <div class="meta">Fecha: ${new Date().toLocaleDateString("es-EC")}</div>
+            <div class="meta">Registros visibles: ${lista.length}</div>
+          </div>
+          ${lista.length > 0 ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha ingreso</th>
+                  <th>Fecha aprobación</th>
+                  <th>Fecha entrega</th>
+                  <th>Responsable</th>
+                  <th>Cliente</th>
+                  <th>Descripción</th>
+                  <th>Cantidad</th>
+                  <th>No.OC</th>
+                  <th>No.OP</th>
+                  <th>Estado</th>
+                  <th>Fase</th>
+                  <th>No.Factura</th>
+                  <th>Observaciones</th>
+                </tr>
+              </thead>
+              <tbody>${filasHtml}</tbody>
+            </table>
+          ` : '<div class="empty">No hay pedidos visibles para este filtro.</div>'}
+        </body>
+      </html>
+    `;
+  })();
+
+  const abrirPdfDesdeHtml = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setModalError("El navegador bloqueó la ventana para guardar el PDF. Permite las ventanas emergentes e inténtalo de nuevo.");
+      return;
+    }
+    printWindow.document.write(pdfPreviewHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
 
   const inputBase = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100";
   const inputFull = `w-full ${inputBase}`;
@@ -703,6 +813,10 @@ const ListaPedidos: React.FC = () => {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
               {loadingActualizar ? "Actualizando..." : "Actualizar"}
             </button>
+            <button type="button" onClick={() => setPdfPreviewOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <FaFilePdf className="h-4 w-4" /> Ver PDF
+            </button>
             <button type="button" onClick={agregarFila}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
               <FaPlus className="h-4 w-4" /> Agregar registro
@@ -837,6 +951,30 @@ const ListaPedidos: React.FC = () => {
                             />
                           ) : col.key === "observaciones" ? (
                             <textarea value={fila.observaciones} onChange={(e) => actualizarFila(fila.id, "observaciones", e.target.value)} className={inputFull} rows={2} />
+                          ) : col.key === "fecha_aprobacion" && fila.aprobacion_desde_ot ? (
+                            // Fecha de aprobación bloqueada: viene de la OT (artes aprobados)
+                            <div className="relative">
+                              <input
+                                type="date"
+                                value={fila.fecha_aprobacion}
+                                readOnly
+                                title="Fecha registrada automáticamente al aprobar artes en la Orden de Trabajo"
+                                className={`${inputFull} cursor-not-allowed bg-green-50 text-green-700 border-green-200`}
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-green-500 text-[10px] font-semibold">OT</span>
+                            </div>
+                          ) : col.key === "fecha_entrega" && fila.orden_trabajo_id ? (
+                            // Fecha de entrega: viene de la OT (lectura desde OT, editable si no hay OT)
+                            <div className="relative">
+                              <input
+                                type="date"
+                                value={fila.fecha_entrega}
+                                readOnly
+                                title="Fecha de entrega sincronizada desde la Orden de Trabajo"
+                                className={`${inputFull} cursor-not-allowed bg-blue-50 text-blue-700 border-blue-200`}
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-blue-500 text-[10px] font-semibold">OT</span>
+                            </div>
                           ) : (
                             <input type={col.type} min={col.key === "cantidad" ? 0 : undefined}
                               value={fila[col.key]} onChange={(e) => actualizarFila(fila.id, col.key, e.target.value)} className={inputFull} />
@@ -1022,6 +1160,31 @@ const ListaPedidos: React.FC = () => {
                 className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition">
                 Aceptar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL PDF PREVIEW ── */}
+      {pdfPreviewOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 backdrop-blur-sm">
+          <div className="flex h-[90vh] w-[95vw] max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Vista previa PDF</h3>
+                <p className="text-xs text-slate-500">Pedidos visibles en la interfaz ({filasFiltradas.length})</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={abrirPdfDesdeHtml} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Descargar PDF
+                </button>
+                <button type="button" onClick={() => setPdfPreviewOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Cerrar
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-100 p-3">
+              <iframe title="Vista previa PDF de pedidos" srcDoc={pdfPreviewHtml} className="h-full w-full rounded-xl border border-slate-200 bg-white" />
             </div>
           </div>
         </div>

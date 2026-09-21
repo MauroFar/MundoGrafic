@@ -12,6 +12,14 @@ function sanitize(v: unknown, max: number) {
   return String(v ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function normalizarCantidad(value: unknown): number {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return NaN;
+
+  const sinCeros = String(numericValue).replace(/(\.\d*?[1-9])0+$/g, "$1").replace(/\.0+$/g, "");
+  return Number(sinCeros);
+}
+
 export class CreatePedidoUseCase {
   constructor(private readonly repo: ListaPedidoRepository) {}
 
@@ -51,7 +59,7 @@ export class CreatePedidoUseCase {
     }
     if (!descripcion) errors.push("descripcion_producto es obligatorio.");
 
-    const cantidadNum = Number(body?.cantidad);
+    const cantidadNum = normalizarCantidad(body?.cantidad);
     if (!Number.isFinite(cantidadNum) || cantidadNum < 0)
       errors.push("cantidad debe ser un número mayor o igual a 0.");
 
@@ -74,7 +82,7 @@ export class CreatePedidoUseCase {
       cliente,
       cliente_id: clienteId,
       descripcion_producto: descripcion,
-      cantidad: Number(cantidadNum.toFixed(2)),
+      cantidad: cantidadNum,
       no_oc: noOc || null,
       no_op: noOp || null,
       estado: estado!,

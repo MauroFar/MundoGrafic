@@ -602,11 +602,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
   }, [artesAprobados, fechaEntrega]);
 
+  // Solo limpiar fecha_entrega cuando el usuario DESactiva "artes aprobados".
+  // Usamos una ref para evitar que la limpieza se dispare al pre-cargar
+  // la fecha desde el pedido de origen (que llega con artesAprobados = false).
+  const prevArtesAprobadosRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!artesAprobados && fechaEntrega) {
+    const wasApproved = prevArtesAprobadosRef.current;
+    prevArtesAprobadosRef.current = artesAprobados;
+    // Solo limpiar si el usuario acaba de pasar de true → false
+    if (wasApproved && !artesAprobados) {
       setFechaEntrega('');
     }
-  }, [artesAprobados, fechaEntrega]);
+  }, [artesAprobados]);
 
 
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -872,6 +879,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
       }
       if ((location.state as any)?.pedidoCantidad) {
         setCantidad(normalizarCantidadFormulario((location.state as any).pedidoCantidad));
+      }
+      // Pre-rellenar fecha de entrega desde el pedido (queda guardada; se muestra
+      // en el campo en cuanto el usuario marque "Artes aprobados").
+      if ((location.state as any)?.pedidoFechaEntrega) {
+        setFechaEntrega(String((location.state as any).pedidoFechaEntrega).slice(0, 10));
       }
       setOrdenData({
         nombre_cliente: clienteNombreState || '',

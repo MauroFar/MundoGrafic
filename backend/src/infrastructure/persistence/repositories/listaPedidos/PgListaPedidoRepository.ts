@@ -7,8 +7,19 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
 
   async findAll(tipo?: TipoPedido): Promise<ListaPedido[]> {
     const query = `
-      SELECT lp.*, 
-             COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase
+      SELECT lp.*,
+             COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase,
+             -- Si la OT tiene artes aprobados, usar su fecha_aprobacion_artes;
+             -- de lo contrario conservar el valor manual del pedido.
+             CASE
+               WHEN ot.artes_aprobados = TRUE AND ot.fecha_aprobacion_artes IS NOT NULL
+               THEN ot.fecha_aprobacion_artes::date
+               ELSE lp.fecha_aprobacion
+             END AS fecha_aprobacion,
+             -- Mostrar siempre la fecha_entrega de la OT cuando existe; si no, la del pedido.
+             COALESCE(ot.fecha_entrega::date, lp.fecha_entrega) AS fecha_entrega,
+             -- Indicador para que el frontend sepa si la aprobación viene de la OT (read-only)
+             (ot.artes_aprobados = TRUE AND ot.fecha_aprobacion_artes IS NOT NULL) AS aprobacion_desde_ot
       FROM lista_pedidos lp
       LEFT JOIN orden_trabajo ot ON ot.id = lp.orden_trabajo_id
       LEFT JOIN estado_orden_offset eoo ON eoo.id = ot.estado_orden_offset_id
@@ -23,8 +34,15 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
 
   async findById(id: number): Promise<ListaPedido | null> {
     const r = await this.client.query(
-      `SELECT lp.*, 
-              COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase
+      `SELECT lp.*,
+              COALESCE(eoo.titulo, eod.titulo, lp.fase, '') AS fase,
+              CASE
+                WHEN ot.artes_aprobados = TRUE AND ot.fecha_aprobacion_artes IS NOT NULL
+                THEN ot.fecha_aprobacion_artes::date
+                ELSE lp.fecha_aprobacion
+              END AS fecha_aprobacion,
+              COALESCE(ot.fecha_entrega::date, lp.fecha_entrega) AS fecha_entrega,
+              (ot.artes_aprobados = TRUE AND ot.fecha_aprobacion_artes IS NOT NULL) AS aprobacion_desde_ot
        FROM lista_pedidos lp
        LEFT JOIN orden_trabajo ot ON ot.id = lp.orden_trabajo_id
        LEFT JOIN estado_orden_offset eoo ON eoo.id = ot.estado_orden_offset_id
