@@ -167,7 +167,7 @@ export class PgProduccionRepository {
   // ─── TRAZABILIDAD COMPLETA ────────────────────────────────────────────────
 
   async getTrazabilidad(ordenId: number): Promise<any> {
-    const [ordenRes, ejecRes, gatesRes] = await Promise.all([
+    const [ordenRes, ejecRes, gatesRes, eventosRes] = await Promise.all([
       this.client.query(
         `SELECT ot.id, ot.numero_orden, ot.nombre_cliente, ot.notas_observaciones,
                 ot.tipo_orden, ot.fecha_entrega, ot.created_at,
@@ -196,6 +196,15 @@ export class PgProduccionRepository {
          ORDER BY qg.etapa_id, qg.intento ASC`,
         [ordenId],
       ),
+      this.client.query(
+        `SELECT id, pedido_id, orden_trabajo_id, tipo_evento, evento, descripcion,
+                estado_key, estado_titulo, etapa_id, etapa_titulo, usuario_id,
+                usuario_nombre, created_at, metadata, origen
+         FROM vw_trazabilidad_pedido_orden
+         WHERE orden_trabajo_id = $1
+         ORDER BY created_at ASC`,
+        [ordenId],
+      ),
     ]);
 
     if (!ordenRes.rows.length) return null;
@@ -211,6 +220,11 @@ export class PgProduccionRepository {
       etapasMap.get(g.etapa_id).qa_gates.push(g);
     }
 
-    return { orden: ordenRes.rows[0], etapas: Array.from(etapasMap.values()) };
+    return {
+      orden: ordenRes.rows[0],
+      etapas: Array.from(etapasMap.values()),
+      eventos: eventosRes.rows,
+      totalEventos: eventosRes.rowCount,
+    };
   }
 }

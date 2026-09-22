@@ -68,8 +68,7 @@ export class CreatePedidoUseCase {
 
     const estado = estadoRaw ? estadoMap.get(normalizeCatalog(estadoRaw)) : "Sin empezar";
     if (!estado) errors.push("estado inválido.");
-    const fase = faseRaw ? faseMap.get(normalizeCatalog(faseRaw)) ?? null : null;
-    if (faseRaw && !fase) errors.push("fase inválida.");
+    const fase = faseRaw ? (faseMap.get(normalizeCatalog(faseRaw)) ?? faseRaw) : null;
 
     if (errors.length) throw new AppError(errors.join(" | "), 400);
 

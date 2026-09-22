@@ -263,10 +263,12 @@ export default function SeguimientoOrden() {
     );
   }
 
-  const { orden, etapas } = data;
+  const { orden, etapas = [], eventos = [] } = data;
   const estadoKey    = orden.estado_digital_key   || orden.estado_offset_key   || '—';
   const estadoTitulo = orden.estado_digital_titulo || orden.estado_offset_titulo || '—';
-  const etapasConDatos = etapas.filter(e => e.ejecucion || (e.qa_gates && e.qa_gates.length > 0));
+  const etapasConDatos = (etapas || []).filter(e => e.ejecucion || (e.qa_gates && e.qa_gates.length > 0));
+  const eventosOrden = Array.isArray(eventos) ? eventos : [];
+  const hayEventos = eventosOrden.length > 0;
 
     const construirPDFTrazabilidad = async () => {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -577,7 +579,7 @@ export default function SeguimientoOrden() {
         Trazabilidad por etapa
       </h2>
 
-      {etapasConDatos.length === 0 ? (
+      {etapasConDatos.length === 0 && !hayEventos ? (
         <div className="bg-white rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-gray-500">
           <FaInfoCircle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
           <p className="font-medium">Sin datos de trazabilidad aún</p>
@@ -585,7 +587,40 @@ export default function SeguimientoOrden() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-5">
-          {etapasConDatos.map((etapa, i) => (
+          {hayEventos && (
+            <div className="mb-5 border-b border-gray-200 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">Flujo de estados</h3>
+                <span className="text-[11px] text-gray-500">{eventosOrden.length} eventos</span>
+              </div>
+              <div className="space-y-3">
+                {eventosOrden.map((evento, idx) => (
+                  <div key={`${evento.id || idx}-${evento.created_at}`} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-100"></div>
+                      {idx !== eventosOrden.length - 1 && <div className="w-px h-full bg-gray-200 mt-1"></div>}
+                    </div>
+                    <div className="flex-1 pb-2">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-800">{evento.evento || evento.tipo_evento}</p>
+                        <span className="text-[11px] text-gray-500">{new Date(evento.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                      {(evento.estado_titulo || evento.etapa_titulo || evento.descripcion) && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          {evento.estado_titulo || evento.etapa_titulo || evento.descripcion || 'Cambio de estado'}
+                        </p>
+                      )}
+                      {evento.descripcion && (
+                        <p className="text-xs text-gray-500 mt-1">{evento.descripcion}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {etapasConDatos.length > 0 && etapasConDatos.map((etapa, i) => (
             <EtapaCard
               key={etapa.etapa_id}
               etapa={etapa}

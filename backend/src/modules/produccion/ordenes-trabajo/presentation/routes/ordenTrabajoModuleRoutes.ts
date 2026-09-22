@@ -60,6 +60,54 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
     }
   };
 
+  const registrarEventoTrazabilidad = async (
+    ordenId: number,
+    tabla: 'digital' | 'offset',
+    estadoId: number,
+    userId: number | null,
+    nota: string | null,
+  ) => {
+    const estadoRes = await client.query(
+      `SELECT key, titulo FROM ${tabla === 'digital' ? 'estado_orden_digital' : 'estado_orden_offset'} WHERE id = $1 LIMIT 1`,
+      [estadoId],
+    );
+    const estado = estadoRes.rows[0] ?? null;
+    const pedidoRes = await client.query(
+      `SELECT id FROM lista_pedidos WHERE orden_trabajo_id = $1 LIMIT 1`,
+      [ordenId],
+    );
+    const pedidoId = pedidoRes.rows[0]?.id ?? null;
+    const descripcion = (nota && nota.trim()) || `Cambio de estado a ${estado?.titulo ?? 'estado'}`;
+    const tipoEvento =
+      (descripcion.toLowerCase().includes('artes') && descripcion.toLowerCase().includes('aprob'))
+        ? 'artes_aprobados'
+        : (descripcion.toLowerCase().includes('enviad') && descripcion.toLowerCase().includes('producci'))
+          ? 'enviado_produccion'
+          : 'estado_cambiado';
+
+    await client.query(
+      `INSERT INTO pedido_orden_trazabilidad_eventos (
+         pedido_id, orden_trabajo_id, tipo_evento, evento, descripcion,
+         estado_key, estado_titulo, usuario_id, created_at, metadata, origen
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),$9,'system')`,
+      [
+        pedidoId,
+        ordenId,
+        tipoEvento,
+        estado?.titulo ?? 'Estado actualizado',
+        descripcion,
+        estado?.key ?? null,
+        estado?.titulo ?? null,
+        userId,
+        {
+          estado_id: estadoId,
+          nota: nota ?? null,
+          tipo_orden: tabla,
+        },
+      ],
+    );
+  };
+
   const registrarHistorial = async (
     tabla: 'digital' | 'offset',
     ordenId: number,
@@ -76,6 +124,7 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
        VALUES ($1,$2,$3,$4)`,
       [ordenId, estadoId, userId, nota ?? null],
     );
+    await registrarEventoTrazabilidad(ordenId, tabla, estadoId, userId, nota);
   };
 
   const getTipoYEstado = async (id: number) => {

@@ -73,7 +73,31 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
         input.created_by ?? null, input.updated_by ?? null,
       ]
     );
-    return r.rows[0];
+
+    const pedido = r.rows[0];
+    if (pedido?.id) {
+      await this.client.query(
+        `INSERT INTO pedido_orden_trazabilidad_eventos (
+           pedido_id, orden_trabajo_id, tipo_evento, evento, descripcion,
+           estado_key, estado_titulo, usuario_id, created_at, metadata, origen
+         ) VALUES ($1, NULL, 'pedido_creado', 'Pedido creado', 'Pedido registrado en la lista.', NULL, NULL, $2, NOW(), $3, 'system')`,
+        [
+          pedido.id,
+          input.created_by ?? null,
+          {
+            cliente: pedido.cliente,
+            descripcion_producto: pedido.descripcion_producto,
+            estado: pedido.estado,
+            fase: pedido.fase,
+            fecha_ingreso_pedido: pedido.fecha_ingreso_pedido,
+            fecha_aprobacion: pedido.fecha_aprobacion,
+            fecha_entrega: pedido.fecha_entrega,
+          },
+        ],
+      );
+    }
+
+    return pedido;
   }
 
   async update(input: ListaPedidoUpdateInput): Promise<ListaPedido | null> {
