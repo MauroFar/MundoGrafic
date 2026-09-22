@@ -23,8 +23,8 @@ export interface CreateOrdenCompletaDeps {
   runInTransaction: <T>(fn: () => Promise<T>) => Promise<T>;
   /** Verificar existencia de cotización (raw query necesario) */
   checkCotizacionExists: (id: number) => Promise<boolean>;
-  /** Vincula un pedido existente con la OT creada para autocompletar no_op */
-  linkPedidoToOrden?: (pedidoId: number, ordenId: number, numeroOrden: string) => Promise<void>;
+  /** Vincula un pedido existente con la OT creada y sincroniza fechas de aprobación/entrega */
+  linkPedidoToOrden?: (pedidoId: number, ordenId: number, numeroOrden: string, fechaAprobacion?: string | null, fechaEntrega?: string | null) => Promise<void>;
 }
 
 export class CreateOrdenCompletaUseCase {
@@ -48,6 +48,7 @@ export class CreateOrdenCompletaUseCase {
     const tipoOrden: string = tipo_orden || 'offset';
     const artesAprobados = Boolean(artes_aprobados);
     const fechaEntregaPersistida = artesAprobados ? (fecha_entrega || null) : null;
+    const fechaAprobacionActual = artesAprobados ? new Date().toISOString().slice(0, 10) : null;
     const pedidoIdNorm =
       pedido_id === null || pedido_id === undefined || pedido_id === ''
         ? null
@@ -86,6 +87,7 @@ export class CreateOrdenCompletaUseCase {
         telefono: telefono || null,
         fecha_creacion: fecha_creacion || null,
         fecha_entrega: fechaEntregaPersistida,
+        fecha_aprobacion_artes: fechaAprobacionActual,
         notas_observaciones: notas_observaciones || null,
         id_cotizacion: idCotizacionNorm,
         id_detalle_cotizacion: id_detalle_cotizacion || null,
@@ -173,7 +175,13 @@ export class CreateOrdenCompletaUseCase {
       }
 
       if (pedidoIdNorm !== null && this.deps.linkPedidoToOrden) {
-        await this.deps.linkPedidoToOrden(pedidoIdNorm, ordenId, ordenRow.numero_orden);
+        await this.deps.linkPedidoToOrden(
+          pedidoIdNorm,
+          ordenId,
+          ordenRow.numero_orden,
+          fechaAprobacionActual,
+          fechaEntregaPersistida,
+        );
       }
 
       return { id: ordenId, numero_orden: ordenRow.numero_orden };

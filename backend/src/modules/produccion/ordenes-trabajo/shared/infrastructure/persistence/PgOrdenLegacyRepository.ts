@@ -16,6 +16,7 @@ export interface CreateOrdenLegacyInput {
   telefono?: string | null;
   fecha_creacion?: string | null;
   fecha_entrega?: string | null;
+  fecha_aprobacion_artes?: string | null;
   notas_observaciones?: string | null;
   id_cotizacion?: number | null;
   id_detalle_cotizacion?: number | null;
@@ -34,6 +35,7 @@ export interface UpdateOrdenLegacyInput {
   telefono?: string | null;
   fecha_creacion?: string | null;
   fecha_entrega?: string | null;
+  fecha_aprobacion_artes?: string | null;
   notas_observaciones?: string | null;
   id_detalle_cotizacion?: number | null;
   tipo_orden?: string;
@@ -54,10 +56,10 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
     const result = await this.client.query(
       `INSERT INTO orden_trabajo (
          nombre_cliente, orden_compra, contacto, email, telefono,
-         fecha_creacion, fecha_entrega, notas_observaciones,
+         fecha_creacion, fecha_entrega, fecha_aprobacion_artes, notas_observaciones,
          id_cotizacion, id_detalle_cotizacion, tipo_orden, created_by,
          artes_aprobados, estado_orden_offset_id, estado_orden_digital_id
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING id, numero_orden`,
       [
         input.nombre_cliente,
@@ -67,6 +69,7 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
         input.telefono ?? null,
         input.fecha_creacion ?? null,
         input.fecha_entrega ?? null,
+        input.fecha_aprobacion_artes ?? null,
         input.notas_observaciones ?? null,
         input.id_cotizacion ?? null,
         input.id_detalle_cotizacion ?? null,
@@ -96,6 +99,7 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
     if (input.telefono !== undefined)               add('telefono', input.telefono);
     if (input.fecha_creacion !== undefined)         add('fecha_creacion', input.fecha_creacion);
     if (input.fecha_entrega !== undefined)          add('fecha_entrega', input.fecha_entrega);
+    if (input.fecha_aprobacion_artes !== undefined) add('fecha_aprobacion_artes', input.fecha_aprobacion_artes);
     if (input.notas_observaciones !== undefined)    add('notas_observaciones', input.notas_observaciones);
     if (input.id_detalle_cotizacion !== undefined)  add('id_detalle_cotizacion', input.id_detalle_cotizacion);
     if (input.tipo_orden !== undefined)             add('tipo_orden', input.tipo_orden);
@@ -293,11 +297,12 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
   // ─── APROBAR ARTES ────────────────────────────────────────────────────────
 
   async aprobarArtes(id: number, fechaEntrega: string, userId: number | null): Promise<any> {
+    const fechaAprobacion = new Date().toISOString().slice(0, 10);
     const result = await this.client.query(
       `UPDATE orden_trabajo
          SET artes_aprobados = TRUE,
-             fecha_entrega = $1,
-             fecha_aprobacion_artes = CURRENT_TIMESTAMP,
+             fecha_entrega = $1::date,
+             fecha_aprobacion_artes = CURRENT_DATE,
              updated_by = $2,
              updated_at = CURRENT_TIMESTAMP
        WHERE id = $3
@@ -308,16 +313,15 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
     );
     const orden = result.rows[0] ?? null;
 
-    // Propagar fecha_aprobacion y fecha_entrega al pedido vinculado (si existe)
+    // Propagar la fecha real de aprobación y la fecha de entrega por separado.
     if (orden) {
       await this.client.query(
         `UPDATE lista_pedidos
-           SET fecha_aprobacion = $1::date,
-               fecha_entrega    = $2::date,
+           SET fecha_aprobacion = CURRENT_DATE,
+               fecha_entrega    = $1::date,
                updated_at       = NOW()
-         WHERE orden_trabajo_id = $3
-           AND fecha_aprobacion IS NULL`,
-        [orden.fecha_aprobacion_artes, orden.fecha_entrega, id],
+         WHERE orden_trabajo_id = $2`,
+        [orden.fecha_entrega, id],
       );
     }
 

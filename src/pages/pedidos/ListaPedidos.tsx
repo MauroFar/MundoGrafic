@@ -226,7 +226,7 @@ const ListaPedidos: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [menuAccionAbierto]);
 
-  const agregarFila = () => setFilas((prev) => [...prev, crearFilaVacia(Date.now(), tipoPedido)]);
+  const agregarFila = () => setFilas((prev) => [crearFilaVacia(Date.now(), tipoPedido), ...prev]);
 
   const actualizarFila = (id: number, campo: ColumnaKey, valor: string) => {
     setFilas((prev) => prev.map((f) => f.id === id ? { ...f, [campo]: valor } : f));

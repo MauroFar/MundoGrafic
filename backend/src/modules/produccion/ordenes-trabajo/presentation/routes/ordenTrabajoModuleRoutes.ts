@@ -268,14 +268,18 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
             const r = await client.query('SELECT 1 FROM cotizaciones WHERE id = $1 LIMIT 1', [id]);
             return r.rows.length > 0;
           },
-          linkPedidoToOrden: async (pedidoId, ordenId, numeroOrden) => {
+          linkPedidoToOrden: async (pedidoId, ordenId, numeroOrden, fechaAprobacion, fechaEntrega) => {
+            const aprobacion = fechaAprobacion && /^\d{4}-\d{2}-\d{2}$/.test(String(fechaAprobacion)) ? String(fechaAprobacion) : null;
+            const entrega = fechaEntrega && /^\d{4}-\d{2}-\d{2}$/.test(String(fechaEntrega)) ? String(fechaEntrega) : null;
             await client.query(
               `UPDATE lista_pedidos
                SET orden_trabajo_id = $1,
                    no_op = $2,
+                   fecha_aprobacion = COALESCE($3::date, fecha_aprobacion),
+                   fecha_entrega = COALESCE($4::date, fecha_entrega),
                    updated_at = NOW()
-               WHERE id = $3`,
-              [ordenId, numeroOrden, pedidoId],
+               WHERE id = $5`,
+              [ordenId, numeroOrden, aprobacion, entrega, pedidoId],
             );
           },
         });

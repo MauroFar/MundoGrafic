@@ -28,6 +28,12 @@ export class UpdateOrdenCompletaUseCase {
 
     const artesAprobados = artes_aprobados === undefined ? null : Boolean(artes_aprobados);
     const fechaEntregaPersistida = artesAprobados === false ? null : fecha_entrega;
+    const fechaAprobacionArtesPersistida =
+      artes_aprobados === undefined
+        ? undefined
+        : artesAprobados
+          ? new Date().toISOString().slice(0, 10)
+          : null;
 
     return this.deps.runInTransaction(async () => {
       const ordenActualizada = await this.deps.ordenRepo.update(id, {
@@ -38,6 +44,7 @@ export class UpdateOrdenCompletaUseCase {
         telefono: telefono ?? null,
         fecha_creacion: fecha_creacion ?? null,
         fecha_entrega: fechaEntregaPersistida ?? null,
+        fecha_aprobacion_artes: fechaAprobacionArtesPersistida,
         notas_observaciones: notas_observaciones ?? null,
         id_detalle_cotizacion: id_detalle_cotizacion ?? null,
         tipo_orden,
