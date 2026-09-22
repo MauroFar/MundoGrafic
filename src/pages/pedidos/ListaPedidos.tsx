@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { FaArrowLeft, FaChevronDown, FaEllipsisV, FaFilePdf, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
 
@@ -116,6 +118,7 @@ const ListaPedidos: React.FC = () => {
   const [modalExito, setModalExito]           = useState<string | null>(null);
   const [modalError, setModalError]           = useState<string | null>(null);
   const [pdfPreviewOpen, setPdfPreviewOpen]   = useState(false);
+  const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const [filtroFechaDesde, setFiltroFechaDesde] = useState<string>("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState<string>("");
   const [filtroBusqueda, setFiltroBusqueda]     = useState<string>("");
@@ -601,15 +604,32 @@ const ListaPedidos: React.FC = () => {
           <meta charset="UTF-8" />
           <title>Lista de pedidos ${tipoPedido}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+            body {
+              font-family: Arial, sans-serif;
+              margin: 24px;
+              color: #0f172a;
+              background: #ffffff !important;
+            }
             .header { margin-bottom: 18px; }
             h1 { font-size: 22px; margin: 0 0 8px; }
             .meta { font-size: 12px; color: #475569; }
-            table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 12px; }
-            th, td { border: 1px solid #cbd5e1; padding: 6px 5px; text-align: left; vertical-align: top; }
-            th { background: #e2e8f0; }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 10px;
+              margin-top: 12px;
+              background: #ffffff;
+            }
+            th, td {
+              border: 1px solid #cbd5e1;
+              padding: 6px 5px;
+              text-align: left;
+              vertical-align: top;
+              background: #ffffff;
+            }
+            th { background: #f8fafc; }
             .empty { padding: 24px; text-align: center; color: #64748b; }
-            @media print { body { margin: 0; } }
+            @media print { body { margin: 0; background: #fff; } }
           </style>
         </head>
         <body>
@@ -645,18 +665,77 @@ const ListaPedidos: React.FC = () => {
     `;
   })();
 
-  const abrirPdfDesdeHtml = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      setModalError("El navegador bloqueó la ventana para guardar el PDF. Permite las ventanas emergentes e inténtalo de nuevo.");
+  const descargarPdfDesdeVistaSimple = async () => {
+    if (filasFiltradas.length === 0) {
+      setModalError("No hay pedidos visibles para generar el PDF.");
       return;
     }
-    printWindow.document.write(pdfPreviewHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 300);
+
+    const iframe = previewIframeRef.current;
+    if (!iframe) {
+      setModalError("No se pudo encontrar la vista previa para exportar el PDF.");
+      return;
+    }
+
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDocument) {
+      setModalError("La vista previa no está lista para exportar el PDF.");
+      return;
+    }
+
+    try {
+      const body = iframeDocument.body;
+      const canvas = await html2canvas(body, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        width: body.scrollWidth,
+        height: body.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const usableWidth = pageWidth - margin * 2;
+      const imgWidth = usableWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let remainingHeight = imgHeight;
+      let offsetY = 0;
+      let pageNumber = 0;
+
+      while (remainingHeight > 0) {
+        if (pageNumber > 0) pdf.addPage();
+        pageNumber += 1;
+
+        const pageRemaining = pageHeight - margin * 2;
+        const sliceHeight = Math.min(remainingHeight, pageRemaining);
+        const yOffset = margin + (pageNumber === 1 ? 0 : 0);
+        const sourceY = (imgHeight - remainingHeight) * (canvas.width / imgWidth);
+        const sourceHeight = sliceHeight * (canvas.width / imgWidth);
+
+        const canvasSlice = document.createElement("canvas");
+        canvasSlice.width = canvas.width;
+        canvasSlice.height = Math.max(1, Math.round(sourceHeight));
+        const ctx = canvasSlice.getContext("2d");
+        if (!ctx) throw new Error("No se pudo crear la imagen del PDF.");
+        ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+
+        pdf.addImage(canvasSlice.toDataURL("image/png"), "PNG", margin, yOffset, imgWidth, sliceHeight);
+        remainingHeight -= pageRemaining;
+        offsetY += sliceHeight;
+      }
+
+      pdf.save(`lista-pedidos-${tipoPedido}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      setModalExito("PDF generado y descargado correctamente.");
+    } catch (error: any) {
+      console.error("Error al generar el PDF:", error);
+      setModalError(error?.message || "No se pudo generar el PDF.");
+    }
   };
 
   const inputBase = "rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100";
@@ -815,7 +894,7 @@ const ListaPedidos: React.FC = () => {
             </button>
             <button type="button" onClick={() => setPdfPreviewOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
-              <FaFilePdf className="h-4 w-4" /> Ver PDF
+              <FaFilePdf className="h-4 w-4" /> Vista Simple
             </button>
             <button type="button" onClick={agregarFila}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
@@ -1175,7 +1254,7 @@ const ListaPedidos: React.FC = () => {
                 <p className="text-xs text-slate-500">Pedidos visibles en la interfaz ({filasFiltradas.length})</p>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={abrirPdfDesdeHtml} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <button type="button" onClick={descargarPdfDesdeVistaSimple} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   Descargar PDF
                 </button>
                 <button type="button" onClick={() => setPdfPreviewOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
@@ -1184,7 +1263,7 @@ const ListaPedidos: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 bg-slate-100 p-3">
-              <iframe title="Vista previa PDF de pedidos" srcDoc={pdfPreviewHtml} className="h-full w-full rounded-xl border border-slate-200 bg-white" />
+              <iframe ref={previewIframeRef} title="Vista previa PDF de pedidos" srcDoc={pdfPreviewHtml} className="h-full w-full rounded-xl border border-slate-200 bg-white" />
             </div>
           </div>
         </div>
