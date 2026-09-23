@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { shouldPollForMaintenance } from '../lib/maintenancePolling';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-const POLL_INTERVAL_MS = 8000;
 const RETURN_PATH_KEY = 'mg_return_path_after_maintenance';
 
 // Rutas válidas conocidas en la aplicación
@@ -84,7 +84,12 @@ const MaintenanceWatcher = () => {
     };
 
     syncMaintenance();
-    const timer = setInterval(syncMaintenance, POLL_INTERVAL_MS);
+
+    if (shouldPollForMaintenance()) {
+      return () => {
+        mounted = false;
+      };
+    }
 
     const onFocus = () => syncMaintenance();
     window.addEventListener('focus', onFocus);
@@ -92,7 +97,6 @@ const MaintenanceWatcher = () => {
 
     return () => {
       mounted = false;
-      clearInterval(timer);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
     };
