@@ -39,6 +39,7 @@ export interface ListaPedido {
   responsable_nombre: string;
   cliente: string;
   cliente_id: number | null;
+  orden_trabajo_id: number | null;
   descripcion_producto: string;
   cantidad: number;
   no_oc: string | null;
@@ -61,6 +62,7 @@ export interface ListaPedidoCreateInput {
   responsable_nombre: string;
   cliente: string;
   cliente_id: number | null;
+  orden_trabajo_id?: number | null;
   descripcion_producto: string;
   cantidad: number;
   no_oc: string | null;

@@ -12,6 +12,19 @@ function sanitize(v: unknown, max: number) {
   return String(v ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function normalizarOrdenTrabajoId(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const texto = String(value).trim();
+  if (!texto || texto.toLowerCase() === "null") return null;
+
+  const numero = Number(texto);
+  if (!Number.isInteger(numero) || numero <= 0) return null;
+
+  if (numero > 1_000_000_000) return null;
+
+  return numero;
+}
+
 function normalizarCantidad(value: unknown): number {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue)) return NaN;
@@ -34,6 +47,8 @@ export class CreatePedidoUseCase {
     const clienteIdRaw    = body?.cliente_id;
     const clienteId       = clienteIdRaw === undefined || clienteIdRaw === null || clienteIdRaw === "" ? null : Number(clienteIdRaw);
     const descripcion     = sanitize(body?.descripcion_producto, 2000);
+    const ordenTrabajoIdRaw: unknown = body?.orden_trabajo_id;
+    const ordenTrabajoId  = normalizarOrdenTrabajoId(ordenTrabajoIdRaw);
     const noOc            = sanitize(body?.no_oc, 100);
     const noOp            = sanitize(body?.no_op, 100);
     const noFactura       = sanitize(body?.no_factura, 100);
@@ -57,6 +72,9 @@ export class CreatePedidoUseCase {
     if (clienteIdRaw !== undefined && clienteIdRaw !== null && clienteIdRaw !== "" && (!Number.isInteger(clienteId) || clienteId! <= 0)) {
       errors.push("cliente_id inválido.");
     }
+    if (ordenTrabajoIdRaw !== undefined && ordenTrabajoIdRaw !== null && String(ordenTrabajoIdRaw).trim() !== "" && String(ordenTrabajoIdRaw).trim().toLowerCase() !== "null" && (!Number.isInteger(ordenTrabajoId) || ordenTrabajoId! <= 0)) {
+      errors.push("orden_trabajo_id inválido.");
+    }
     if (!descripcion) errors.push("descripcion_producto es obligatorio.");
 
     const cantidadNum = normalizarCantidad(body?.cantidad);
@@ -68,9 +86,18 @@ export class CreatePedidoUseCase {
 
     const estado = estadoRaw ? estadoMap.get(normalizeCatalog(estadoRaw)) : "Sin empezar";
     if (!estado) errors.push("estado inválido.");
-    const fase = faseRaw ? (faseMap.get(normalizeCatalog(faseRaw)) ?? faseRaw) : null;
+
+    const fase = faseRaw ? faseMap.get(normalizeCatalog(faseRaw)) ?? null : null;
+    if (faseRaw && !fase) errors.push("fase inválida.");
 
     if (errors.length) throw new AppError(errors.join(" | "), 400);
+
+    if (ordenTrabajoId !== null) {
+      const pedidoExistente = await this.repo.findByOrdenTrabajoId(ordenTrabajoId);
+      if (pedidoExistente) {
+        throw new AppError("La orden de trabajo ya está vinculada a otro pedido.", 409);
+      }
+    }
 
     return this.repo.create({
       tipo: tipo!,
@@ -80,6 +107,7 @@ export class CreatePedidoUseCase {
       responsable_nombre: responsable,
       cliente,
       cliente_id: clienteId,
+      orden_trabajo_id: ordenTrabajoId,
       descripcion_producto: descripcion,
       cantidad: cantidadNum,
       no_oc: noOc || null,

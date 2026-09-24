@@ -12,6 +12,20 @@ function sanitize(v: unknown, max: number) {
   return String(v ?? "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function normalizarOrdenTrabajoId(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  const texto = String(value).trim();
+  if (!texto || texto.toLowerCase() === "null") return null;
+
+  const numero = Number(texto);
+  if (!Number.isInteger(numero) || numero <= 0) return null;
+
+  // Los timestamps de expiración / valores temporales no son IDs reales de OT.
+  if (numero > 1_000_000_000) return null;
+
+  return numero;
+}
+
 function normalizarCantidad(value: unknown): number {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue)) return NaN;
@@ -25,6 +39,9 @@ export class UpdatePedidoUseCase {
 
   async execute(id: number, body: any, userId: number | null) {
     const errors: string[] = [];
+    const pedidoActual = await this.repo.findById(id);
+    if (!pedidoActual) throw new AppError("Pedido no encontrado.", 404);
+
     const tipoRaw         = sanitize(body?.tipo, 20).toLowerCase();
     const fechaIngreso       = sanitize(body?.fecha_ingreso_pedido, 10);
     const fechaAprobacionRaw = sanitize(body?.fecha_aprobacion, 10);
@@ -34,6 +51,9 @@ export class UpdatePedidoUseCase {
     const clienteIdRaw    = body?.cliente_id;
     const clienteId       = clienteIdRaw === undefined || clienteIdRaw === null || clienteIdRaw === "" ? null : Number(clienteIdRaw);
     const descripcion     = sanitize(body?.descripcion_producto, 2000);
+    const rawOrdenTrabajoId: unknown = body?.orden_trabajo_id;
+    const pedidoActualOtId = pedidoActual.orden_trabajo_id != null ? Number(pedidoActual.orden_trabajo_id) : null;
+    const ordenTrabajoId = normalizarOrdenTrabajoId(rawOrdenTrabajoId) ?? pedidoActualOtId;
     const noOc            = sanitize(body?.no_oc, 100);
     const noOp            = sanitize(body?.no_op, 100);
     const noFactura       = sanitize(body?.no_factura, 100);
@@ -57,6 +77,12 @@ export class UpdatePedidoUseCase {
     if (clienteIdRaw !== undefined && clienteIdRaw !== null && clienteIdRaw !== "" && (!Number.isInteger(clienteId) || clienteId! <= 0)) {
       errors.push("cliente_id inválido.");
     }
+    if (rawOrdenTrabajoId !== undefined && rawOrdenTrabajoId !== null && String(rawOrdenTrabajoId).trim() !== "" && String(rawOrdenTrabajoId).trim().toLowerCase() !== "null") {
+      const numeroRaw = Number(rawOrdenTrabajoId);
+      if (!Number.isInteger(numeroRaw) || numeroRaw <= 0 || numeroRaw > 1_000_000_000) {
+        // Ignore temporal/timestamp values and preserve the current OT already linked to the pedido.
+      }
+    }
     if (!descripcion) errors.push("descripcion_producto es obligatorio.");
 
     const cantidadNum = normalizarCantidad(body?.cantidad);
@@ -68,9 +94,31 @@ export class UpdatePedidoUseCase {
 
     const estado = estadoRaw ? estadoMap.get(normalizeCatalog(estadoRaw)) : "Sin empezar";
     if (!estado) errors.push("estado inválido.");
-    const fase = faseRaw ? (faseMap.get(normalizeCatalog(faseRaw)) ?? faseRaw) : null;
+
+    const fase = faseRaw ? faseMap.get(normalizeCatalog(faseRaw)) ?? null : null;
+    if (faseRaw && !fase) errors.push("fase inválida.");
 
     if (errors.length) throw new AppError(errors.join(" | "), 400);
+
+    if (ordenTrabajoId !== null) {
+      const pedidoYaVinculado = await this.repo.findByOrdenTrabajoId(ordenTrabajoId);
+      const pedidoYaVinculadoId = pedidoYaVinculado ? Number(pedidoYaVinculado.id) : null;
+      if (pedidoYaVinculado && pedidoYaVinculadoId !== id) {
+        throw new AppError("La orden de trabajo ya está vinculada a otro pedido.", 409);
+      }
+      if (pedidoActualOtId !== null && pedidoActualOtId !== ordenTrabajoId) {
+        throw new AppError("Este pedido ya tiene una orden de trabajo vinculada.", 409);
+      }
+    }
+
+    if (pedidoActualOtId !== null && ordenTrabajoId === null) {
+      const ordenTrabajoIdPreservado = pedidoActualOtId;
+      const pedidoYaVinculado = await this.repo.findByOrdenTrabajoId(ordenTrabajoIdPreservado);
+      const pedidoYaVinculadoId = pedidoYaVinculado ? Number(pedidoYaVinculado.id) : null;
+      if (pedidoYaVinculado && pedidoYaVinculadoId !== id) {
+        throw new AppError("La orden de trabajo ya está vinculada a otro pedido.", 409);
+      }
+    }
 
     const result = await this.repo.update({
       id,
@@ -81,6 +129,7 @@ export class UpdatePedidoUseCase {
       responsable_nombre: responsable,
       cliente,
       cliente_id: clienteId,
+      orden_trabajo_id: ordenTrabajoId,
       descripcion_producto: descripcion,
       cantidad: cantidadNum,
       no_oc: noOc || null,

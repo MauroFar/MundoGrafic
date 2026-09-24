@@ -4,6 +4,11 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { FaArrowLeft, FaChevronDown, FaEllipsisV, FaFilePdf, FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import { buildApiUrl } from "../../config/api";
+import {
+  normalizarOrdenTrabajoId,
+  pedidoBloqueadoPorCompletado,
+  pedidoCompletado,
+} from "./listaPedidosState.js";
 
 type TipoPedido = "offset" | "digital";
 type FiltroActividad = "todas" | "sin_empezar" | "en_proceso" | "atrasado" | "completo" | "rechazo";
@@ -54,6 +59,23 @@ const responsablesSugeridos = [
   "Juan Carlos Panchi", "Henry Calderon", "Gustavo Calderon",
 ];
 const estadosSugeridos = ["Sin empezar", "En proceso", "Atrasado", "Completo", "Rechazado"];
+const fasesPermitidas = [
+  "Aprobacion de ficha tecnica",
+  "Preprensa",
+  "Guillotinado",
+  "Prensa",
+  "Barnizado",
+  "Plastificado",
+  "Troquelado",
+  "Pegado",
+  "Terminados MG",
+  "Terminados externos",
+  "Empaque",
+  "Liberado",
+  "Facturado",
+  "Entregado",
+  "Entrega incompleta",
+] as const;
 
 const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
   id, servidor_id: null, cliente_id: null, orden_trabajo_id: null, tipo,
@@ -114,7 +136,8 @@ const ListaPedidos: React.FC = () => {
   const [clienteDropdownCoords, setClienteDropdownCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
   const [menuAccionAbierto, setMenuAccionAbierto] = useState<number | null>(null);
   const [menuAccionCoords, setMenuAccionCoords] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
-  const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null }>({ abierta: false, filaId: null });
+  const [confirmacionGuardar, setConfirmacionGuardar] = useState<{ abierta: boolean; filaId: number | null; requiereConfirmacionCompleto: boolean }>({ abierta: false, filaId: null, requiereConfirmacionCompleto: false });
+  const [confirmacionVinculacion, setConfirmacionVinculacion] = useState<{ abierta: boolean; fila: FilaPedido | null; orden: any | null; diferencias: string[] }>({ abierta: false, fila: null, orden: null, diferencias: [] });
   const [modalExito, setModalExito]           = useState<string | null>(null);
   const [modalError, setModalError]           = useState<string | null>(null);
   const [pdfPreviewOpen, setPdfPreviewOpen]   = useState(false);
@@ -127,6 +150,10 @@ const ListaPedidos: React.FC = () => {
   const [clienteModalBusqueda, setClienteModalBusqueda] = useState<string>("");
   const [clienteModalClientes, setClienteModalClientes] = useState<ClienteCatalogo[]>([]);
   const [clienteModalLoading, setClienteModalLoading] = useState(false);
+  const [vincularOrdenModalFilaId, setVincularOrdenModalFilaId] = useState<number | null>(null);
+  const [vincularOrdenBusqueda, setVincularOrdenBusqueda] = useState<string>("");
+  const [vincularOrdenes, setVincularOrdenes] = useState<any[]>([]);
+  const [vincularOrdenLoading, setVincularOrdenLoading] = useState(false);
 
   // Refs para scroll horizontal sincronizado (arriba ↔ abajo ↔ header sticky)
   const scrollTopRef    = useRef<HTMLDivElement>(null);
@@ -249,6 +276,9 @@ const ListaPedidos: React.FC = () => {
   const guardarFila = async (id: number) => {
     const fila = filas.find((f) => f.id === id);
     if (!fila) return;
+    if (filaBloqueadaPorCompletado(fila)) {
+      return;
+    }
     if (!fila.fecha_ingreso_pedido || !fila.responsable || !fila.cliente || !fila.descripcion_producto) {
       setModalError("Completa los campos obligatorios: Fecha ingreso pedido, Responsable, Cliente y Descripción producto.");
       return;
@@ -262,7 +292,9 @@ const ListaPedidos: React.FC = () => {
       }
     }
 
+    const ordenTrabajoIdPersistido = normalizarOrdenTrabajoId(fila.orden_trabajo_id);
     const token = localStorage.getItem("token");
+    const faseValida = ordenTrabajoIdPersistido ? null : (fasesPermitidas.includes(fila.fase as any) ? fila.fase : null);
     const payload = {
       tipo: fila.tipo,
       fecha_ingreso_pedido: fila.fecha_ingreso_pedido,
@@ -271,12 +303,13 @@ const ListaPedidos: React.FC = () => {
       responsable_nombre: fila.responsable,
       cliente: fila.cliente,
       cliente_id: clienteId ?? null,
+      orden_trabajo_id: ordenTrabajoIdPersistido,
       descripcion_producto: fila.descripcion_producto,
       cantidad: fila.cantidad,
       no_oc: fila.no_oc,
       no_op: fila.no_op,
       estado: fila.estado || "Sin empezar",
-      fase: fila.fase || null,
+      fase: faseValida,
       no_factura: fila.no_factura,
       observaciones: fila.observaciones,
     };
@@ -426,6 +459,172 @@ const ListaPedidos: React.FC = () => {
     setClienteModalLoading(false);
   };
 
+  const buscarOrdenesParaVincular = async (fila: FilaPedido, busqueda = "") => {
+    const token = localStorage.getItem("token");
+    const q = busqueda.trim();
+    const params = new URLSearchParams();
+    params.set("limite", "10");
+    params.set("tipo_orden", fila.tipo);
+    if (q) {
+      params.set("busqueda", q);
+      params.set("concepto", q);
+    }
+
+    try {
+      setVincularOrdenLoading(true);
+      const res = await fetch(buildApiUrl(`/api/ordenTrabajo/listar?${params.toString()}`), {
+        headers: { Authorization: token ? `Bearer ${token}` : "" },
+      });
+      const data = await res.json().catch(() => []);
+      if (!res.ok) throw new Error(data?.error || "No se pudo cargar las órdenes disponibles.");
+      setVincularOrdenes(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setVincularOrdenes([]);
+      setModalError(err?.message || "No se pudo cargar las órdenes disponibles.");
+    } finally {
+      setVincularOrdenLoading(false);
+    }
+  };
+
+  const abrirModalVincularOrden = async (fila: FilaPedido) => {
+    if (!fila.servidor_id) {
+      setModalError("Primero guarda este pedido para poder vincularlo a una orden de trabajo.");
+      return;
+    }
+    if (fila.orden_trabajo_id) {
+      setModalError("Este pedido ya tiene una orden de trabajo vinculada.");
+      return;
+    }
+
+    setVincularOrdenModalFilaId(fila.id);
+    setVincularOrdenBusqueda("");
+    setVincularOrdenes([]);
+    await buscarOrdenesParaVincular(fila, "");
+  };
+
+  const normalizarTextoComparable = (valor: unknown): string => String(valor ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const normalizarFechaComparable = (valor: unknown): string => {
+    const texto = String(valor ?? "").trim();
+    if (!texto) return "";
+    const iso = texto.slice(0, 10);
+    return iso;
+  };
+
+  const obtenerDiferenciasPedidoYOrden = (fila: FilaPedido, orden: any): string[] => {
+    const diferencias: string[] = [];
+
+    const pedidoCliente = normalizarTextoComparable(fila.cliente);
+    const ordenCliente = normalizarTextoComparable(orden?.nombre_cliente ?? orden?.cliente ?? "");
+    if (pedidoCliente && ordenCliente && pedidoCliente !== ordenCliente) {
+      diferencias.push("Cliente");
+    }
+
+    const pedidoFechaAprobacion = normalizarFechaComparable(fila.fecha_aprobacion);
+    const ordenFechaAprobacion = normalizarFechaComparable(orden?.fecha_aprobacion_artes ?? orden?.fecha_aprobacion ?? "");
+    if (pedidoFechaAprobacion && ordenFechaAprobacion && pedidoFechaAprobacion !== ordenFechaAprobacion) {
+      diferencias.push("Fecha aprobación");
+    }
+
+    const pedidoFechaEntrega = normalizarFechaComparable(fila.fecha_entrega);
+    const ordenFechaEntrega = normalizarFechaComparable(orden?.fecha_entrega ?? "");
+    if (pedidoFechaEntrega && ordenFechaEntrega && pedidoFechaEntrega !== ordenFechaEntrega) {
+      diferencias.push("Fecha entrega");
+    }
+
+    return diferencias;
+  };
+
+  const confirmarVinculacionConOrden = async () => {
+    const fila = confirmacionVinculacion.fila;
+    const orden = confirmacionVinculacion.orden;
+    if (!fila || !orden) return;
+
+    setConfirmacionVinculacion({ abierta: false, fila: null, orden: null, diferencias: [] });
+
+    const filaConDatosOrden: FilaPedido = {
+      ...fila,
+      cliente: String(orden.nombre_cliente ?? fila.cliente).trim(),
+      fecha_aprobacion: normalizarFechaComparable(orden?.fecha_aprobacion_artes ?? orden?.fecha_aprobacion ?? fila.fecha_aprobacion),
+      fecha_entrega: normalizarFechaComparable(orden?.fecha_entrega ?? fila.fecha_entrega),
+    };
+
+    await vincularPedidoAOrden(filaConDatosOrden, orden);
+  };
+
+  const vincularPedidoAOrden = async (fila: FilaPedido, orden: any) => {
+    if (!fila.servidor_id) {
+      setModalError("Debes guardar primero este pedido antes de vincularlo.");
+      return;
+    }
+    if (fila.orden_trabajo_id) {
+      setModalError("Este pedido ya tiene una orden de trabajo vinculada.");
+      return;
+    }
+
+    const diferencias = obtenerDiferenciasPedidoYOrden(fila, orden);
+    if (diferencias.length > 0) {
+      setConfirmacionVinculacion({
+        abierta: true,
+        fila,
+        orden,
+        diferencias,
+      });
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    const payload = {
+      tipo: fila.tipo,
+      fecha_ingreso_pedido: fila.fecha_ingreso_pedido,
+      fecha_aprobacion: fila.fecha_aprobacion || null,
+      fecha_entrega: fila.fecha_entrega || null,
+      responsable_nombre: fila.responsable,
+      cliente: fila.cliente,
+      cliente_id: fila.cliente_id ?? null,
+      descripcion_producto: fila.descripcion_producto,
+      cantidad: fila.cantidad || 0,
+      no_oc: fila.no_oc,
+      no_op: String(orden.numero_orden),
+      estado: fila.estado || "Sin empezar",
+      fase: fila.orden_trabajo_id ? null : (fasesPermitidas.includes(fila.fase as any) ? fila.fase : null),
+      no_factura: fila.no_factura,
+      observaciones: fila.observaciones,
+      orden_trabajo_id: normalizarOrdenTrabajoId(orden.id),
+    };
+
+    try {
+      setVincularOrdenLoading(true);
+      const res = await fetch(buildApiUrl(`/api/lista-pedidos/${fila.servidor_id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo vincular la orden de trabajo.");
+
+      const pedidoActualizado = data?.pedido ?? data;
+      const fechaEntrega = pedidoActualizado?.fecha_entrega ? String(pedidoActualizado.fecha_entrega).slice(0, 10) : fila.fecha_entrega;
+      const fechaAprobacion = pedidoActualizado?.fecha_aprobacion ? String(pedidoActualizado.fecha_aprobacion).slice(0, 10) : fila.fecha_aprobacion;
+      setFilas((prev) => prev.map((f) => f.id === fila.id ? {
+        ...f,
+        cliente: String(fila.cliente || pedidoActualizado?.cliente || f.cliente).trim(),
+        fecha_entrega: fechaEntrega || "",
+        fecha_aprobacion: fechaAprobacion || "",
+        orden_trabajo_id: normalizarOrdenTrabajoId(orden.id),
+        no_op: String(orden.numero_orden),
+      } : f));
+      setGuardados((prev) => ({ ...prev, [fila.id]: true }));
+      setVincularOrdenModalFilaId(null);
+      setVincularOrdenBusqueda("");
+      setVincularOrdenes([]);
+      setModalExito(`Pedido vinculado correctamente a la OT N° ${orden.numero_orden}.`);
+    } catch (err: any) {
+      setModalError(err?.message || "No se pudo vincular la orden de trabajo.");
+    } finally {
+      setVincularOrdenLoading(false);
+    }
+  };
+
   const manejarActualizarLista = async () => {
     setLoadingActualizar(true);
     try {
@@ -489,8 +688,28 @@ const ListaPedidos: React.FC = () => {
   };
 
   const norm = (e: string) => e.toLowerCase().trim();
-  const pedidoCompletado = (estado: string) => norm(estado) === "completo";
   const pedidoOcultoPorEstado = (fila: FilaPedido) => pedidoCompletado(fila.estado) && guardados[fila.id] === true;
+  const filaBloqueadaPorCompletado = (fila: FilaPedido) => pedidoBloqueadoPorCompletado({ estado: fila.estado, guardado: guardados[fila.id] === true });
+
+  const solicitarGuardarFila = (id: number) => {
+    const fila = filas.find((f) => f.id === id);
+    if (!fila) return;
+
+    if (pedidoCompletado(fila.estado) && guardados[id] !== true) {
+      setConfirmacionGuardar({
+        abierta: true,
+        filaId: id,
+        requiereConfirmacionCompleto: true,
+      });
+      return;
+    }
+
+    if (filaBloqueadaPorCompletado(fila)) {
+      return;
+    }
+
+    void guardarFila(id);
+  };
 
   // ── Base filtrada: fecha_entrega + búsqueda (sin filtro de estado, para que los indicadores reflejen todos los estados del rango)
   // Solo incluye filas con datos para los contadores de los indicadores
@@ -958,16 +1177,28 @@ const ListaPedidos: React.FC = () => {
                   {/* Filas */}
                   {filasFiltradas.map((fila, index) => (
                     <div key={fila.id}
-                      className={`grid gap-2 rounded-lg border px-4 py-2 sm:px-6 ${index % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}
+                      className={`grid gap-2 rounded-lg border px-4 py-2 sm:px-6 transition-all ${
+                        fila.orden_trabajo_id
+                          ? "border-emerald-300 bg-emerald-50/70 shadow-[0_0_0_1px_rgba(16,185,129,0.08)]"
+                          : index % 2 === 0 ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"
+                      }`}
                       style={{ gridTemplateColumns: colsGrid }}>
                       {columnas.map((col) => (
                         <div key={`${fila.id}-${col.key}`} className="relative">
                           {col.key === "responsable" ? (
                             <div className="relative responsable-wrapper">
                               <input type="text" value={fila.responsable}
-                                onFocus={(e) => abrirDropdown(fila.id, "responsable", e.currentTarget, false)}
-                                onChange={(e) => { actualizarFila(fila.id, "responsable", e.target.value); abrirDropdown(fila.id, "responsable", e.currentTarget, true); }}
-                                className={`${inputBase} w-full pr-8`} />
+                                disabled={filaBloqueadaPorCompletado(fila)}
+                                onFocus={(e) => {
+                                  if (filaBloqueadaPorCompletado(fila)) return;
+                                  abrirDropdown(fila.id, "responsable", e.currentTarget, false);
+                                }}
+                                onChange={(e) => {
+                                  if (filaBloqueadaPorCompletado(fila)) return;
+                                  actualizarFila(fila.id, "responsable", e.target.value);
+                                  abrirDropdown(fila.id, "responsable", e.currentTarget, true);
+                                }}
+                                className={`${inputBase} w-full pr-8 ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`} />
                               <button type="button" onMouseDown={(e) => e.preventDefault()}
                                 onClick={(e) => toggleDropdown(fila.id, "responsable", e)}
                                 className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500 hover:text-cyan-600">
@@ -979,7 +1210,9 @@ const ListaPedidos: React.FC = () => {
                               <input
                                 type="text"
                                 value={fila.cliente}
+                                disabled={filaBloqueadaPorCompletado(fila)}
                                 onChange={async (e) => {
+                                  if (filaBloqueadaPorCompletado(fila)) return;
                                   const valor = e.target.value;
                                   actualizarFila(fila.id, "cliente", valor);
                                   setClienteDropdownFilaId(fila.id);
@@ -987,11 +1220,12 @@ const ListaPedidos: React.FC = () => {
                                   await buscarClientesEnFila(fila.id, valor);
                                 }}
                                 onFocus={async (e) => {
+                                  if (filaBloqueadaPorCompletado(fila)) return;
                                   setClienteDropdownFilaId(fila.id);
                                   abrirClienteDropdown(fila.id, e.currentTarget);
                                   await buscarClientesEnFila(fila.id, fila.cliente);
                                 }}
-                                className={`${inputBase} w-full pr-9`}
+                                className={`${inputBase} w-full pr-9 ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
                                 placeholder="Cliente"
                               />
                               <button
@@ -1008,18 +1242,46 @@ const ListaPedidos: React.FC = () => {
                               </button>
                             </div>
                           ) : col.key === "estado" ? (
-                            <select value={fila.estado} onChange={(e) => actualizarFila(fila.id, "estado", e.target.value)} className={inputFull}>
+                            <select
+                              value={fila.estado}
+                              disabled={filaBloqueadaPorCompletado(fila)}
+                              onChange={(e) => {
+                                if (filaBloqueadaPorCompletado(fila)) return;
+                                actualizarFila(fila.id, "estado", e.target.value);
+                              }}
+                              className={`${inputFull} ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
+                            >
                               <option value="">Seleccionar</option>
                               {estadosSugeridos.map((s) => <option key={s} value={s}>{s}</option>)}
                             </select>
                           ) : col.key === "fase" ? (
-                            <input
-                              type="text"
-                              value={fila.fase}
-                              readOnly
-                              placeholder="Sin estado"
-                              className={`${inputFull} cursor-not-allowed bg-slate-100 text-slate-600`}
-                            />
+                            fila.orden_trabajo_id ? (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={fila.fase || "Sin fase"}
+                                  readOnly
+                                  title="La fase se sincroniza desde la Orden de Trabajo"
+                                  className={`${inputFull} cursor-not-allowed bg-blue-50 text-blue-700 border-blue-200`}
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-blue-500 text-[10px] font-semibold">OT</span>
+                              </div>
+                            ) : (
+                              <select
+                                value={fasesPermitidas.includes(fila.fase as any) ? fila.fase : ""}
+                                disabled={filaBloqueadaPorCompletado(fila)}
+                                onChange={(e) => {
+                                  if (filaBloqueadaPorCompletado(fila)) return;
+                                  actualizarFila(fila.id, "fase", e.target.value);
+                                }}
+                                className={`${inputFull} ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
+                              >
+                                <option value="">Sin fase</option>
+                                {fasesPermitidas.map((fase) => (
+                                  <option key={fase} value={fase}>{fase}</option>
+                                ))}
+                              </select>
+                            )
                           ) : col.key === "no_op" ? (
                             <input
                               type="text"
@@ -1029,7 +1291,16 @@ const ListaPedidos: React.FC = () => {
                               className={`${inputFull} cursor-not-allowed bg-slate-100 text-slate-600`}
                             />
                           ) : col.key === "observaciones" ? (
-                            <textarea value={fila.observaciones} onChange={(e) => actualizarFila(fila.id, "observaciones", e.target.value)} className={inputFull} rows={2} />
+                            <textarea
+                              value={fila.observaciones}
+                              disabled={filaBloqueadaPorCompletado(fila)}
+                              onChange={(e) => {
+                                if (filaBloqueadaPorCompletado(fila)) return;
+                                actualizarFila(fila.id, "observaciones", e.target.value);
+                              }}
+                              className={`${inputFull} ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
+                              rows={2}
+                            />
                           ) : col.key === "fecha_aprobacion" && fila.aprobacion_desde_ot ? (
                             // Fecha de aprobación bloqueada: viene de la OT (artes aprobados)
                             <div className="relative">
@@ -1055,12 +1326,26 @@ const ListaPedidos: React.FC = () => {
                               <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-blue-500 text-[10px] font-semibold">OT</span>
                             </div>
                           ) : (
-                            <input type={col.type} min={col.key === "cantidad" ? 0 : undefined}
-                              value={fila[col.key]} onChange={(e) => actualizarFila(fila.id, col.key, e.target.value)} className={inputFull} />
+                            <input
+                              type={col.type}
+                              min={col.key === "cantidad" ? 0 : undefined}
+                              value={fila[col.key]}
+                              disabled={filaBloqueadaPorCompletado(fila)}
+                              onChange={(e) => {
+                                if (filaBloqueadaPorCompletado(fila)) return;
+                                actualizarFila(fila.id, col.key, e.target.value);
+                              }}
+                              className={`${inputFull} ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
+                            />
                           )}
                         </div>
                       ))}
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {fila.orden_trabajo_id && (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                            OT
+                          </span>
+                        )}
                         <div className="relative">
                           <button
                             type="button"
@@ -1080,21 +1365,33 @@ const ListaPedidos: React.FC = () => {
                               <button
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => { setMenuAccionAbierto(null); if (!guardandoFilaId) void guardarFila(fila.id); }}
-                                className="w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-cyan-50 hover:text-cyan-700"
+                                onClick={() => { setMenuAccionAbierto(null); if (!guardandoFilaId) solicitarGuardarFila(fila.id); }}
+                                disabled={filaBloqueadaPorCompletado(fila)}
+                                className={`w-full px-3 py-2 text-left text-xs transition ${filaBloqueadaPorCompletado(fila) ? "cursor-not-allowed text-slate-400" : "text-slate-700 hover:bg-cyan-50 hover:text-cyan-700"}`}
                               >
                                 Guardar
                               </button>
-                              {fila.orden_trabajo_id ? (
+                              {!fila.orden_trabajo_id ? (
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => { setMenuAccionAbierto(null); void abrirModalVincularOrden(fila); }}
+                                  className="w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+                                >
+                                  Vincular orden
+                                </button>
+                              ) : (
                                 <button
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => { setMenuAccionAbierto(null); navigate(`/ordendeTrabajo/editar/${fila.orden_trabajo_id}`); }}
-                                  className={`w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50 hover:text-slate-800`}
+                                  className="w-full px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-slate-50 hover:text-slate-800"
                                 >
                                   Ver orden de trabajo
                                 </button>
-                              ) : (
+                              )}
+
+                              {!fila.orden_trabajo_id && (
                                 <button
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
@@ -1204,21 +1501,25 @@ const ListaPedidos: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="mb-2 text-base font-semibold text-slate-900">Confirmar guardado</h3>
-            <p className="mb-5 text-sm text-slate-600">¿Deseas guardar este registro en la lista de pedidos <strong>{tipoPedido}</strong>?</p>
+            <p className="mb-5 text-sm text-slate-600">
+              {confirmacionGuardar.requiereConfirmacionCompleto
+                ? "Estás marcando este pedido como completo. Una vez guardado, no podrá editarse."
+                : `¿Deseas guardar este registro en la lista de pedidos ${tipoPedido}?`}
+            </p>
             <div className="flex justify-end gap-3">
               <button type="button"
-                onClick={() => setConfirmacionGuardar({ abierta: false, filaId: null })}
+                onClick={() => setConfirmacionGuardar({ abierta: false, filaId: null, requiereConfirmacionCompleto: false })}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
                 Cancelar
               </button>
               <button type="button"
                 onClick={() => {
                   const id = confirmacionGuardar.filaId;
-                  setConfirmacionGuardar({ abierta: false, filaId: null });
+                  setConfirmacionGuardar({ abierta: false, filaId: null, requiereConfirmacionCompleto: false });
                   if (id !== null) void guardarFila(id);
                 }}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${esOffset ? "bg-cyan-500 hover:bg-cyan-400" : "bg-violet-500 hover:bg-violet-400"}`}>
-                Guardar
+                {confirmacionGuardar.requiereConfirmacionCompleto ? "Guardar como completo" : "Guardar"}
               </button>
             </div>
           </div>
@@ -1336,6 +1637,105 @@ const ListaPedidos: React.FC = () => {
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL VINCULAR ORDEN ── */}
+      {vincularOrdenModalFilaId !== null && (() => {
+        const fila = filas.find((f) => f.id === vincularOrdenModalFilaId);
+        if (!fila) return null;
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Vincular orden de trabajo</h3>
+                  <p className="text-xs text-slate-500">Pedido: {fila.cliente || "Sin cliente"}</p>
+                </div>
+                <button type="button" onClick={() => setVincularOrdenModalFilaId(null)} className="text-xl text-slate-500 hover:text-slate-800">×</button>
+              </div>
+
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={vincularOrdenBusqueda}
+                  onChange={async (e) => {
+                    const valor = e.target.value;
+                    setVincularOrdenBusqueda(valor);
+                    await buscarOrdenesParaVincular(fila, valor);
+                  }}
+                  placeholder="Buscar por N° de orden o descripción..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+                />
+              </div>
+
+              <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
+                {vincularOrdenLoading ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-slate-500">Cargando órdenes...</div>
+                ) : vincularOrdenes.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-slate-500">No hay órdenes disponibles para este pedido.</div>
+                ) : (
+                  <div className="space-y-2 p-3">
+                    {vincularOrdenes.map((orden) => (
+                      <button
+                        key={orden.id}
+                        type="button"
+                        onClick={() => void vincularPedidoAOrden(fila, orden)}
+                        className="flex w-full items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                              OT #{orden.numero_orden}
+                            </span>
+                            <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{orden.tipo_orden || fila.tipo}</span>
+                          </div>
+                          <p className="mt-1 truncate text-sm font-semibold text-slate-900">{orden.nombre_cliente || "Cliente no informado"}</p>
+                          <p className="mt-1 text-xs text-slate-600">{orden.concepto || "Sin descripción"}</p>
+                        </div>
+                        <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Seleccionar</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── MODAL CONFIRMACIÓN VINCULACIÓN CON DATOS DE ORDEN ── */}
+      {confirmacionVinculacion.abierta && confirmacionVinculacion.fila && confirmacionVinculacion.orden && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-lg">!</span>
+              <h3 className="text-base font-semibold text-slate-900">Datos no coinciden</h3>
+            </div>
+            <p className="mb-4 text-sm text-slate-600">
+              Los siguientes datos del pedido no coinciden con la orden de trabajo seleccionada:
+            </p>
+            <ul className="mb-5 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {confirmacionVinculacion.diferencias.map((diferencia) => (
+                <li key={diferencia}>{diferencia}</li>
+              ))}
+            </ul>
+            <p className="mb-5 text-sm text-slate-600">
+              ¿Deseas vincular el pedido y reemplazar esos datos con los de la orden?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button type="button"
+                onClick={() => setConfirmacionVinculacion({ abierta: false, fila: null, orden: null, diferencias: [] })}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
+                No
+              </button>
+              <button type="button"
+                onClick={() => { void confirmarVinculacionConOrden(); }}
+                className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-400 transition">
+                Sí, reemplazar
+              </button>
             </div>
           </div>
         </div>

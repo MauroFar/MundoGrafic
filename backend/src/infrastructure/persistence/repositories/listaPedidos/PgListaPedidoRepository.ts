@@ -53,13 +53,21 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
     return r.rows[0] ?? null;
   }
 
+  async findByOrdenTrabajoId(ordenTrabajoId: number): Promise<ListaPedido | null> {
+    const r = await this.client.query(
+      `SELECT * FROM lista_pedidos WHERE orden_trabajo_id = $1 LIMIT 1`,
+      [ordenTrabajoId],
+    );
+    return r.rows[0] ?? null;
+  }
+
   async create(input: ListaPedidoCreateInput): Promise<ListaPedido> {
     const r = await this.client.query(
       `INSERT INTO lista_pedidos (
-         tipo, fecha_ingreso_pedido, fecha_aprobacion, fecha_entrega, responsable_nombre, cliente, cliente_id,
+         tipo, fecha_ingreso_pedido, fecha_aprobacion, fecha_entrega, responsable_nombre, cliente, cliente_id, orden_trabajo_id,
          descripcion_producto, cantidad, no_oc, no_op, estado, fase,
          no_factura, observaciones, created_by, updated_by
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         input.tipo,
@@ -67,6 +75,7 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
         input.responsable_nombre,
         input.cliente,
         input.cliente_id ?? null,
+        input.orden_trabajo_id ?? null,
         input.descripcion_producto, input.cantidad,
         input.no_oc, input.no_op, input.estado, input.fase,
         input.no_factura, input.observaciones,
@@ -104,10 +113,11 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
     const r = await this.client.query(
       `UPDATE lista_pedidos
        SET tipo=$1, fecha_ingreso_pedido=$2, fecha_aprobacion=$3, fecha_entrega=$4,
-           responsable_nombre=$5, cliente=$6, cliente_id=$7, descripcion_producto=$8, cantidad=$9,
-           no_oc=$10, no_op=$11, estado=$12, fase=$13, no_factura=$14,
-           observaciones=$15, updated_by=$16
-       WHERE id=$17
+           responsable_nombre=$5, cliente=$6, cliente_id=$7, orden_trabajo_id=$8,
+           descripcion_producto=$9, cantidad=$10,
+           no_oc=$11, no_op=$12, estado=$13, fase=$14, no_factura=$15,
+           observaciones=$16, updated_by=$17
+       WHERE id=$18
        RETURNING *`,
       [
         input.tipo,
@@ -115,6 +125,7 @@ export class PgListaPedidoRepository implements ListaPedidoRepository {
         input.responsable_nombre,
         input.cliente,
         input.cliente_id ?? null,
+        input.orden_trabajo_id ?? null,
         input.descripcion_producto, input.cantidad,
         input.no_oc, input.no_op, input.estado, input.fase,
         input.no_factura, input.observaciones,
