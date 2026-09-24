@@ -296,20 +296,20 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
 
   // ─── APROBAR ARTES ────────────────────────────────────────────────────────
 
-  async aprobarArtes(id: number, fechaEntrega: string, userId: number | null): Promise<any> {
-    const fechaAprobacion = new Date().toISOString().slice(0, 10);
+  async aprobarArtes(id: number, fechaEntrega: string, fechaAprobacion: string | null, userId: number | null): Promise<any> {
+    // Si no se proporciona fecha de aprobación, usar la fecha del servidor
     const result = await this.client.query(
       `UPDATE orden_trabajo
          SET artes_aprobados = TRUE,
              fecha_entrega = $1::date,
-             fecha_aprobacion_artes = CURRENT_DATE,
-             updated_by = $2,
+             fecha_aprobacion_artes = COALESCE($2::date, CURRENT_DATE),
+             updated_by = $3,
              updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
+       WHERE id = $4
        RETURNING id, numero_orden, artes_aprobados, fecha_entrega,
                  fecha_aprobacion_artes, tipo_orden,
                  estado_orden_digital_id, estado_orden_offset_id`,
-      [fechaEntrega, userId, id],
+      [fechaEntrega, fechaAprobacion, userId, id],
     );
     const orden = result.rows[0] ?? null;
 
@@ -317,11 +317,11 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
     if (orden) {
       await this.client.query(
         `UPDATE lista_pedidos
-           SET fecha_aprobacion = CURRENT_DATE,
-               fecha_entrega    = $1::date,
+           SET fecha_aprobacion = $1::date,
+               fecha_entrega    = $2::date,
                updated_at       = NOW()
-         WHERE orden_trabajo_id = $2`,
-        [orden.fecha_entrega, id],
+         WHERE orden_trabajo_id = $3`,
+        [orden.fecha_aprobacion_artes, orden.fecha_entrega, id],
       );
     }
 

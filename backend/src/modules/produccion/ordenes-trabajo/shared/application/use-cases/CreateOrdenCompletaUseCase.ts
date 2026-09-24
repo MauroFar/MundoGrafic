@@ -48,7 +48,12 @@ export class CreateOrdenCompletaUseCase {
     const tipoOrden: string = tipo_orden || 'offset';
     const artesAprobados = Boolean(artes_aprobados);
     const fechaEntregaPersistida = artesAprobados ? (fecha_entrega || null) : null;
-    const fechaAprobacionActual = artesAprobados ? new Date().toISOString().slice(0, 10) : null;
+    // Respetar la fecha enviada desde el frontend si está presente; si no,
+    // usar la fecha actual cuando se indica artes_aprobados=true.
+    const fechaAprobacionActual =
+      body.fecha_aprobacion_artes !== undefined
+        ? (body.fecha_aprobacion_artes === null ? null : String(body.fecha_aprobacion_artes).slice(0, 10))
+        : (artesAprobados ? new Date().toISOString().slice(0, 10) : null);
     const pedidoIdNorm =
       pedido_id === null || pedido_id === undefined || pedido_id === ''
         ? null
@@ -86,8 +91,8 @@ export class CreateOrdenCompletaUseCase {
         email: email || null,
         telefono: telefono || null,
         fecha_creacion: fecha_creacion || null,
-        fecha_entrega: fechaEntregaPersistida,
-        fecha_aprobacion_artes: fechaAprobacionActual,
+          fecha_entrega: fechaEntregaPersistida,
+          fecha_aprobacion_artes: fechaAprobacionActual,
         notas_observaciones: notas_observaciones || null,
         id_cotizacion: idCotizacionNorm,
         id_detalle_cotizacion: id_detalle_cotizacion || null,

@@ -408,6 +408,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   // Estados adicionales generales
   const [fechaEntrega, setFechaEntrega] = useState<string>('');
   const [artesAprobados, setArtesAprobados] = useState<boolean>(false);
+  const [fechaAprobacionArtes, setFechaAprobacionArtes] = useState<string>('');
   const [estado, setEstado] = useState<string>('pendiente');
   const [notasObservaciones, setNotasObservaciones] = useState<string>('');
   const [vendedor, setVendedor] = useState<string>('');
@@ -612,6 +613,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     // Solo limpiar si el usuario acaba de pasar de true → false
     if (wasApproved && !artesAprobados) {
       setFechaEntrega('');
+      setFechaAprobacionArtes('');
     }
   }, [artesAprobados]);
 
@@ -1227,6 +1229,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
     } else {
       setFechaEntrega('');
     }
+    // Mapear fecha de aprobación de artes si existe
+    if ((ordenData as any).fecha_aprobacion_artes) {
+      setFechaAprobacionArtes((ordenData as any).fecha_aprobacion_artes.substring(0, 10));
+    } else {
+      setFechaAprobacionArtes('');
+    }
      }
  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ordenData, cotizacionId, ordenId, location.state]);
@@ -1586,6 +1594,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       fecha_creacion: fechaCreacion || null,
       fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
       artes_aprobados: artesAprobados,
+      fecha_aprobacion_artes: artesAprobados ? (fechaAprobacionArtes || null) : null,
         // Para órdenes digitales no enviamos el campo `estado` (usar estado_orden_digital_id)
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
       notas_observaciones: notasObservaciones,
@@ -1758,8 +1767,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
           cantidad: cantidadParaBackend,
           concepto: conceptoParaBackend,
           fecha_creacion: fechaCreacion || null,
-          fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
-          artes_aprobados: artesAprobados,
+            fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
+            artes_aprobados: artesAprobados,
+            fecha_aprobacion_artes: artesAprobados ? (fechaAprobacionArtes || null) : null,
           ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
           notas_observaciones: notasObservaciones,
           vendedor,
@@ -1909,6 +1919,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         fecha_creacion: fechaCreacion || null,
         fecha_entrega: artesAprobados ? (fechaEntrega || null) : null,
         artes_aprobados: artesAprobados,
+        fecha_aprobacion_artes: artesAprobados ? (fechaAprobacionArtes || null) : null,
         // Nueva orden: para digitales no usamos `estado` (se gestionará con estado_orden_digital)
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado: 'pendiente' }),
         notas_observaciones: notasObservaciones,
@@ -2152,6 +2163,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     className="h-4 w-4 accent-green-600"
                   />
                 </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-semibold text-gray-700">Fecha Aprobación Artes:</label>
+                            <input
+                              className={`border rounded px-2 py-1 text-sm ${artesAprobados ? 'border-gray-300 text-gray-700' : 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'}`}
+                              type="date"
+                              value={fechaAprobacionArtes}
+                              onChange={e => setFechaAprobacionArtes(e.target.value)}
+                              disabled={!artesAprobados}
+                            />
+                          </div>
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-gray-700">Fecha Entrega:</label>
                   <input 

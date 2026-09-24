@@ -15,16 +15,19 @@ export class AprobarArtesUseCase {
     private readonly registrarHistorial: AprobarArtesHistorialFn,
   ) {}
 
-  async execute(id: number, fechaEntrega: string, userId: number | null): Promise<any> {
+  async execute(id: number, fechaEntrega: string, fechaAprobacionArtes: string | undefined, userId: number | null): Promise<any> {
     if (!fechaEntrega || !/^\d{4}-\d{2}-\d{2}$/.test(String(fechaEntrega))) {
       throw new Error('Debes seleccionar una fecha de entrega válida (YYYY-MM-DD).');
+    }
+    if (fechaAprobacionArtes !== undefined && fechaAprobacionArtes !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(fechaAprobacionArtes))) {
+      throw new Error('Debes seleccionar una fecha de aprobación válida (YYYY-MM-DD).');
     }
 
     const bloqueada = await this.ordenRepo.fueEnviadaAProduccion(id);
     if (bloqueada)
       throw new Error('La orden ya fue enviada a producción y no se puede modificar.');
 
-    const ordenAprobada = await this.ordenRepo.aprobarArtes(id, fechaEntrega, userId);
+    const ordenAprobada = await this.ordenRepo.aprobarArtes(id, fechaEntrega, fechaAprobacionArtes ?? null, userId);
     if (!ordenAprobada) throw new Error('Orden no encontrada');
 
     const esDigital =

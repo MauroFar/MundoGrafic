@@ -28,12 +28,17 @@ export class UpdateOrdenCompletaUseCase {
 
     const artesAprobados = artes_aprobados === undefined ? null : Boolean(artes_aprobados);
     const fechaEntregaPersistida = artesAprobados === false ? null : fecha_entrega;
+    // Respetar la fecha enviada desde el frontend si está presente; si no,
+    // mantener la lógica anterior (undefined cuando no se incluye el campo,
+    // la fecha actual cuando se aprueban artes y no se envía fecha, o null si se desaprueba).
     const fechaAprobacionArtesPersistida =
-      artes_aprobados === undefined
-        ? undefined
-        : artesAprobados
-          ? new Date().toISOString().slice(0, 10)
-          : null;
+      body.fecha_aprobacion_artes !== undefined
+        ? (body.fecha_aprobacion_artes === null ? null : String(body.fecha_aprobacion_artes).slice(0, 10))
+        : (artes_aprobados === undefined
+            ? undefined
+            : artesAprobados
+              ? new Date().toISOString().slice(0, 10)
+              : null);
 
     return this.deps.runInTransaction(async () => {
       const ordenActualizada = await this.deps.ordenRepo.update(id, {

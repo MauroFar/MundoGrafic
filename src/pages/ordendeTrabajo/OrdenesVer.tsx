@@ -62,6 +62,7 @@ const OrdenesVer: React.FC = () => {
   const [modalAprobarArtesId, setModalAprobarArtesId] = useState<number | null>(null);
   const [fechaEntregaAprobacion, setFechaEntregaAprobacion] = useState<string>('');
   const [aprobandoArtes, setAprobandoArtes] = useState<boolean>(false);
+  const [fechaAprobacionArtesModal, setFechaAprobacionArtesModal] = useState<string>('');
   const [showProduccionModal, setShowProduccionModal] = useState<boolean>(false);
   const [ordenToProduccion, setOrdenToProduccion] = useState<OrdenTrabajo | null>(null);
   const [accionProduccion, setAccionProduccion] = useState<'enviar' | 'cancelar'>('enviar');
@@ -582,10 +583,16 @@ const OrdenesVer: React.FC = () => {
   const abrirModalAprobarArtes = (orden: OrdenTrabajo) => {
     setModalAprobarArtesId(orden.id);
     setFechaEntregaAprobacion(orden.fecha_entrega ? orden.fecha_entrega.slice(0, 10) : '');
+    // Inicializar fecha de aprobación de artes si ya existe
+    setFechaAprobacionArtesModal((orden as any).fecha_aprobacion_artes ? ((orden as any).fecha_aprobacion_artes.slice(0,10)) : '');
   };
 
   const aprobarArtes = async () => {
     if (!modalAprobarArtesId) return;
+    if (!fechaAprobacionArtesModal) {
+      toast.info('Debes seleccionar la fecha de aprobación de artes.');
+      return;
+    }
     if (!fechaEntregaAprobacion) {
       toast.info('Debes seleccionar la fecha de entrega para aprobar artes.');
       return;
@@ -600,7 +607,7 @@ const OrdenesVer: React.FC = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ fecha_entrega: fechaEntregaAprobacion }),
+        body: JSON.stringify({ fecha_entrega: fechaEntregaAprobacion, fecha_aprobacion_artes: fechaAprobacionArtesModal }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -610,11 +617,12 @@ const OrdenesVer: React.FC = () => {
 
       setOrdenes((prev) => prev.map((o) => (
         o.id === modalAprobarArtesId
-          ? { ...o, artes_aprobados: true, fecha_entrega: fechaEntregaAprobacion }
+          ? { ...o, artes_aprobados: true, fecha_entrega: fechaEntregaAprobacion, fecha_aprobacion_artes: fechaAprobacionArtesModal }
           : o
       )));
       setModalAprobarArtesId(null);
       setFechaEntregaAprobacion('');
+      setFechaAprobacionArtesModal('');
       toast.success('Artes aprobados. Ahora ya puedes enviar la orden a producción.');
     } catch (error: any) {
       toast.error(error.message || 'Error al aprobar artes');
@@ -1235,6 +1243,13 @@ const OrdenesVer: React.FC = () => {
               Al confirmar, los artes quedarán aprobados y se habilitará el envío a producción.
             </p>
             <div className="mt-4 text-left">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de aprobación de artes</label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded p-2 mb-3"
+                value={fechaAprobacionArtesModal}
+                onChange={(e) => setFechaAprobacionArtesModal(e.target.value)}
+              />
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de entrega</label>
               <input
                 type="date"

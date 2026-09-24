@@ -41,8 +41,8 @@ export interface IOrdenLegacyRepository {
     id_cotizacion?: number;
   }): Promise<any[]>;
 
-  /** Marcar artes como aprobados y persistir fecha de entrega */
-  aprobarArtes(id: number, fechaEntrega: string, userId: number | null): Promise<any>;
+  /** Marcar artes como aprobados y persistir fecha de entrega y fecha de aprobación */
+  aprobarArtes(id: number, fechaEntrega: string, fechaAprobacion: string | null, userId: number | null): Promise<any>;
 
   /** Actualizar estado de producción de la orden */
   enviarAProduccion(

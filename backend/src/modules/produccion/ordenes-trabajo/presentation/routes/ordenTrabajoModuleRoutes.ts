@@ -460,7 +460,7 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
             await registrarHistorial(tipo, ordenId, estadoId, userId, nota);
           },
         );
-        const result = await useCase.execute(id, req.body.fecha_entrega, req.user?.id ?? null);
+        const result = await useCase.execute(id, req.body.fecha_entrega, req.body.fecha_aprobacion_artes, req.user?.id ?? null);
         res.json(result);
       } catch (err: any) {
         if (err.message?.includes('fecha'))   return res.status(400).json({ error: err.message });
