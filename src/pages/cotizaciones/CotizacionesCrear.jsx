@@ -1849,6 +1849,11 @@ function CotizacionesCrear() {
 
 
 
+  const tituloCabeceraCotizacion =
+    selectedRuc?.ruc === '1710047984001' || selectedRuc?.ruc === '171004798400'
+      ? 'JUAN CARLOS PANCHI BURBANO'
+      : 'CORPORACION MUNDO GRAFIC';
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
@@ -1896,7 +1901,7 @@ function CotizacionesCrear() {
           <div className="flex justify-between items-start">
             {/* Izquierda: MUNDOGRAFIC */}
             <div className="flex-shrink-0">
-              <Logo/>
+              <Logo titulo={tituloCabeceraCotizacion} />
               <p className="text-sm text-gray-600 mt-2">
          
               </p>
