@@ -1066,28 +1066,12 @@ body {
           </div>
 
           <div class="pie-pagina">
-            <p style="margin-left: -20px; font-size: 8px; white-space: nowrap;">
-              Quito: Pasaje San Luis N12-87 y Antonio Ante, Edif. Apolo 1 Telefax.: 2589134 - Tumbaco: Norberto Salazar E7-224 y Pasaje San Martin Telf.: 2379320 E-mail: ventas@mundografic.com Cel.:099661572
+            <p style="margin: 0; font-size: 12px; line-height: 1.35; white-space: nowrap;">
+              <strong>Quito</strong>: Pasaje. San Luis N12-87 y Antonio Ante, Edif. Apolo 1 Telefax.: 2589134
             </p>
-            <div class="redes-sociales">
-              <a href="https://www.mundografic.com" class="website-link">www.mundografic.com</a>
-              <a href="https://instagram.com/mundografic">
-                <i class="fab fa-instagram"></i>
-                /mundografic
-              </a>
-              <a href="https://youtube.com/mundografic">
-                <i class="fab fa-youtube"></i>
-                /mundografic
-              </a>
-              <a href="https://facebook.com/mundografic">
-                <i class="fab fa-facebook"></i>
-                /mundografic
-              </a>
-              <a href="https://twitter.com/MundoGraficEC">
-                <i class="fab fa-twitter"></i>
-                @MundoGraficEC
-              </a>
-            </div>
+            <p style="margin: 0; font-size: 12px; line-height: 1.35; white-space: nowrap;">
+              <strong>Tumbaco</strong>: Norberto Salazar N7-224 y Pasaje San Martín Telf.: 2379320 E-mail: info@mundografic.com Cel.:0999661572
+            </p>
           </div>
         </footer>
       </div>
