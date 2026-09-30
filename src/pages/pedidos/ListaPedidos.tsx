@@ -273,6 +273,37 @@ const ListaPedidos: React.FC = () => {
     return match ? Number(match.id) : null;
   };
 
+  const sincronizarNoOcConOrdenTrabajo = async (id: number, fila: FilaPedido) => {
+    const ordenTrabajoId = normalizarOrdenTrabajoId(fila.orden_trabajo_id);
+    if (!ordenTrabajoId) return;
+
+    const token = localStorage.getItem("token");
+    const noOc = (fila.no_oc ?? "").trim();
+
+    try {
+      const res = await fetch(buildApiUrl(`/api/ordenTrabajo/editarOrden/${ordenTrabajoId}`), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          orden_compra: noOc || null,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "No se pudo sincronizar la orden de compra con la OT.");
+      }
+
+      setFilas((prev) => prev.map((f) => f.id === id ? { ...f, no_oc: noOc } : f));
+    } catch (err: any) {
+      console.error("Error sincronizando No.OC con la OT:", err);
+      setModalError(err?.message || "Se guardó el pedido, pero no se pudo sincronizar la orden de compra en la OT.");
+    }
+  };
+
   const guardarFila = async (id: number) => {
     const fila = filas.find((f) => f.id === id);
     if (!fila) return;
@@ -328,8 +359,10 @@ const ListaPedidos: React.FC = () => {
       if (!res.ok) throw new Error((data?.error || "No se pudo guardar.") + (Array.isArray(data?.detalles) ? `\n${data.detalles.join("\n")}` : ""));
       const fn = data?.pedido ? mapPedidoBackendAFila(data.pedido) : null;
       const sid = fn?.servidor_id || fila.servidor_id;
-      setFilas((prev) => prev.map((f) => f.id === id ? { ...(fn || f), id, servidor_id: sid } : f));
+      const filaGuardada = { ...(fn || fila), id, servidor_id: sid };
+      setFilas((prev) => prev.map((f) => f.id === id ? filaGuardada : f));
       setGuardados((prev) => ({ ...prev, [id]: true }));
+      await sincronizarNoOcConOrdenTrabajo(id, filaGuardada);
       setModalExito("Registro guardado exitosamente.");
     } catch (err: any) {
       setModalError(err?.message || "No se pudo guardar el registro.");
@@ -581,6 +614,7 @@ const ListaPedidos: React.FC = () => {
     }
 
     const token = localStorage.getItem("token");
+    const noOcOrden = (fila.no_oc || orden?.orden_compra || "").trim();
     const payload = {
       tipo: fila.tipo,
       fecha_ingreso_pedido: fila.fecha_ingreso_pedido,
@@ -591,7 +625,7 @@ const ListaPedidos: React.FC = () => {
       cliente_id: fila.cliente_id ?? null,
       descripcion_producto: fila.descripcion_producto,
       cantidad: fila.cantidad || 0,
-      no_oc: fila.no_oc,
+      no_oc: noOcOrden,
       no_op: String(orden.numero_orden),
       estado: fila.estado || "Sin empezar",
       fase: fila.orden_trabajo_id ? null : (fasesPermitidas.includes(fila.fase as any) ? fila.fase : null),
@@ -613,14 +647,31 @@ const ListaPedidos: React.FC = () => {
       const pedidoActualizado = data?.pedido ?? data;
       const fechaEntrega = pedidoActualizado?.fecha_entrega ? String(pedidoActualizado.fecha_entrega).slice(0, 10) : fila.fecha_entrega;
       const fechaAprobacion = pedidoActualizado?.fecha_aprobacion ? String(pedidoActualizado.fecha_aprobacion).slice(0, 10) : fila.fecha_aprobacion;
+      const noOcVinculada = (fila.no_oc || orden?.orden_compra || "").trim();
       setFilas((prev) => prev.map((f) => f.id === fila.id ? {
         ...f,
         cliente: String(fila.cliente || pedidoActualizado?.cliente || f.cliente).trim(),
         fecha_entrega: fechaEntrega || "",
         fecha_aprobacion: fechaAprobacion || "",
         orden_trabajo_id: normalizarOrdenTrabajoId(orden.id),
+        no_oc: noOcVinculada,
         no_op: String(orden.numero_orden),
       } : f));
+
+      if (normalizarOrdenTrabajoId(orden.id)) {
+        const resOt = await fetch(buildApiUrl(`/api/ordenTrabajo/editarOrden/${normalizarOrdenTrabajoId(orden.id)}`), {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({ orden_compra: noOcVinculada || null }),
+        });
+        if (!resOt.ok) {
+          const errorData = await resOt.json().catch(() => ({}));
+          console.warn("No se pudo sincronizar No.OC con la OT vinculada:", errorData?.error || "Error al actualizar OT");
+        }
+      }
       setGuardados((prev) => ({ ...prev, [fila.id]: true }));
       setVincularOrdenModalFilaId(null);
       setVincularOrdenBusqueda("");
