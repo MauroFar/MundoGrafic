@@ -994,6 +994,12 @@ body {
                   <span style="color:#16a34a; font-weight:bold;">${cotizacion.celuar}</span>
                 </div>
                 ` : ''}
+                ${cotizacion.realizado_por ? `
+                <div class="campo-datos">
+                  <label>Realizado por:</label>
+                  <span>${cotizacion.realizado_por}</span>
+                </div>
+                ` : ''}
               </div>
             </div>
           </div>

@@ -13,6 +13,7 @@ export interface CreateCotizacionInput {
   contacto?: string | null;
   celuar?: string | null;
   nombre_ejecutivo?: string | null;
+  realizado_por?: string | null;
   mostrar_datos_bancarios?: boolean;
   userId: number;
   userNombre?: string | null;
@@ -34,6 +35,7 @@ export interface UpdateCotizacionInput {
   contacto?: string | null;
   celuar?: string | null;
   nombre_ejecutivo?: string | null;
+  realizado_por?: string | null;
   mostrar_datos_bancarios?: boolean;
   updatedBy?: number;
 }

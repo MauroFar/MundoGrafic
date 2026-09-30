@@ -32,11 +32,12 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
         contacto,
         celuar,
         nombre_ejecutivo,
+        realizado_por,
         mostrar_datos_bancarios,
         created_by,
         created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
       RETURNING *
     `;
 
@@ -57,6 +58,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
       input.contacto || null,
       input.celuar || null,
       input.nombre_ejecutivo || input.userNombre || null,
+      input.realizado_por || input.userNombre || null,
       input.mostrar_datos_bancarios !== false,
       input.userId,
     ]);
@@ -104,10 +106,11 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
           contacto = $12,
           celuar = $13,
           nombre_ejecutivo = $14,
-          mostrar_datos_bancarios = $15,
-          updated_by = $16,
+          realizado_por = $15,
+          mostrar_datos_bancarios = $16,
+          updated_by = $17,
           updated_at = NOW()
-      WHERE id = $17
+      WHERE id = $18
       RETURNING *
     `;
 
@@ -126,6 +129,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
       input.contacto || null,
       input.celuar || null,
       input.nombre_ejecutivo || null,
+      input.realizado_por || null,
       input.mostrar_datos_bancarios !== false,
       input.updatedBy,
       input.id,

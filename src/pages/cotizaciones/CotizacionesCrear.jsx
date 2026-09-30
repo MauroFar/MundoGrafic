@@ -72,6 +72,8 @@ function CotizacionesCrear() {
   const [underlineStates, setUnderlineStates] = useState([]); // Estado para rastrear si el cursor está en texto subrayado
   const [colorStates, setColorStates] = useState([]); // Color activo por fila
   const [celuar, setCeluar] = useState("");
+  const [realizadoPor, setRealizadoPor] = useState(localStorage.getItem('nombre') || "");
+  const [usarRealizadoPor, setUsarRealizadoPor] = useState(true);
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   const [mostrarTotales, setMostrarTotales] = useState(true); // Mostrar subtotal/iva/descuento/total por defecto
   const [mostrarDatosBancarios, setMostrarDatosBancarios] = useState(true); // Mostrar datos bancarios en el PDF por defecto
@@ -312,6 +314,14 @@ function CotizacionesCrear() {
       setNombreEjecutivo('');
       console.log('ℹ️ Usuario NO es vendedor, campo en blanco');
     }
+
+    if (nombreUsuario && !id) {
+      setRealizadoPor(nombreUsuario);
+      setUsarRealizadoPor(true);
+    } else if (!id) {
+      setRealizadoPor('');
+      setUsarRealizadoPor(false);
+    }
     
     // Cargar lista de vendedores
     const token = localStorage.getItem('token');
@@ -413,6 +423,8 @@ function CotizacionesCrear() {
       
       // Configurar el ejecutivo
       setNombreEjecutivo(cotizacionData.nombre_ejecutivo || localStorage.getItem('nombre') || "");
+      setRealizadoPor(cotizacionData.realizado_por || localStorage.getItem('nombre') || "");
+      setUsarRealizadoPor(Boolean(cotizacionData.realizado_por || localStorage.getItem('nombre')));
       
       // Asegurarse de que el RUC se establezca correctamente
       if (cotizacionData.ruc_id && cotizacionData.ruc) {
@@ -811,6 +823,7 @@ function CotizacionesCrear() {
         validez_proforma: validezProforma,
         observaciones: observaciones,
         nombre_ejecutivo: nombreEjecutivo || "",
+        realizado_por: usarRealizadoPor && realizadoPor ? realizadoPor : null,
         contacto: usarContacto && contacto ? contacto : null,
         celuar: usarCeluar && celuar ? celuar : null
       };
@@ -1511,7 +1524,7 @@ function CotizacionesCrear() {
         fecha: fecha,
         nombre_cliente: nombreCliente,
         contacto: usarContacto && contacto ? contacto : null,
-        celuar: celuar || null,
+        celuar: usarCeluar && celuar ? celuar : null,
         ruc: selectedRuc.ruc,
         subtotal: mostrarTotales ? subtotal : null,
         iva: mostrarTotales ? iva : null,
@@ -1523,7 +1536,8 @@ function CotizacionesCrear() {
         forma_pago: formaPago,
         validez_proforma: validezProforma,
         observaciones: observaciones,
-        nombre_ejecutivo: nombreEjecutivo
+        nombre_ejecutivo: nombreEjecutivo,
+        realizado_por: usarRealizadoPor && realizadoPor ? realizadoPor : null
       };
 
       const detallesTemp = filasOverride.map(fila => ({
@@ -1693,8 +1707,9 @@ function CotizacionesCrear() {
         validez_proforma: validezProforma,
         observaciones: observaciones,
         nombre_ejecutivo: nombreEjecutivo || "",
+        realizado_por: usarRealizadoPor && realizadoPor ? realizadoPor : null,
         contacto: usarContacto && contacto ? contacto : null,
-        celuar: celuar || null
+        celuar: usarCeluar && celuar ? celuar : null
       };
 
       console.log("Guardando cotización como nueva con datos:", cotizacionData);
@@ -2049,6 +2064,23 @@ function CotizacionesCrear() {
                   value={celuar}
                   onChange={(e) => setCeluar(e.target.value)}
                   className={`flex-1 border rounded-md p-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                />
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  id="usarRealizadoPor"
+                  type="checkbox"
+                  checked={usarRealizadoPor}
+                  onChange={(e) => setUsarRealizadoPor(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                />
+                <label htmlFor="usarRealizadoPor" className="text-sm text-gray-700">Realizado por</label>
+                <input
+                  type="text"
+                  value={realizadoPor}
+                  onChange={(e) => setRealizadoPor(e.target.value)}
+                  disabled={!usarRealizadoPor}
+                  className={`flex-1 border rounded-md p-2 ${!usarRealizadoPor ? 'bg-gray-100 cursor-not-allowed' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}`}
                 />
               </div>
             </div>

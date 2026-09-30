@@ -25,6 +25,7 @@ export class CotizacionDocumentDataService {
         c.observaciones,
         c.contacto,
         c.celuar,
+        c.realizado_por,
         c.mostrar_totales,
         c.mostrar_datos_bancarios
       FROM cotizaciones c

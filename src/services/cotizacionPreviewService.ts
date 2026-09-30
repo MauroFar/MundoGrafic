@@ -48,6 +48,7 @@ export interface CotizacionPreview {
   validez_proforma?: string;
   observaciones?: string;
   nombre_ejecutivo?: string;
+  realizado_por?: string | null;
 }
 
 // ── Servicio principal ────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export const generarVistaPreviaPDF = async (
       validez_proforma: cotData.validez_proforma,
       observaciones: cotData.observaciones,
       nombre_ejecutivo: cotData.nombre_ejecutivo,
+      realizado_por: cotData.realizado_por ?? null,
     };
 
     detalles = Array.isArray(detData)
