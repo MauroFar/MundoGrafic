@@ -2013,7 +2013,7 @@ function CotizacionesCrear() {
                             const nombreCompletoVendedor = [vendedor.nombre, vendedor.apellido].filter(Boolean).join(' ');
                             setNombreEjecutivo(nombreCompletoVendedor);
                             setCeluar(vendedor.celular || '');
-                            setUsarCeluar(!!vendedor.celular);
+                            setUsarCeluar(true);
                             setMostrarVendedores(false);
                           }}
                           className="px-4 py-2 hover:bg-blue-100 cursor-pointer text-sm"

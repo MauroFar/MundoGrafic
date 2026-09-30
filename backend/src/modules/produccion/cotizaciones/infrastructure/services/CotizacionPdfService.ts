@@ -730,16 +730,30 @@ body {
 .datos-derecha {
   text-align: left;
   min-width: 300px;
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .datos-derecha .campo-datos {
-  display: flex;
+  display: grid;
+  grid-template-columns: 150px auto;
   align-items: center;
+  column-gap: 8px;
   margin-bottom: 4px;
+  width: max-content;
+  max-width: 100%;
 }
 
 .datos-derecha .campo-datos label {
-  min-width: 140px;
+  min-width: 150px;
+  text-align: right;
+}
+
+.datos-derecha .campo-datos span {
+  text-align: left;
+  white-space: nowrap;
 }
 
 /* Alineación explícita de etiquetas en la columna izquierda */
@@ -923,8 +937,8 @@ body {
                 </div>
                 ${cotizacion.celuar ? `
                 <div class="campo-datos">
-                  <label>Celular:</label>
-                  <span>${cotizacion.celuar}</span>
+                  <label style="color:#16a34a; font-weight:bold;">Whatsapp:</label>
+                  <span style="color:#16a34a; font-weight:bold;">${cotizacion.celuar}</span>
                 </div>
                 ` : ''}
               </div>
