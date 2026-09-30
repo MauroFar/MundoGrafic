@@ -361,15 +361,28 @@ const ListaPedidos: React.FC = () => {
     setDropdownAbierto((prev) => prev?.id === id ? null : prev);
   };
 
+  const getFixedPortalPosition = (rect: DOMRect, menuHeight: number, menuWidth: number, minWidth = 0) => {
+    const padding = 12;
+    const maxLeft = Math.max(padding, window.innerWidth - menuWidth - padding);
+    const left = Math.min(Math.max(rect.left, padding), maxLeft);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const abrirArriba = spaceBelow < menuHeight && spaceAbove > menuHeight;
+    const top = abrirArriba
+      ? Math.max(padding, rect.top - menuHeight - 8)
+      : Math.min(rect.bottom + 6, Math.max(padding, window.innerHeight - menuHeight - padding));
+
+    return {
+      top,
+      left,
+      width: Math.max(menuWidth, minWidth),
+    };
+  };
+
   const abrirDropdown = (id: number, campo: CampoConDropdown, inputEl: HTMLInputElement, filtrarPorTexto = false) => {
     const rect = inputEl.getBoundingClientRect();
     const h = 220;
-    const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
-    setDropdownCoords({
-      top: abrirArriba ? rect.top + window.scrollY - h - 4 : rect.bottom + window.scrollY + 4,
-      left: rect.left + window.scrollX,
-      width: rect.width,
-    });
+    setDropdownCoords(getFixedPortalPosition(rect, h, rect.width));
     setDropdownAbierto({ id, campo });
     setDropdownFiltroTexto(filtrarPorTexto ? inputEl.value : null);
   };
@@ -377,12 +390,7 @@ const ListaPedidos: React.FC = () => {
   const abrirClienteDropdown = (id: number, inputEl: HTMLInputElement) => {
     const rect = inputEl.getBoundingClientRect();
     const h = 220;
-    const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
-    setClienteDropdownCoords({
-      top: abrirArriba ? rect.top + window.scrollY - h - 4 : rect.bottom + window.scrollY + 4,
-      left: rect.left + window.scrollX,
-      width: rect.width,
-    });
+    setClienteDropdownCoords(getFixedPortalPosition(rect, h, rect.width));
     setClienteDropdownFilaId(id);
   };
 
@@ -640,12 +648,7 @@ const ListaPedidos: React.FC = () => {
   const abrirMenuAccion = (id: number, triggerEl: HTMLButtonElement) => {
     const rect = triggerEl.getBoundingClientRect();
     const h = 110;
-    const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
-    setMenuAccionCoords({
-      top: abrirArriba ? rect.top + window.scrollY - h - 8 : rect.bottom + window.scrollY + 6,
-      left: rect.left + window.scrollX,
-      width: rect.width,
-    });
+    setMenuAccionCoords(getFixedPortalPosition(rect, h, rect.width, 160));
     setMenuAccionAbierto((prev) => (prev === id ? null : id));
   };
 
@@ -654,12 +657,7 @@ const ListaPedidos: React.FC = () => {
     if (inputEl) {
       const rect = inputEl.getBoundingClientRect();
       const h = 220;
-      const abrirArriba = (window.innerHeight - rect.bottom) < h && rect.top > h;
-      setDropdownCoords({
-        top: abrirArriba ? rect.top + window.scrollY - h - 4 : rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
+      setDropdownCoords(getFixedPortalPosition(rect, h, rect.width));
     }
     setDropdownAbierto((prev) => (prev?.id === id && prev.campo === campo) ? null : { id, campo });
     setDropdownFiltroTexto(null);
