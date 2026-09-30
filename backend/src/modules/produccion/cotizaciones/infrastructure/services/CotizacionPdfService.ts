@@ -233,6 +233,43 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
     !(cotizacion.subtotal == null && cotizacion.iva == null && cotizacion.descuento == null && cotizacion.total == null)
   );
 
+  const mostrarDatosBancarios = cotizacion.mostrar_datos_bancarios !== false;
+
+  const normalizarRucParaBanco = (valor: any) => String(valor ?? '').replace(/[^0-9]/g, '');
+
+  const datosBancoRuc = (() => {
+    const ruc = normalizarRucParaBanco(cotizacion.ruc);
+
+    if (ruc === '1792668026001' || ruc === '179266802600') {
+      return {
+        banco: 'BANCO DEL PACIFICO',
+        cuenta: 'CUENTA CORRIENTE # 7709657',
+        titular: 'TITULAR: CORPORACION MUNDO GRAFIC MUNDOGRAFIC CIA LTDA.',
+        ruc: 'RUC: 1792668026001',
+      };
+    }
+
+    if (ruc === '1710047984001' || ruc === '171004798400') {
+      return {
+        banco: 'BANCO DEL PACIFICO',
+        cuenta: 'CUENTA CORRIENTE # 3581438',
+        titular: 'TITULAR: JUAN CARLOS PANCHI BURBANO',
+        ruc: 'RUC: 171004798400',
+      };
+    }
+
+    return null;
+  })();
+
+  const datosBancariosHtml = mostrarDatosBancarios && datosBancoRuc ? `
+    <div class="datos-bancarios">
+      <div class="dato-banco">${datosBancoRuc.banco}</div>
+      <div class="dato-banco">${datosBancoRuc.cuenta}</div>
+      <div class="dato-banco">${datosBancoRuc.titular}</div>
+      <div class="dato-banco">${datosBancoRuc.ruc}</div>
+    </div>
+  ` : '';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -676,6 +713,22 @@ body {
   margin-top: 10px;
 }
 
+.datos-bancarios {
+  width: 52%;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  text-align: left;
+  color: #111;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: normal;
+}
+
+.dato-banco {
+  margin: 0;
+  white-space: normal;
+}
+
 .pie-pagina p {
   margin-left: -15px;
   
@@ -1037,6 +1090,8 @@ body {
               </tbody>
             </table>
           </div>
+
+          ${datosBancariosHtml}
         </div>
 
         <footer class="cotizaciones-footer">

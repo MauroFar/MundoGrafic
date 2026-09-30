@@ -25,7 +25,8 @@ export class CotizacionDocumentDataService {
         c.observaciones,
         c.contacto,
         c.celuar,
-        c.mostrar_totales
+        c.mostrar_totales,
+        c.mostrar_datos_bancarios
       FROM cotizaciones c
       JOIN clientes cl ON c.cliente_id = cl.id
       JOIN rucs r ON c.ruc_id = r.id

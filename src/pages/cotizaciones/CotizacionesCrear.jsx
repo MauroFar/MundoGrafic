@@ -74,6 +74,7 @@ function CotizacionesCrear() {
   const [celuar, setCeluar] = useState("");
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   const [mostrarTotales, setMostrarTotales] = useState(true); // Mostrar subtotal/iva/descuento/total por defecto
+  const [mostrarDatosBancarios, setMostrarDatosBancarios] = useState(true); // Mostrar datos bancarios en el PDF por defecto
   const [vendedores, setVendedores] = useState([]);
   const [esVendedor, setEsVendedor] = useState(false);
   const [mostrarVendedores, setMostrarVendedores] = useState(false);
@@ -462,6 +463,7 @@ function CotizacionesCrear() {
         cotizacionData.total == null
       );
       setMostrarTotales(!cotizacionSinTotales);
+      setMostrarDatosBancarios(cotizacionData.mostrar_datos_bancarios !== false);
 
       if (detallesData && detallesData.length > 0) {
         const filasActualizadas = detallesData.map(detalle => {
@@ -801,6 +803,7 @@ function CotizacionesCrear() {
         descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
         total: mostrarTotales ? (parseFloat(total) || 0) : null,
         mostrar_totales: mostrarTotales,
+        mostrar_datos_bancarios: mostrarDatosBancarios,
         ruc_id: selectedRuc?.id || null,
         cliente_id: clienteId || null,
         tiempo_entrega: TxttiempoEntrega,
@@ -1515,6 +1518,7 @@ function CotizacionesCrear() {
         descuento: mostrarTotales ? descuento : null,
         total: mostrarTotales ? total : null,
         mostrar_totales: mostrarTotales,
+        mostrar_datos_bancarios: mostrarDatosBancarios,
         tiempo_entrega: TxttiempoEntrega,
         forma_pago: formaPago,
         validez_proforma: validezProforma,
@@ -1680,6 +1684,7 @@ function CotizacionesCrear() {
         descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
         total: mostrarTotales ? (parseFloat(total) || 0) : null,
         mostrar_totales: mostrarTotales,
+        mostrar_datos_bancarios: mostrarDatosBancarios,
         ruc_id: selectedRuc?.id || null,
         cliente_id: clienteId || null,
         // numero_cotizacion se asignará automáticamente por la base de datos
@@ -2713,6 +2718,21 @@ function CotizacionesCrear() {
                 />
                 <label htmlFor="desactivar-totales" className="text-sm font-medium text-gray-700 cursor-pointer">
                   Desactivar Totales
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="desactivar-datos-bancarios"
+                  checked={!mostrarDatosBancarios}
+                  onChange={(e) => setMostrarDatosBancarios(!e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="desactivar-datos-bancarios" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Desactivar Datos Bancarios
                 </label>
               </div>
             </div>
