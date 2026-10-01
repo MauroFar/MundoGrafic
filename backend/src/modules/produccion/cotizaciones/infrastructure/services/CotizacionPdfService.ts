@@ -56,6 +56,24 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
     });
   };
 
+  const formatearInicialesPDF = (valor: any) => {
+    if (!valor || typeof valor !== 'string') return '';
+
+    const nombreLimpio = valor
+      .replace(/[.]+/g, ' ')
+      .trim();
+
+    if (!nombreLimpio) return '';
+
+    const iniciales = nombreLimpio
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((palabra) => palabra.charAt(0).toUpperCase())
+      .join('.');
+
+    return iniciales ? `${iniciales}.` : '';
+  };
+
   const normalizarDetalleHtmlPdf = (detalle: any) => {
     if (!detalle) return '';
 
@@ -254,7 +272,7 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
         banco: 'BANCO DEL PACIFICO',
         cuenta: 'CUENTA CORRIENTE # 3581438',
         titular: 'TITULAR: JUAN CARLOS PANCHI BURBANO',
-        ruc: 'RUC: 171004798400',
+        ruc: 'RUC: 1710047984001',
       };
     }
 
@@ -997,7 +1015,7 @@ body {
                 ${cotizacion.realizado_por ? `
                 <div class="campo-datos">
                   <label>Realizado por:</label>
-                  <span>${cotizacion.realizado_por}</span>
+                  <span>${formatearInicialesPDF(cotizacion.realizado_por)}</span>
                 </div>
                 ` : ''}
               </div>
