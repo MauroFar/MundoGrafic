@@ -18,7 +18,7 @@ function GestionUsuarios() {
   const [areas, setAreas] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+  const [form, setForm] = useState({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', password_confirmation: '', email_personal: '', celular: '', activo: true });
   const [editId, setEditId] = useState(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showPermisosModal, setShowPermisosModal] = useState(false);
@@ -105,6 +105,19 @@ function GestionUsuarios() {
       return;
     }
 
+    const passwordValue = (form.password || '').trim();
+    const passwordConfirmationValue = (form.password_confirmation || '').trim();
+
+    if (!editId && !passwordValue) {
+      alert('Debes ingresar una contraseña para crear el usuario');
+      return;
+    }
+
+    if ((passwordValue || passwordConfirmationValue) && passwordValue !== passwordConfirmationValue) {
+      alert('La contraseña y la confirmación no coinciden.');
+      return;
+    }
+
     const url = editId ? `${API_URL}/api/usuarios/${editId}` : `${API_URL}/api/usuarios`;
     const method = editId ? "PUT" : "POST";
     const body = { ...form };
@@ -121,8 +134,9 @@ function GestionUsuarios() {
 
     body.area_id = primaryAreaId;
     body.area_ids = [primaryAreaId, ...extraAreaIds];
+    delete body.password_confirmation;
 
-    if (!form.password) delete body.password;
+    if (!passwordValue) delete body.password;
     const res = await fetch(url, {
       method,
       headers: {
@@ -133,7 +147,7 @@ function GestionUsuarios() {
     });
     if (res.ok) {
       fetchUsuarios();
-      setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+      setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', password_confirmation: '', email_personal: '', celular: '', activo: true });
       setEditId(null);
       setShowForm(false);
     } else {
@@ -155,6 +169,7 @@ function GestionUsuarios() {
       area_id: usuario.area_id || '',
       area_ids: (usuario.area_ids || []).filter((area) => Number(area) !== Number(usuario.area_id)).map(String),
       password: '',
+      password_confirmation: '',
       email_personal: usuario.email_personal || '',
       celular: usuario.celular || '',
       activo: usuario.activo !== undefined ? usuario.activo : true
@@ -249,7 +264,7 @@ function GestionUsuarios() {
 
   const resetForm = () => {
     setEditId(null);
-    setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', email_personal: '', celular: '', activo: true });
+    setForm({ email: '', nombre_usuario: '', nombre: '', apellido: '', rol: '', area_id: '', area_ids: [], password: '', password_confirmation: '', email_personal: '', celular: '', activo: true });
   };
 
   const handleNuevoUsuario = () => {
@@ -373,8 +388,8 @@ function GestionUsuarios() {
           <input type="text" name="fake_username" autoComplete="username" className="hidden" />
           <input type="password" name="fake_password" autoComplete="new-password" className="hidden" />
           <div>
-            <label htmlFor="email" className="block text-sm font-bold text-blue-900 mb-2">Email Corporativo *</label>
-            <input id="email" name="email" value={form.email} onChange={handleChange} placeholder="ejemplo@empresa.com" autoComplete="off" required className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <label htmlFor="email" className="block text-sm font-bold text-blue-900 mb-2">Email Corporativo</label>
+            <input id="email" name="email" value={form.email} onChange={handleChange} placeholder="ejemplo@empresa.com" autoComplete="off" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
           
           <div>
@@ -456,6 +471,22 @@ function GestionUsuarios() {
               {editId ? "Nueva Contraseña (Opcional)" : "Contraseña *"}
             </label>
             <input id="password" name="password" value={form.password} onChange={handleChange} placeholder={editId ? "Dejar en blanco para mantener la actual" : "Contraseña"} autoComplete="new-password" type="password" className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="password_confirmation" className="block text-sm font-bold text-blue-900 mb-2">
+              {editId ? "Repite la contraseña" : "Repite la contraseña *"}
+            </label>
+            <input
+              id="password_confirmation"
+              name="password_confirmation"
+              value={form.password_confirmation}
+              onChange={handleChange}
+              placeholder={editId ? "Confirma la nueva contraseña" : "Repite la contraseña"}
+              autoComplete="new-password"
+              type="password"
+              className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
           </div>
           
           <div className="md:col-span-2">
