@@ -281,6 +281,7 @@ export const generarHTMLCotizacion = async (cotizacion: any, detalles: any[]) =>
 
   const datosBancariosHtml = mostrarDatosBancarios && datosBancoRuc ? `
     <div class="datos-bancarios">
+      <div class="titulo-datos-bancarios">DATOS BANCARIOS</div>
       <div class="dato-banco">${datosBancoRuc.banco}</div>
       <div class="dato-banco">${datosBancoRuc.cuenta}</div>
       <div class="dato-banco">${datosBancoRuc.titular}</div>
@@ -732,14 +733,24 @@ body {
 }
 
 .datos-bancarios {
-  width: 52%;
+  width: 100%;
   margin-top: 12px;
   margin-bottom: 8px;
-  text-align: left;
+  text-align: center;
   color: #111;
   font-size: 10px;
   line-height: 1.4;
   font-weight: normal;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.titulo-datos-bancarios {
+  color: #d12b2b;
+  font-weight: bold;
+  font-size: 11px;
+  margin-bottom: 4px;
 }
 
 .dato-banco {

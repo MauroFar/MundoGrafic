@@ -10,6 +10,7 @@ interface LoginPayload {
 interface AuthUser {
   id: number;
   nombre: string;
+  apellido?: string | null;
   email: string;
   rol: string;
   [key: string]: unknown;
@@ -43,9 +44,13 @@ export function persistSession(authResult: AuthResult): void {
     throw new Error("Respuesta de autenticacion invalida");
   }
 
+  const nombreCompleto = [user.nombre, user.apellido].filter(Boolean).join(" ").trim();
+
   localStorage.setItem("token", token);
   localStorage.setItem("rol", user.rol ?? "");
   localStorage.setItem("nombre", user.nombre ?? "");
+  localStorage.setItem("apellido", user.apellido ?? "");
+  localStorage.setItem("nombre_completo", nombreCompleto);
 
   try {
     localStorage.setItem("user", JSON.stringify(user));

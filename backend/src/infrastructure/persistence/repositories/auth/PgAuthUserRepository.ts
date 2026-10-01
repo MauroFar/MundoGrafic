@@ -6,7 +6,7 @@ export class PgAuthUserRepository implements AuthUserRepository {
 
   async findByLoginIdentifier(loginIdentifier: string): Promise<AuthUserRecord | null> {
     const result = await this.client.query(
-      "SELECT id, rol, nombre, email, celular, password_hash, nombre_usuario FROM usuarios WHERE email = $1 OR nombre_usuario = $1 LIMIT 1",
+      "SELECT id, rol, nombre, apellido, email, celular, password_hash, nombre_usuario FROM usuarios WHERE email = $1 OR nombre_usuario = $1 LIMIT 1",
       [loginIdentifier],
     );
 

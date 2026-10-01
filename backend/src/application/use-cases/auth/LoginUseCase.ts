@@ -37,6 +37,7 @@ export class LoginUseCase {
       id: userRecord.id,
       rol: userRecord.rol,
       nombre: userRecord.nombre,
+      apellido: userRecord.apellido ?? null,
       email: userRecord.email,
       celular: userRecord.celular,
     };

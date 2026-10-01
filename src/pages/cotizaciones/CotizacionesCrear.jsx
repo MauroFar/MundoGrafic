@@ -72,7 +72,13 @@ function CotizacionesCrear() {
   const [underlineStates, setUnderlineStates] = useState([]); // Estado para rastrear si el cursor está en texto subrayado
   const [colorStates, setColorStates] = useState([]); // Color activo por fila
   const [celuar, setCeluar] = useState("");
-  const [realizadoPor, setRealizadoPor] = useState(localStorage.getItem('nombre') || "");
+  const obtenerNombreCompletoUsuario = () => {
+    const nombre = localStorage.getItem('nombre') || '';
+    const apellido = localStorage.getItem('apellido') || '';
+    const nombreCompleto = localStorage.getItem('nombre_completo') || [nombre, apellido].filter(Boolean).join(' ').trim();
+    return nombreCompleto || [nombre, apellido].filter(Boolean).join(' ').trim();
+  };
+  const [realizadoPor, setRealizadoPor] = useState(obtenerNombreCompletoUsuario());
   const [usarRealizadoPor, setUsarRealizadoPor] = useState(true);
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   const [mostrarTotales, setMostrarTotales] = useState(true); // Mostrar subtotal/iva/descuento/total por defecto
@@ -302,21 +308,23 @@ function CotizacionesCrear() {
   useEffect(() => {
     const rolUsuario = localStorage.getItem('rol');
     const nombreUsuario = localStorage.getItem('nombre');
+    const apellidoUsuario = localStorage.getItem('apellido') || '';
+    const nombreCompletoUsuario = localStorage.getItem('nombre_completo') || [nombreUsuario, apellidoUsuario].filter(Boolean).join(' ').trim();
     console.log('🔍 Rol del usuario:', rolUsuario);
     const esVendedorActual = rolUsuario === 'vendedor' || rolUsuario === 'Vendedor';
     setEsVendedor(esVendedorActual);
     
     // Si es vendedor, pre-llenar su nombre. Si no, dejar en blanco
-    if (esVendedorActual && nombreUsuario && !id) {
-      setNombreEjecutivo(nombreUsuario);
-      console.log('✅ Usuario es vendedor, pre-llenando nombre:', nombreUsuario);
+    if (esVendedorActual && nombreCompletoUsuario && !id) {
+      setNombreEjecutivo(nombreCompletoUsuario);
+      console.log('✅ Usuario es vendedor, pre-llenando nombre:', nombreCompletoUsuario);
     } else if (!id) {
       setNombreEjecutivo('');
       console.log('ℹ️ Usuario NO es vendedor, campo en blanco');
     }
 
-    if (nombreUsuario && !id) {
-      setRealizadoPor(nombreUsuario);
+    if (nombreCompletoUsuario && !id) {
+      setRealizadoPor(nombreCompletoUsuario);
       setUsarRealizadoPor(true);
     } else if (!id) {
       setRealizadoPor('');
@@ -422,9 +430,10 @@ function CotizacionesCrear() {
       setObservaciones(cotizacionData.observaciones ?? "");
       
       // Configurar el ejecutivo
-      setNombreEjecutivo(cotizacionData.nombre_ejecutivo || localStorage.getItem('nombre') || "");
-      setRealizadoPor(cotizacionData.realizado_por || localStorage.getItem('nombre') || "");
-      setUsarRealizadoPor(Boolean(cotizacionData.realizado_por || localStorage.getItem('nombre')));
+      const nombreCompletoUsuarioEditar = obtenerNombreCompletoUsuario();
+      setNombreEjecutivo(cotizacionData.nombre_ejecutivo || nombreCompletoUsuarioEditar || "");
+      setRealizadoPor(cotizacionData.realizado_por || nombreCompletoUsuarioEditar || "");
+      setUsarRealizadoPor(Boolean(cotizacionData.realizado_por || nombreCompletoUsuarioEditar));
       
       // Asegurarse de que el RUC se establezca correctamente
       if (cotizacionData.ruc_id && cotizacionData.ruc) {
