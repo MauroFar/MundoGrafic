@@ -118,6 +118,17 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
   // Filas pendientes en el modal
   const [filasPendientes, setFilasPendientes] = useState([]);
 
+  // Formulario de reporte diario (interfaz amigable)
+  const [fechaReporte, setFechaReporte] = useState(hoy);
+  const [nombreReporte, setNombreReporte] = useState("");
+  const [apellidoReporte, setApellidoReporte] = useState("");
+  const [actividadReporte, setActividadReporte] = useState("");
+  const [cantidadReporte, setCantidadReporte] = useState("");
+  const [unidadMedida, setUnidadMedida] = useState("");
+  const [clienteReporte, setClienteReporte] = useState("");
+  const [observacionesReporte, setObservacionesReporte] = useState("");
+  const [tiempoPausaObservaciones, setTiempoPausaObservaciones] = useState("");
+
   // Datos tabla
   const [reportes, setReportes] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -351,14 +362,38 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
     setTarjetasAbiertas((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const calcularTotalHoras = (inicioHora, finHora) => {
+    if (!inicioHora || !finHora) return "00:00";
+    const [hInicio, mInicio] = inicioHora.split(":").map(Number);
+    const [hFin, mFin] = finHora.split(":").map(Number);
+
+    if ([hInicio, mInicio, hFin, mFin].some((v) => Number.isNaN(v))) return "00:00";
+
+    const minutosInicio = hInicio * 60 + mInicio;
+    const minutosFin = hFin * 60 + mFin;
+    const diferencia = minutosFin - minutosInicio;
+
+    if (diferencia <= 0) return "00:00";
+
+    const horas = Math.floor(diferencia / 60);
+    const minutos = diferencia % 60;
+    return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`;
+  };
+
   // ── Validación fila actual ───────────────────────────────────────────────────
   const validarFila = () => {
     const e = {};
-    if (!modalAreaId)    e.modalAreaId = "Selecciona un área";
-    if (!operadorId)     e.operadorId  = "Selecciona un operador";
-    if (!proceso.trim()) e.proceso     = "Ingresa el proceso";
-    if (!inicio)         e.inicio      = "Hora inicio requerida";
-    if (!fin)            e.fin         = "Hora final requerida";
+    if (!modalAreaId) e.modalAreaId = "Selecciona un área";
+    if (!operadorId) e.operadorId = "Selecciona un operador";
+    if (!fechaReporte) e.fechaReporte = "Selecciona una fecha";
+    if (!nombreReporte.trim()) e.nombreReporte = "Ingresa el nombre";
+    if (!apellidoReporte.trim()) e.apellidoReporte = "Ingresa el apellido";
+    if (!actividadReporte.trim()) e.actividadReporte = "Describe la actividad";
+    if (!cantidadReporte && cantidadReporte !== 0) e.cantidadReporte = "Ingresa la cantidad";
+    if (!unidadMedida.trim()) e.unidadMedida = "Ingresa la unidad/medida";
+    if (!clienteReporte.trim()) e.clienteReporte = "Ingresa el cliente";
+    if (!inicio) e.inicio = "Hora inicio requerida";
+    if (!fin) e.fin = "Hora final requerida";
     if (inicio && fin && fin <= inicio) e.fin = "La hora final debe ser mayor a la de inicio";
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -368,7 +403,9 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
   const agregarALista = () => {
     if (!validarFila()) return;
     const areaNombre = areas.find(a => String(a.id) === String(modalAreaId))?.nombre || "";
-    const opNombre   = nombreOperador(operadores.find(o => String(o.id) === String(operadorId)));
+    const opNombre = nombreOperador(operadores.find(o => String(o.id) === String(operadorId)));
+    const totalHoras = calcularTotalHoras(inicio, fin);
+
     setFilasPendientes(prev => [
       ...prev,
       {
@@ -377,15 +414,38 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
         areaNombre,
         operador_id: Number(operadorId),
         opNombre,
-        proceso: proceso.trim(),
-        solicitado_por: solicitadoPor.trim() || null,
+        proceso: actividadReporte.trim(),
+        solicitado_por: clienteReporte.trim() || null,
+        nombre: nombreReporte.trim(),
+        apellido: apellidoReporte.trim(),
+        actividad: actividadReporte.trim(),
+        cantidad: cantidadReporte,
+        unidad_medida: unidadMedida.trim(),
+        cliente: clienteReporte.trim(),
+        hora_inicio: inicio,
+        hora_fin: fin,
+        total_horas: totalHoras,
+        observaciones: observacionesReporte.trim(),
+        tiempo_pausa: tiempoPausaObservaciones.trim(),
+        fecha: fechaReporte,
         inicio,
         fin,
       },
     ]);
-    // Limpiar solo los campos que cambian entre filas; mantener área y operador
-    // La hora de inicio del siguiente proceso se pre-llena con la hora final del anterior
-    setProceso(""); setSolicitadoPor(""); setInicio(fin); setFin("");
+
+    setProceso(actividadReporte.trim());
+    setSolicitadoPor(clienteReporte.trim());
+    setNombreReporte("");
+    setApellidoReporte("");
+    setActividadReporte("");
+    setCantidadReporte("");
+    setUnidadMedida("");
+    setClienteReporte("");
+    setObservacionesReporte("");
+    setTiempoPausaObservaciones("");
+    setFechaReporte(hoy);
+    setInicio(fin);
+    setFin("");
     setErrores({});
   };
 
@@ -394,7 +454,17 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
     setMostrarFormulario(false);
     setModalAreaId(contextoUsuarioReporte?.area_id ? String(contextoUsuarioReporte.area_id) : "");
     setOperadorId(contextoUsuarioReporte?.operador_id ? String(contextoUsuarioReporte.operador_id) : "");
-    setProceso(""); setSolicitadoPor("");
+    setProceso("");
+    setSolicitadoPor("");
+    setNombreReporte("");
+    setApellidoReporte("");
+    setActividadReporte("");
+    setCantidadReporte("");
+    setUnidadMedida("");
+    setClienteReporte("");
+    setObservacionesReporte("");
+    setTiempoPausaObservaciones("");
+    setFechaReporte(hoy);
     setInicio(""); setFin(""); setErrores({});
     setFilasPendientes([]);
   };
@@ -402,6 +472,7 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
   const abrirFormulario = () => {
     setModalAreaId(contextoUsuarioReporte?.area_id ? String(contextoUsuarioReporte.area_id) : areaId);
     setOperadorId(contextoUsuarioReporte?.operador_id ? String(contextoUsuarioReporte.operador_id) : operadorId);
+    setFechaReporte(hoy);
     // Pre-llenar inicio con la hora final del último proceso guardado en el área.
     // Si no hay registros del día (primer registro), arrange a las 08:00.
     const ultimoFin = reportes
@@ -429,9 +500,18 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
               operador_id: f.operador_id,
               proceso: f.proceso,
               solicitado_por: f.solicitado_por,
+              nombre: f.nombre || null,
+              apellido: f.apellido || null,
+              actividad: f.actividad || null,
+              cantidad: f.cantidad || null,
+              unidad_medida: f.unidad_medida || null,
+              cliente: f.cliente || null,
+              observaciones: f.observaciones || null,
+              tiempo_pausa: f.tiempo_pausa || null,
+              total_horas: f.total_horas || null,
               inicio: f.inicio,
               fin: f.fin,
-              fecha: fechaRegistro,
+              fecha: f.fecha || fechaRegistro,
             }),
           }).then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         )
@@ -1536,35 +1616,100 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
                   </>
                 )}
 
-                {/* Proceso */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Proceso <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    className={inputClass("proceso")}
-                    value={proceso}
-                    onChange={e => { setProceso(e.target.value); setErrores(p => ({ ...p, proceso: "" })); }}
-                    placeholder="Descripción del proceso"
-                    onKeyDown={e => e.key === "Enter" && agregarALista()}
-                  />
-                  {errores.proceso && <p className="text-red-500 text-xs mt-1">{errores.proceso}</p>}
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Fecha <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      className={inputClass("fechaReporte")}
+                      value={fechaReporte}
+                      onChange={e => { setFechaReporte(e.target.value); setErrores(p => ({ ...p, fechaReporte: "" })); }}
+                    />
+                    {errores.fechaReporte && <p className="text-red-500 text-xs mt-1">{errores.fechaReporte}</p>}
+                  </div>
 
-                {/* Solicitado por */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Solicitado por</label>
-                  <input
-                    type="text"
-                    className={inputClass("solicitadoPor")}
-                    value={solicitadoPor}
-                    onChange={e => setSolicitadoPor(e.target.value)}
-                    placeholder="Quién lo solicitó (opcional)"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Área <span className="text-red-500">*</span></label>
+                    <div className="w-full border border-blue-200 bg-blue-50 rounded-lg px-3 py-2 text-sm text-blue-700 font-medium">
+                      {contextoUsuarioReporte ? contextoUsuarioReporte.area : areas.find(a => String(a.id) === String(modalAreaId))?.nombre || "Selecciona un área"}
+                    </div>
+                  </div>
 
-                {/* Horas + botón añadir */}
-                <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Nombre <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      className={inputClass("nombreReporte")}
+                      value={nombreReporte}
+                      onChange={e => { setNombreReporte(e.target.value); setErrores(p => ({ ...p, nombreReporte: "" })); }}
+                      placeholder="Ej. Ana"
+                    />
+                    {errores.nombreReporte && <p className="text-red-500 text-xs mt-1">{errores.nombreReporte}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Apellido <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      className={inputClass("apellidoReporte")}
+                      value={apellidoReporte}
+                      onChange={e => { setApellidoReporte(e.target.value); setErrores(p => ({ ...p, apellidoReporte: "" })); }}
+                      placeholder="Ej. López"
+                    />
+                    {errores.apellidoReporte && <p className="text-red-500 text-xs mt-1">{errores.apellidoReporte}</p>}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Actividades a realizar detalladas <span className="text-red-500">*</span></label>
+                    <textarea
+                      rows={3}
+                      className={inputClass("actividadReporte")}
+                      value={actividadReporte}
+                      onChange={e => { setActividadReporte(e.target.value); setErrores(p => ({ ...p, actividadReporte: "" })); }}
+                      placeholder="Describe el trabajo, proceso o tarea específica que se realizará..."
+                    />
+                    {errores.actividadReporte && <p className="text-red-500 text-xs mt-1">{errores.actividadReporte}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Cantidad <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      className={inputClass("cantidadReporte")}
+                      value={cantidadReporte}
+                      onChange={e => { setCantidadReporte(e.target.value); setErrores(p => ({ ...p, cantidadReporte: "" })); }}
+                      placeholder="0"
+                    />
+                    {errores.cantidadReporte && <p className="text-red-500 text-xs mt-1">{errores.cantidadReporte}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Unidad / medida verificable <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      className={inputClass("unidadMedida")}
+                      value={unidadMedida}
+                      onChange={e => { setUnidadMedida(e.target.value); setErrores(p => ({ ...p, unidadMedida: "" })); }}
+                      placeholder="Ej. m², piezas, kg, horas"
+                    />
+                    {errores.unidadMedida && <p className="text-red-500 text-xs mt-1">{errores.unidadMedida}</p>}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Clientes <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      className={inputClass("clienteReporte")}
+                      value={clienteReporte}
+                      onChange={e => { setClienteReporte(e.target.value); setErrores(p => ({ ...p, clienteReporte: "" })); }}
+                      placeholder="Nombre o empresa del cliente"
+                    />
+                    {errores.clienteReporte && <p className="text-red-500 text-xs mt-1">{errores.clienteReporte}</p>}
+                  </div>
+
+                  <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Hora inicio <span className="text-red-500">*</span></label>
                     <TimeInput24
                       className={inputClass("inicio")}
@@ -1573,7 +1718,8 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
                     />
                     {errores.inicio && <p className="text-red-500 text-xs mt-1">{errores.inicio}</p>}
                   </div>
-                  <div className="flex-1">
+
+                  <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Hora final <span className="text-red-500">*</span></label>
                     <TimeInput24
                       className={inputClass("fin")}
@@ -1582,6 +1728,41 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
                     />
                     {errores.fin && <p className="text-red-500 text-xs mt-1">{errores.fin}</p>}
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Total Horas</label>
+                    <input
+                      type="text"
+                      readOnly
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-700"
+                      value={calcularTotalHoras(inicio, fin)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Tiempo de pausa / observaciones</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      value={tiempoPausaObservaciones}
+                      onChange={e => setTiempoPausaObservaciones(e.target.value)}
+                      placeholder="Ej. 15 min pausas, ajuste de materiales"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Observaciones</label>
+                    <textarea
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      value={observacionesReporte}
+                      onChange={e => setObservacionesReporte(e.target.value)}
+                      placeholder="Escribe observaciones generales del trabajo, incidencias o detalles importantes..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
                   <button
                     onClick={agregarALista}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
@@ -1610,11 +1791,12 @@ const ReportesTrabajoDiario = ({ modo = "completo" }) => {
                             <span className="text-gray-500">·</span>
                             <span className="text-gray-700">{f.opNombre}</span>
                             <span className="text-gray-500">·</span>
-                            <span className="text-gray-600">{f.proceso}</span>
+                            <span className="text-gray-600">{f.actividad || f.proceso}</span>
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5">
-                            {f.inicio} – {f.fin}
-                            {f.solicitado_por && <span className="ml-2 text-gray-400">Solicitado por: {f.solicitado_por}</span>}
+                            {f.inicio} – {f.fin} · {f.total_horas || "00:00"} h
+                            {(f.nombre || f.apellido) && <span className="ml-2 text-gray-400">{[f.nombre, f.apellido].filter(Boolean).join(" ")}</span>}
+                            {f.cliente && <span className="ml-2 text-gray-400">Cliente: {f.cliente}</span>}
                           </div>
                         </div>
                         <button
