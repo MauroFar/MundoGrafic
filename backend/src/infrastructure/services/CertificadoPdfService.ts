@@ -10,7 +10,7 @@ export class CertificadoPdfService {
     const referenciaRaw = (certificado.referencia ?? certificado.descripcion ?? "") as string;
     const referenciaHtml = referenciaRaw.replace(/\r\n/g, "\n").replace(/\n/g, "<br/>");
 
-    const formatMesAno = (d: any): string => {
+    const formatFechaCompleta = (d: any): string => {
       if (!d) return "";
       const dt = new Date(d);
       if (isNaN(dt.getTime())) return "";
@@ -18,7 +18,10 @@ export class CertificadoPdfService {
         "enero","febrero","marzo","abril","mayo","junio",
         "julio","agosto","septiembre","octubre","noviembre","diciembre",
       ];
-      return `${months[dt.getMonth()]}/${dt.getFullYear()}`;
+      const day = dt.getDate();
+      const month = months[dt.getMonth()];
+      const year = dt.getFullYear();
+      return `${day} de ${month} de ${year}`;
     };
 
     const caracteristicasHtml = (() => {
@@ -114,9 +117,6 @@ export class CertificadoPdfService {
             <div class="cert-number">
               ${certificado.numero_certificado ? `N° ${certificado.numero_certificado}` : ""}
               <div style="font-size:12px;color:#222;margin-top:8px;font-weight:400">
-                Fecha emisión: ${certificado.fecha_creacion ? new Date(certificado.fecha_creacion).toLocaleDateString("es-EC") : ""}
-              </div>
-              <div style="font-size:12px;color:#222;margin-top:6px;font-weight:400">
                 ORDEN DE COMPRA: ${certificado.orden_compra ?? ""}
               </div>
             </div>
@@ -182,11 +182,11 @@ export class CertificadoPdfService {
               <div style="display:flex;gap:8px;margin-top:8px;">
                 <div style="flex:1;" class="box">
                   <div class="label">FECHA DE ELABORACIÓN</div>
-                  <div class="small">${formatMesAno(certificado.fecha_elaboracion)}</div>
+                  <div class="small">${formatFechaCompleta(certificado.fecha_elaboracion)}</div>
                 </div>
                 <div style="flex:1;" class="box">
                   <div class="label">FECHA DE CADUCIDAD</div>
-                  <div class="small">${formatMesAno(certificado.fecha_caducidad)}</div>
+                  <div class="small">${formatFechaCompleta(certificado.fecha_caducidad)}</div>
                 </div>
               </div>
             </div>
