@@ -4,6 +4,13 @@ import { toast } from 'react-toastify';
 import Logo from '../../components/Logo';
 import { FaTimes, FaFileAlt } from 'react-icons/fa';
 
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const CertificadoForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -12,9 +19,9 @@ const CertificadoForm: React.FC = () => {
 
   const [form, setForm] = useState<any>({
     numero_certificado: esVista ? '' : null,
-    fecha_elaboracion: new Date().toISOString().slice(0,10),
+    fecha_elaboracion: getLocalDateString(new Date()),
     fecha_caducidad: '',
-      fecha_creacion: esVista ? '' : new Date().toISOString().slice(0,10),
+      fecha_creacion: esVista ? '' : getLocalDateString(new Date()),
     cliente: '',
     referencia: '',
     material: '',
@@ -305,8 +312,9 @@ const CertificadoForm: React.FC = () => {
           } catch (e) {}
         });
 
-        // Si la API trajo fecha_caducidad, marcamos como editada por usuario (no sobreescribir luego)
-        if (data.fecha_caducidad) setFechaCaducidadManual(true);
+        // Si la API trajo fecha_caducidad, dejamos el valor como base inicial,
+        // pero permitimos recalcular automáticamente si el usuario cambia la fecha de elaboración.
+        setFechaCaducidadManual(false);
       } catch (err) {
         console.error(err);
         alert('Error cargando certificado');
@@ -715,15 +723,17 @@ const CertificadoForm: React.FC = () => {
     setPreviewUrl(null);
   };
 
-  // Helper: sumar 1 año en formato YYYY-MM-DD
+  // Helper: sumar 1 año completo a la fecha de elaboración sin movernos por timezone
   const addOneYear = (dateStr: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    d.setFullYear(d.getFullYear() + 1);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+
+    const [year, month, day] = dateStr.split('-').map(Number);
+    if (!year || !month || !day) return '';
+
+    const base = new Date(year, month - 1, day);
+    const next = new Date(base.getFullYear() + 1, base.getMonth(), base.getDate());
+
+    return getLocalDateString(next);
   };
 
   // Si la fecha de elaboración cambia y el usuario no editó la fecha de caducidad, auto-asignar +1 año
@@ -930,7 +940,23 @@ const CertificadoForm: React.FC = () => {
     }
   };
 
-  const actualizar = (campo: string, valor: any) => setForm((f:any) => ({ ...f, [campo]: valor }));
+  const actualizar = (campo: string, valor: any) => {
+    setForm((f:any) => {
+      const next = { ...f, [campo]: valor };
+
+      if (campo === 'fecha_elaboracion' && valor) {
+        next.fecha_caducidad = addOneYear(String(valor));
+        setFechaCaducidadManual(false);
+      }
+
+      if (campo === 'fecha_caducidad') {
+        setFechaCaducidadManual(Boolean(valor));
+      }
+
+      return next;
+    });
+  };
+
   const actualizarCaracteristica = (index: number, campo: string, valor: any) => {
     setForm((f:any) => {
       const c = Array.isArray(f?.caracteristicas) ? [...f.caracteristicas] : [];

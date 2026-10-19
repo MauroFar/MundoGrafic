@@ -12,12 +12,22 @@ export class CertificadoPdfService {
 
     const formatFechaCompleta = (d: any): string => {
       if (!d) return "";
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return "";
+
       const months = [
         "enero","febrero","marzo","abril","mayo","junio",
         "julio","agosto","septiembre","octubre","noviembre","diciembre",
       ];
+
+      const value = String(d).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map(Number);
+        if (year && month && day) {
+          return `${day} de ${months[month - 1]} de ${year}`;
+        }
+      }
+
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return "";
       const day = dt.getDate();
       const month = months[dt.getMonth()];
       const year = dt.getFullYear();
