@@ -49,7 +49,7 @@ export class CertificadoPdfService {
     const referenciaRaw = (certificado.referencia ?? certificado.descripcion ?? "") as string;
     const referenciaHtml = referenciaRaw.replace(/\r\n/g, "\n").replace(/\n/g, "<br/>");
     const firmaAprobadoHtml = firmaAprobadoBase64
-      ? `<img src="${firmaAprobadoBase64}" style="max-height:54px; max-width:170px; display:block; margin:0 auto;" />`
+      ? `<img src="${firmaAprobadoBase64}" style="max-height:34px; max-width:150px; display:block; margin:0 auto;" />`
       : `<div class="value">________________________</div>`;
 
     const formatFechaCompleta = (d: any): string => {
