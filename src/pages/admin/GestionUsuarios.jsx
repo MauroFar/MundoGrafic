@@ -95,6 +95,12 @@ function GestionUsuarios() {
       return;
     }
 
+    if (e.target.name === 'nombre_usuario') {
+      const valorSinEspacios = e.target.value.replace(/\s/g, '');
+      setForm({ ...form, nombre_usuario: valorSinEspacios });
+      return;
+    }
+
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -102,6 +108,12 @@ function GestionUsuarios() {
     e.preventDefault();
     const accion = editId ? 'editar' : 'crear';
     if (!verificarYMostrarError('usuarios', accion, `${accion} usuarios`)) {
+      return;
+    }
+
+    const nombreUsuario = (form.nombre_usuario || '').trim();
+    if (!nombreUsuario || /\s/.test(nombreUsuario) || nombreUsuario !== (form.nombre_usuario || '').replace(/\s/g, '')) {
+      alert('El nombre de usuario no puede estar vacío ni contener espacios en blanco.');
       return;
     }
 

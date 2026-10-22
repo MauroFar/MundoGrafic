@@ -1146,23 +1146,6 @@ function CotizacionesVer() {
                           <span className="text-xs mt-1 text-gray-600">Editar</span>
                         </button>
                       )}
-                      {puedeEliminar('cotizaciones') && (
-                        <button
-                          className={`p-2 rounded flex flex-col items-center ${cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada' ? 'text-gray-400 cursor-not-allowed opacity-60' : 'text-red-600 hover:bg-red-100'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada') {
-                              return;
-                            }
-                            eliminarCotizacion(cotizacion.id);
-                          }}
-                          disabled={cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada'}
-                          title={cotizacion.estado === 'aprobada' || cotizacion.estado === 'rechazada' ? 'No se puede eliminar una cotización aprobada o rechazada' : 'Eliminar'}
-                        >
-                          <FaTrash />
-                          <span className="text-xs mt-1 text-gray-600">Eliminar</span>
-                        </button>
-                      )}
                       <button
                         className="p-2 text-purple-600 hover:bg-purple-100 rounded flex flex-col items-center"
                         onClick={(e) => {

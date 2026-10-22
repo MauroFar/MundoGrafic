@@ -13,8 +13,9 @@ export class PreviewCertificadoPdfUseCase {
     if (!certificado) throw new AppError("Certificado no encontrado", 404);
 
     const logoBase64 = await this.pdfService.loadLogo();
-    const html       = this.pdfService.generateHtml(certificado, certificado.caracteristicas ?? [], logoBase64);
-    const buffer     = await this.pdfService.generatePdf(html);
+    const firmaBase64 = await this.pdfService.loadFirmaPorNombre(certificado.inspeccionado_por ?? null);
+    const html = this.pdfService.generateHtml(certificado, certificado.caracteristicas ?? [], logoBase64, firmaBase64);
+    const buffer = await this.pdfService.generatePdf(html);
 
     return `data:application/pdf;base64,${buffer.toString("base64")}`;
   }

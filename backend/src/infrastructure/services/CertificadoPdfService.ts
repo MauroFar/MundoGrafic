@@ -4,11 +4,53 @@ import puppeteer from "puppeteer";
 import { Certificado, CertificadoMedicion } from "../../domain/entities/certificados/Certificado";
 
 export class CertificadoPdfService {
+  private normalizeName(value: string | null | undefined): string {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  async loadFirmaPorNombre(nombre: string | null | undefined): Promise<string> {
+    if (!nombre) return "";
+
+    const firmaDir = path.resolve(__dirname, "../../../storage/firmas");
+    const targetName = this.normalizeName(nombre);
+
+    try {
+      const entries = await fs.readdir(firmaDir, { withFileTypes: true });
+      const files = entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .filter((file) => /\.(png|jpg|jpeg|webp|gif)$/i.test(file));
+
+      const matchedFile = files.find((file) => {
+        const baseName = this.normalizeName(path.parse(file).name);
+        return baseName === targetName || baseName.includes(targetName) || targetName.includes(baseName);
+      });
+
+      if (!matchedFile) return "";
+
+      const fullPath = path.join(firmaDir, matchedFile);
+      const buffer = await fs.readFile(fullPath);
+      const ext = path.extname(matchedFile).toLowerCase().replace('.', '') || 'png';
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext;
+      return `data:image/${mime};base64,${buffer.toString("base64")}`;
+    } catch {
+      return "";
+    }
+  }
+
   // ── HTML Template ───────────────────────────────────────────────────────────
 
-  generateHtml(certificado: Certificado, caracteristicas: CertificadoMedicion[], logoBase64: string): string {
+  generateHtml(certificado: Certificado, caracteristicas: CertificadoMedicion[], logoBase64: string, firmaAprobadoBase64?: string): string {
     const referenciaRaw = (certificado.referencia ?? certificado.descripcion ?? "") as string;
     const referenciaHtml = referenciaRaw.replace(/\r\n/g, "\n").replace(/\n/g, "<br/>");
+    const firmaAprobadoHtml = firmaAprobadoBase64
+      ? `<img src="${firmaAprobadoBase64}" style="max-height:54px; max-width:170px; display:block; margin:0 auto;" />`
+      : `<div class="value">________________________</div>`;
 
     const formatFechaCompleta = (d: any): string => {
       if (!d) return "";
@@ -228,7 +270,7 @@ export class CertificadoPdfService {
             <div class="sign-row">
               <div class="sign-box"><div class="label">APROBADO POR:</div><div class="value">${certificado.inspeccionado_por ?? ""}</div></div>
               <div class="sign-box"><div class="label">ÁREA / DEPARTAMENTO</div><div class="value">${certificado.aprobado_area ?? ""}</div></div>
-              <div class="sign-box"><div class="label">FIRMA</div><div class="value">________________________</div></div>
+              <div class="sign-box"><div class="label">FIRMA</div>${firmaAprobadoHtml}</div>
             </div>
             <div style="height:10px"></div>
             <div class="sign-title">RECEPCIÓN DE PRODUCTO</div>
@@ -247,8 +289,8 @@ export class CertificadoPdfService {
 
   async loadLogo(): Promise<string> {
     const candidates = [
-      path.join(__dirname, "../../../public/images/logo.png"),
-      path.join(__dirname, "../../../public/images/logo-mundografic.png"),
+      path.resolve(__dirname, "../../../public/images/logo.png"),
+      path.resolve(__dirname, "../../../public/images/logo-mundografic.png"),
     ];
     for (const p of candidates) {
       try {
