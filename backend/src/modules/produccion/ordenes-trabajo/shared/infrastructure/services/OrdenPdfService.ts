@@ -140,7 +140,7 @@ export class OrdenPdfService {
           <div class="column">
             <div class="row">
               <div class="key">Cantidad:</div>
-              <div class="value">${cantidad}</div>
+              <div class="value" style="font-size: 24px;">${cantidad} U</div>
             </div>
           </div>
 
@@ -220,6 +220,7 @@ export class OrdenPdfService {
             }
             .topbar .cliente {
               color: #1f1f1f;
+              font-size: 15px;
               font-weight: 700;
               max-width: 52mm;
               white-space: nowrap;
@@ -245,7 +246,7 @@ export class OrdenPdfService {
             }
             .producto {
               text-align: center;
-              font-size: 15px;
+              font-size: 17px;
               font-weight: 900;
               padding: 2.5mm 3mm 0;
               text-transform: uppercase;
@@ -255,7 +256,7 @@ export class OrdenPdfService {
             }
             .tamano {
               text-align: center;
-              font-size: 8px;
+              font-size: 15px;
               font-weight: 700;
               text-transform: uppercase;
               padding-top: 1mm;
@@ -288,14 +289,14 @@ export class OrdenPdfService {
               min-width: 0;
             }
             .key {
-              font-size: 5.2px;
+              font-size: 15px;
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 0.04em;
               color: #2d2d2d;
             }
             .value {
-              font-size: 7px;
+              font-size: 15px;
               font-weight: 600;
               color: #161616;
               overflow-wrap: anywhere;
