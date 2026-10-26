@@ -94,10 +94,10 @@ export class OrdenPdfService {
         printBackground: true,
         preferCSSPageSize: true,
         margin: {
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
+          top: '1cm',
+          right: '1cm',
+          bottom: '1cm',
+          left: '1cm',
         },
       });
       return Buffer.from(pdfBuffer);
@@ -169,7 +169,7 @@ export class OrdenPdfService {
           <style>
             @page {
               size: A4 portrait;
-              margin: 0;
+              margin: 1cm;
             }
             * { box-sizing: border-box; }
             html, body {
@@ -177,8 +177,8 @@ export class OrdenPdfService {
               padding: 0;
               background: #f3f3f3;
               font-family: Arial, Helvetica, sans-serif;
-              width: 210mm;
-              height: 297mm;
+              width: 100%;
+              height: 100%;
             }
             body {
               margin: 0;
@@ -188,15 +188,15 @@ export class OrdenPdfService {
               justify-content: flex-start;
             }
             .sheet {
-              width: 210mm;
-              height: 297mm;
+              width: 100%;
+              height: auto;
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
               background: #f3f3f3;
             }
             .label {
-              width: 105mm;
+              width: calc(50% - 0.5mm);
               height: 55mm;
               background: #ffffff;
               border: 1.2px solid #2f2f2f;
