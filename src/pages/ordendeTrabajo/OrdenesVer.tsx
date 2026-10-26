@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks, FaSync } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaEnvelope, FaEye, FaTimes, FaUser, FaCalendar, FaFileAlt, FaDollarSign, FaHistory, FaClipboardList, FaTasks, FaSync, FaTags } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { usePermisos } from '../../hooks/usePermisos';
+import GenerarEtiquetasModal from '../../components/GenerarEtiquetasModal';
 
 interface OrdenTrabajo {
   id: number;
@@ -54,6 +55,10 @@ const OrdenesVer: React.FC = () => {
   const [showSeleccionProductoModal, setShowSeleccionProductoModal] = useState<boolean>(false);
   const [productosParaSeleccion, setProductosParaSeleccion] = useState<any[]>([]);
   const [ordenParaCertificado, setOrdenParaCertificado] = useState<any>(null);
+  const [showSeleccionProductoEtiquetasModal, setShowSeleccionProductoEtiquetasModal] = useState<boolean>(false);
+  const [productosParaSeleccionEtiquetas, setProductosParaSeleccionEtiquetas] = useState<any[]>([]);
+  const [showEtiquetasModal, setShowEtiquetasModal] = useState<boolean>(false);
+  const [ordenParaEtiquetas, setOrdenParaEtiquetas] = useState<any>(null);
   const [productoSeleccionadoIndex, setProductoSeleccionadoIndex] = useState<number | null>(null);
   const [showCotizacionModal, setShowCotizacionModal] = useState<boolean>(false);
   const [cotizacionDetalle, setCotizacionDetalle] = useState<any>(null);
@@ -270,6 +275,41 @@ const OrdenesVer: React.FC = () => {
     setShowSeleccionProductoModal(false);
     setProductosParaSeleccion([]);
     setOrdenParaCertificado(null);
+  };
+
+  const handleGenerarEtiquetas = async (ordenId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/orden/${ordenId}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(errText || 'Error al obtener detalle de la orden');
+      }
+      const data = await response.json();
+      const productos = data?.detalle?.productos_digital || [];
+      setOrdenParaEtiquetas(data);
+
+      if (productos.length > 1) {
+        setProductosParaSeleccionEtiquetas(productos);
+        setShowSeleccionProductoEtiquetasModal(true);
+      } else {
+        const producto = productos[0] || null;
+        setOrdenParaEtiquetas({ ...data, productoSeleccionado: producto });
+        setShowEtiquetasModal(true);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al generar etiquetas');
+    }
+  };
+
+  const handleConfirmarProductoParaEtiquetas = (index: number) => {
+    const producto = productosParaSeleccionEtiquetas[index];
+    setOrdenParaEtiquetas((prev: any) => ({ ...(prev || {}), productoSeleccionado: producto }));
+    setShowSeleccionProductoEtiquetasModal(false);
+    setProductosParaSeleccionEtiquetas([]);
+    setShowEtiquetasModal(true);
   };
 
   useEffect(() => {
@@ -831,6 +871,14 @@ const OrdenesVer: React.FC = () => {
               <FaFileAlt className={compact ? 'inline mr-1' : ''} />
               {compact ? 'Certif.' : <span className="text-xs mt-1 text-gray-600">Generar Certificado</span>}
             </button>
+            <button
+              className={`${buttonClass} text-emerald-600 hover:bg-emerald-100`}
+              onClick={() => handleGenerarEtiquetas(orden.id)}
+              title="Generar Etiquetas"
+            >
+              <FaTags className={compact ? 'inline mr-1' : ''} />
+              {compact ? 'Etiq.' : <span className="text-xs mt-1 text-gray-600">Etiquetas</span>}
+            </button>
             {puedeCancelarProduccion && (
               <button
                 className={`${buttonClass} text-red-600 hover:bg-red-100`}
@@ -1132,6 +1180,46 @@ const OrdenesVer: React.FC = () => {
           </div>
         </div>
       )}
+
+      {showSeleccionProductoEtiquetasModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowSeleccionProductoEtiquetasModal(false)}>
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Seleccionar Producto para Etiquetas</h3>
+            <p className="text-sm text-gray-600 mb-4">Esta orden contiene varios productos. Seleccione el producto para el cual desea generar la etiqueta.</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {productosParaSeleccionEtiquetas.map((p, idx) => (
+                <div key={idx} className="flex items-center justify-between border rounded p-3">
+                  <div>
+                    <div className="font-medium">{p.producto || p.descripcion || `Producto ${idx + 1}`}</div>
+                    <div className="text-sm text-gray-600">Cantidad: {p.cantidad || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <button
+                      className="bg-emerald-600 text-white px-3 py-1 rounded"
+                      onClick={() => handleConfirmarProductoParaEtiquetas(idx)}
+                    >
+                      Seleccionar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 text-right">
+              <button className="px-4 py-2 mr-2 rounded border" onClick={() => setShowSeleccionProductoEtiquetasModal(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <GenerarEtiquetasModal
+        orden={ordenParaEtiquetas}
+        producto={ordenParaEtiquetas?.productoSeleccionado || null}
+        isOpen={showEtiquetasModal}
+        onClose={() => {
+          setShowEtiquetasModal(false);
+          setOrdenParaEtiquetas(null);
+        }}
+      />
 
       {modalActualizarEstadoId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
