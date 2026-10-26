@@ -72,8 +72,12 @@ export class OrdenPdfService {
   }
 
   async generateEtiquetaPdfFromPayload(payload: any): Promise<Buffer> {
+    const safePayload = {
+      ...(payload || {}),
+      numeroEtiquetas: Math.max(1, Number(payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1),
+    };
     const logoBase64 = await this.readAssetBase64('images/logo-mundografic.png');
-    const html = this.buildEtiquetaHtml(payload, logoBase64);
+    const html = this.buildEtiquetaHtml(safePayload, logoBase64);
 
     const browser = await puppeteer.launch({
       headless: 'new' as any,
