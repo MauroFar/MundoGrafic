@@ -14,9 +14,9 @@ test("muestra confirmación solo cuando el estado cambia a completo", () => {
   assert.equal(debeMostrarModalGuardarCompleto("En proceso", "Atrasado"), false);
 });
 
-test("bloquea edición una vez guardado como completo", () => {
+test("permite seguir editando pedidos guardados como completo", () => {
   assert.equal(pedidoCompletado("Completo"), true);
-  assert.equal(pedidoBloqueadoPorCompletado({ estado: "Completo", guardado: true }), true);
+  assert.equal(pedidoBloqueadoPorCompletado({ estado: "Completo", guardado: true }), false);
   assert.equal(pedidoBloqueadoPorCompletado({ estado: "En proceso", guardado: true }), false);
   assert.equal(pedidoBloqueadoPorCompletado({ estado: "Completo", guardado: false }), false);
 });

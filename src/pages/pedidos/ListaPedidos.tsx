@@ -1552,7 +1552,7 @@ const ListaPedidos: React.FC = () => {
             <h3 className="mb-2 text-base font-semibold text-slate-900">Confirmar guardado</h3>
             <p className="mb-5 text-sm text-slate-600">
               {confirmacionGuardar.requiereConfirmacionCompleto
-                ? "Estás marcando este pedido como completo. Una vez guardado, no podrá editarse."
+                ? "Estás marcando este pedido como completo. ¿Deseas guardar los cambios?"
                 : `¿Deseas guardar este registro en la lista de pedidos ${tipoPedido}?`}
             </p>
             <div className="flex justify-end gap-3">

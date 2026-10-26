@@ -561,6 +561,20 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
   );
 
   // =========================================================================
+  // ETIQUETAS — PREVIEW HTML + PUPPETEER
+  // =========================================================================
+
+  router.post('/etiquetas/preview', authRequired(), async (req: any, res: any) => {
+    try {
+      const payload = req.body || {};
+      const pdfBuffer = await pdfService.generateEtiquetaPdfFromPayload(payload);
+      res.json({ success: true, pdf: `data:application/pdf;base64,${pdfBuffer.toString('base64')}` });
+    } catch (err) {
+      handle(res, err);
+    }
+  });
+
+  // =========================================================================
   // PDF — DESCARGA, PREVIEW Y CORREO
   // =========================================================================
 

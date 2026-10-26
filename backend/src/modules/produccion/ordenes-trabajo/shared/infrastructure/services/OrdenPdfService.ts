@@ -62,6 +62,254 @@ export class OrdenPdfService {
     }
   }
 
+  private escapeHtml(value: any): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async generateEtiquetaPdfFromPayload(payload: any): Promise<Buffer> {
+    const logoBase64 = await this.readAssetBase64('images/logo-mundografic.png');
+    const html = this.buildEtiquetaHtml(payload, logoBase64);
+
+    const browser = await puppeteer.launch({
+      headless: 'new' as any,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        landscape: false,
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: {
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+        },
+      });
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private buildEtiquetaHtml(payload: any, logoBase64: string): string {
+    const cliente = this.escapeHtml(payload?.cliente || 'FARBIO PHARMA');
+    const producto = this.escapeHtml(payload?.producto || 'ET ROLLO ADHESIVA AMARILLA');
+    const tamano = this.escapeHtml(payload?.tamano || '10x10 CM');
+    const oc = this.escapeHtml(payload?.oc || '24020');
+    const cantidad = this.escapeHtml(payload?.cantidad || '14000U');
+    const codigo = this.escapeHtml(payload?.codigo || '9100410');
+    const lote = this.escapeHtml(payload?.lote || 'MG161029');
+    const fecha = this.escapeHtml(payload?.fecha || '26/10/2026');
+    const totalEtiquetas = Math.max(1, Number(payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1);
+
+    const logo = logoBase64 ? `<img src="${logoBase64}" alt="Mundografic" />` : '<span class="brand-fallback">MUNDOGRAFIC</span>';
+
+    const labelMarkup = `
+      <div class="label">
+        <div class="topbar">
+          <div class="cliente">${cliente}</div>
+          <div class="brand">${logo}</div>
+        </div>
+
+        <div class="producto">${producto}</div>
+        <div class="tamano">${tamano}</div>
+
+        <div class="meta">
+          <div class="column">
+            <div class="row">
+              <div class="key">OC:</div>
+              <div class="value">${oc}</div>
+            </div>
+          </div>
+
+          <div class="column">
+            <div class="row">
+              <div class="key">Cantidad:</div>
+              <div class="value">${cantidad}</div>
+            </div>
+          </div>
+
+          <div class="column">
+            <div class="right-stack">
+              <div class="row">
+                <div class="key">Código:</div>
+                <div class="value">${codigo}</div>
+                <div class="key">Lote:</div>
+                <div class="value">${lote}</div>
+                <div class="key">Fecha:</div>
+                <div class="value">${fecha}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const etiquetas = Array.from({ length: totalEtiquetas }, () => labelMarkup).join('');
+
+    return `<!DOCTYPE html>
+      <html lang="es">
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            * { box-sizing: border-box; }
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #f3f3f3;
+              font-family: Arial, Helvetica, sans-serif;
+              width: 210mm;
+              height: 297mm;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              display: flex;
+              align-items: flex-start;
+              justify-content: flex-start;
+            }
+            .sheet {
+              width: 210mm;
+              height: 297mm;
+              display: flex;
+              flex-wrap: wrap;
+              align-content: flex-start;
+              background: #f3f3f3;
+            }
+            .label {
+              width: 105mm;
+              height: 55mm;
+              background: #ffffff;
+              border: 1.2px solid #2f2f2f;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+              margin: 0;
+              padding: 0;
+            }
+            .topbar {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #2f2f2f;
+              height: 11mm;
+              padding: 1.4mm 3.5mm 1.0mm;
+              font-size: 7px;
+              font-weight: 700;
+              letter-spacing: 0.1em;
+              text-transform: uppercase;
+            }
+            .topbar .cliente {
+              color: #1f1f1f;
+              font-weight: 700;
+              max-width: 52mm;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .brand {
+              display: flex;
+              align-items: center;
+              gap: 1mm;
+              color: #e11d2f;
+              font-weight: 900;
+              font-size: 7px;
+            }
+            .brand img {
+              width: 24mm;
+              height: 6mm;
+              object-fit: contain;
+            }
+            .brand-fallback {
+              font-size: 7px;
+              letter-spacing: 0.08em;
+            }
+            .producto {
+              text-align: center;
+              font-size: 15px;
+              font-weight: 900;
+              padding: 2.5mm 3mm 0;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              line-height: 1.1;
+              min-height: 8mm;
+            }
+            .tamano {
+              text-align: center;
+              font-size: 8px;
+              font-weight: 700;
+              text-transform: uppercase;
+              padding-top: 1mm;
+              color: #1d1d1d;
+            }
+            .meta {
+              display: grid;
+              grid-template-columns: 1fr 1fr 1.4fr;
+              gap: 0;
+              border-top: 1px solid #2f2f2f;
+              margin-top: 2mm;
+              flex: 1;
+              min-height: 0;
+            }
+            .column {
+              border-right: 1px solid #969696;
+              padding: 1.8mm 2mm 1mm;
+              display: flex;
+              flex-direction: column;
+              gap: 1.6mm;
+              min-width: 0;
+            }
+            .column:last-child {
+              border-right: none;
+            }
+            .row {
+              display: flex;
+              flex-direction: column;
+              gap: 0.5mm;
+              min-width: 0;
+            }
+            .key {
+              font-size: 5.2px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              color: #2d2d2d;
+            }
+            .value {
+              font-size: 7px;
+              font-weight: 600;
+              color: #161616;
+              overflow-wrap: anywhere;
+              word-break: break-word;
+            }
+            .right-stack {
+              display: flex;
+              flex-direction: column;
+              gap: 1.2mm;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="sheet">${etiquetas}</div>
+        </body>
+      </html>`;
+  }
+
   // ─── GENERAR PDF ──────────────────────────────────────────────────────────
 
   async generatePdf(id: number): Promise<Buffer | null> {

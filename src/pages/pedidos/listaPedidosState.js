@@ -26,5 +26,7 @@ export const debeMostrarModalGuardarCompleto = (estadoAnterior = "", estadoNuevo
 };
 
 export const pedidoBloqueadoPorCompletado = ({ estado = "", guardado = false }) => {
-  return guardado && pedidoCompletado(estado);
+  void estado;
+  void guardado;
+  return false;
 };
