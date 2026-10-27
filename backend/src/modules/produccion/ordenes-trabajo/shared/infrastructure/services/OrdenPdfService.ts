@@ -137,25 +137,29 @@ export class OrdenPdfService {
     const totalMini = miniChecked ? Math.max(1, Number(payload?.numeroEtiquetasMini ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
 
     const logo = logoBase64 ? `<img src="${logoBase64}" alt="Mundografic" />` : '<span class="brand-fallback">MUNDOGRAFIC</span>';
-    const formatoHtml = `
-      <div class="formato-row">
-        <div class="formato-group">
-          <div class="formato-title">PAQUETE</div>
-          <div class="formato-boxes">
-            <div class="formato-box">${paquete1 || '&nbsp;'}</div>
-            <div class="formato-box">${paquete2 || '&nbsp;'}</div>
+    const buildFormatoHtml = (variant: 'general' | 'mini') => {
+      if (variant !== 'general') return '';
+
+      return `
+        <div class="formato-row">
+          <div class="formato-group">
+            <div class="formato-title">PAQUETE</div>
+            <div class="formato-boxes">
+              <div class="formato-box">${paquete1 || '&nbsp;'}</div>
+              <div class="formato-box">${paquete2 || '&nbsp;'}</div>
+            </div>
+          </div>
+          <div class="formato-x">x</div>
+          <div class="formato-group">
+            <div class="formato-title">UNIDAD</div>
+            <div class="formato-boxes">
+              <div class="formato-box">${unidad1 || '&nbsp;'}</div>
+              <div class="formato-box">${unidad2 || '&nbsp;'}</div>
+            </div>
           </div>
         </div>
-        <div class="formato-x">x</div>
-        <div class="formato-group">
-          <div class="formato-title">UNIDAD</div>
-          <div class="formato-boxes">
-            <div class="formato-box">${unidad1 || '&nbsp;'}</div>
-            <div class="formato-box">${unidad2 || '&nbsp;'}</div>
-          </div>
-        </div>
-      </div>
-    `;
+      `;
+    };
 
     const buildSingleLabel = (variant: 'general' | 'mini') => {
       const ocFields = variant === 'mini'
@@ -186,16 +190,16 @@ export class OrdenPdfService {
             <div class="row1">
               <div class="key">OC:</div>
               <div class="value">${oc}</div>
-              ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
               ${ocFields}
             </div>
+            ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
           </div>
 
           <div class="column">
             <div class="row2">
               <div class="key">Cantidad:</div>
               <div class="value">${cantidad}${cantidad ? ' U' : ''}</div>
-              ${formatoHtml}
+              ${buildFormatoHtml(variant)}
             </div>
           </div>
 
@@ -385,6 +389,8 @@ export class OrdenPdfService {
             .column:last-child {
               border-right: none;
             }
+            .row1,
+            .row2,
             .row {
               display: flex;
               flex-direction: column;
@@ -392,7 +398,9 @@ export class OrdenPdfService {
               height: 100%;
               gap: 3px;
             }
-            .label.mini .row {
+            .label.mini .row,
+            .label.mini .row1,
+            .label.mini .row2 {
               gap: 2px;
             }
             .key {
@@ -414,12 +422,18 @@ export class OrdenPdfService {
               word-break: break-word;
             }
             .numero-caja {
-              margin-top: 1mm;
+              margin-top: auto;
+              padding-top: 2mm;
               font-size: 13px;
               font-weight: 800;
-              text-align: center;
+              text-align: left;
               color: #111827;
               letter-spacing: 0.03em;
+              line-height: 1.1;
+            }
+            .label.mini .numero-caja {
+              font-size: 8px;
+              padding-top: 1mm;
             }
             .sub-value {
               font-size: 11px;
