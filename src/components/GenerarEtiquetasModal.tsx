@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FaTimes, FaPrint, FaTag } from 'react-icons/fa';
+import { FaPrint, FaTag, FaTimes } from 'react-icons/fa';
 
 interface OrdenEtiqueta {
   id?: number;
@@ -353,21 +353,17 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
                 <FaTimes size={24} />
               </button>
             </div>
-            <div className="flex-1 overflow-auto bg-gray-100 p-4">
+            <div className="flex-1 overflow-hidden">
               {previewLoading ? (
                 <div className="w-full h-full flex items-center justify-center text-gray-600">Generando...</div>
               ) : previewUrl ? (
-                <div className="flex items-center justify-center w-full h-full">
-                  <object
-                    data={previewUrl}
-                    type="application/pdf"
-                    title="Vista previa de etiqueta"
-                    style={{ width: '100%', height: '100%', minHeight: '760px', maxWidth: '820px' }}
-                    className="border border-gray-300 bg-white shadow-sm"
-                  >
-                    <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
-                  </object>
-                </div>
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-600">Sin vista previa disponible.</div>
               )}
