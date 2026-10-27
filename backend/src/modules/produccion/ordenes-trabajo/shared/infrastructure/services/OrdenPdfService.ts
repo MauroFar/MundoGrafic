@@ -195,7 +195,7 @@ export class OrdenPdfService {
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
-              gap: 3mm;
+              gap: 0;
               background: #f3f3f3;
             }
             .label {
