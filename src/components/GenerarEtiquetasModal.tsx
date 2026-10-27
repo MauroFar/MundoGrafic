@@ -28,6 +28,8 @@ interface GenerarEtiquetasModalProps {
   onClose: () => void;
 }
 
+type EtiquetaTipo = 'general' | 'mini';
+
 const formatDate = (value?: string) => {
   if (!value) return '';
 
@@ -64,7 +66,10 @@ const cleanText = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, producto, isOpen, onClose }) => {
   const [form, setForm] = useState<EtiquetaFormData>(() => defaultEtiquetaForm(orden, producto));
-  const [numeroEtiquetas, setNumeroEtiquetas] = useState<string>('1');
+  const [generalChecked, setGeneralChecked] = useState<boolean>(true);
+  const [miniChecked, setMiniChecked] = useState<boolean>(false);
+  const [numeroEtiquetasGeneral, setNumeroEtiquetasGeneral] = useState<string>('1');
+  const [numeroEtiquetasMini, setNumeroEtiquetasMini] = useState<string>('1');
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -72,7 +77,10 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   React.useEffect(() => {
     if (isOpen) {
       setForm(defaultEtiquetaForm(orden, producto));
-      setNumeroEtiquetas('1');
+      setGeneralChecked(true);
+      setMiniChecked(false);
+      setNumeroEtiquetasGeneral('1');
+      setNumeroEtiquetasMini('1');
       setShowPreview(false);
       setPreviewUrl(null);
       setPreviewLoading(false);
@@ -94,8 +102,16 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const getNumeroEtiquetasValido = () => {
-    const parsed = Number(numeroEtiquetas);
+  const getNumeroEtiquetasGeneralValido = () => {
+    const parsed = Number(numeroEtiquetasGeneral);
+    if (!generalChecked) return 0;
+    if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+    return Math.max(1, Math.floor(parsed));
+  };
+
+  const getNumeroEtiquetasMiniValido = () => {
+    const parsed = Number(numeroEtiquetasMini);
+    if (!miniChecked) return 0;
     if (!Number.isFinite(parsed) || parsed <= 0) return 1;
     return Math.max(1, Math.floor(parsed));
   };
@@ -122,7 +138,10 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         codigo: form.codigo,
         lote: form.lote,
         fecha: form.fecha,
-        numeroEtiquetas: getNumeroEtiquetasValido(),
+        generalChecked,
+        miniChecked,
+        numeroEtiquetasGeneral: getNumeroEtiquetasGeneralValido(),
+        numeroEtiquetasMini: getNumeroEtiquetasMiniValido(),
       }),
     });
 
@@ -313,17 +332,65 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
                 />
               </label>
 
-              <label className="block text-sm font-medium text-gray-700">
-                Número de etiquetas
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={numeroEtiquetas}
-                  onChange={(e) => setNumeroEtiquetas(e.target.value)}
-                />
-              </label>
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-gray-700">Tipo de etiqueta</div>
+
+                <div className="rounded-md border border-gray-300 bg-white p-3">
+                  <label className="flex items-center justify-between gap-3 text-sm text-gray-700">
+                    <span className="inline-flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={generalChecked}
+                        onChange={(e) => setGeneralChecked(e.target.checked)}
+                        className="h-4 w-4 accent-indigo-600"
+                      />
+                      <span>Etiqueta general 10 x 5,5 cm</span>
+                    </span>
+                  </label>
+
+                  {generalChecked && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={numeroEtiquetasGeneral}
+                        onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-md border border-gray-300 bg-white p-3">
+                  <label className="flex items-center justify-between gap-3 text-sm text-gray-700">
+                    <span className="inline-flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={miniChecked}
+                        onChange={(e) => setMiniChecked(e.target.checked)}
+                        className="h-4 w-4 accent-indigo-600"
+                      />
+                      <span>Etiquetas 5,5 x 3 cm</span>
+                    </span>
+                  </label>
+
+                  {miniChecked && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={numeroEtiquetasMini}
+                        onChange={(e) => setNumeroEtiquetasMini(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">

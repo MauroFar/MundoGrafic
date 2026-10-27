@@ -115,12 +115,16 @@ export class OrdenPdfService {
     const codigo = this.escapeHtml(payload?.codigo ?? '');
     const lote = this.escapeHtml(payload?.lote ?? '');
     const fecha = this.escapeHtml(payload?.fecha ?? '');
-    const totalEtiquetas = Math.max(1, Number(payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1);
+
+    const generalChecked = payload?.generalChecked === true || payload?.tipoEtiqueta === 'general';
+    const miniChecked = payload?.miniChecked === true || payload?.tipoEtiqueta === 'mini';
+    const totalGeneral = generalChecked ? Math.max(1, Number(payload?.numeroEtiquetasGeneral ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
+    const totalMini = miniChecked ? Math.max(1, Number(payload?.numeroEtiquetasMini ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
 
     const logo = logoBase64 ? `<img src="${logoBase64}" alt="Mundografic" />` : '<span class="brand-fallback">MUNDOGRAFIC</span>';
 
-    const labelMarkup = `
-      <div class="label">
+    const buildSingleLabel = (variant: 'general' | 'mini') => `
+      <div class="label ${variant}">
         <div class="topbar">
           <div class="cliente">${cliente}</div>
           <div class="brand">${logo}</div>
@@ -140,7 +144,7 @@ export class OrdenPdfService {
           <div class="column">
             <div class="row2">
               <div class="key">Cantidad:</div>
-              <div class="value" style="font-size: 24px;">${cantidad}${cantidad ? ' U' : ''}</div>
+              <div class="value">${cantidad}${cantidad ? ' U' : ''}</div>
             </div>
           </div>
 
@@ -157,7 +161,8 @@ export class OrdenPdfService {
       </div>
     `;
 
-    const etiquetas = Array.from({ length: totalEtiquetas }, () => labelMarkup).join('');
+    const generalEtiquetas = Array.from({ length: totalGeneral }, () => buildSingleLabel('general')).join('');
+    const miniEtiquetas = Array.from({ length: totalMini }, () => buildSingleLabel('mini')).join('');
 
     return `<!DOCTYPE html>
       <html lang="es">
@@ -190,6 +195,7 @@ export class OrdenPdfService {
               display: flex;
               flex-wrap: wrap;
               align-content: flex-start;
+              gap: 3mm;
               background: #f3f3f3;
             }
             .label {
@@ -203,6 +209,10 @@ export class OrdenPdfService {
               margin: 0;
               padding: 0;
             }
+            .label.mini {
+              width: 55mm;
+              height: 30mm;
+            }
             .topbar {
               display: flex;
               justify-content: space-between;
@@ -215,6 +225,10 @@ export class OrdenPdfService {
               letter-spacing: 0.1em;
               text-transform: uppercase;
             }
+            .label.mini .topbar {
+              height: 6mm;
+              padding: 1mm 2mm 0.8mm;
+            }
             .topbar .cliente {
               color: #1f1f1f;
               font-size: 15px;
@@ -224,18 +238,30 @@ export class OrdenPdfService {
               overflow: hidden;
               text-overflow: ellipsis;
             }
+            .label.mini .topbar .cliente {
+              font-size: 8px;
+              max-width: 24mm;
+            }
             .brand {
               display: flex;
               align-items: center;
+              justify-content: flex-end;
               gap: 1mm;
               color: #e11d2f;
               font-weight: 900;
               font-size: 7px;
+              flex-shrink: 0;
             }
             .brand img {
-              width: 24mm;
-              height: 6mm;
+              width: 30mm;
+              height: 8mm;
+              max-width: 100%;
               object-fit: contain;
+              display: block;
+            }
+            .label.mini .brand img {
+              width: 18mm;
+              height: 5mm;
             }
             .brand-fallback {
               font-size: 7px;
@@ -251,6 +277,11 @@ export class OrdenPdfService {
               line-height: 1.1;
               min-height: 8mm;
             }
+            .label.mini .producto {
+              font-size: 10px;
+              padding: 1.2mm 2mm 0;
+              min-height: 5mm;
+            }
             .tamano {
               text-align: center;
               font-size: 15px;
@@ -258,6 +289,10 @@ export class OrdenPdfService {
               text-transform: uppercase;
               padding-top: 1mm;
               color: #1d1d1d;
+            }
+            .label.mini .tamano {
+              font-size: 8px;
+              padding-top: 0.5mm;
             }
             .meta {
               display: grid;
@@ -268,6 +303,9 @@ export class OrdenPdfService {
               flex: 1;
               min-height: 0;
             }
+            .label.mini .meta {
+              margin-top: 1mm;
+            }
             .column {
               border-right: 1px solid #969696;
               padding: 1.8mm 2mm 1mm;
@@ -276,16 +314,21 @@ export class OrdenPdfService {
               gap: 1.6mm;
               min-width: 0;
             }
+            .label.mini .column {
+              padding: 1mm 1.2mm 0.8mm;
+              gap: 1mm;
+            }
             .column:last-child {
               border-right: none;
             }
             .row {
               display: grid;
               grid-template-rows: repeat(3, 1fr); 
- 
-  height: 100%; 
-
-  gap: 10px;
+              height: 100%; 
+              gap: 10px;
+            }
+            .label.mini .row {
+              gap: 4px;
             }
             .key {
               font-size: 14px;
@@ -294,12 +337,19 @@ export class OrdenPdfService {
               letter-spacing: 0.04em;
               color: #2d2d2d;
             }
+            .label.mini .key {
+              font-size: 7px;
+              letter-spacing: 0.02em;
+            }
             .value {
               font-size: 15px;
               font-weight: 600;
               color: #161616;
               overflow-wrap: anywhere;
               word-break: break-word;
+            }
+            .label.mini .value {
+              font-size: 8px;
             }
             .right-stack {
               display: flex;
@@ -309,7 +359,7 @@ export class OrdenPdfService {
           </style>
         </head>
         <body>
-          <div class="sheet">${etiquetas}</div>
+          <div class="sheet">${generalEtiquetas}${miniEtiquetas}</div>
         </body>
       </html>`;
   }
