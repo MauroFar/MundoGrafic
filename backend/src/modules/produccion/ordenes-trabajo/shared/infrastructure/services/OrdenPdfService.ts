@@ -107,14 +107,14 @@ export class OrdenPdfService {
   }
 
   private buildEtiquetaHtml(payload: any, logoBase64: string): string {
-    const cliente = this.escapeHtml(payload?.cliente || 'FARBIO PHARMA');
-    const producto = this.escapeHtml(payload?.producto || 'ET ROLLO ADHESIVA AMARILLA');
-    const tamano = this.escapeHtml(payload?.tamano || '10x10 CM');
-    const oc = this.escapeHtml(payload?.oc || '24020');
-    const cantidad = this.escapeHtml(payload?.cantidad || '14000U');
-    const codigo = this.escapeHtml(payload?.codigo || '9100410');
-    const lote = this.escapeHtml(payload?.lote || 'MG161029');
-    const fecha = this.escapeHtml(payload?.fecha || '26/10/2026');
+    const cliente = this.escapeHtml(payload?.cliente ?? '');
+    const producto = this.escapeHtml(payload?.producto ?? '');
+    const tamano = this.escapeHtml(payload?.tamano ?? '');
+    const oc = this.escapeHtml(payload?.oc ?? '');
+    const cantidad = this.escapeHtml(payload?.cantidad ?? '');
+    const codigo = this.escapeHtml(payload?.codigo ?? '');
+    const lote = this.escapeHtml(payload?.lote ?? '');
+    const fecha = this.escapeHtml(payload?.fecha ?? '');
     const totalEtiquetas = Math.max(1, Number(payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1);
 
     const logo = logoBase64 ? `<img src="${logoBase64}" alt="Mundografic" />` : '<span class="brand-fallback">MUNDOGRAFIC</span>';
@@ -127,32 +127,29 @@ export class OrdenPdfService {
         </div>
 
         <div class="producto">${producto}</div>
-        <div class="tamano">${tamano}</div>
+        ${tamano ? `<div class="tamano">${tamano}</div>` : ''}
 
         <div class="meta">
           <div class="column">
-            <div class="row">
+            <div class="row1">
               <div class="key">OC:</div>
               <div class="value">${oc}</div>
             </div>
           </div>
 
           <div class="column">
-            <div class="row">
+            <div class="row2">
               <div class="key">Cantidad:</div>
-              <div class="value" style="font-size: 24px;">${cantidad} U</div>
+              <div class="value" style="font-size: 24px;">${cantidad}${cantidad ? ' U' : ''}</div>
             </div>
           </div>
 
           <div class="column">
             <div class="right-stack">
               <div class="row">
-                <div class="key">Código:</div>
-                <div class="value">${codigo}</div>
-                <div class="key">Lote:</div>
-                <div class="value">${lote}</div>
-                <div class="key">Fecha:</div>
-                <div class="value">${fecha}</div>
+                <div class="key">Código:${codigo}</div>
+                <div class="key">Lote:${lote}</div>
+                <div class="key">Fecha:${fecha}</div>
               </div>
             </div>
           </div>
@@ -196,7 +193,7 @@ export class OrdenPdfService {
               background: #f3f3f3;
             }
             .label {
-              width: calc(50% - 0.5mm);
+              width: 100mm;
               height: 55mm;
               background: #ffffff;
               border: 1.2px solid #2f2f2f;
@@ -283,13 +280,15 @@ export class OrdenPdfService {
               border-right: none;
             }
             .row {
-              display: flex;
-              flex-direction: column;
-              gap: 0.5mm;
-              min-width: 0;
+              display: grid;
+              grid-template-rows: repeat(3, 1fr); 
+ 
+  height: 100%; 
+
+  gap: 10px;
             }
             .key {
-              font-size: 15px;
+              font-size: 14px;
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 0.04em;

@@ -29,7 +29,7 @@ interface GenerarEtiquetasModalProps {
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (!value) return '';
 
   try {
     const parsed = new Date(value);
@@ -40,22 +40,31 @@ const formatDate = (value?: string) => {
   }
 };
 
-const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): EtiquetaFormData => ({
-  cliente: orden?.nombre_cliente || 'FARBIO PHARMA',
-  producto: producto?.producto || producto?.descripcion || orden?.concepto || 'ET ROLLO ADHESIVA AMARILLA',
-  tamano: producto?.tamano || producto?.medidas || '10x10 CM',
-  oc: orden?.numero_orden || '24020',
-  cantidad: producto?.cantidad || '14000U',
-  codigo: producto?.codigo || producto?.codigo_producto || '9100410',
-  lote: producto?.lote || 'MG161029',
-  fecha: formatDate(orden?.fecha_creacion),
-});
+const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): EtiquetaFormData => {
+  const productName = producto?.producto || producto?.descripcion || producto?.nombre || '';
+  const cantidad = producto?.cantidad ?? producto?.unidades ?? producto?.cantidad_total ?? '';
+  const codigoCliente = producto?.cod_cliente || producto?.codigo_cliente || producto?.codigo || producto?.codigo_producto || '';
+  const loteProduccion = producto?.lote_produccion || producto?.lote || (orden as any)?.detalle?.lote_produccion || '';
+  const ordenCompra = (orden as any)?.orden_compra || '';
+  const tamanoInicial = producto?.tamano || producto?.medidas || '';
+
+  return {
+    cliente: orden?.nombre_cliente || '',
+    producto: productName,
+    tamano: tamanoInicial,
+    oc: ordenCompra,
+    cantidad: String(cantidad ?? ''),
+    codigo: codigoCliente,
+    lote: loteProduccion,
+    fecha: '',
+  };
+};
 
 const cleanText = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, producto, isOpen, onClose }) => {
   const [form, setForm] = useState<EtiquetaFormData>(() => defaultEtiquetaForm(orden, producto));
-  const [numeroEtiquetas, setNumeroEtiquetas] = useState<number>(1);
+  const [numeroEtiquetas, setNumeroEtiquetas] = useState<string>('1');
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -63,7 +72,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   React.useEffect(() => {
     if (isOpen) {
       setForm(defaultEtiquetaForm(orden, producto));
-      setNumeroEtiquetas(1);
+      setNumeroEtiquetas('1');
       setShowPreview(false);
       setPreviewUrl(null);
       setPreviewLoading(false);
@@ -71,18 +80,24 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   }, [orden, producto, isOpen]);
 
   const preview = useMemo(() => ({
-    cliente: cleanText(form.cliente || 'FARBIO PHARMA'),
-    producto: cleanText(form.producto || 'ET ROLLO ADHESIVA AMARILLA'),
-    tamano: cleanText(form.tamano || '10x10 CM'),
-    oc: cleanText(form.oc || '24020'),
-    cantidad: cleanText(form.cantidad || '14000U'),
-    codigo: cleanText(form.codigo || '9100410'),
-    lote: cleanText(form.lote || 'MG161029'),
-    fecha: cleanText(form.fecha || formatDate()),
+    cliente: cleanText(form.cliente || ''),
+    producto: cleanText(form.producto || ''),
+    tamano: cleanText(form.tamano || ''),
+    oc: cleanText(form.oc || ''),
+    cantidad: cleanText(form.cantidad || ''),
+    codigo: cleanText(form.codigo || ''),
+    lote: cleanText(form.lote || ''),
+    fecha: cleanText(form.fecha || formatDate(form.fecha || '')),
   }), [form]);
 
   const updateField = (field: keyof EtiquetaFormData, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const getNumeroEtiquetasValido = () => {
+    const parsed = Number(numeroEtiquetas);
+    if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+    return Math.max(1, Math.floor(parsed));
   };
 
   const buildEtiquetaPdfDataUrl = async () => {
@@ -99,15 +114,15 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        cliente: preview.cliente,
-        producto: preview.producto,
-        tamano: preview.tamano,
-        oc: preview.oc,
-        cantidad: preview.cantidad,
-        codigo: preview.codigo,
-        lote: preview.lote,
-        fecha: preview.fecha,
-        numeroEtiquetas: Math.max(1, Number(numeroEtiquetas) || 1),
+        cliente: form.cliente,
+        producto: form.producto,
+        tamano: form.tamano,
+        oc: form.oc,
+        cantidad: form.cantidad,
+        codigo: form.codigo,
+        lote: form.lote,
+        fecha: form.fecha,
+        numeroEtiquetas: getNumeroEtiquetasValido(),
       }),
     });
 
@@ -151,38 +166,40 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     <div className="w-full max-w-[340px] border border-black bg-white p-2 shadow-md print:shadow-none mx-auto">
       <div className="border border-gray-300 p-2 text-center">
         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide border-b border-dashed border-gray-300 pb-1">
-          <span>{preview.cliente || 'FARBIO PHARMA'}</span>
+          <span>{preview.cliente}</span>
           <span className="font-black">MUNDOGRAFIC</span>
         </div>
 
         <div className="mt-2 text-center text-[16px] font-black uppercase leading-tight">
-          {preview.producto || 'ET ROLLO ADHESIVA AMARILLA'}
+          {preview.producto}
         </div>
 
-        <div className="mt-2 text-center text-[13px] font-bold uppercase">
-          {preview.tamano || '10x10 CM'}
-        </div>
+        {preview.tamano && (
+          <div className="mt-2 text-center text-[13px] font-bold uppercase">
+            {preview.tamano}
+          </div>
+        )}
 
         <div className="mt-3 space-y-2 text-left text-[12px] font-semibold">
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>OC:</span>
-            <span>{preview.oc || '24020'}</span>
+            <span>{preview.oc}</span>
           </div>
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>CANTIDAD:</span>
-            <span>{preview.cantidad || '14000U'}</span>
+            <span>{preview.cantidad}</span>
           </div>
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>CÓDIGO:</span>
-            <span>{preview.codigo || '9100410'}</span>
+            <span>{preview.codigo}</span>
           </div>
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>LOTE:</span>
-            <span>{preview.lote || 'MG161029'}</span>
+            <span>{preview.lote}</span>
           </div>
           <div className="flex justify-between gap-4 pb-1">
             <span>FECHA:</span>
-            <span>{preview.fecha || '26-10-2026'}</span>
+            <span>{preview.fecha}</span>
           </div>
         </div>
       </div>
@@ -304,7 +321,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
                   step={1}
                   className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                   value={numeroEtiquetas}
-                  onChange={(e) => setNumeroEtiquetas(Math.max(1, Number(e.target.value) || 1))}
+                  onChange={(e) => setNumeroEtiquetas(e.target.value)}
                 />
               </label>
             </div>
