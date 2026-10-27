@@ -173,9 +173,10 @@ export class OrdenPdfService {
       `;
     };
 
-    const renderField = (title: string, value: string) => {
+    const renderField = (title: string, value: string, extraClass = '') => {
       if (!value) return '';
-      return `<div class="field"><span class="title">${title}</span><span class="value">${value}</span></div>`;
+      const classes = ['field', extraClass].filter(Boolean).join(' ');
+      return `<div class="${classes}"><span class="title">${title}</span><span class="value">${value}</span></div>`;
     };
 
     const renderMiniWeightField = (title: string, value: string) => {
@@ -247,7 +248,7 @@ export class OrdenPdfService {
 
           <div class="column">
             <div class="row2">
-              ${renderField('Cantidad:', cantidadValue)}
+              ${renderField('Cantidad:', cantidadValue, 'cantidad-field')}
               ${buildFormatoHtml(variant)}
             </div>
           </div>
@@ -309,8 +310,8 @@ export class OrdenPdfService {
               padding: 0;
             }
             .label.mini {
-              width: 65mm;
-              height: 30mm;
+              width: 60mm;
+              height: 33mm;
             }
             .topbar {
               display: grid;
@@ -479,6 +480,14 @@ export class OrdenPdfService {
               color: #161616;
               overflow-wrap: anywhere;
               word-break: break-word;
+            }
+            .label.general .field.cantidad-field > .value {
+              font-size: 17px;
+              font-weight: 700;
+            }
+            .label.mini .field.cantidad-field > .value {
+              font-size: 11px;
+              font-weight: 700;
             }
             .mini-weight-field {
               display: flex;
