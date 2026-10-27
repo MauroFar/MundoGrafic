@@ -120,6 +120,7 @@ export class OrdenPdfService {
     const miniPesoNeto = this.escapeHtml(payload?.miniPesoNeto ?? '');
     const miniPesoBruto = this.escapeHtml(payload?.miniPesoBruto ?? '');
     const cantidad = this.escapeHtml(payload?.cantidad ?? '');
+    const miniCantidad = this.escapeHtml(payload?.miniCantidad ?? '');
     const formato = this.escapeHtml(payload?.formato ?? '');
     const paquete1 = this.escapeHtml(payload?.paquete1 ?? '');
     const paquete2 = this.escapeHtml(payload?.paquete2 ?? '');
@@ -177,12 +178,22 @@ export class OrdenPdfService {
       return `<div class="field"><span class="title">${title}</span><span class="value">${value}</span></div>`;
     };
 
+    const renderMiniWeightField = (title: string, value: string) => {
+      if (!value) return '';
+      return `
+        <div class="field mini-weight-field">
+          <span class="title">${title}</span>
+          <span class="value">${value}</span>
+        </div>
+      `;
+    };
+
     const buildSingleLabel = (variant: 'general' | 'mini') => {
       const ocFields = variant === 'mini'
         ? [
             miniCore ? renderField('Core:', miniCore) : '',
-            miniPesoNeto ? renderField('Peso Neto:', miniPesoNeto) : '',
-            miniPesoBruto ? renderField('Peso Bruto:', miniPesoBruto) : '',
+            miniPesoNeto ? renderMiniWeightField('Peso Neto:', miniPesoNeto) : '',
+            miniPesoBruto ? renderMiniWeightField('Peso Bruto:', miniPesoBruto) : '',
           ].filter(Boolean).join('')
         : [
             core ? renderField('Core:', core) : '',
@@ -212,7 +223,7 @@ export class OrdenPdfService {
             </div>
           `;
 
-      const cantidadValue = cantidad ? `${cantidad} U` : '';
+      const cantidadValue = variant === 'mini' ? (miniCantidad || cantidad ? `${miniCantidad || cantidad} U` : '') : (cantidad ? `${cantidad} U` : '');
 
       return `
       <div class="label ${variant}">
@@ -288,7 +299,7 @@ export class OrdenPdfService {
             }
             .label {
               width: 100mm;
-              height: 55mm;
+              height: 65mm;
               background: #ffffff;
               border: 1.2px solid #2f2f2f;
               display: flex;
@@ -298,7 +309,7 @@ export class OrdenPdfService {
               padding: 0;
             }
             .label.mini {
-              width: 55mm;
+              width: 65mm;
               height: 30mm;
             }
             .topbar {
@@ -463,6 +474,14 @@ export class OrdenPdfService {
               color: #161616;
               overflow-wrap: anywhere;
               word-break: break-word;
+            }
+            .mini-weight-field {
+              display: flex;
+              align-items: baseline;
+              gap: 0.25em;
+              flex-wrap: wrap;
+              width: 100%;
+              max-width: 100%;
             }
             .numero-caja {
               margin-top: auto;

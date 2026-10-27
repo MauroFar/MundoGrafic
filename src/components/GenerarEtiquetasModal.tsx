@@ -112,7 +112,7 @@ const paquete = [form.paquete1, form.paquete2, form.paquete3].filter(Boolean).jo
 const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, producto, isOpen, onClose }) => {
   const [form, setForm] = useState<EtiquetaFormData>(() => defaultEtiquetaForm(orden, producto));
   const [generalChecked, setGeneralChecked] = useState<boolean>(true);
-  const [miniChecked, setMiniChecked] = useState<boolean>(false);
+  const [miniChecked, setMiniChecked] = useState<boolean>(true);
   const [numeroEtiquetasGeneral, setNumeroEtiquetasGeneral] = useState<string>('1');
   const [numeroEtiquetasMini, setNumeroEtiquetasMini] = useState<string>('1');
   const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -123,7 +123,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     if (isOpen) {
       setForm(defaultEtiquetaForm(orden, producto));
       setGeneralChecked(true);
-      setMiniChecked(false);
+      setMiniChecked(true);
       setNumeroEtiquetasGeneral('1');
       setNumeroEtiquetasMini('1');
       setShowPreview(false);
@@ -290,15 +290,33 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {renderInput('Cliente', form.cliente, (value) => updateField('cliente', value))}
           {renderInput('O.C.', form.oc, (value) => updateField('oc', value))}
         </div>
 
-        {renderInput('Número de caja', form.numeroCaja, (value) => updateField('numeroCaja', value))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {renderInput('Número de caja', form.numeroCaja, (value) => updateField('numeroCaja', value))}
+          {generalChecked ? (
+            <label className="block text-sm font-medium text-gray-700">
+              Número de etiquetas
+              <input
+                type="number"
+                min={1}
+                step={1}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                value={numeroEtiquetasGeneral}
+                onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
+              />
+            </label>
+          ) : (
+            <div className="hidden sm:block" />
+          )}
+        </div>
+
         {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value), undefined, 'text')}
         </div>
 
@@ -339,31 +357,17 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {renderInput('Código', form.codigo, (value) => updateField('codigo', value))}
           {renderInput('Lote', form.lote, (value) => updateField('lote', value))}
         </div>
 
-        {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
           {renderInput('Ciudad', form.ciudad, (value) => updateField('ciudad', value))}
         </div>
 
-        {generalChecked && (
-          <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
-            <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-              value={numeroEtiquetasGeneral}
-              onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
-            />
-          </div>
-        )}
+        {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
       </div>
     </div>
   );
@@ -375,7 +379,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
           <input
             type="checkbox"
-            checked={miniChecked}
+            checked={generalChecked}
             onChange={(e) => setMiniChecked(e.target.checked)}
             className="h-4 w-4 accent-indigo-600"
           />
@@ -452,8 +456,8 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
           </button>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
-          <div className="p-6 border-r border-gray-200 bg-gray-50">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+          <div className="p-4 sm:p-6 border-b border-gray-200 lg:border-b-0 lg:border-r bg-gray-50">
             {renderGeneralPanel()}
 
             <div className="mt-6 flex justify-end gap-3">
@@ -477,7 +481,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
             </div>
           </div>
 
-          <div className="bg-white p-6">
+          <div className="bg-white p-4 sm:p-6">
             {renderMiniPanel()}
           </div>
         </div>
