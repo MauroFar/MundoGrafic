@@ -15,10 +15,17 @@ interface EtiquetaFormData {
   producto: string;
   tamano: string;
   oc: string;
+  numeroCaja: string;
   cantidad: string;
+  paquete1: string;
+  paquete2: string;
+  unidad1: string;
+  unidad2: string;
   codigo: string;
   lote: string;
   fecha: string;
+  lugarEntrega: string;
+  ciudad: string;
 }
 
 interface GenerarEtiquetasModalProps {
@@ -42,6 +49,12 @@ const formatDate = (value?: string) => {
   }
 };
 
+const getLocalDateValue = (date = new Date()) => {
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60000);
+  return localDate.toISOString().slice(0, 10);
+};
+
 const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): EtiquetaFormData => {
   const productName = producto?.producto || producto?.descripcion || producto?.nombre || '';
   const cantidad = producto?.cantidad ?? producto?.unidades ?? producto?.cantidad_total ?? '';
@@ -55,14 +68,31 @@ const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): Etiqu
     producto: productName,
     tamano: tamanoInicial,
     oc: ordenCompra,
+    numeroCaja: '',
     cantidad: String(cantidad ?? ''),
+    paquete1: '',
+    paquete2: '',
+    unidad1: '',
+    unidad2: '',
     codigo: codigoCliente,
     lote: loteProduccion,
-    fecha: '',
+    fecha: getLocalDateValue(),
+    lugarEntrega: '',
+    ciudad: '',
   };
 };
 
 const cleanText = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const buildFormatoValue = (form: EtiquetaFormData) => {
+  const paquete = [form.paquete1, form.paquete2].join('').trim();
+  const unidad = [form.unidad1, form.unidad2].join('').trim();
+
+  if (!paquete && !unidad) return '';
+  if (!paquete) return unidad;
+  if (!unidad) return paquete;
+  return `${paquete} x ${unidad}`;
+};
 
 const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, producto, isOpen, onClose }) => {
   const [form, setForm] = useState<EtiquetaFormData>(() => defaultEtiquetaForm(orden, producto));
@@ -92,10 +122,14 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     producto: cleanText(form.producto || ''),
     tamano: cleanText(form.tamano || ''),
     oc: cleanText(form.oc || ''),
+    numeroCaja: cleanText(form.numeroCaja || ''),
     cantidad: cleanText(form.cantidad || ''),
+    formato: cleanText(buildFormatoValue(form)),
     codigo: cleanText(form.codigo || ''),
     lote: cleanText(form.lote || ''),
     fecha: cleanText(form.fecha || formatDate(form.fecha || '')),
+    lugarEntrega: cleanText(form.lugarEntrega || ''),
+    ciudad: cleanText(form.ciudad || ''),
   }), [form]);
 
   const updateField = (field: keyof EtiquetaFormData, value: string) => {
@@ -130,14 +164,19 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        numero_orden: orden?.numero_orden || '',
         cliente: form.cliente,
         producto: form.producto,
         tamano: form.tamano,
         oc: form.oc,
+        numeroCaja: form.numeroCaja,
         cantidad: form.cantidad,
+        formato: buildFormatoValue(form),
         codigo: form.codigo,
         lote: form.lote,
         fecha: form.fecha,
+        lugarEntrega: form.lugarEntrega,
+        ciudad: form.ciudad,
         generalChecked,
         miniChecked,
         numeroEtiquetasGeneral: getNumeroEtiquetasGeneralValido(),
@@ -184,9 +223,10 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   const previewEtiqueta = (
     <div className="w-full max-w-[340px] border border-black bg-white p-2 shadow-md print:shadow-none mx-auto">
       <div className="border border-gray-300 p-2 text-center">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide border-b border-dashed border-gray-300 pb-1">
-          <span>{preview.cliente}</span>
-          <span className="font-black">MUNDOGRAFIC</span>
+<div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wide border-b border-dashed border-gray-300 pb-1">
+          <span className="font-black text-left">#{orden?.numero_orden || ''}</span>
+          <span className="text-center flex-1 truncate px-1">{preview.cliente}</span>
+          <span className="font-black text-right">MUNDOGRAFIC</span>
         </div>
 
         <div className="mt-2 text-center text-[16px] font-black uppercase leading-tight">
@@ -204,10 +244,21 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
             <span>OC:</span>
             <span>{preview.oc}</span>
           </div>
+          {preview.numeroCaja && (
+            <div className="text-center text-[11px] font-bold border-b border-dashed border-gray-200 pb-1">
+              {preview.numeroCaja}
+            </div>
+          )}
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>CANTIDAD:</span>
             <span>{preview.cantidad}</span>
           </div>
+          {preview.formato && (
+            <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
+              <span>FORMATO:</span>
+              <span>{preview.formato}</span>
+            </div>
+          )}
           <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
             <span>CÓDIGO:</span>
             <span>{preview.codigo}</span>
@@ -219,6 +270,14 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
           <div className="flex justify-between gap-4 pb-1">
             <span>FECHA:</span>
             <span>{preview.fecha}</span>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
+            <span>LUGAR ENTREGA:</span>
+            <span>{preview.lugarEntrega}</span>
+          </div>
+          <div className="flex justify-between gap-4 pb-1">
+            <span>CIUDAD:</span>
+            <span>{preview.ciudad}</span>
           </div>
         </div>
       </div>
@@ -274,6 +333,15 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
               </div>
 
               <label className="block text-sm font-medium text-gray-700">
+                Número de caja
+                <input
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  value={form.numeroCaja}
+                  onChange={(e) => updateField('numeroCaja', e.target.value)}
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-gray-700">
                 Producto / descripción
                 <input
                   className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
@@ -302,6 +370,49 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
                 </label>
               </div>
 
+              <div className="rounded-md border border-gray-300 bg-white p-3">
+                <div className="text-sm font-medium text-gray-700">Formato de paquete</div>
+                <div className="mt-3 flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Paquete</div>
+                    <div className="flex flex-col gap-1.5">
+                      <input
+                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={form.paquete1}
+                        onChange={(e) => updateField('paquete1', e.target.value)}
+                        placeholder="5"
+                      />
+                      <input
+                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={form.paquete2}
+                        onChange={(e) => updateField('paquete2', e.target.value)}
+                        placeholder="R"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pb-3 text-xl font-black leading-none text-gray-600">x</div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Unidad</div>
+                    <div className="flex flex-col gap-1.5">
+                      <input
+                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={form.unidad1}
+                        onChange={(e) => updateField('unidad1', e.target.value)}
+                        placeholder="1000"
+                      />
+                      <input
+                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        value={form.unidad2}
+                        onChange={(e) => updateField('unidad2', e.target.value)}
+                        placeholder=""
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Código
@@ -327,10 +438,30 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.fecha ? new Date(form.fecha.split('/').reverse().join('-')).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => updateField('fecha', new Date(e.target.value).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }))}
+                  value={form.fecha || getLocalDateValue()}
+                  onChange={(e) => updateField('fecha', e.target.value)}
                 />
               </label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Lugar Entrega
+                  <input
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    value={form.lugarEntrega}
+                    onChange={(e) => updateField('lugarEntrega', e.target.value)}
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-gray-700">
+                  Ciudad
+                  <input
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    value={form.ciudad}
+                    onChange={(e) => updateField('ciudad', e.target.value)}
+                  />
+                </label>
+              </div>
 
               <div className="space-y-3">
                 <div className="text-sm font-medium text-gray-700">Tipo de etiqueta</div>

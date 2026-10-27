@@ -107,14 +107,23 @@ export class OrdenPdfService {
   }
 
   private buildEtiquetaHtml(payload: any, logoBase64: string): string {
+    const numeroOrden = this.escapeHtml(payload?.numero_orden ?? '');
     const cliente = this.escapeHtml(payload?.cliente ?? '');
     const producto = this.escapeHtml(payload?.producto ?? '');
     const tamano = this.escapeHtml(payload?.tamano ?? '');
     const oc = this.escapeHtml(payload?.oc ?? '');
+    const numeroCaja = this.escapeHtml(payload?.numeroCaja ?? '');
     const cantidad = this.escapeHtml(payload?.cantidad ?? '');
+    const formato = this.escapeHtml(payload?.formato ?? '');
+    const paquete1 = this.escapeHtml(payload?.paquete1 ?? '');
+    const paquete2 = this.escapeHtml(payload?.paquete2 ?? '');
+    const unidad1 = this.escapeHtml(payload?.unidad1 ?? '');
+    const unidad2 = this.escapeHtml(payload?.unidad2 ?? '');
     const codigo = this.escapeHtml(payload?.codigo ?? '');
     const lote = this.escapeHtml(payload?.lote ?? '');
     const fecha = this.escapeHtml(payload?.fecha ?? '');
+    const lugarEntrega = this.escapeHtml(payload?.lugarEntrega ?? '');
+    const ciudad = this.escapeHtml(payload?.ciudad ?? '');
 
     const generalChecked = payload?.generalChecked === true || payload?.tipoEtiqueta === 'general';
     const miniChecked = payload?.miniChecked === true || payload?.tipoEtiqueta === 'mini';
@@ -122,10 +131,30 @@ export class OrdenPdfService {
     const totalMini = miniChecked ? Math.max(1, Number(payload?.numeroEtiquetasMini ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
 
     const logo = logoBase64 ? `<img src="${logoBase64}" alt="Mundografic" />` : '<span class="brand-fallback">MUNDOGRAFIC</span>';
+    const formatoHtml = `
+      <div class="formato-row">
+        <div class="formato-group">
+          <div class="formato-title">PAQUETE</div>
+          <div class="formato-boxes">
+            <div class="formato-box">${paquete1 || '&nbsp;'}</div>
+            <div class="formato-box">${paquete2 || '&nbsp;'}</div>
+          </div>
+        </div>
+        <div class="formato-x">x</div>
+        <div class="formato-group">
+          <div class="formato-title">UNIDAD</div>
+          <div class="formato-boxes">
+            <div class="formato-box">${unidad1 || '&nbsp;'}</div>
+            <div class="formato-box">${unidad2 || '&nbsp;'}</div>
+          </div>
+        </div>
+      </div>
+    `;
 
     const buildSingleLabel = (variant: 'general' | 'mini') => `
       <div class="label ${variant}">
         <div class="topbar">
+          <div class="orden-numero">#${numeroOrden}</div>
           <div class="cliente">${cliente}</div>
           <div class="brand">${logo}</div>
         </div>
@@ -138,6 +167,7 @@ export class OrdenPdfService {
             <div class="row1">
               <div class="key">OC:</div>
               <div class="value">${oc}</div>
+              ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
             </div>
           </div>
 
@@ -145,6 +175,7 @@ export class OrdenPdfService {
             <div class="row2">
               <div class="key">Cantidad:</div>
               <div class="value">${cantidad}${cantidad ? ' U' : ''}</div>
+              ${formatoHtml}
             </div>
           </div>
 
@@ -154,6 +185,8 @@ export class OrdenPdfService {
                 <div class="key">Código:${codigo}</div>
                 <div class="key">Lote:${lote}</div>
                 <div class="key">Fecha:${fecha}</div>
+                <div class="key">Lugar Entrega:${lugarEntrega}</div>
+                <div class="key">Ciudad:${ciudad}</div>
               </div>
             </div>
           </div>
@@ -214,8 +247,8 @@ export class OrdenPdfService {
               height: 30mm;
             }
             .topbar {
-              display: flex;
-              justify-content: space-between;
+              display: grid;
+              grid-template-columns: 1fr auto 1fr;
               align-items: center;
               border-bottom: 1px solid #2f2f2f;
               height: 11mm;
@@ -229,6 +262,13 @@ export class OrdenPdfService {
               height: 6mm;
               padding: 1mm 2mm 0.8mm;
             }
+            .orden-numero {
+              font-size: 11px;
+              font-weight: 800;
+              color: #111827;
+              justify-self: start;
+              white-space: nowrap;
+            }
             .topbar .cliente {
               color: #1f1f1f;
               font-size: 15px;
@@ -237,6 +277,8 @@ export class OrdenPdfService {
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
+              text-align: center;
+              justify-self: center;
             }
             .label.mini .topbar .cliente {
               font-size: 8px;
@@ -251,6 +293,7 @@ export class OrdenPdfService {
               font-weight: 900;
               font-size: 7px;
               flex-shrink: 0;
+              justify-self: end;
             }
             .brand img {
               width: 30mm;
@@ -322,13 +365,14 @@ export class OrdenPdfService {
               border-right: none;
             }
             .row {
-              display: grid;
-              grid-template-rows: repeat(3, 1fr); 
-              height: 100%; 
-              gap: 10px;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-start;
+              height: 100%;
+              gap: 3px;
             }
             .label.mini .row {
-              gap: 4px;
+              gap: 2px;
             }
             .key {
               font-size: 14px;
@@ -348,8 +392,86 @@ export class OrdenPdfService {
               overflow-wrap: anywhere;
               word-break: break-word;
             }
+            .numero-caja {
+              margin-top: 1mm;
+              font-size: 13px;
+              font-weight: 800;
+              text-align: center;
+              color: #111827;
+              letter-spacing: 0.03em;
+            }
+            .sub-value {
+              font-size: 11px;
+              font-weight: 700;
+              color: #1f2937;
+              margin-top: 1mm;
+              text-transform: uppercase;
+            }
+            .formato-row {
+              display: flex;
+              align-items: flex-end;
+              gap: 2mm;
+              margin-top: 1.5mm;
+              width: 100%;
+            }
+            .formato-group {
+              display: flex;
+              flex: 1;
+              flex-direction: column;
+              gap: 1mm;
+              min-width: 0;
+            }
+            .formato-title {
+              font-size: 6px;
+              font-weight: 700;
+              letter-spacing: 0.08em;
+              text-transform: uppercase;
+              color: #475569;
+              text-align: center;
+            }
+            .formato-boxes {
+              display: flex;
+              flex-direction: column;
+              gap: 1mm;
+            }
+            .formato-box {
+              min-height: 5mm;
+              min-width: 0;
+              border: 1px solid #2f2f2f;
+              background: #ffffff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 8px;
+              font-weight: 700;
+              color: #111827;
+              padding: 0.5mm 1mm;
+              text-align: center;
+            }
+            .formato-x {
+              font-size: 12px;
+              font-weight: 800;
+              color: #111827;
+              text-align: center;
+              line-height: 1;
+              padding-bottom: 3mm;
+            }
             .label.mini .value {
               font-size: 8px;
+            }
+            .label.mini .sub-value {
+              font-size: 7px;
+            }
+            .label.mini .formato-box {
+              min-height: 4mm;
+              font-size: 6px;
+            }
+            .label.mini .formato-title {
+              font-size: 5px;
+            }
+            .label.mini .formato-x {
+              font-size: 10px;
+              padding-bottom: 2.2mm;
             }
             .right-stack {
               display: flex;
