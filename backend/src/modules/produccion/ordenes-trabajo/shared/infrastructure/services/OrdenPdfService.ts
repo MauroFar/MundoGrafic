@@ -455,10 +455,10 @@ export class OrdenPdfService {
             }
             .label.general .title {
               font-size: 11px;
-              font-weight: 700;
+              font-weight: 800;
               text-transform: uppercase;
               letter-spacing: 0.04em;
-              color: #2d2d2d;
+              color: #111827;
             }
             .label.general .value {
               font-size: 14px;
@@ -469,7 +469,9 @@ export class OrdenPdfService {
             }
             .label.mini .title {
               font-size: 7px;
+              font-weight: 800;
               letter-spacing: 0.02em;
+              color: #111827;
             }
             .label.mini .value {
               font-size: 8px;
