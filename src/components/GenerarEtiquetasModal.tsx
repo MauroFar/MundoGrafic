@@ -410,11 +410,6 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
           {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
-          {renderInput('Ciudad', form.ciudad, (value) => updateField('ciudad', value))}
-        </div>
-
         {miniChecked && (
           <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
             <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>

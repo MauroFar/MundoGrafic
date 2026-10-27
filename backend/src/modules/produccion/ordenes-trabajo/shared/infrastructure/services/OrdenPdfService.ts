@@ -161,23 +161,52 @@ export class OrdenPdfService {
       `;
     };
 
+    const renderField = (title: string, value: string) => {
+      if (!value) return '';
+      return `<div class="field"><span class="title">${title}</span><span class="value">${value}</span></div>`;
+    };
+
     const buildSingleLabel = (variant: 'general' | 'mini') => {
       const ocFields = variant === 'mini'
         ? [
-            miniCore ? `<div class="key">Core:${miniCore}</div>` : '',
-            miniPesoNeto ? `<div class="key">Peso Neto:${miniPesoNeto}</div>` : '',
-            miniPesoBruto ? `<div class="key">Peso Bruto:${miniPesoBruto}</div>` : '',
+            miniCore ? renderField('Core:', miniCore) : '',
+            miniPesoNeto ? renderField('Peso Neto:', miniPesoNeto) : '',
+            miniPesoBruto ? renderField('Peso Bruto:', miniPesoBruto) : '',
           ].filter(Boolean).join('')
         : [
-            core ? `<div class="key">Core:${core}</div>` : '',
-            pesoNeto ? `<div class="key">Peso Neto:${pesoNeto}</div>` : '',
-            pesoBruto ? `<div class="key">Peso Bruto:${pesoBruto}</div>` : '',
+            core ? renderField('Core:', core) : '',
+            pesoNeto ? renderField('Peso Neto:', pesoNeto) : '',
+            pesoBruto ? renderField('Peso Bruto:', pesoBruto) : '',
           ].filter(Boolean).join('');
+
+      const rightColumnContent = variant === 'mini'
+        ? `
+            <div class="right-stack">
+              <div class="row">
+                ${renderField('Código:', codigo)}
+                ${renderField('Lote:', lote)}
+                ${renderField('Fecha:', fecha)}
+              </div>
+            </div>
+          `
+        : `
+            <div class="right-stack">
+              <div class="row">
+                ${renderField('Código:', codigo)}
+                ${renderField('Lote:', lote)}
+                ${renderField('Fecha:', fecha)}
+                ${renderField('Lugar Entrega:', lugarEntrega)}
+                ${renderField('Ciudad:', ciudad)}
+              </div>
+            </div>
+          `;
+
+      const cantidadValue = cantidad ? `${cantidad} U` : '';
 
       return `
       <div class="label ${variant}">
         <div class="topbar">
-          <div class="orden-numero">#${numeroOrden}</div>
+          <div class="orden-numero">${numeroOrden}</div>
           <div class="cliente">${cliente}</div>
           <div class="brand">${logo}</div>
         </div>
@@ -188,8 +217,7 @@ export class OrdenPdfService {
         <div class="meta">
           <div class="column">
             <div class="row1">
-              <div class="key">OC:</div>
-              <div class="value">${oc}</div>
+              ${renderField('OC:', oc)}
               ${ocFields}
             </div>
             ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
@@ -197,22 +225,13 @@ export class OrdenPdfService {
 
           <div class="column">
             <div class="row2">
-              <div class="key">Cantidad:</div>
-              <div class="value">${cantidad}${cantidad ? ' U' : ''}</div>
+              ${renderField('Cantidad:', cantidadValue)}
               ${buildFormatoHtml(variant)}
             </div>
           </div>
 
           <div class="column">
-            <div class="right-stack">
-              <div class="row">
-                <div class="key">Código:${codigo}</div>
-                <div class="key">Lote:${lote}</div>
-                <div class="key">Fecha:${fecha}</div>
-                <div class="key">Lugar Entrega:${lugarEntrega}</div>
-                <div class="key">Ciudad:${ciudad}</div>
-              </div>
-            </div>
+            ${rightColumnContent}
           </div>
         </div>
       </div>
@@ -403,20 +422,26 @@ export class OrdenPdfService {
             .label.mini .row2 {
               gap: 2px;
             }
-            .key {
-              font-size: 14px;
+            .field {
+              display: flex;
+              align-items: baseline;
+              gap: 0.4em;
+              flex-wrap: wrap;
+            }
+            .title {
+              font-size: 12px;
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 0.04em;
               color: #2d2d2d;
             }
-            .label.mini .key {
+            .label.mini .title {
               font-size: 7px;
               letter-spacing: 0.02em;
             }
             .value {
               font-size: 15px;
-              font-weight: 600;
+              font-weight: 400;
               color: #161616;
               overflow-wrap: anywhere;
               word-break: break-word;
