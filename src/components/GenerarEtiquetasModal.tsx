@@ -19,8 +19,10 @@ interface EtiquetaFormData {
   miniCantidad: string;
   paquete1: string;
   paquete2: string;
+  paquete3: string;
   unidad1: string;
   unidad2: string;
+  unidad3: string;
   codigo: string;
   lote: string;
   fecha: string;
@@ -77,8 +79,10 @@ const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): Etiqu
     miniCantidad: '',
     paquete1: '',
     paquete2: '',
+    paquete3: '',
     unidad1: '',
     unidad2: '',
+    unidad3: '',
     codigo: codigoCliente,
     lote: loteProduccion,
     fecha: getLocalDateValue(),
@@ -96,8 +100,8 @@ const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): Etiqu
 const cleanText = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 const buildFormatoValue = (form: EtiquetaFormData) => {
-  const paquete = [form.paquete1, form.paquete2].join('').trim();
-  const unidad = [form.unidad1, form.unidad2].join('').trim();
+const paquete = [form.paquete1, form.paquete2, form.paquete3].filter(Boolean).join('').trim();
+    const unidad = [form.unidad1, form.unidad2, form.unidad3].filter(Boolean).join('').trim();
 
   if (!paquete && !unidad) return '';
   if (!paquete) return unidad;
@@ -190,8 +194,10 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         formato: buildFormatoValue(form),
         paquete1: form.paquete1,
         paquete2: form.paquete2,
+        paquete3: form.paquete3,
         unidad1: form.unidad1,
         unidad2: form.unidad2,
+        unidad3: form.unidad3,
         codigo: form.codigo,
         lote: form.lote,
         fecha: form.fecha,
@@ -302,18 +308,15 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Paquete</div>
               <div className="flex flex-col gap-1.5">
-                <input
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.paquete1}
-                  onChange={(e) => updateField('paquete1', e.target.value)}
-                  placeholder="5"
-                />
-                <input
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.paquete2}
-                  onChange={(e) => updateField('paquete2', e.target.value)}
-                  placeholder="R"
-                />
+                {([1, 2, 3] as const).map((index) => (
+                  <input
+                    key={`paquete-${index}`}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    value={form[`paquete${index}` as keyof Pick<EtiquetaFormData, 'paquete1' | 'paquete2' | 'paquete3'>]}
+                    onChange={(e) => updateField(`paquete${index}` as keyof EtiquetaFormData, e.target.value)}
+                    placeholder={index === 1 ? '5' : index === 2 ? 'R' : 'P'}
+                  />
+                ))}
               </div>
             </div>
 
@@ -322,18 +325,15 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
             <div className="min-w-0 flex-1">
               <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Unidad</div>
               <div className="flex flex-col gap-1.5">
-                <input
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.unidad1}
-                  onChange={(e) => updateField('unidad1', e.target.value)}
-                  placeholder="1000"
-                />
-                <input
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.unidad2}
-                  onChange={(e) => updateField('unidad2', e.target.value)}
-                  placeholder=""
-                />
+                {([1, 2, 3] as const).map((index) => (
+                  <input
+                    key={`unidad-${index}`}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    value={form[`unidad${index}` as keyof Pick<EtiquetaFormData, 'unidad1' | 'unidad2' | 'unidad3'>]}
+                    onChange={(e) => updateField(`unidad${index}` as keyof EtiquetaFormData, e.target.value)}
+                    placeholder={index === 1 ? '1000' : index === 2 ? 'cm' : 'm'}
+                  />
+                ))}
               </div>
             </div>
           </div>

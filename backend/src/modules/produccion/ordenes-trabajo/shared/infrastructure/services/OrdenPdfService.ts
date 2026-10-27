@@ -123,8 +123,10 @@ export class OrdenPdfService {
     const formato = this.escapeHtml(payload?.formato ?? '');
     const paquete1 = this.escapeHtml(payload?.paquete1 ?? '');
     const paquete2 = this.escapeHtml(payload?.paquete2 ?? '');
+    const paquete3 = this.escapeHtml(payload?.paquete3 ?? '');
     const unidad1 = this.escapeHtml(payload?.unidad1 ?? '');
     const unidad2 = this.escapeHtml(payload?.unidad2 ?? '');
+    const unidad3 = this.escapeHtml(payload?.unidad3 ?? '');
     const codigo = this.escapeHtml(payload?.codigo ?? '');
     const lote = this.escapeHtml(payload?.lote ?? '');
     const fecha = this.escapeHtml(payload?.fecha ?? '');
@@ -140,23 +142,32 @@ export class OrdenPdfService {
     const buildFormatoHtml = (variant: 'general' | 'mini') => {
       if (variant !== 'general') return '';
 
+      const paqueteValues = [paquete1, paquete2, paquete3].filter((v) => v && String(v).trim() !== '');
+      const unidadValues = [unidad1, unidad2, unidad3].filter((v) => v && String(v).trim() !== '');
+      if (!paqueteValues.length && !unidadValues.length) return '';
+
+      const renderBoxes = (values: string[]) => values.length
+        ? values.map((value) => `<div class="formato-box">${value}</div>`).join('')
+        : '';
+
+      const paqueteHtml = renderBoxes(paqueteValues);
+      const unidadHtml = renderBoxes(unidadValues);
+
       return `
         <div class="formato-row">
-          <div class="formato-group">
-            <div class="formato-title">PAQUETE</div>
-            <div class="formato-boxes">
-              <div class="formato-box">${paquete1 || '&nbsp;'}</div>
-              <div class="formato-box">${paquete2 || '&nbsp;'}</div>
+          ${paqueteHtml ? `
+            <div class="formato-group">
+              <div class="formato-title">PAQUETE</div>
+              <div class="formato-boxes">${paqueteHtml}</div>
             </div>
-          </div>
-          <div class="formato-x">x</div>
-          <div class="formato-group">
-            <div class="formato-title">UNIDAD</div>
-            <div class="formato-boxes">
-              <div class="formato-box">${unidad1 || '&nbsp;'}</div>
-              <div class="formato-box">${unidad2 || '&nbsp;'}</div>
+          ` : ''}
+          ${paqueteHtml && unidadHtml ? '<div class="formato-x">x</div>' : ''}
+          ${unidadHtml ? `
+            <div class="formato-group">
+              <div class="formato-title">UNIDAD</div>
+              <div class="formato-boxes">${unidadHtml}</div>
             </div>
-          </div>
+          ` : ''}
         </div>
       `;
     };
@@ -428,19 +439,26 @@ export class OrdenPdfService {
               gap: 0.4em;
               flex-wrap: wrap;
             }
-            .title {
-              font-size: 12px;
+            .label.general .title {
+              font-size: 11px;
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 0.04em;
               color: #2d2d2d;
             }
+            .label.general .value {
+              font-size: 14px;
+              font-weight: 400;
+              color: #161616;
+              overflow-wrap: anywhere;
+              word-break: break-word;
+            }
             .label.mini .title {
               font-size: 7px;
               letter-spacing: 0.02em;
             }
-            .value {
-              font-size: 15px;
+            .label.mini .value {
+              font-size: 8px;
               font-weight: 400;
               color: #161616;
               overflow-wrap: anywhere;
