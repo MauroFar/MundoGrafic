@@ -13,10 +13,10 @@ interface OrdenEtiqueta {
 interface EtiquetaFormData {
   cliente: string;
   producto: string;
-  tamano: string;
   oc: string;
   numeroCaja: string;
   cantidad: string;
+  miniCantidad: string;
   paquete1: string;
   paquete2: string;
   unidad1: string;
@@ -67,15 +67,14 @@ const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): Etiqu
   const codigoCliente = producto?.cod_cliente || producto?.codigo_cliente || producto?.codigo || producto?.codigo_producto || '';
   const loteProduccion = producto?.lote_produccion || producto?.lote || (orden as any)?.detalle?.lote_produccion || '';
   const ordenCompra = (orden as any)?.orden_compra || '';
-  const tamanoInicial = producto?.tamano || producto?.medidas || '';
 
   return {
     cliente: orden?.nombre_cliente || '',
     producto: productName,
-    tamano: tamanoInicial,
     oc: ordenCompra,
     numeroCaja: '',
     cantidad: String(cantidad ?? ''),
+    miniCantidad: '',
     paquete1: '',
     paquete2: '',
     unidad1: '',
@@ -132,7 +131,6 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   const preview = useMemo(() => ({
     cliente: cleanText(form.cliente || ''),
     producto: cleanText(form.producto || ''),
-    tamano: cleanText(form.tamano || ''),
     oc: cleanText(form.oc || ''),
     numeroCaja: cleanText(form.numeroCaja || ''),
     cantidad: cleanText(form.cantidad || ''),
@@ -185,11 +183,15 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         numero_orden: orden?.numero_orden || '',
         cliente: form.cliente,
         producto: form.producto,
-        tamano: form.tamano,
         oc: form.oc,
         numeroCaja: form.numeroCaja,
         cantidad: form.cantidad,
+        miniCantidad: form.miniCantidad,
         formato: buildFormatoValue(form),
+        paquete1: form.paquete1,
+        paquete2: form.paquete2,
+        unidad1: form.unidad1,
+        unidad2: form.unidad2,
         codigo: form.codigo,
         lote: form.lote,
         fecha: form.fecha,
@@ -244,13 +246,14 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     }
   };
 
-const renderInput = (
+  const renderInput = (
     label: string,
     value: string,
     onChange: (value: string) => void,
     placeholder?: string,
     type: 'text' | 'date' | 'number' = 'text',
     className = 'mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200',
+    readOnly = false,
   ) => (
     <label className="block text-sm font-medium text-gray-700">
       {label}
@@ -260,6 +263,7 @@ const renderInput = (
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
+        readOnly={readOnly}
       />
     </label>
   );
@@ -289,8 +293,7 @@ const renderInput = (
         {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderInput('Tamaño', form.tamano, (value) => updateField('tamano', value))}
-          {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value))}
+          {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value), undefined, 'text')}
         </div>
 
         <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
@@ -388,12 +391,12 @@ const renderInput = (
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
-          {renderInput('Tamaño', form.tamano, (value) => updateField('tamano', value))}
+          {renderInput('Cantidad individual', form.miniCantidad, (value) => updateField('miniCantidad', value), 'Ej. 25', 'text')}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value))}
           {renderInput('Código', form.codigo, (value) => updateField('codigo', value))}
+          {renderInput('Lote', form.lote, (value) => updateField('lote', value))}
         </div>
 
         <div className="space-y-3 rounded-md border border-gray-300 bg-gray-50 p-3">
@@ -404,7 +407,6 @@ const renderInput = (
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderInput('Lote', form.lote, (value) => updateField('lote', value))}
           {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
         </div>
 
