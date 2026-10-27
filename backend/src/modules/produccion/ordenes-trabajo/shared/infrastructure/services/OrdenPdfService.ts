@@ -113,6 +113,12 @@ export class OrdenPdfService {
     const tamano = this.escapeHtml(payload?.tamano ?? '');
     const oc = this.escapeHtml(payload?.oc ?? '');
     const numeroCaja = this.escapeHtml(payload?.numeroCaja ?? '');
+    const core = this.escapeHtml(payload?.core ?? '');
+    const pesoNeto = this.escapeHtml(payload?.pesoNeto ?? '');
+    const pesoBruto = this.escapeHtml(payload?.pesoBruto ?? '');
+    const miniCore = this.escapeHtml(payload?.miniCore ?? '');
+    const miniPesoNeto = this.escapeHtml(payload?.miniPesoNeto ?? '');
+    const miniPesoBruto = this.escapeHtml(payload?.miniPesoBruto ?? '');
     const cantidad = this.escapeHtml(payload?.cantidad ?? '');
     const formato = this.escapeHtml(payload?.formato ?? '');
     const paquete1 = this.escapeHtml(payload?.paquete1 ?? '');
@@ -151,7 +157,20 @@ export class OrdenPdfService {
       </div>
     `;
 
-    const buildSingleLabel = (variant: 'general' | 'mini') => `
+    const buildSingleLabel = (variant: 'general' | 'mini') => {
+      const ocFields = variant === 'mini'
+        ? [
+            miniCore ? `<div class="key">Core:${miniCore}</div>` : '',
+            miniPesoNeto ? `<div class="key">Peso Neto:${miniPesoNeto}</div>` : '',
+            miniPesoBruto ? `<div class="key">Peso Bruto:${miniPesoBruto}</div>` : '',
+          ].filter(Boolean).join('')
+        : [
+            core ? `<div class="key">Core:${core}</div>` : '',
+            pesoNeto ? `<div class="key">Peso Neto:${pesoNeto}</div>` : '',
+            pesoBruto ? `<div class="key">Peso Bruto:${pesoBruto}</div>` : '',
+          ].filter(Boolean).join('');
+
+      return `
       <div class="label ${variant}">
         <div class="topbar">
           <div class="orden-numero">#${numeroOrden}</div>
@@ -168,6 +187,7 @@ export class OrdenPdfService {
               <div class="key">OC:</div>
               <div class="value">${oc}</div>
               ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
+              ${ocFields}
             </div>
           </div>
 
@@ -193,6 +213,7 @@ export class OrdenPdfService {
         </div>
       </div>
     `;
+    };
 
     const generalEtiquetas = Array.from({ length: totalGeneral }, () => buildSingleLabel('general')).join('');
     const miniEtiquetas = Array.from({ length: totalMini }, () => buildSingleLabel('mini')).join('');

@@ -26,6 +26,12 @@ interface EtiquetaFormData {
   fecha: string;
   lugarEntrega: string;
   ciudad: string;
+  core: string;
+  pesoNeto: string;
+  pesoBruto: string;
+  miniCore: string;
+  miniPesoNeto: string;
+  miniPesoBruto: string;
 }
 
 interface GenerarEtiquetasModalProps {
@@ -79,6 +85,12 @@ const defaultEtiquetaForm = (orden: OrdenEtiqueta | null, producto?: any): Etiqu
     fecha: getLocalDateValue(),
     lugarEntrega: '',
     ciudad: '',
+    core: '',
+    pesoNeto: '',
+    pesoBruto: '',
+    miniCore: '',
+    miniPesoNeto: '',
+    miniPesoBruto: '',
   };
 };
 
@@ -130,6 +142,12 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     fecha: cleanText(form.fecha || formatDate(form.fecha || '')),
     lugarEntrega: cleanText(form.lugarEntrega || ''),
     ciudad: cleanText(form.ciudad || ''),
+    core: cleanText(form.core || ''),
+    pesoNeto: cleanText(form.pesoNeto || ''),
+    pesoBruto: cleanText(form.pesoBruto || ''),
+    miniCore: cleanText(form.miniCore || ''),
+    miniPesoNeto: cleanText(form.miniPesoNeto || ''),
+    miniPesoBruto: cleanText(form.miniPesoBruto || ''),
   }), [form]);
 
   const updateField = (field: keyof EtiquetaFormData, value: string) => {
@@ -177,6 +195,12 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         fecha: form.fecha,
         lugarEntrega: form.lugarEntrega,
         ciudad: form.ciudad,
+        core: form.core,
+        pesoNeto: form.pesoNeto,
+        pesoBruto: form.pesoBruto,
+        miniCore: form.miniCore,
+        miniPesoNeto: form.miniPesoNeto,
+        miniPesoBruto: form.miniPesoBruto,
         generalChecked,
         miniChecked,
         numeroEtiquetasGeneral: getNumeroEtiquetasGeneralValido(),
@@ -220,66 +244,188 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     }
   };
 
-  const previewEtiqueta = (
-    <div className="w-full max-w-[340px] border border-black bg-white p-2 shadow-md print:shadow-none mx-auto">
-      <div className="border border-gray-300 p-2 text-center">
-<div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wide border-b border-dashed border-gray-300 pb-1">
-          <span className="font-black text-left">#{orden?.numero_orden || ''}</span>
-          <span className="text-center flex-1 truncate px-1">{preview.cliente}</span>
-          <span className="font-black text-right">MUNDOGRAFIC</span>
+const renderInput = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    placeholder?: string,
+    type: 'text' | 'date' | 'number' = 'text',
+    className = 'mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200',
+  ) => (
+    <label className="block text-sm font-medium text-gray-700">
+      {label}
+      <input
+        type={type}
+        className={className}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+
+  const renderGeneralPanel = () => (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-lg font-bold text-gray-800">Etiqueta General</h3>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={generalChecked}
+            onChange={(e) => setGeneralChecked(e.target.checked)}
+            className="h-4 w-4 accent-indigo-600"
+          />
+          <span>Mostrar</span>
+        </label>
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Cliente', form.cliente, (value) => updateField('cliente', value))}
+          {renderInput('O.C.', form.oc, (value) => updateField('oc', value))}
         </div>
 
-        <div className="mt-2 text-center text-[16px] font-black uppercase leading-tight">
-          {preview.producto}
+        {renderInput('Número de caja', form.numeroCaja, (value) => updateField('numeroCaja', value))}
+        {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Tamaño', form.tamano, (value) => updateField('tamano', value))}
+          {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value))}
         </div>
 
-        {preview.tamano && (
-          <div className="mt-2 text-center text-[13px] font-bold uppercase">
-            {preview.tamano}
+        <div className="rounded-md border border-gray-300 bg-gray-50 p-3">
+          <div className="text-sm font-medium text-gray-700">Formato de paquete</div>
+          <div className="mt-3 flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Paquete</div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  value={form.paquete1}
+                  onChange={(e) => updateField('paquete1', e.target.value)}
+                  placeholder="5"
+                />
+                <input
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  value={form.paquete2}
+                  onChange={(e) => updateField('paquete2', e.target.value)}
+                  placeholder="R"
+                />
+              </div>
+            </div>
+
+            <div className="pb-3 text-xl font-black leading-none text-gray-600">x</div>
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Unidad</div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  value={form.unidad1}
+                  onChange={(e) => updateField('unidad1', e.target.value)}
+                  placeholder="1000"
+                />
+                <input
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  value={form.unidad2}
+                  onChange={(e) => updateField('unidad2', e.target.value)}
+                  placeholder=""
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Código', form.codigo, (value) => updateField('codigo', value))}
+          {renderInput('Lote', form.lote, (value) => updateField('lote', value))}
+        </div>
+
+        {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
+          {renderInput('Ciudad', form.ciudad, (value) => updateField('ciudad', value))}
+        </div>
+
+        {generalChecked && (
+          <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
+            <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              value={numeroEtiquetasGeneral}
+              onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
+            />
           </div>
         )}
+      </div>
+    </div>
+  );
 
-        <div className="mt-3 space-y-2 text-left text-[12px] font-semibold">
-          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-            <span>OC:</span>
-            <span>{preview.oc}</span>
-          </div>
-          {preview.numeroCaja && (
-            <div className="text-center text-[11px] font-bold border-b border-dashed border-gray-200 pb-1">
-              {preview.numeroCaja}
-            </div>
-          )}
-          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-            <span>CANTIDAD:</span>
-            <span>{preview.cantidad}</span>
-          </div>
-          {preview.formato && (
-            <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-              <span>FORMATO:</span>
-              <span>{preview.formato}</span>
-            </div>
-          )}
-          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-            <span>CÓDIGO:</span>
-            <span>{preview.codigo}</span>
-          </div>
-          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-            <span>LOTE:</span>
-            <span>{preview.lote}</span>
-          </div>
-          <div className="flex justify-between gap-4 pb-1">
-            <span>FECHA:</span>
-            <span>{preview.fecha}</span>
-          </div>
-          <div className="flex justify-between gap-4 border-b border-dashed border-gray-200 pb-1">
-            <span>LUGAR ENTREGA:</span>
-            <span>{preview.lugarEntrega}</span>
-          </div>
-          <div className="flex justify-between gap-4 pb-1">
-            <span>CIUDAD:</span>
-            <span>{preview.ciudad}</span>
-          </div>
+  const renderMiniPanel = () => (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-lg font-bold text-gray-800">Etiqueta individual 5,5 x 3cm</h3>
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={miniChecked}
+            onChange={(e) => setMiniChecked(e.target.checked)}
+            className="h-4 w-4 accent-indigo-600"
+          />
+          <span>Mostrar</span>
+        </label>
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Cliente', form.cliente, (value) => updateField('cliente', value))}
+          {renderInput('O.C.', form.oc, (value) => updateField('oc', value))}
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
+          {renderInput('Tamaño', form.tamano, (value) => updateField('tamano', value))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Cantidad', form.cantidad, (value) => updateField('cantidad', value))}
+          {renderInput('Código', form.codigo, (value) => updateField('codigo', value))}
+        </div>
+
+        <div className="space-y-3 rounded-md border border-gray-300 bg-gray-50 p-3">
+          <div className="text-sm font-medium text-gray-700">Datos de etiqueta</div>
+          {renderInput('Core', form.miniCore, (value) => updateField('miniCore', value))}
+          {renderInput('Peso Neto', form.miniPesoNeto, (value) => updateField('miniPesoNeto', value))}
+          {renderInput('Peso Bruto', form.miniPesoBruto, (value) => updateField('miniPesoBruto', value))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Lote', form.lote, (value) => updateField('lote', value))}
+          {renderInput('Fecha', form.fecha, (value) => updateField('fecha', value), undefined, 'date')}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
+          {renderInput('Ciudad', form.ciudad, (value) => updateField('ciudad', value))}
+        </div>
+
+        {miniChecked && (
+          <div className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
+            <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              value={numeroEtiquetasMini}
+              onChange={(e) => setNumeroEtiquetasMini(e.target.value)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -311,218 +457,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
           <div className="p-6 border-r border-gray-200 bg-gray-50">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Cliente
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.cliente}
-                    onChange={(e) => updateField('cliente', e.target.value)}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  O.C.
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.oc}
-                    onChange={(e) => updateField('oc', e.target.value)}
-                  />
-                </label>
-              </div>
-
-              <label className="block text-sm font-medium text-gray-700">
-                Número de caja
-                <input
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.numeroCaja}
-                  onChange={(e) => updateField('numeroCaja', e.target.value)}
-                />
-              </label>
-
-              <label className="block text-sm font-medium text-gray-700">
-                Producto / descripción
-                <input
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.producto}
-                  onChange={(e) => updateField('producto', e.target.value)}
-                />
-              </label>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Tamaño
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.tamano}
-                    onChange={(e) => updateField('tamano', e.target.value)}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  Cantidad
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.cantidad}
-                    onChange={(e) => updateField('cantidad', e.target.value)}
-                  />
-                </label>
-              </div>
-
-              <div className="rounded-md border border-gray-300 bg-white p-3">
-                <div className="text-sm font-medium text-gray-700">Formato de paquete</div>
-                <div className="mt-3 flex items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Paquete</div>
-                    <div className="flex flex-col gap-1.5">
-                      <input
-                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={form.paquete1}
-                        onChange={(e) => updateField('paquete1', e.target.value)}
-                        placeholder="5"
-                      />
-                      <input
-                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={form.paquete2}
-                        onChange={(e) => updateField('paquete2', e.target.value)}
-                        placeholder="R"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pb-3 text-xl font-black leading-none text-gray-600">x</div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">Unidad</div>
-                    <div className="flex flex-col gap-1.5">
-                      <input
-                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={form.unidad1}
-                        onChange={(e) => updateField('unidad1', e.target.value)}
-                        placeholder="1000"
-                      />
-                      <input
-                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-center text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={form.unidad2}
-                        onChange={(e) => updateField('unidad2', e.target.value)}
-                        placeholder=""
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Código
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.codigo}
-                    onChange={(e) => updateField('codigo', e.target.value)}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  Lote
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.lote}
-                    onChange={(e) => updateField('lote', e.target.value)}
-                  />
-                </label>
-              </div>
-
-              <label className="block text-sm font-medium text-gray-700">
-                Fecha
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  value={form.fecha || getLocalDateValue()}
-                  onChange={(e) => updateField('fecha', e.target.value)}
-                />
-              </label>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Lugar Entrega
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.lugarEntrega}
-                    onChange={(e) => updateField('lugarEntrega', e.target.value)}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  Ciudad
-                  <input
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    value={form.ciudad}
-                    onChange={(e) => updateField('ciudad', e.target.value)}
-                  />
-                </label>
-              </div>
-
-              <div className="space-y-3">
-                <div className="text-sm font-medium text-gray-700">Tipo de etiqueta</div>
-
-                <div className="rounded-md border border-gray-300 bg-white p-3">
-                  <label className="flex items-center justify-between gap-3 text-sm text-gray-700">
-                    <span className="inline-flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={generalChecked}
-                        onChange={(e) => setGeneralChecked(e.target.checked)}
-                        className="h-4 w-4 accent-indigo-600"
-                      />
-                      <span>Etiqueta general 10 x 5,5 cm</span>
-                    </span>
-                  </label>
-
-                  {generalChecked && (
-                    <div className="mt-2">
-                      <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={numeroEtiquetasGeneral}
-                        onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-md border border-gray-300 bg-white p-3">
-                  <label className="flex items-center justify-between gap-3 text-sm text-gray-700">
-                    <span className="inline-flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={miniChecked}
-                        onChange={(e) => setMiniChecked(e.target.checked)}
-                        className="h-4 w-4 accent-indigo-600"
-                      />
-                      <span>Etiquetas 5,5 x 3 cm</span>
-                    </span>
-                  </label>
-
-                  {miniChecked && (
-                    <div className="mt-2">
-                      <label className="block text-xs font-medium text-gray-600">Número de etiquetas</label>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                        value={numeroEtiquetasMini}
-                        onChange={(e) => setNumeroEtiquetasMini(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            {renderGeneralPanel()}
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -545,8 +480,8 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
             </div>
           </div>
 
-          <div className="flex items-center justify-center bg-white p-6">
-            {previewEtiqueta}
+          <div className="bg-white p-6">
+            {renderMiniPanel()}
           </div>
         </div>
       </div>
