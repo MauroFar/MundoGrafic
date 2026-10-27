@@ -337,18 +337,21 @@ export class OrdenPdfService {
             }
             .topbar .cliente {
               color: #1f1f1f;
-              font-size: 15px;
+              font-size: clamp(6px, 1.7vw, 15px);
               font-weight: 700;
               max-width: 52mm;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
+              white-space: normal;
+              overflow-wrap: anywhere;
+              line-height: 1.1;
               text-align: center;
               justify-self: center;
             }
             .label.mini .topbar .cliente {
-              font-size: 8px;
+              font-size: clamp(5px, 2.3vw, 8px);
               max-width: 24mm;
+              white-space: normal;
+              overflow-wrap: anywhere;
+              line-height: 1.15;
             }
             .brand {
               display: flex;
