@@ -136,6 +136,9 @@ export class OrdenPdfService {
 
     const generalChecked = payload?.generalChecked === true || payload?.tipoEtiqueta === 'general';
     const miniChecked = payload?.miniChecked === true || payload?.tipoEtiqueta === 'mini';
+    const vincularNumeroCajaEtiquetas = payload?.vincularNumeroCajaEtiquetas === true;
+    const numeroCajaValor = Number(payload?.numeroCaja ?? '');
+    const numeroCajaEnteroValido = Number.isInteger(numeroCajaValor) && numeroCajaValor > 0;
     const totalGeneral = generalChecked ? Math.max(1, Number(payload?.numeroEtiquetasGeneral ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
     const totalMini = miniChecked ? Math.max(1, Number(payload?.numeroEtiquetasMini ?? payload?.numeroEtiquetas ?? payload?.cantidadEtiquetas ?? 1) || 1) : 0;
 
@@ -189,7 +192,7 @@ export class OrdenPdfService {
       `;
     };
 
-    const buildSingleLabel = (variant: 'general' | 'mini') => {
+    const buildSingleLabel = (variant: 'general' | 'mini', index = 0) => {
       const ocFields = variant === 'mini'
         ? [
             miniCore ? renderField('Core:', miniCore) : '',
@@ -225,6 +228,9 @@ export class OrdenPdfService {
           `;
 
       const cantidadValue = variant === 'mini' ? (miniCantidad || cantidad ? `${miniCantidad || cantidad} U` : '') : (cantidad ? `${cantidad} U` : '');
+      const numeroCajaFinal = variant === 'general' && vincularNumeroCajaEtiquetas && numeroCajaEnteroValido
+        ? `${index + 1}/${totalGeneral}`
+        : numeroCaja;
 
       return `
       <div class="label ${variant}">
@@ -243,7 +249,7 @@ export class OrdenPdfService {
               ${renderField('OC:', oc)}
               ${ocFields}
             </div>
-            ${numeroCaja ? `<div class="numero-caja">${numeroCaja}</div>` : ''}
+            ${numeroCajaFinal ? `<div class="numero-caja">${numeroCajaFinal}</div>` : ''}
           </div>
 
           <div class="column">
@@ -261,8 +267,8 @@ export class OrdenPdfService {
     `;
     };
 
-    const generalEtiquetas = Array.from({ length: totalGeneral }, () => buildSingleLabel('general')).join('');
-    const miniEtiquetas = Array.from({ length: totalMini }, () => buildSingleLabel('mini')).join('');
+    const generalEtiquetas = Array.from({ length: totalGeneral }, (_, index) => buildSingleLabel('general', index)).join('');
+    const miniEtiquetas = Array.from({ length: totalMini }, (_, index) => buildSingleLabel('mini', index)).join('');
 
     return `<!DOCTYPE html>
       <html lang="es">
@@ -299,7 +305,7 @@ export class OrdenPdfService {
               background: #f3f3f3;
             }
             .label {
-              width: 100mm;
+              width: 95mm;
               height: 65mm;
               background: #ffffff;
               border: 1.2px solid #2f2f2f;

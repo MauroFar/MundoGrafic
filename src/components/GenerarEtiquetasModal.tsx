@@ -115,6 +115,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
   const [miniChecked, setMiniChecked] = useState<boolean>(true);
   const [numeroEtiquetasGeneral, setNumeroEtiquetasGeneral] = useState<string>('1');
   const [numeroEtiquetasMini, setNumeroEtiquetasMini] = useState<string>('1');
+  const [vincularNumeroCajaEtiquetas, setVincularNumeroCajaEtiquetas] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -126,6 +127,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
       setMiniChecked(true);
       setNumeroEtiquetasGeneral('1');
       setNumeroEtiquetasMini('1');
+      setVincularNumeroCajaEtiquetas(false);
       setShowPreview(false);
       setPreviewUrl(null);
       setPreviewLoading(false);
@@ -170,6 +172,21 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
     return Math.max(1, Math.floor(parsed));
   };
 
+  const handleToggleVincularCajaEtiquetas = (checked: boolean) => {
+    if (!checked) {
+      setVincularNumeroCajaEtiquetas(false);
+      return;
+    }
+
+    const cajaValue = Number(form.numeroCaja);
+    if (!Number.isInteger(cajaValue) || cajaValue <= 0) {
+      window.alert('El campo "Número de caja" debe ser un valor entero para vincular cajas y etiquetas.');
+      return;
+    }
+
+    setVincularNumeroCajaEtiquetas(true);
+  };
+
   const buildEtiquetaPdfDataUrl = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -211,6 +228,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         miniPesoBruto: form.miniPesoBruto,
         generalChecked,
         miniChecked,
+        vincularNumeroCajaEtiquetas,
         numeroEtiquetasGeneral: getNumeroEtiquetasGeneralValido(),
         numeroEtiquetasMini: getNumeroEtiquetasMiniValido(),
       }),
@@ -295,25 +313,6 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
           {renderInput('O.C.', form.oc, (value) => updateField('oc', value))}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {renderInput('Número de caja', form.numeroCaja, (value) => updateField('numeroCaja', value))}
-          {generalChecked ? (
-            <label className="block text-sm font-medium text-gray-700">
-              Número de etiquetas
-              <input
-                type="number"
-                min={1}
-                step={1}
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                value={numeroEtiquetasGeneral}
-                onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
-              />
-            </label>
-          ) : (
-            <div className="hidden sm:block" />
-          )}
-        </div>
-
         {renderInput('Producto / descripción', form.producto, (value) => updateField('producto', value))}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -368,6 +367,35 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         </div>
 
         {renderInput('Lugar Entrega', form.lugarEntrega, (value) => updateField('lugarEntrega', value))}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {renderInput('Número de caja', form.numeroCaja, (value) => updateField('numeroCaja', value), undefined, 'number')}
+          {generalChecked ? (
+            <label className="block text-sm font-medium text-gray-700">
+              Número de etiquetas
+              <input
+                type="number"
+                min={1}
+                step={1}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                value={numeroEtiquetasGeneral}
+                onChange={(e) => setNumeroEtiquetasGeneral(e.target.value)}
+              />
+            </label>
+          ) : (
+            <div className="hidden sm:block" />
+          )}
+        </div>
+
+        <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={vincularNumeroCajaEtiquetas}
+            onChange={(e) => handleToggleVincularCajaEtiquetas(e.target.checked)}
+            className="h-4 w-4 accent-indigo-600"
+          />
+          <span>Vincular número de cajas/etiquetas</span>
+        </label>
       </div>
     </div>
   );
@@ -379,7 +407,7 @@ const GenerarEtiquetasModal: React.FC<GenerarEtiquetasModalProps> = ({ orden, pr
         <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
           <input
             type="checkbox"
-            checked={generalChecked}
+            checked={miniChecked}
             onChange={(e) => setMiniChecked(e.target.checked)}
             className="h-4 w-4 accent-indigo-600"
           />
