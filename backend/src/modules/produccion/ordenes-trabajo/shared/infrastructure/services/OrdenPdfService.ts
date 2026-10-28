@@ -228,9 +228,9 @@ export class OrdenPdfService {
           `;
 
       const cantidadValue = variant === 'mini' ? (miniCantidad || cantidad ? `${miniCantidad || cantidad} U` : '') : (cantidad ? `${cantidad} U` : '');
-      const numeroCajaFinal = variant === 'general' && vincularNumeroCajaEtiquetas && numeroCajaEnteroValido
-        ? `${index + 1}/${totalGeneral}`
-        : numeroCaja;
+      const numeroCajaFinal = variant === 'general'
+        ? (vincularNumeroCajaEtiquetas && numeroCajaEnteroValido ? `${index + 1}/${totalGeneral}` : numeroCaja)
+        : '';
 
       return `
       <div class="label ${variant}">
