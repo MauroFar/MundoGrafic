@@ -314,10 +314,12 @@ export class OrdenPdfService {
               overflow: hidden;
               margin: 0;
               padding: 0;
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             .label.mini {
-              width: 60mm;
-              height: 33mm;
+              width: 63mm;
+              height: 35mm;
             }
             .topbar {
               display: grid;
