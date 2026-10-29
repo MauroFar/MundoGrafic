@@ -29,6 +29,7 @@ import GestionUsuarios from "./pages/admin/GestionUsuarios";
 import GestionRoles from "./pages/admin/GestionRoles";
 import GestionAreas from "./pages/admin/GestionAreas";
 import CatalogoProcesos from "./pages/admin/CatalogoProcesos";
+import ParametrosCostos from "./pages/admin/ParametrosCostos";
 import TiposTrabajo from "./pages/admin/TiposTrabajo";
 import ReportesTrabajoDiario from "./pages/produccion/ReportesTrabajoDiario";
 import SeguimientoOrden from "./pages/produccion/SeguimientoOrden";
@@ -232,6 +233,11 @@ function App() {
             <Route path="/admin/catalogo-procesos" element={
               <PrivateRoute requiredModule="catalogo-procesos">
                 <CatalogoProcesos />
+              </PrivateRoute>
+            } />
+            <Route path="/admin/parametros-costos" element={
+              <PrivateRoute requiredModule="parametros-costos">
+                <ParametrosCostos />
               </PrivateRoute>
             } />
             <Route path="/admin/tipos-trabajo" element={

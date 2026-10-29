@@ -26,6 +26,7 @@ export const ADMIN_PANEL_MODULES = [
   'roles',
   'areas',
   'catalogo-procesos',
+  'parametros-costos',
   'tipos-trabajo',
   'certificados',
 ];

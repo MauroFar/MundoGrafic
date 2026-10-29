@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUsers, FaCogs, FaBoxes, FaTags, FaUserTag, FaSitemap, FaClipboardList } from "react-icons/fa";
+import { FaUsers, FaCogs, FaBoxes, FaTags, FaUserTag, FaSitemap, FaClipboardList, FaDollarSign } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
@@ -57,6 +57,14 @@ const Administracion = () => {
       icono: <FaCogs />,
       ruta: "/admin/catalogo-procesos",
       color: "#8b5cf6"
+    },
+    {
+      id: 'parametros-costos',
+      titulo: "Parámetros de Costos",
+      descripcion: "Configurar costos base y reglas para cotizaciones",
+      icono: <FaDollarSign />,
+      ruta: "/admin/parametros-costos",
+      color: "#10b981"
     },
     {
       id: 'tipos-trabajo',

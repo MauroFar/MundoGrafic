@@ -20,6 +20,7 @@ import { createRegistroOperarioRoutes }   from "../presentation/routes/registros
 import { createListaPedidoRoutes }        from "../presentation/routes/listaPedidos/listaPedidoRoutes";
 import { createPermisoRoutes }            from "../presentation/routes/permisos/permisoRoutes";
 import { createChatRoutes }               from "../presentation/routes/chat/chatRoutes";
+import { createDigitalCostosRoutes }      from "../presentation/routes/digitalCostos/digitalCostosRoutes";
 
 // ── Utilidades (infraestructura / sin dominio) ────────────────────────────────
 import { createCertificadoRoutes }        from "../presentation/routes/certificados/certificadoRoutes";
@@ -57,6 +58,9 @@ export default (client: Client) => {
   // ── Permisos ─────────────────────────────────────────────────────────────────
   router.use("/permisos", createPermisoRoutes(client));
 
+  // ── Parámetros de costos Digital ─────────────────────────────────────────────
+  router.use("/digital-costos", createDigitalCostosRoutes(client));
+
   // ── Chat ─────────────────────────────────────────────────────────────────────
   router.use("/chat", createChatRoutes(client));
 
@@ -83,6 +87,7 @@ export default (client: Client) => {
   console.log("   ✅ /api/registros-operario");
   console.log("   ✅ /api/lista-pedidos");
   console.log("   ✅ /api/permisos");
+  console.log("   ✅ /api/digital-costos");
   console.log("   ✅ /api/chat");
   console.log("   ✅ /api/upload");
   console.log("   ✅ /api/certificados");

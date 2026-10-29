@@ -68,6 +68,7 @@ const Sidebar = () => {
       { path: "/admin/roles", label: "Gestión de Roles" },
       { path: "/admin/areas", label: "Gestión de Áreas" },
       { path: "/admin/catalogo-procesos", label: "Catálogo de Procesos" },
+      { path: "/admin/parametros-costos", label: "Parámetros de Costos" },
       { path: "/admin/tipos-trabajo", label: "Tipos de Trabajo" },
       { path: "/inventario", label: "Inventario" },
       { path: "/reportesTrabajoDiario", label: "Reportes" },
