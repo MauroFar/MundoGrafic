@@ -12,6 +12,11 @@ export const createDigitalCostosRoutes = (client: Client) => {
 
   router.use(authRequired());
 
+  router.get("/tipo-productos", controller.listarTiposProducto);
+  router.post("/tipo-productos", checkAdminRole(client), controller.crearTipoProducto);
+  router.put("/tipo-productos/:id", checkAdminRole(client), controller.actualizarTipoProducto);
+  router.delete("/tipo-productos/:id", checkAdminRole(client), controller.eliminarTipoProducto);
+
   router.get("/materiales", controller.listarMateriales);
   router.post("/materiales", checkAdminRole(client), controller.crearMaterial);
   router.put("/materiales/:id", checkAdminRole(client), controller.actualizarMaterial);

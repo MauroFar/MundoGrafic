@@ -6,12 +6,20 @@ const getAuthHeaders = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
+export type TipoProductoDigital = {
+  id: number;
+  nombre: string;
+  activo: boolean;
+};
+
 export type MaterialDigital = {
   id: number;
   nombre: string;
   unidad: string;
+  tipo_cobro: string;
   costo_unitario: number;
   estado: string;
+  tipo_producto_ids?: number[];
 };
 
 export type ProcesoDigital = {
@@ -20,13 +28,16 @@ export type ProcesoDigital = {
   tipo_cobro: string;
   precio: number;
   estado: string;
+  tipo_producto_ids?: number[];
 };
 
 export type CostoOperativoDigital = {
   id: number;
   concepto: string;
+  tipo_cobro: string;
   costo_fijo: number;
   estado: string;
+  tipo_producto_ids?: number[];
 };
 
 export type MargenComercial = {
@@ -46,6 +57,26 @@ export type PlazoComercial = {
   recargo_porcentaje: number;
   activo: boolean;
   orden: number;
+};
+
+export const obtenerTiposProductoDigitales = async (): Promise<TipoProductoDigital[]> => {
+  const { data } = await axios.get(`${API_URL}/api/digital-costos/tipo-productos`, getAuthHeaders());
+  return data;
+};
+
+export const crearTipoProductoDigital = async (payload: Partial<TipoProductoDigital>) => {
+  const { data } = await axios.post(`${API_URL}/api/digital-costos/tipo-productos`, payload, getAuthHeaders());
+  return data;
+};
+
+export const actualizarTipoProductoDigital = async (id: number, payload: Partial<TipoProductoDigital>) => {
+  const { data } = await axios.put(`${API_URL}/api/digital-costos/tipo-productos/${id}`, payload, getAuthHeaders());
+  return data;
+};
+
+export const eliminarTipoProductoDigital = async (id: number) => {
+  const { data } = await axios.delete(`${API_URL}/api/digital-costos/tipo-productos/${id}`, getAuthHeaders());
+  return data;
 };
 
 export const obtenerMaterialesDigitales = async (): Promise<MaterialDigital[]> => {

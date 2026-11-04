@@ -16,6 +16,7 @@ import CotizacionesCrear from "./pages/cotizaciones/CotizacionesCrear";
 import CotizacionesVer from "./pages/cotizaciones/CotizacionesVer";
 import VistaKanban from "./pages/produccion/VistaKanban";
 import GestionCalidadKanban from "./pages/produccion/GestionCalidadKanban";
+import CotizadorDigital from "./pages/produccion/CotizadorDigital";
 import ProductosTerminados from "./pages/produccion/ProductosTerminados";
 import ProductosEntregados from "./pages/produccion/ProductosEntregados";
 import OrdendeTrabajo from "./pages/ordendeTrabajo/OrdendeTrabajo";
@@ -123,6 +124,16 @@ function App() {
             <Route path="/produccion/control-calidad" element={
               <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
                 <GestionCalidadKanban />
+              </PrivateRoute>
+            } />
+            <Route path="/produccion/cotizaciones" element={
+              <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+                <CotizadorDigital />
+              </PrivateRoute>
+            } />
+            <Route path="/cotizaciones/cotizador" element={
+              <PrivateRoute allowedRoles={['admin', 'ejecutivo', 'impresion']}>
+                <CotizadorDigital />
               </PrivateRoute>
             } />
             <Route path="/produccion/seguimiento/:id" element={

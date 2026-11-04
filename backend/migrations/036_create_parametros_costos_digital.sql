@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS materiales_digitales (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     unidad VARCHAR(50) NOT NULL DEFAULT 'Metro',
+    tipo_cobro VARCHAR(20) NOT NULL DEFAULT 'metro' CHECK (tipo_cobro IN ('metro', 'fijo', 'millar')),
     costo_unitario NUMERIC(10, 4) NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo' CHECK (estado IN ('Activo', 'Inactivo')),
     usuario_creacion_id INT REFERENCES usuarios(id),
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS procesos_digitales (
 CREATE TABLE IF NOT EXISTS costos_operativos_digitales (
     id SERIAL PRIMARY KEY,
     concepto VARCHAR(150) NOT NULL,
+    tipo_cobro VARCHAR(20) NOT NULL DEFAULT 'metro' CHECK (tipo_cobro IN ('metro', 'fijo', 'millar')),
     costo_fijo NUMERIC(10, 2) NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo' CHECK (estado IN ('Activo', 'Inactivo')),
     usuario_creacion_id INT REFERENCES usuarios(id),
@@ -93,6 +95,9 @@ CREATE INDEX IF NOT EXISTS idx_materiales_digitales_estado
 CREATE INDEX IF NOT EXISTS idx_materiales_digitales_nombre
     ON materiales_digitales (nombre);
 
+CREATE INDEX IF NOT EXISTS idx_materiales_digitales_tipo_cobro
+    ON materiales_digitales (tipo_cobro);
+
 CREATE INDEX IF NOT EXISTS idx_procesos_digitales_estado
     ON procesos_digitales (estado);
 
@@ -101,6 +106,9 @@ CREATE INDEX IF NOT EXISTS idx_procesos_digitales_tipo_cobro
 
 CREATE INDEX IF NOT EXISTS idx_costos_operativos_digitales_estado
     ON costos_operativos_digitales (estado);
+
+CREATE INDEX IF NOT EXISTS idx_costos_operativos_digitales_tipo_cobro
+    ON costos_operativos_digitales (tipo_cobro);
 
 CREATE INDEX IF NOT EXISTS idx_configuracion_comercial_activo
     ON configuracion_comercial (activo);

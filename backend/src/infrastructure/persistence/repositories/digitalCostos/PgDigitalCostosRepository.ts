@@ -1,11 +1,23 @@
 import { Client } from "pg";
 
+export type TipoProductoDigital = {
+  id: number;
+  nombre: string;
+  activo: boolean;
+  usuario_creacion_id?: number | null;
+  usuario_modificacion_id?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type MaterialDigital = {
   id: number;
   nombre: string;
   unidad: string;
+  tipo_cobro: string;
   costo_unitario: number;
   estado: string;
+  tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
   created_at?: string;
@@ -18,6 +30,7 @@ export type ProcesoDigital = {
   tipo_cobro: string;
   precio: number;
   estado: string;
+  tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
   created_at?: string;
@@ -27,8 +40,10 @@ export type ProcesoDigital = {
 export type CostoOperativoDigital = {
   id: number;
   concepto: string;
+  tipo_cobro: string;
   costo_fijo: number;
   estado: string;
+  tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
   created_at?: string;
@@ -91,26 +106,104 @@ export class PgDigitalCostosRepository {
     );
   }
 
-  async listarMateriales(): Promise<MaterialDigital[]> {
+  private async syncTipoProductoRelaciones(
+    relacionTable: string,
+    fkColumn: string,
+    itemId: number,
+    tipoProductoIds: number[] = [],
+  ) {
+    const ids = [...new Set((tipoProductoIds || []).map(Number).filter(Boolean))];
+
+    await this.client.query(`DELETE FROM ${relacionTable} WHERE ${fkColumn} = $1`, [itemId]);
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    const placeholders = ids.map((_, index) => `($1, $${index + 2})`).join(", ");
+    await this.client.query(
+      `INSERT INTO ${relacionTable} (${fkColumn}, tipo_producto_id) VALUES ${placeholders}`,
+      [itemId, ...ids],
+    );
+  }
+
+  async listarTiposProductoDigital(): Promise<TipoProductoDigital[]> {
     const result = await this.client.query(
-      `SELECT * FROM materiales_digitales ORDER BY nombre ASC`,
+      `SELECT * FROM tipos_producto_digital ORDER BY nombre ASC`,
     );
     return result.rows;
   }
 
-  async crearMaterial(input: Partial<MaterialDigital>, usuarioId: number | null): Promise<MaterialDigital> {
-    const { nombre, unidad, costo_unitario, estado } = input;
+  async crearTipoProductoDigital(input: Partial<TipoProductoDigital>, usuarioId: number | null): Promise<TipoProductoDigital> {
+    const { nombre, activo } = input;
     const result = await this.client.query(
-      `INSERT INTO materiales_digitales (nombre, unidad, costo_unitario, estado, usuario_creacion_id, usuario_modificacion_id)
-       VALUES ($1, $2, $3, $4, $5, $5)
+      `INSERT INTO tipos_producto_digital (nombre, activo, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $3)
        RETURNING *`,
-      [nombre, unidad || "Metro", costo_unitario, estado || "Activo", usuarioId],
+      [nombre, activo ?? true, usuarioId],
+    );
+
+    return result.rows[0];
+  }
+
+  async actualizarTipoProductoDigital(id: number, input: Partial<TipoProductoDigital>, usuarioId: number | null): Promise<TipoProductoDigital | null> {
+    const previous = await this.client.query(`SELECT * FROM tipos_producto_digital WHERE id = $1`, [id]);
+    if (!previous.rows[0]) return null;
+
+    const { nombre, activo } = input;
+    const result = await this.client.query(
+      `UPDATE tipos_producto_digital
+       SET nombre = COALESCE($1, nombre),
+           activo = COALESCE($2, activo),
+           usuario_modificacion_id = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [nombre, activo, usuarioId, id],
+    );
+
+    return result.rows[0];
+  }
+
+  async eliminarTipoProductoDigital(id: number): Promise<boolean> {
+    const result = await this.client.query(`DELETE FROM tipos_producto_digital WHERE id = $1 RETURNING id`, [id]);
+    return result.rowCount > 0;
+  }
+
+  async listarMateriales(): Promise<MaterialDigital[]> {
+    const result = await this.client.query(
+      `SELECT m.*,
+              COALESCE(
+                array_agg(DISTINCT mtp.tipo_producto_id ORDER BY mtp.tipo_producto_id) FILTER (WHERE mtp.tipo_producto_id IS NOT NULL),
+                ARRAY[]::int[]
+              ) AS tipo_producto_ids
+       FROM materiales_digitales m
+       LEFT JOIN materiales_digitales_tipos_productos mtp ON mtp.material_digital_id = m.id
+       GROUP BY m.id, m.nombre, m.unidad, m.tipo_cobro, m.costo_unitario, m.estado, m.usuario_creacion_id, m.usuario_modificacion_id, m.created_at, m.updated_at
+       ORDER BY m.nombre ASC`,
+    );
+    return result.rows.map((row) => ({
+      ...row,
+      tipo_producto_ids: row.tipo_producto_ids || [],
+    }));
+  }
+
+  async crearMaterial(input: Partial<MaterialDigital>, usuarioId: number | null): Promise<MaterialDigital> {
+    const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids } = input;
+    const result = await this.client.query(
+      `INSERT INTO materiales_digitales (nombre, unidad, tipo_cobro, costo_unitario, estado, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $6)
+       RETURNING *`,
+      [nombre, unidad || "Metro", tipo_cobro || "metro", costo_unitario, estado || "Activo", usuarioId],
     );
 
     const created = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("materiales_digitales_tipos_productos", "material_digital_id", created.id, tipo_producto_ids);
+    }
     await this.logAudit("materiales_digitales", created.id, "crear", usuarioId, null, created);
 
-    return created;
+    return { ...created, tipo_producto_ids: Array.isArray(tipo_producto_ids) ? tipo_producto_ids : [] };
   }
 
   async actualizarMaterial(id: number, input: Partial<MaterialDigital>, usuarioId: number | null): Promise<MaterialDigital | null> {
@@ -123,24 +216,29 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { nombre, unidad, costo_unitario, estado } = input;
+    const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids } = input;
     const result = await this.client.query(
       `UPDATE materiales_digitales
        SET nombre = COALESCE($1, nombre),
            unidad = COALESCE($2, unidad),
-           costo_unitario = COALESCE($3, costo_unitario),
-           estado = COALESCE($4, estado),
-           usuario_modificacion_id = $5,
+           tipo_cobro = COALESCE($3, tipo_cobro),
+           costo_unitario = COALESCE($4, costo_unitario),
+           estado = COALESCE($5, estado),
+           usuario_modificacion_id = $6,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $7
        RETURNING *`,
-      [nombre, unidad, costo_unitario, estado, usuarioId, id],
+      [nombre, unidad, tipo_cobro, costo_unitario, estado, usuarioId, id],
     );
 
     const updated = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("materiales_digitales_tipos_productos", "material_digital_id", id, tipo_producto_ids);
+    }
     await this.logAudit("materiales_digitales", id, "editar", usuarioId, previous.rows[0], updated);
 
-    return updated;
+    const updatedWithTypes = await this.listarMateriales();
+    return updatedWithTypes.find((item) => item.id === id) || updated;
   }
 
   async eliminarMaterial(id: number, usuarioId: number | null): Promise<boolean> {
@@ -160,13 +258,24 @@ export class PgDigitalCostosRepository {
 
   async listarProcesos(): Promise<ProcesoDigital[]> {
     const result = await this.client.query(
-      `SELECT * FROM procesos_digitales ORDER BY nombre ASC`,
+      `SELECT p.*,
+              COALESCE(
+                array_agg(DISTINCT ptp.tipo_producto_id ORDER BY ptp.tipo_producto_id) FILTER (WHERE ptp.tipo_producto_id IS NOT NULL),
+                ARRAY[]::int[]
+              ) AS tipo_producto_ids
+       FROM procesos_digitales p
+       LEFT JOIN procesos_digitales_tipos_productos ptp ON ptp.proceso_digital_id = p.id
+       GROUP BY p.id, p.nombre, p.tipo_cobro, p.precio, p.estado, p.usuario_creacion_id, p.usuario_modificacion_id, p.created_at, p.updated_at
+       ORDER BY p.nombre ASC`,
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      tipo_producto_ids: row.tipo_producto_ids || [],
+    }));
   }
 
   async crearProceso(input: Partial<ProcesoDigital>, usuarioId: number | null): Promise<ProcesoDigital> {
-    const { nombre, tipo_cobro, precio, estado } = input;
+    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids } = input;
     const result = await this.client.query(
       `INSERT INTO procesos_digitales (nombre, tipo_cobro, precio, estado, usuario_creacion_id, usuario_modificacion_id)
        VALUES ($1, $2, $3, $4, $5, $5)
@@ -175,9 +284,12 @@ export class PgDigitalCostosRepository {
     );
 
     const created = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("procesos_digitales_tipos_productos", "proceso_digital_id", created.id, tipo_producto_ids);
+    }
     await this.logAudit("procesos_digitales", created.id, "crear", usuarioId, null, created);
 
-    return created;
+    return { ...created, tipo_producto_ids: Array.isArray(tipo_producto_ids) ? tipo_producto_ids : [] };
   }
 
   async actualizarProceso(id: number, input: Partial<ProcesoDigital>, usuarioId: number | null): Promise<ProcesoDigital | null> {
@@ -186,7 +298,7 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { nombre, tipo_cobro, precio, estado } = input;
+    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids } = input;
     const result = await this.client.query(
       `UPDATE procesos_digitales
        SET nombre = COALESCE($1, nombre),
@@ -201,9 +313,13 @@ export class PgDigitalCostosRepository {
     );
 
     const updated = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("procesos_digitales_tipos_productos", "proceso_digital_id", id, tipo_producto_ids);
+    }
     await this.logAudit("procesos_digitales", id, "editar", usuarioId, previous.rows[0], updated);
 
-    return updated;
+    const updatedWithTypes = await this.listarProcesos();
+    return updatedWithTypes.find((item) => item.id === id) || updated;
   }
 
   async eliminarProceso(id: number, usuarioId: number | null): Promise<boolean> {
@@ -219,24 +335,38 @@ export class PgDigitalCostosRepository {
 
   async listarCostosOperativos(): Promise<CostoOperativoDigital[]> {
     const result = await this.client.query(
-      `SELECT * FROM costos_operativos_digitales ORDER BY concepto ASC`,
+      `SELECT c.*,
+              COALESCE(
+                array_agg(DISTINCT ctp.tipo_producto_id ORDER BY ctp.tipo_producto_id) FILTER (WHERE ctp.tipo_producto_id IS NOT NULL),
+                ARRAY[]::int[]
+              ) AS tipo_producto_ids
+       FROM costos_operativos_digitales c
+       LEFT JOIN costos_operativos_digitales_tipos_productos ctp ON ctp.costo_operativo_digital_id = c.id
+       GROUP BY c.id, c.concepto, c.tipo_cobro, c.costo_fijo, c.estado, c.usuario_creacion_id, c.usuario_modificacion_id, c.created_at, c.updated_at
+       ORDER BY c.concepto ASC`,
     );
-    return result.rows;
+    return result.rows.map((row) => ({
+      ...row,
+      tipo_producto_ids: row.tipo_producto_ids || [],
+    }));
   }
 
   async crearCostoOperativo(input: Partial<CostoOperativoDigital>, usuarioId: number | null): Promise<CostoOperativoDigital> {
-    const { concepto, costo_fijo, estado } = input;
+    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids } = input;
     const result = await this.client.query(
-      `INSERT INTO costos_operativos_digitales (concepto, costo_fijo, estado, usuario_creacion_id, usuario_modificacion_id)
-       VALUES ($1, $2, $3, $4, $4)
+      `INSERT INTO costos_operativos_digitales (concepto, tipo_cobro, costo_fijo, estado, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $4, $5, $5)
        RETURNING *`,
-      [concepto, costo_fijo, estado || "Activo", usuarioId],
+      [concepto, tipo_cobro || "metro", costo_fijo, estado || "Activo", usuarioId],
     );
 
     const created = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("costos_operativos_digitales_tipos_productos", "costo_operativo_digital_id", created.id, tipo_producto_ids);
+    }
     await this.logAudit("costos_operativos_digitales", created.id, "crear", usuarioId, null, created);
 
-    return created;
+    return { ...created, tipo_producto_ids: Array.isArray(tipo_producto_ids) ? tipo_producto_ids : [] };
   }
 
   async actualizarCostoOperativo(id: number, input: Partial<CostoOperativoDigital>, usuarioId: number | null): Promise<CostoOperativoDigital | null> {
@@ -245,23 +375,28 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { concepto, costo_fijo, estado } = input;
+    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids } = input;
     const result = await this.client.query(
       `UPDATE costos_operativos_digitales
        SET concepto = COALESCE($1, concepto),
-           costo_fijo = COALESCE($2, costo_fijo),
-           estado = COALESCE($3, estado),
-           usuario_modificacion_id = $4,
+           tipo_cobro = COALESCE($2, tipo_cobro),
+           costo_fijo = COALESCE($3, costo_fijo),
+           estado = COALESCE($4, estado),
+           usuario_modificacion_id = $5,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5
+       WHERE id = $6
        RETURNING *`,
-      [concepto, costo_fijo, estado, usuarioId, id],
+      [concepto, tipo_cobro, costo_fijo, estado, usuarioId, id],
     );
 
     const updated = result.rows[0];
+    if (Array.isArray(tipo_producto_ids)) {
+      await this.syncTipoProductoRelaciones("costos_operativos_digitales_tipos_productos", "costo_operativo_digital_id", id, tipo_producto_ids);
+    }
     await this.logAudit("costos_operativos_digitales", id, "editar", usuarioId, previous.rows[0], updated);
 
-    return updated;
+    const updatedWithTypes = await this.listarCostosOperativos();
+    return updatedWithTypes.find((item) => item.id === id) || updated;
   }
 
   async eliminarCostoOperativo(id: number, usuarioId: number | null): Promise<boolean> {

@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaCalculator, FaCog, FaDollarSign, FaEdit, FaTrash, FaCheckCircle } from 'react-icons/fa';
 import {
+  obtenerTiposProductoDigitales,
+  crearTipoProductoDigital,
+  actualizarTipoProductoDigital,
+  eliminarTipoProductoDigital,
   obtenerMaterialesDigitales,
   crearMaterialDigital,
   actualizarMaterialDigital,
@@ -23,9 +27,10 @@ import {
   eliminarPlazoComercial,
 } from '../../services/digitalCostosService';
 
-const emptyMaterial = { nombre: '', unidad: 'Metro', costo_unitario: '', estado: 'Activo' };
-const emptyProceso = { nombre: '', tipo_cobro: 'metro', precio: '', estado: 'Activo' };
-const emptyOperativo = { concepto: '', costo_fijo: '', estado: 'Activo' };
+const emptyTipoProducto = { nombre: '', activo: true };
+const emptyMaterial = { nombre: '', unidad: 'Metro', tipo_cobro: 'metro', costo_unitario: '', estado: 'Activo', tipo_producto_ids: [] };
+const emptyProceso = { nombre: '', tipo_cobro: 'metro', precio: '', estado: 'Activo', tipo_producto_ids: [] };
+const emptyOperativo = { concepto: '', tipo_cobro: 'metro', costo_fijo: '', estado: 'Activo', tipo_producto_ids: [] };
 const emptyMargen = { nombre: '', porcentaje: '', activo: true, orden: 1 };
 const emptyPlazo = { nombre: '', dias: '', recargo_porcentaje: '', activo: true, orden: 1 };
 
@@ -34,6 +39,12 @@ const ParametrosCostos = () => {
   const [modalAbierto, setModalAbierto] = useState(true);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
   const [activeTab, setActiveTab] = useState('materiales');
+
+  const [tiposProducto, setTiposProducto] = useState([]);
+  const [tipoProductoForm, setTipoProductoForm] = useState(emptyTipoProducto);
+  const [tipoProductoEditId, setTipoProductoEditId] = useState(null);
+  const [tipoProductoFeedback, setTipoProductoFeedback] = useState({ type: '', message: '' });
+  const [isSubmittingTipoProducto, setIsSubmittingTipoProducto] = useState(false);
 
   const [materiales, setMateriales] = useState([]);
   const [materialForm, setMaterialForm] = useState(emptyMaterial);
@@ -57,13 +68,15 @@ const ParametrosCostos = () => {
   useEffect(() => {
     const cargarDigital = async () => {
       try {
-        const [materialesData, procesosData, operativosData, configData] = await Promise.all([
+        const [tiposProductoData, materialesData, procesosData, operativosData, configData] = await Promise.all([
+          obtenerTiposProductoDigitales(),
           obtenerMaterialesDigitales(),
           obtenerProcesosDigitales(),
           obtenerCostosOperativosDigitales(),
           obtenerConfiguracionComercialDigital(),
         ]);
 
+        setTiposProducto(tiposProductoData || []);
         setMateriales(materialesData);
         setProcesos(procesosData);
         setOperativos(operativosData);
@@ -89,6 +102,59 @@ const ParametrosCostos = () => {
     navigate('/administracion');
   };
 
+  const handleTipoProductoSubmit = async (e) => {
+    e.preventDefault();
+
+    const nombre = tipoProductoForm.nombre.trim();
+    if (!nombre) {
+      setTipoProductoFeedback({ type: 'error', message: 'Debes ingresar un nombre para el tipo de producto.' });
+      return;
+    }
+
+    if (isSubmittingTipoProducto) {
+      return;
+    }
+
+    setIsSubmittingTipoProducto(true);
+    setTipoProductoFeedback({ type: '', message: '' });
+
+    try {
+      if (tipoProductoEditId) {
+        const updated = await actualizarTipoProductoDigital(Number(tipoProductoEditId), {
+          nombre,
+          activo: tipoProductoForm.activo,
+        });
+        setTiposProducto((prev) => prev.map((item) => item.id === tipoProductoEditId ? updated : item));
+        setTipoProductoEditId(null);
+        setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto actualizado correctamente.' });
+      } else {
+        const created = await crearTipoProductoDigital({
+          nombre,
+          activo: tipoProductoForm.activo,
+        });
+        setTiposProducto((prev) => [...prev, created]);
+        setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto agregado correctamente.' });
+      }
+      setTipoProductoForm(emptyTipoProducto);
+    } catch (error) {
+      console.error('Error guardando tipo de producto:', error);
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'No se pudo guardar el tipo de producto. Revisa permisos o conexión con la base de datos.';
+      setTipoProductoFeedback({ type: 'error', message: errorMessage });
+    } finally {
+      setIsSubmittingTipoProducto(false);
+    }
+  };
+
+  const toggleSeleccionProducto = (listaActual, productoId) => {
+    const ids = new Set(listaActual || []);
+    if (ids.has(productoId)) {
+      ids.delete(productoId);
+    } else {
+      ids.add(productoId);
+    }
+    return [...ids];
+  };
+
   const handleMaterialSubmit = async (e) => {
     e.preventDefault();
     if (!materialForm.nombre.trim()) return;
@@ -98,6 +164,8 @@ const ParametrosCostos = () => {
         const updated = await actualizarMaterialDigital(Number(materialEditId), {
           nombre: materialForm.nombre,
           unidad: materialForm.unidad,
+          tipo_cobro: materialForm.tipo_cobro,
+          tipo_producto_ids: materialForm.tipo_producto_ids,
           costo_unitario: Number(materialForm.costo_unitario),
           estado: materialForm.estado,
         });
@@ -107,6 +175,8 @@ const ParametrosCostos = () => {
         const created = await crearMaterialDigital({
           nombre: materialForm.nombre,
           unidad: materialForm.unidad,
+          tipo_cobro: materialForm.tipo_cobro,
+          tipo_producto_ids: materialForm.tipo_producto_ids,
           costo_unitario: Number(materialForm.costo_unitario),
           estado: materialForm.estado,
         });
@@ -127,6 +197,7 @@ const ParametrosCostos = () => {
         const updated = await actualizarProcesoDigital(Number(procesoEditId), {
           nombre: procesoForm.nombre,
           tipo_cobro: procesoForm.tipo_cobro,
+          tipo_producto_ids: procesoForm.tipo_producto_ids,
           precio: Number(procesoForm.precio),
           estado: procesoForm.estado,
         });
@@ -136,6 +207,7 @@ const ParametrosCostos = () => {
         const created = await crearProcesoDigital({
           nombre: procesoForm.nombre,
           tipo_cobro: procesoForm.tipo_cobro,
+          tipo_producto_ids: procesoForm.tipo_producto_ids,
           precio: Number(procesoForm.precio),
           estado: procesoForm.estado,
         });
@@ -155,6 +227,8 @@ const ParametrosCostos = () => {
       if (operativoEditId) {
         const updated = await actualizarCostoOperativoDigital(Number(operativoEditId), {
           concepto: operativoForm.concepto,
+          tipo_cobro: operativoForm.tipo_cobro,
+          tipo_producto_ids: operativoForm.tipo_producto_ids,
           costo_fijo: Number(operativoForm.costo_fijo),
           estado: operativoForm.estado,
         });
@@ -163,6 +237,8 @@ const ParametrosCostos = () => {
       } else {
         const created = await crearCostoOperativoDigital({
           concepto: operativoForm.concepto,
+          tipo_cobro: operativoForm.tipo_cobro,
+          tipo_producto_ids: operativoForm.tipo_producto_ids,
           costo_fijo: Number(operativoForm.costo_fijo),
           estado: operativoForm.estado,
         });
@@ -244,6 +320,124 @@ const ParametrosCostos = () => {
     }
   };
 
+  const renderTipoProductoTab = () => (
+    <div className="grid xl:grid-cols-[380px_1fr] gap-6">
+      <form onSubmit={handleTipoProductoSubmit} className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">
+          {tipoProductoEditId ? 'Editar tipo de producto' : 'Nuevo tipo de producto'}
+        </h3>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+            <input
+              type="text"
+              value={tipoProductoForm.nombre}
+              onChange={(e) => setTipoProductoForm({ ...tipoProductoForm, nombre: e.target.value })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="Ej: Etiqueta"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={tipoProductoForm.activo}
+              onChange={(e) => setTipoProductoForm({ ...tipoProductoForm, activo: e.target.checked })}
+              className="h-4 w-4 text-emerald-600 border-slate-300 rounded"
+            />
+            <label className="text-sm text-gray-700">Activo</label>
+          </div>
+
+          {tipoProductoFeedback.message && (
+            <div className={`rounded-lg px-3 py-2 text-sm border ${tipoProductoFeedback.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+              {tipoProductoFeedback.message}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={isSubmittingTipoProducto}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg"
+            >
+              {isSubmittingTipoProducto ? 'Guardando...' : (tipoProductoEditId ? 'Guardar cambios' : 'Agregar tipo')}
+            </button>
+            {tipoProductoEditId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTipoProductoEditId(null);
+                  setTipoProductoForm(emptyTipoProducto);
+                }}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2.5 px-4 rounded-lg"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="font-bold text-gray-800">Tipos de producto digitales</h3>
+          <span className="text-sm text-slate-600">{tiposProducto.length} registros</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-left">
+              <tr>
+                <th className="px-4 py-3 font-semibold text-slate-700">Nombre</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tiposProducto.map((item) => (
+                <tr key={item.id} className="border-t border-slate-200">
+                  <td className="px-4 py-3 text-gray-800">{item.nombre}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTipoProductoEditId(item.id);
+                          setTipoProductoForm({ nombre: item.nombre, activo: item.activo });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Editar"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await eliminarTipoProductoDigital(item.id);
+                          setTiposProducto((prev) => prev.filter((i) => i.id !== item.id));
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderMaterialesTab = () => (
     <div className="grid xl:grid-cols-[380px_1fr] gap-6">
       <form onSubmit={handleMaterialSubmit} className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
@@ -275,17 +469,53 @@ const ParametrosCostos = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Costo por unidad ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={materialForm.costo_unitario}
-                onChange={(e) => setMaterialForm({ ...materialForm, costo_unitario: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de cobro</label>
+              <select
+                value={materialForm.tipo_cobro}
+                onChange={(e) => setMaterialForm({ ...materialForm, tipo_cobro: e.target.value })}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="0.40"
-              />
+              >
+                <option value="metro">Por Metro</option>
+                <option value="fijo">Costo Fijo</option>
+                <option value="millar">Por Millar</option>
+              </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Aplica a productos</label>
+            <div className="grid grid-cols-2 gap-2">
+              {tiposProducto.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-2">No hay tipos de producto creados todavía.</p>
+              ) : (
+                tiposProducto.map((tipo) => (
+                  <label key={tipo.id} className="flex items-center gap-2 text-sm text-gray-700 bg-white border border-slate-200 rounded-lg px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={(materialForm.tipo_producto_ids || []).includes(tipo.id)}
+                      onChange={() => setMaterialForm({
+                        ...materialForm,
+                        tipo_producto_ids: toggleSeleccionProducto(materialForm.tipo_producto_ids, tipo.id),
+                      })}
+                    />
+                    <span>{tipo.nombre}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Costo por unidad ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={materialForm.costo_unitario}
+              onChange={(e) => setMaterialForm({ ...materialForm, costo_unitario: e.target.value })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="0.40"
+            />
           </div>
 
           <div>
@@ -332,6 +562,7 @@ const ParametrosCostos = () => {
               <tr>
                 <th className="px-4 py-3 font-semibold text-slate-700">Nombre</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Unidad</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Tipo cobro</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Costo</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
@@ -342,6 +573,7 @@ const ParametrosCostos = () => {
                 <tr key={item.id} className="border-t border-slate-200">
                   <td className="px-4 py-3 text-gray-800">{item.nombre}</td>
                   <td className="px-4 py-3 text-gray-700">{item.unidad}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.tipo_cobro || 'metro'}</td>
                   <td className="px-4 py-3 text-gray-700">${Number(item.costo_unitario || 0).toFixed(2)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -357,8 +589,10 @@ const ParametrosCostos = () => {
                           setMaterialForm({
                             nombre: item.nombre,
                             unidad: item.unidad,
+                            tipo_cobro: item.tipo_cobro || 'metro',
                             costo_unitario: item.costo_unitario,
                             estado: item.estado,
+                            tipo_producto_ids: item.tipo_producto_ids || [],
                           });
                         }}
                         className="text-blue-600 hover:text-blue-800"
@@ -416,7 +650,31 @@ const ParametrosCostos = () => {
             >
               <option value="metro">Por Metro</option>
               <option value="fijo">Costo Fijo</option>
+              <option value="millar">Por Millar</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Aplica a productos</label>
+            <div className="grid grid-cols-2 gap-2">
+              {tiposProducto.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-2">No hay tipos de producto creados todavía.</p>
+              ) : (
+                tiposProducto.map((tipo) => (
+                  <label key={tipo.id} className="flex items-center gap-2 text-sm text-gray-700 bg-white border border-slate-200 rounded-lg px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={(procesoForm.tipo_producto_ids || []).includes(tipo.id)}
+                      onChange={() => setProcesoForm({
+                        ...procesoForm,
+                        tipo_producto_ids: toggleSeleccionProducto(procesoForm.tipo_producto_ids, tipo.id),
+                      })}
+                    />
+                    <span>{tipo.nombre}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
 
           <div>
@@ -501,6 +759,7 @@ const ParametrosCostos = () => {
                           setProcesoForm({
                             nombre: item.nombre,
                             tipo_cobro: item.tipo_cobro,
+                            tipo_producto_ids: item.tipo_producto_ids || [],
                             precio: item.precio,
                             estado: item.estado,
                           });
@@ -549,6 +808,42 @@ const ParametrosCostos = () => {
               className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Ej: Arranque - Costo Fijo"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de cobro</label>
+            <select
+              value={operativoForm.tipo_cobro}
+              onChange={(e) => setOperativoForm({ ...operativoForm, tipo_cobro: e.target.value })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="metro">Por Metro</option>
+              <option value="fijo">Costo Fijo</option>
+              <option value="millar">Por Millar</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Aplica a productos</label>
+            <div className="grid grid-cols-2 gap-2">
+              {tiposProducto.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-2">No hay tipos de producto creados todavía.</p>
+              ) : (
+                tiposProducto.map((tipo) => (
+                  <label key={tipo.id} className="flex items-center gap-2 text-sm text-gray-700 bg-white border border-slate-200 rounded-lg px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={(operativoForm.tipo_producto_ids || []).includes(tipo.id)}
+                      onChange={() => setOperativoForm({
+                        ...operativoForm,
+                        tipo_producto_ids: toggleSeleccionProducto(operativoForm.tipo_producto_ids, tipo.id),
+                      })}
+                    />
+                    <span>{tipo.nombre}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
 
           <div>
@@ -607,6 +902,7 @@ const ParametrosCostos = () => {
             <thead className="bg-slate-50 text-left">
               <tr>
                 <th className="px-4 py-3 font-semibold text-slate-700">Concepto</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Tipo cobro</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Costo fijo</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
@@ -616,6 +912,7 @@ const ParametrosCostos = () => {
               {operativos.map((item) => (
                 <tr key={item.id} className="border-t border-slate-200">
                   <td className="px-4 py-3 text-gray-800">{item.concepto}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.tipo_cobro || 'metro'}</td>
                   <td className="px-4 py-3 text-gray-700">${Number(item.costo_fijo || 0).toFixed(2)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -630,6 +927,8 @@ const ParametrosCostos = () => {
                           setOperativoEditId(item.id);
                           setOperativoForm({
                             concepto: item.concepto,
+                            tipo_cobro: item.tipo_cobro || 'metro',
+                            tipo_producto_ids: item.tipo_producto_ids || [],
                             costo_fijo: item.costo_fijo,
                             estado: item.estado,
                           });
@@ -662,6 +961,7 @@ const ParametrosCostos = () => {
   );
 
   const tabs = [
+    { id: 'tipos-producto', label: 'Tipo Producto', icon: <FaCog /> },
     { id: 'materiales', label: 'Materiales / Papeles', icon: <FaCog /> },
     { id: 'procesos', label: 'Impresión y Acabados', icon: <FaCalculator /> },
     { id: 'operativos', label: 'Costos Operativos y Fijos', icon: <FaDollarSign /> },
@@ -793,6 +1093,7 @@ const ParametrosCostos = () => {
           </div>
 
           <div className="p-6">
+            {activeTab === 'tipos-producto' && renderTipoProductoTab()}
             {activeTab === 'materiales' && renderMaterialesTab()}
             {activeTab === 'procesos' && renderProcesosTab()}
             {activeTab === 'operativos' && renderOperativosTab()}

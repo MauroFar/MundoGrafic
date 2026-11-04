@@ -4,6 +4,54 @@ import { PgDigitalCostosRepository } from "../../../infrastructure/persistence/r
 export class DigitalCostosController {
   constructor(private readonly repo: PgDigitalCostosRepository) {}
 
+  listarTiposProducto = async (_req: Request, res: Response) => {
+    try {
+      const tipos = await this.repo.listarTiposProductoDigital();
+      return res.json(tipos);
+    } catch (error) {
+      console.error("Error listando tipos de producto digitales:", error);
+      return res.status(500).json({ error: "Error listando tipos de producto digitales" });
+    }
+  };
+
+  crearTipoProducto = async (req: Request, res: Response) => {
+    try {
+      const usuarioId = (req as any).user?.id ?? null;
+      const tipo = await this.repo.crearTipoProductoDigital(req.body || {}, usuarioId);
+      return res.status(201).json(tipo);
+    } catch (error) {
+      console.error("Error creando tipo de producto digital:", error);
+      return res.status(500).json({ error: "Error creando tipo de producto digital" });
+    }
+  };
+
+  actualizarTipoProducto = async (req: Request, res: Response) => {
+    try {
+      const usuarioId = (req as any).user?.id ?? null;
+      const tipo = await this.repo.actualizarTipoProductoDigital(Number(req.params.id), req.body || {}, usuarioId);
+      if (!tipo) {
+        return res.status(404).json({ error: "Tipo de producto no encontrado" });
+      }
+      return res.json(tipo);
+    } catch (error) {
+      console.error("Error actualizando tipo de producto digital:", error);
+      return res.status(500).json({ error: "Error actualizando tipo de producto digital" });
+    }
+  };
+
+  eliminarTipoProducto = async (req: Request, res: Response) => {
+    try {
+      const ok = await this.repo.eliminarTipoProductoDigital(Number(req.params.id));
+      if (!ok) {
+        return res.status(404).json({ error: "Tipo de producto no encontrado" });
+      }
+      return res.json({ message: "Tipo de producto eliminado" });
+    } catch (error) {
+      console.error("Error eliminando tipo de producto digital:", error);
+      return res.status(500).json({ error: "Error eliminando tipo de producto digital" });
+    }
+  };
+
   listarMateriales = async (_req: Request, res: Response) => {
     try {
       const materiales = await this.repo.listarMateriales();
