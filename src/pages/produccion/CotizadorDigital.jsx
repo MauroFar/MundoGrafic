@@ -46,6 +46,12 @@ const CotizadorDigital = () => {
   const [configuracion, setConfiguracion] = useState({ margenes: [], plazos: [] });
   const [cantidad, setCantidad] = useState(2000);
   const [metros, setMetros] = useState(2000);
+  const [anchoEtiqueta, setAnchoEtiqueta] = useState(9.3);
+  const [altoEtiqueta, setAltoEtiqueta] = useState(14.6);
+  const [anchoImpresion, setAnchoImpresion] = useState(31.5);
+  const [largoMaterial, setLargoMaterial] = useState(100);
+  const [separacionAncho, setSeparacionAncho] = useState(0.3);
+  const [separacionAvance, setSeparacionAvance] = useState(0.5);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -77,19 +83,55 @@ const CotizadorDigital = () => {
     return Number(margenEnUso?.porcentaje || 0);
   }, [configuracion]);
 
+  const etiquetasAncho = useMemo(() => {
+    const ancho = Number(anchoImpresion || 0);
+    const etiqueta = Number(anchoEtiqueta || 0);
+    const separacion = Number(separacionAncho || 0);
+    if (!ancho || !etiqueta) return 0;
+    return Math.max(Math.floor((ancho + separacion) / (etiqueta + separacion)), 0);
+  }, [anchoImpresion, anchoEtiqueta, separacionAncho]);
+
+  const etiquetasLargo = useMemo(() => {
+    const largo = Number(largoMaterial || 0);
+    const alto = Number(altoEtiqueta || 0);
+    const separacion = Number(separacionAvance || 0);
+    if (!largo || !alto) return 0;
+    return Math.max(Math.floor((largo + separacion) / (alto + separacion)), 0);
+  }, [largoMaterial, altoEtiqueta, separacionAvance]);
+
+  const cabidaPorMetro = useMemo(
+    () => Math.max(etiquetasAncho * etiquetasLargo, 0),
+    [etiquetasAncho, etiquetasLargo],
+  );
+
+  const metrosNetos = useMemo(
+    () => (cabidaPorMetro > 0 ? Math.floor(Number(cantidad || 0) / cabidaPorMetro) : 0),
+    [cabidaPorMetro, cantidad],
+  );
+
+  const metrosExcedente = useMemo(() => {
+    const cant = Number(cantidad || 0);
+    return cabidaPorMetro > 0 ? Math.max(Math.ceil((cant - metrosNetos * cabidaPorMetro) / cabidaPorMetro) * cabidaPorMetro, 0) : 0;
+  }, [cabidaPorMetro, cantidad, metrosNetos]);
+
+  const metrosFacturacion = useMemo(
+    () => Math.max(Number(metros || 0), metrosNetos + metrosExcedente),
+    [metros, metrosNetos, metrosExcedente],
+  );
+
   const materialTotal = useMemo(
-    () => materiales.reduce((sum, item) => sum + calcularValorItem(item, metros), 0),
-    [materiales, metros],
+    () => materiales.reduce((sum, item) => sum + calcularValorItem(item, metrosFacturacion), 0),
+    [materiales, metrosFacturacion],
   );
 
   const procesoTotal = useMemo(
-    () => procesos.reduce((sum, item) => sum + calcularValorItem(item, metros), 0),
-    [procesos, metros],
+    () => procesos.reduce((sum, item) => sum + calcularValorItem(item, metrosFacturacion), 0),
+    [procesos, metrosFacturacion],
   );
 
   const operativoTotal = useMemo(
-    () => operativos.reduce((sum, item) => sum + calcularValorItem(item, metros), 0),
-    [operativos, metros],
+    () => operativos.reduce((sum, item) => sum + calcularValorItem(item, metrosFacturacion), 0),
+    [operativos, metrosFacturacion],
   );
 
   const subtotal = materialTotal + procesoTotal + operativoTotal;
@@ -112,7 +154,7 @@ const CotizadorDigital = () => {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-600 font-semibold">Producción</p>
-          <h1 className="text-3xl font-bold text-slate-800 mt-1">Cotizador Digital</h1>
+          <h1 className="text-3xl font-bold text-slate-800 mt-1">Cotizador</h1>
         </div>
         <div className="bg-emerald-600 text-white rounded-xl px-4 py-2 shadow-sm text-sm font-semibold">
           Cotización en tiempo real
@@ -144,6 +186,102 @@ const CotizadorDigital = () => {
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ancho etiqueta (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={anchoEtiqueta}
+                  onChange={(e) => setAnchoEtiqueta(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Alto etiqueta (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={altoEtiqueta}
+                  onChange={(e) => setAltoEtiqueta(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ancho de impresión (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={anchoImpresion}
+                  onChange={(e) => setAnchoImpresion(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Largo del material (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={largoMaterial}
+                  onChange={(e) => setLargoMaterial(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Separación a lo ancho (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={separacionAncho}
+                  onChange={(e) => setSeparacionAncho(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Separación en el avance (cm)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={separacionAvance}
+                  onChange={(e) => setSeparacionAvance(Number(e.target.value || 0))}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-slate-200 overflow-hidden">
+              <div className="bg-yellow-300 text-black font-black px-4 py-3 text-left uppercase tracking-wide">
+                CÁLCULO DE CÁBIDA - MATERIAL {Number(anchoImpresion || 0).toFixed(1)} x {Number(largoMaterial || 0).toFixed(1)} cm
+              </div>
+              <table className="w-full text-sm text-slate-700">
+                <tbody>
+                  {[
+                    ['Ancho etiqueta (cm)', anchoEtiqueta],
+                    ['Alto etiqueta (cm)', altoEtiqueta],
+                    ['Ancho de impresión (cm) - fijo', anchoImpresion],
+                    ['Largo del material (cm)', largoMaterial],
+                    ['Separación a lo ancho entre etiquetas (cm)', separacionAncho],
+                    ['Separación en el avance (cm)', separacionAvance],
+                    ['Etiquetas a lo ancho', etiquetasAncho],
+                    ['Etiquetas a lo largo', etiquetasLargo],
+                    ['Cabida x metro', cabidaPorMetro],
+                    ['Metros netos (cantidad ÷ cabida)', metrosNetos],
+                    ['Metros excedente', metrosExcedente],
+                    ['METROS A USAR (netos + excedente)', metrosNetos + metrosExcedente],
+                    ['Etiquetas que salen', cantidad],
+                  ].map(([label, value], index) => (
+                    <tr key={label} className={index % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
+                      <td className="border border-slate-200 px-3 py-2 font-medium text-slate-700">{label}</td>
+                      <td className="border border-slate-200 px-3 py-2 text-right font-semibold text-slate-900">{Number(value || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -175,7 +313,7 @@ const CotizadorDigital = () => {
                         <td className="px-4 py-3 text-slate-800">{item.nombre}</td>
                         <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                         <td className="px-4 py-3 text-slate-700">{item.unidad}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosFacturacion))}</td>
                       </tr>
                     ))
                   )}
@@ -212,7 +350,7 @@ const CotizadorDigital = () => {
                         <td className="px-4 py-3 text-slate-800">{item.nombre}</td>
                         <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                         <td className="px-4 py-3 text-slate-700">{formatMoney(item.precio)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosFacturacion))}</td>
                       </tr>
                     ))
                   )}
@@ -249,7 +387,7 @@ const CotizadorDigital = () => {
                         <td className="px-4 py-3 text-slate-800">{item.concepto}</td>
                         <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                         <td className="px-4 py-3 text-slate-700">{formatMoney(item.costo_fijo)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosFacturacion))}</td>
                       </tr>
                     ))
                   )}
@@ -263,6 +401,11 @@ const CotizadorDigital = () => {
           <h2 className="text-xl font-bold mb-4">Resumen</h2>
 
           <div className="space-y-3 text-sm">
+            <div className="rounded-lg border border-emerald-500/30 bg-slate-800 p-3">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-300">Cabida</div>
+              <div className="mt-1 font-semibold text-white">{Number(anchoEtiqueta || 0).toFixed(2)} cm × {Number(altoEtiqueta || 0).toFixed(2)} cm</div>
+              <div className="text-slate-300">{cabidaPorMetro} uds/m · {Number(metrosNetos + metrosExcedente || 0).toFixed(2)} m</div>
+            </div>
             <div className="flex justify-between">
               <span className="text-slate-300">Materiales</span>
               <span>{formatMoney(materialTotal)}</span>

@@ -29,10 +29,10 @@ const Sidebar = () => {
     all: [
       { path: "/clientes", label: "Clientes" },
       { path: "/cotizaciones", label: "Cotizaciones" },
-      { path: "/cotizaciones/cotizador", label: "Cotizador Digital" },
+      { path: "/cotizaciones/cotizador", label: "Cotizador" },
       { path: "/ordendeTrabajo/ver", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Producción" },
-      { path: "/produccion/cotizaciones", label: "Cotizador Producción" },
+      { path: "/produccion/cotizaciones", label: "Cotizador" },
       { path: "/inventario", label: "Inventario" },
       { path: "/administracion", label: "Administración" },
       { path: "/reportesTrabajoDiario", label: "Reportes de Trabajo Diario" },
@@ -44,7 +44,7 @@ const Sidebar = () => {
     cotizaciones: [
       { path: "/cotizaciones/crear", label: "Crear Cotización" },
       { path: "/cotizaciones/ver", label: "Ver Cotizaciones" },
-      { path: "/cotizaciones/cotizador", label: "Cotizador Digital" }
+      { path: "/cotizaciones/cotizador", label: "Cotizador" }
     ],
     ordenTrabajo: [
       { path: "/ordendeTrabajo/crear", label: "Crear Orden de Trabajo" },
@@ -57,7 +57,7 @@ const Sidebar = () => {
       { path: "/cotizaciones", label: "Cotizaciones" },
       { path: "/ordendeTrabajo/ver", label: "Orden de Trabajo" },
       { path: "/produccion/kanban", label: "Vista Kanban" },
-      { path: "/produccion/cotizaciones", label: "Cotizador Digital" },
+      { path: "/produccion/cotizaciones", label: "Cotizador" },
       { path: "/productosTerminados", label: "Productos Liberados" },
       { path: "/productosEntregados", label: "Productos Entregados" },
       { path: "/produccion/control-calidad", label: "Control de Calidad" },
