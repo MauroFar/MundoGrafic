@@ -9,6 +9,7 @@ import Encabezado from "../../components/Encabezado";
 import { FaSave, FaEye, FaTimes, FaCalculator } from "react-icons/fa";
 import { generarVistaPreviaPDF } from '../../services/cotizacionPreviewService';
 import ItemEditorModal from './ItemEditorModal';
+import CotizadorDigital from '../produccion/CotizadorDigital';
 
 function CotizacionesCrear() {
   const { id } = useParams();
@@ -97,6 +98,8 @@ function CotizacionesCrear() {
   // Estados para el modal de procesos
   const [showProcesosModal, setShowProcesosModal] = useState(false);
   const [filaEditandoProcesos, setFilaEditandoProcesos] = useState(null);
+  const [showCotizadorModal, setShowCotizadorModal] = useState(false);
+  const [filaCotizador, setFilaCotizador] = useState(null);
 
   const normalizarDecimalInput = (valor) => {
     if (valor === null || valor === undefined || valor === "") return "";
@@ -1092,6 +1095,30 @@ function CotizacionesCrear() {
   const abrirModalProcesos = (index) => {
     setFilaEditandoProcesos(index);
     setShowProcesosModal(true);
+  };
+
+  const abrirCotizadorDesdeFila = (index) => {
+    setFilaCotizador(index);
+    setShowCotizadorModal(true);
+  };
+
+  const aplicarCotizadorAFila = ({ cantidad, valor_unitario, valor_total }) => {
+    if (filaCotizador === null || filaCotizador === undefined) return;
+
+    const nuevasFilas = [...filas];
+    nuevasFilas[filaCotizador] = {
+      ...nuevasFilas[filaCotizador],
+      cantidad: String(cantidad || 1),
+      valor_unitario: normalizarDecimalInput(valor_unitario),
+      valor_total: Number(valor_total || 0),
+      usa_escalas: false,
+      escalas: [],
+    };
+
+    setFilas(nuevasFilas);
+    calcularTotales(nuevasFilas);
+    setShowCotizadorModal(false);
+    setFilaCotizador(null);
   };
 
   // Función para guardar los datos del modal de procesos
@@ -2148,9 +2175,9 @@ function CotizacionesCrear() {
                   <tr ref={(el) => (filaRefs.current[index] = el)}>
                     <td className="border border-gray-300 px-2 py-2 text-center align-top">
                       <button
-                        onClick={() => navigate('/cotizaciones/cotizador')}
+                        onClick={() => abrirCotizadorDesdeFila(index)}
                         className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex flex-col items-center gap-1"
-                        title="Ir al cotizador"
+                        title="Abrir cotizador"
                       >
                         <FaCalculator className="text-lg" />
                         <span className="text-xs whitespace-nowrap">Cotizador</span>
@@ -3357,6 +3384,17 @@ function CotizacionesCrear() {
         )}
 
         {/* Modal de Procesos de Producción */}
+        {showCotizadorModal && (
+          <CotizadorDigital
+            isModal={true}
+            onApply={aplicarCotizadorAFila}
+            onClose={() => {
+              setShowCotizadorModal(false);
+              setFilaCotizador(null);
+            }}
+          />
+        )}
+
         {showProcesosModal && filaEditandoProcesos !== null && (
           <ItemEditorModal
             item={filas[filaEditandoProcesos] ? {

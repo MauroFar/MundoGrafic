@@ -9,12 +9,17 @@ import {
 
 const MARGEN_MINIMO = 30;
 
-const formatMoney = (value) =>
+const roundNumber = (value, decimals = 2) => {
+  const factor = 10 ** decimals;
+  return Math.round((Number(value || 0) + Number.EPSILON) * factor) / factor;
+};
+
+const formatMoney = (value, decimals = 2) =>
   new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(Number(value || 0));
 
 const toNumber = (value) => Number(value || 0);
@@ -56,7 +61,7 @@ const redondearDecimalAEntero = (valor) => {
   return Math.floor(numero);
 };
 
-const CotizadorDigital = () => {
+const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) => {
   const [tiposProducto, setTiposProducto] = useState([]);
   const [materiales, setMateriales] = useState([]);
   const [procesos, setProcesos] = useState([]);
@@ -100,7 +105,7 @@ const CotizadorDigital = () => {
         const margenesOrdenados = [...((configData?.margenes || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || String(a.nombre || '').localeCompare(String(b.nombre || '')));
         const plazosOrdenados = [...((configData?.plazos || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || Number(a.dias || 0) - Number(b.dias || 0));
         const margenPorDefecto = margenesOrdenados.find((item) => item.activo) || margenesOrdenados[0];
-        const plazoPorDefecto = plazosOrdenados.find((item) => Number(item.dias || 0) === 30 && item.activo !== false) || plazosOrdenados[0] || { dias: 0, nombre: 'Contado', recargo_porcentaje: 0 };
+        const plazoPorDefecto = { dias: 0, nombre: 'Contado', recargo_porcentaje: 0 };
 
         const margenBase = margenesOrdenados.length ? margenesOrdenados : [{ id: 'default-margen', nombre: 'Margen base', porcentaje: 30, activo: true, orden: 1 }];
         const plazosBase = plazosOrdenados.length ? plazosOrdenados : [{ id: 'contado', nombre: 'Contado', dias: 0, recargo_porcentaje: 0, activo: true, orden: 0 }];
@@ -153,6 +158,7 @@ const CotizadorDigital = () => {
   const margenActivo = useMemo(() => Number(margenPreview ?? margenSeleccionado?.porcentaje ?? 30), [margenPreview, margenSeleccionado]);
 
   const productoIdSeleccionado = Number(productoSeleccionado || 0);
+  const cantidadNumero = Number(cantidad || 0);
 
   const materialesDelProducto = useMemo(() => {
     if (!productoIdSeleccionado) return [];
@@ -176,13 +182,19 @@ const CotizadorDigital = () => {
       const next = { materiales: { ...(prev.materiales || {}) }, procesos: { ...(prev.procesos || {}) }, operativos: { ...(prev.operativos || {}) } };
 
       materialesDelProducto.forEach((item) => {
-        if (next.materiales[item.id] === undefined) next.materiales[item.id] = true;
+        const nombre = String(item?.nombre || item?.concepto || '');
+        const esArranque = /arranque/i.test(nombre);
+        if (next.materiales[item.id] === undefined) next.materiales[item.id] = esArranque;
       });
       procesosDelProducto.forEach((item) => {
-        if (next.procesos[item.id] === undefined) next.procesos[item.id] = true;
+        const nombre = String(item?.nombre || item?.concepto || '');
+        const esArranque = /arranque/i.test(nombre);
+        if (next.procesos[item.id] === undefined) next.procesos[item.id] = esArranque;
       });
       operativosDelProducto.forEach((item) => {
-        if (next.operativos[item.id] === undefined) next.operativos[item.id] = true;
+        const nombre = String(item?.nombre || item?.concepto || '');
+        const esArranque = /arranque/i.test(nombre);
+        if (next.operativos[item.id] === undefined) next.operativos[item.id] = esArranque;
       });
 
       return next;
@@ -292,8 +304,9 @@ const CotizadorDigital = () => {
     return Number(preview ?? base ?? 0);
   }, [plazoOverrides, plazoSeleccionado]);
 
-  const valorUnitarioConCredito = subtotalConMargen * (1 + recargoCredito / 100);
-  const totalFinal = valorUnitarioConCredito;
+  const precioTotalConCredito = roundNumber(subtotalConMargen * (1 + recargoCredito / 100), 2);
+  const valorUnitarioConCredito = cantidadNumero > 0 ? roundNumber(precioTotalConCredito / cantidadNumero, 4) : 0;
+  const totalFinal = precioTotalConCredito;
 
   const opcionesPago = useMemo(() => {
     const base = [{
@@ -333,44 +346,23 @@ const CotizadorDigital = () => {
     }));
   };
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
-          <div className="animate-spin h-10 w-10 rounded-full border-4 border-emerald-500 border-t-transparent mx-auto" />
-          <p className="mt-4 text-slate-600">Cargando cotizador digital...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleApplyCotizador = () => {
+    if (typeof onApply !== 'function') return;
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {warningModal.isOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="bg-amber-100 text-amber-700 rounded-full p-2">
-                <span className="text-lg font-bold">!</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">Advertencia</h3>
-                <p className="text-sm text-gray-600 mt-2">{warningModal.message}</p>
-              </div>
-            </div>
+    const cantidadAplicar = Number(cantidad || 0);
+    const cantidadFinal = cantidadAplicar > 0 ? cantidadAplicar : 1;
+    const valorUnitarioAplicado = roundNumber(valorUnitarioConCredito || 0, 4);
+    const totalAplicado = roundNumber(cantidadFinal * valorUnitarioAplicado, 2);
 
-            <div className="flex justify-end mt-6">
-              <button
-                type="button"
-                onClick={() => setWarningModal({ isOpen: false, message: '' })}
-                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    onApply({
+      cantidad: cantidadFinal,
+      valor_unitario: valorUnitarioAplicado,
+      valor_total: totalAplicado,
+    });
+  };
+
+  const renderCotizadorContent = () => (
+    <>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-600 font-semibold">Producción</p>
@@ -619,7 +611,7 @@ const CotizadorDigital = () => {
                         </th>
                         <th className="px-4 py-3 font-semibold text-slate-700">Material</th>
                         <th className="px-4 py-3 font-semibold text-slate-700">Cobro</th>
-                        <th className="px-4 py-3 font-semibold text-slate-700">Cantidad</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Precio</th>
                         <th className="px-4 py-3 font-semibold text-slate-700">Total</th>
                       </tr>
                     </thead>
@@ -643,7 +635,7 @@ const CotizadorDigital = () => {
                             </td>
                             <td className="px-4 py-3 text-slate-800">{item.nombre}</td>
                             <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
-                            <td className="px-4 py-3 text-slate-700">{item.unidad}</td>
+                            <td className="px-4 py-3 text-slate-700">{formatMoney(item.costo_unitario ?? item.precio ?? 0)}</td>
                             <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosParaCostos))}</td>
                           </tr>
                         ))
@@ -784,7 +776,7 @@ const CotizadorDigital = () => {
             </div>
             <div className="flex justify-between text-slate-300">
               <span>{plazoSeleccionado.nombre}</span>
-              <span>{formatMoney(subtotalConMargen * (1 + recargoCredito / 100))}</span>
+              <span>{formatMoney(precioTotalConCredito)}</span>
             </div>
             {recargoCredito > 0 && (
               <div className="flex justify-between text-slate-300">
@@ -794,7 +786,11 @@ const CotizadorDigital = () => {
             )}
             <div className="rounded-xl border border-emerald-500/30 bg-slate-800 p-3 mt-4">
               <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-300">Precio final</div>
-              <div className="text-2xl font-black mt-1 text-white">{formatMoney(valorUnitarioConCredito)}</div>
+              <div className="text-2xl font-black mt-1 text-white">{formatMoney(totalFinal, 2)}</div>
+            </div>
+            <div className="rounded-xl border border-sky-500/30 bg-slate-800 p-3 mt-2">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-sky-300">Valor unitario</div>
+              <div className="text-2xl font-black mt-1 text-white">{formatMoney(valorUnitarioConCredito, 4)}</div>
             </div>
             <div className="mt-4 space-y-2 border-t border-slate-700 pt-3">
               {opcionesPago.map((opcion) => (
@@ -812,10 +808,96 @@ const CotizadorDigital = () => {
             <div className="font-semibold text-slate-200 mb-2">Nota</div>
             Este cotizador usa solo los materiales, procesos y costos operativos asociados al producto seleccionado.
           </div>
+
+          {!isModal && (
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleApplyCotizador}
+                disabled={typeof onApply !== 'function'}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Aplicar a la cotización
+              </button>
+            </div>
+          )}
         </aside>
       </div>
+    </>
+  );
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+          <div className="animate-spin h-10 w-10 rounded-full border-4 border-emerald-500 border-t-transparent mx-auto" />
+          <p className="mt-4 text-slate-600">Cargando cotizador digital...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isModal) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-slate-700">Cotizador</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCotizador}
+                className="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Aplicar a la cotización
+              </button>
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-[calc(95vh-74px)] p-4 sm:p-6">
+            {renderCotizadorContent()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      {warningModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="bg-amber-100 text-amber-700 rounded-full p-2">
+                <span className="text-lg font-bold">!</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Advertencia</h3>
+                <p className="text-sm text-gray-600 mt-2">{warningModal.message}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                type="button"
+                onClick={() => setWarningModal({ isOpen: false, message: '' })}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {renderCotizadorContent()}
     </div>
   );
-};
+  };
 
 export default CotizadorDigital;
