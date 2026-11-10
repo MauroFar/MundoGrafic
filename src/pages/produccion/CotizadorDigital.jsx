@@ -40,6 +40,16 @@ const calcularValorItem = (item, metros) => {
   return valorBase * toNumber(metros);
 };
 
+const redondearDecimalAEntero = (valor) => {
+  const numero = Number(valor || 0);
+  if (!Number.isFinite(numero)) return 0;
+  const parteDecimal = Math.abs(numero) - Math.floor(Math.abs(numero));
+  if (parteDecimal >= 0.5) {
+    return Math.ceil(numero);
+  }
+  return Math.floor(numero);
+};
+
 const CotizadorDigital = () => {
   const [tiposProducto, setTiposProducto] = useState([]);
   const [materiales, setMateriales] = useState([]);
@@ -169,16 +179,16 @@ const CotizadorDigital = () => {
     const metrosExcedente = Number(metrosExcedenteManual || 0);
 
     const etiquetasAncho = anchoImpresion > 0 && anchoEtiqueta + separacionAncho > 0
-      ? Math.round(anchoImpresion / (anchoEtiqueta + separacionAncho))
+      ? redondearDecimalAEntero(anchoImpresion / (anchoEtiqueta + separacionAncho))
       : 0;
     const etiquetasLargo = largoMaterial > 0 && altoEtiqueta + separacionAvance > 0
-      ? Math.round(largoMaterial / (altoEtiqueta + separacionAvance))
+      ? redondearDecimalAEntero(largoMaterial / (altoEtiqueta + separacionAvance))
       : 0;
 
     const cabidaMetro = etiquetasAncho > 0 && etiquetasLargo > 0 ? etiquetasAncho * etiquetasLargo : 0;
-    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? Math.floor(cantidadNumero / cabidaMetro) : 0;
+    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? redondearDecimalAEntero(cantidadNumero / cabidaMetro) : 0;
     const metrosUsar = metrosNetos + metrosExcedente;
-    const etiquetasQueSalen = cabidaMetro > 0 ? Math.ceil(metrosUsar * cabidaMetro) : 0;
+    const etiquetasQueSalen = cabidaMetro > 0 ? redondearDecimalAEntero(metrosUsar * cabidaMetro) : 0;
 
     return {
       etiquetasAncho,
