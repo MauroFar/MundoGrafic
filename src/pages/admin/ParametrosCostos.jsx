@@ -27,12 +27,15 @@ import {
   eliminarPlazoComercial,
 } from '../../services/digitalCostosService';
 
+const MARGEN_MINIMO = 30;
+
 const emptyTipoProducto = { nombre: '', activo: true };
 const emptyMaterial = { nombre: '', unidad: 'Metro', tipo_cobro: 'metro', costo_unitario: '', estado: 'Activo', tipo_producto_ids: [] };
 const emptyProceso = { nombre: '', tipo_cobro: 'metro', precio: '', estado: 'Activo', tipo_producto_ids: [] };
 const emptyOperativo = { concepto: '', tipo_cobro: 'metro', costo_fijo: '', estado: 'Activo', tipo_producto_ids: [] };
 const emptyMargen = { nombre: '', porcentaje: '', activo: true, orden: 1 };
 const emptyPlazo = { nombre: '', dias: '', recargo_porcentaje: '', activo: true, orden: 1 };
+
 
 const ParametrosCostos = () => {
   const navigate = useNavigate();
@@ -306,6 +309,11 @@ const ParametrosCostos = () => {
     e.preventDefault();
     if (!margenForm.nombre.trim()) return;
 
+    const porcentaje = Number(margenForm.porcentaje ?? 0);
+    if (porcentaje < MARGEN_MINIMO) {
+      return;
+    }
+
     try {
       const config = await obtenerConfiguracionComercialDigital();
       const configId = config?.configuracion?.id;
@@ -314,7 +322,7 @@ const ParametrosCostos = () => {
       if (margenEditId) {
         const updated = await actualizarMargenComercial(Number(margenEditId), {
           nombre: margenForm.nombre,
-          porcentaje: Number(margenForm.porcentaje),
+          porcentaje,
           activo: margenForm.activo,
           orden: Number(margenForm.orden),
         });
@@ -324,7 +332,7 @@ const ParametrosCostos = () => {
         const created = await crearMargenComercial({
           configuracion_comercial_id: configId,
           nombre: margenForm.nombre,
-          porcentaje: Number(margenForm.porcentaje),
+          porcentaje,
           activo: margenForm.activo,
           orden: Number(margenForm.orden),
         });

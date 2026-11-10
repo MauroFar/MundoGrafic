@@ -2148,12 +2148,12 @@ function CotizacionesCrear() {
                   <tr ref={(el) => (filaRefs.current[index] = el)}>
                     <td className="border border-gray-300 px-2 py-2 text-center align-top">
                       <button
-                        onClick={() => abrirModalProcesos(index)}
+                        onClick={() => navigate('/cotizaciones/cotizador')}
                         className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex flex-col items-center gap-1"
-                        title="Calcular con procesos de producción"
+                        title="Ir al cotizador"
                       >
                         <FaCalculator className="text-lg" />
-                        <span className="text-xs whitespace-nowrap">Calcular</span>
+                        <span className="text-xs whitespace-nowrap">Cotizador</span>
                       </button>
                     </td>
                     <td className="border border-gray-300 py-2 align-top">

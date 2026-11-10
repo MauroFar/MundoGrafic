@@ -7,6 +7,8 @@ import {
   obtenerTiposProductoDigitales,
 } from '../../services/digitalCostosService';
 
+const MARGEN_MINIMO = 30;
+
 const formatMoney = (value) =>
   new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -16,6 +18,14 @@ const formatMoney = (value) =>
   }).format(Number(value || 0));
 
 const toNumber = (value) => Number(value || 0);
+
+const validarMargenBase = (valor) => {
+  const numero = Number(valor ?? 0);
+  if (Number.isFinite(numero) && numero < MARGEN_MINIMO) {
+    return false;
+  }
+  return true;
+};
 
 const getTipoCobroLabel = (tipo) => {
   switch ((tipo || '').toLowerCase()) {
@@ -43,10 +53,6 @@ const calcularValorItem = (item, metros) => {
 const redondearDecimalAEntero = (valor) => {
   const numero = Number(valor || 0);
   if (!Number.isFinite(numero)) return 0;
-  const parteDecimal = Math.abs(numero) - Math.floor(Math.abs(numero));
-  if (parteDecimal >= 0.5) {
-    return Math.ceil(numero);
-  }
   return Math.floor(numero);
 };
 
@@ -67,6 +73,11 @@ const CotizadorDigital = () => {
     separacionAvance: 0.5,
   });
   const [metrosExcedenteManual, setMetrosExcedenteManual] = useState('50');
+  const [diasCredito, setDiasCredito] = useState(0);
+  const [margenSeleccionadoId, setMargenSeleccionadoId] = useState(null);
+  const [margenPreview, setMargenPreview] = useState(30);
+  const [plazoOverrides, setPlazoOverrides] = useState({});
+  const [warningModal, setWarningModal] = useState({ isOpen: false, message: '' });
   const [selecciones, setSelecciones] = useState({ materiales: {}, procesos: {}, operativos: {} });
   const [loading, setLoading] = useState(true);
 
@@ -86,7 +97,27 @@ const CotizadorDigital = () => {
         setMateriales((materialesData || []).filter((item) => item.estado === 'Activo'));
         setProcesos((procesosData || []).filter((item) => item.estado === 'Activo'));
         setOperativos((operativosData || []).filter((item) => item.estado === 'Activo'));
-        setConfiguracion(configData || { margenes: [], plazos: [] });
+        const margenesOrdenados = [...((configData?.margenes || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || String(a.nombre || '').localeCompare(String(b.nombre || '')));
+        const plazosOrdenados = [...((configData?.plazos || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || Number(a.dias || 0) - Number(b.dias || 0));
+        const margenPorDefecto = margenesOrdenados.find((item) => item.activo) || margenesOrdenados[0];
+        const plazoPorDefecto = plazosOrdenados.find((item) => Number(item.dias || 0) === 30 && item.activo !== false) || plazosOrdenados[0] || { dias: 0, nombre: 'Contado', recargo_porcentaje: 0 };
+
+        const margenBase = margenesOrdenados.length ? margenesOrdenados : [{ id: 'default-margen', nombre: 'Margen base', porcentaje: 30, activo: true, orden: 1 }];
+        const plazosBase = plazosOrdenados.length ? plazosOrdenados : [{ id: 'contado', nombre: 'Contado', dias: 0, recargo_porcentaje: 0, activo: true, orden: 0 }];
+
+        setConfiguracion({ margenes: margenBase, plazos: plazosBase });
+        if (margenPorDefecto) {
+          setMargenSeleccionadoId(Number(margenPorDefecto.id));
+          setMargenPreview(Number(margenPorDefecto.porcentaje ?? 30));
+        } else {
+          setMargenPreview(30);
+        }
+
+        const overridesIniciales = Object.fromEntries(
+          plazosBase.map((item) => [String(item.id), Number(item.recargo_porcentaje ?? 0)])
+        );
+        setPlazoOverrides(overridesIniciales);
+        setDiasCredito(Number(plazoPorDefecto?.dias ?? 0));
 
         if (tiposActivos.length > 0) {
           setProductoSeleccionado(String(tiposActivos[0].id));
@@ -101,10 +132,25 @@ const CotizadorDigital = () => {
     cargarDatos();
   }, []);
 
-  const margenActivo = useMemo(() => {
-    const margenEnUso = (configuracion?.margenes || []).find((item) => item.activo) || (configuracion?.margenes || [])[0];
-    return Number(margenEnUso?.porcentaje || 0);
-  }, [configuracion]);
+  const margenesDisponibles = useMemo(
+    () => [...(configuracion?.margenes || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || String(a.nombre || '').localeCompare(String(b.nombre || ''))),
+    [configuracion],
+  );
+
+  const margenSeleccionado = useMemo(() => {
+    if (!margenesDisponibles.length) {
+      return { id: 'default-margen', nombre: 'Margen base', porcentaje: 30, activo: true, orden: 1 };
+    }
+    return margenesDisponibles.find((item) => Number(item.id) === Number(margenSeleccionadoId)) || margenesDisponibles.find((item) => item.activo) || margenesDisponibles[0];
+  }, [margenesDisponibles, margenSeleccionadoId]);
+
+  useEffect(() => {
+    if (margenSeleccionado) {
+      setMargenPreview(Number(margenSeleccionado.porcentaje ?? 30));
+    }
+  }, [margenSeleccionado]);
+
+  const margenActivo = useMemo(() => Number(margenPreview ?? margenSeleccionado?.porcentaje ?? 30), [margenPreview, margenSeleccionado]);
 
   const productoIdSeleccionado = Number(productoSeleccionado || 0);
 
@@ -220,7 +266,72 @@ const CotizadorDigital = () => {
 
   const subtotal = materialTotal + procesoTotal + operativoTotal;
   const margenCalculado = subtotal * (margenActivo / 100);
-  const totalFinal = subtotal + margenCalculado;
+  const subtotalConMargen = subtotal + margenCalculado;
+
+  const creditTerms = useMemo(() => {
+    const terms = (configuracion?.plazos || [])
+      .filter((item) => item.activo !== false)
+      .sort((a, b) => Number(a.dias || 0) - Number(b.dias || 0));
+
+    return [
+      { id: 'contado', dias: 0, nombre: 'Contado', recargo_porcentaje: 0 },
+      ...terms.map((item) => ({ ...item, id: item.id ?? `plazo-${item.dias}` })),
+    ];
+  }, [configuracion]);
+
+  const plazoSeleccionado = useMemo(() => {
+    const selected = creditTerms.find((term) => Number(term.dias) === Number(diasCredito));
+    if (selected) return selected;
+
+    return { id: 'contado', dias: Number(diasCredito || 0), nombre: Number(diasCredito || 0) === 0 ? 'Contado' : `${Number(diasCredito || 0)} días`, recargo_porcentaje: 0 };
+  }, [creditTerms, diasCredito]);
+
+  const recargoCredito = useMemo(() => {
+    const base = plazoSeleccionado?.recargo_porcentaje ?? 0;
+    const preview = plazoOverrides[String(plazoSeleccionado?.id ?? 'contado')];
+    return Number(preview ?? base ?? 0);
+  }, [plazoOverrides, plazoSeleccionado]);
+
+  const valorUnitarioConCredito = subtotalConMargen * (1 + recargoCredito / 100);
+  const totalFinal = valorUnitarioConCredito;
+
+  const opcionesPago = useMemo(() => {
+    const base = [{
+      id: 'contado',
+      nombre: 'Contado',
+      dias: 0,
+      recargo_porcentaje: Number(plazoOverrides.contado ?? 0),
+      total: subtotalConMargen,
+    }];
+    const rows = creditTerms.filter((term) => Number(term.dias) !== 0).map((term) => {
+      const recargo = Number(plazoOverrides[String(term.id)] ?? term.recargo_porcentaje ?? 0);
+      return {
+        ...term,
+        recargo_porcentaje: recargo,
+        total: subtotalConMargen * (1 + recargo / 100),
+      };
+    });
+
+    return [...base, ...rows];
+  }, [creditTerms, plazoOverrides, subtotalConMargen]);
+
+  const actualizarMargenLocal = (margenId, porcentaje) => {
+    const valor = Number(porcentaje || 0);
+    if (Number.isFinite(valor) && valor < MARGEN_MINIMO) {
+      setWarningModal({ isOpen: true, message: 'El margen base establecido es de 30%. No se permite un valor menor.' });
+      return;
+    }
+    setMargenPreview(valor);
+    setMargenSeleccionadoId(Number(margenId));
+  };
+
+  const actualizarPlazoLocal = (plazoId, recargo) => {
+    const valor = Number(recargo || 0);
+    setPlazoOverrides((prev) => ({
+      ...prev,
+      [String(plazoId)]: valor,
+    }));
+  };
 
   if (loading) {
     return (
@@ -235,6 +346,31 @@ const CotizadorDigital = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {warningModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="bg-amber-100 text-amber-700 rounded-full p-2">
+                <span className="text-lg font-bold">!</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Advertencia</h3>
+                <p className="text-sm text-gray-600 mt-2">{warningModal.message}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                type="button"
+                onClick={() => setWarningModal({ isOpen: false, message: '' })}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-600 font-semibold">Producción</p>
@@ -269,6 +405,94 @@ const CotizadorDigital = () => {
                   onChange={(e) => setCantidad(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">Margen y pagos</label>
+                  <span className="text-xs text-slate-500">Datos DB</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <div className="text-xs uppercase tracking-wide text-amber-700 font-semibold mb-2">Márgenes</div>
+                    <div className="space-y-2">
+                      {margenesDisponibles.map((margen) => (
+                        <div
+                          key={margen.id}
+                          className={`flex items-center justify-between gap-3 rounded-lg border px-2.5 py-2 ${
+                            Number(margenSeleccionado?.id) === Number(margen.id)
+                              ? 'border-emerald-500 bg-white'
+                              : 'border-amber-200 bg-white/70'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setMargenSeleccionadoId(Number(margen.id))}
+                            className="text-left flex-1 text-sm font-medium text-slate-700"
+                          >
+                            {margen.nombre || 'Margen'}
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={Number(Number(margenSeleccionado?.id) === Number(margen.id) ? (margenPreview ?? margen.porcentaje ?? 0) : (margen.porcentaje ?? 0))}
+                              onChange={(e) => {
+                                const nextValue = e.target.value;
+                                actualizarMargenLocal(margen.id, nextValue);
+                              }}
+                              className="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                            <span className="text-xs text-slate-500">%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs uppercase tracking-wide text-slate-600 font-semibold mb-2">Pagos</div>
+                    <div className="space-y-2">
+                      {opcionesPago.map((opcion) => (
+                        <div
+                          key={opcion.id}
+                          className={`flex items-center justify-between gap-3 rounded-lg border px-2.5 py-2 ${
+                            Number(diasCredito) === Number(opcion.dias)
+                              ? 'border-emerald-500 bg-white'
+                              : 'border-slate-200 bg-white/70'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setDiasCredito(Number(opcion.dias))}
+                            className="text-left flex-1 min-w-0"
+                          >
+                            <div className="text-sm font-semibold text-slate-700">{opcion.nombre}</div>
+                            <div className="text-[11px] text-slate-500">{formatMoney(opcion.total)}</div>
+                          </button>
+                          {Number(opcion.dias) !== 0 && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={Number(plazoOverrides[String(opcion.id)] ?? opcion.recargo_porcentaje ?? 0)}
+                                onChange={(e) => {
+                                  const nextValue = e.target.value;
+                                  const target = creditTerms.find((item) => String(item.id) === String(opcion.id) || (Number(item.dias) === Number(opcion.dias) && Number(item.dias) !== 0));
+                                  if (!target) return;
+                                  actualizarPlazoLocal(target.id, nextValue);
+                                }}
+                                className="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                              <span className="text-xs text-slate-500">%</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -558,9 +782,29 @@ const CotizadorDigital = () => {
               <span>Margen {margenActivo}%</span>
               <span>{formatMoney(margenCalculado)}</span>
             </div>
-            <div className="bg-emerald-500 text-emerald-950 rounded-xl p-3 mt-4">
-              <div className="text-xs uppercase tracking-wide font-semibold">Total estimado</div>
-              <div className="text-2xl font-black mt-1">{formatMoney(totalFinal)}</div>
+            <div className="flex justify-between text-slate-300">
+              <span>{plazoSeleccionado.nombre}</span>
+              <span>{formatMoney(subtotalConMargen * (1 + recargoCredito / 100))}</span>
+            </div>
+            {recargoCredito > 0 && (
+              <div className="flex justify-between text-slate-300">
+                <span>Recargo {recargoCredito}%</span>
+                <span>{formatMoney(subtotalConMargen * (recargoCredito / 100))}</span>
+              </div>
+            )}
+            <div className="rounded-xl border border-emerald-500/30 bg-slate-800 p-3 mt-4">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-300">Precio final</div>
+              <div className="text-2xl font-black mt-1 text-white">{formatMoney(valorUnitarioConCredito)}</div>
+            </div>
+            <div className="mt-4 space-y-2 border-t border-slate-700 pt-3">
+              {opcionesPago.map((opcion) => (
+                <div key={opcion.id} className="flex items-center justify-between text-xs gap-3">
+                  <span className="text-slate-300">{opcion.nombre}</span>
+                  <span className={`${Number(diasCredito) === Number(opcion.dias) ? 'text-emerald-300 font-semibold' : 'text-slate-200'}`}>
+                    {formatMoney(opcion.total)}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 

@@ -453,8 +453,17 @@ export class PgDigitalCostosRepository {
     return result.rows[0];
   }
 
+  private validarMargenBase(porcentaje: number | null | undefined): void {
+    const valor = Number(porcentaje ?? 0);
+    if (Number.isFinite(valor) && valor < 30) {
+      throw new Error('El margen base establecido es de 30%. No se permite un valor menor.');
+    }
+  }
+
   async crearMargen(input: Partial<MargenComercial>, usuarioId: number | null): Promise<MargenComercial> {
     const { configuracion_comercial_id, nombre, porcentaje, activo, orden } = input;
+    this.validarMargenBase(Number(porcentaje ?? 0));
+
     const result = await this.client.query(
       `INSERT INTO configuracion_comercial_margenes (configuracion_comercial_id, nombre, porcentaje, activo, orden, usuario_modificacion_id)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -470,6 +479,10 @@ export class PgDigitalCostosRepository {
     if (!previous.rows[0]) return null;
 
     const { nombre, porcentaje, activo, orden } = input;
+    if (porcentaje !== undefined && porcentaje !== null) {
+      this.validarMargenBase(Number(porcentaje));
+    }
+
     const result = await this.client.query(
       `UPDATE configuracion_comercial_margenes
        SET nombre = COALESCE($1, nombre),

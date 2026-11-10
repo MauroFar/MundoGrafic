@@ -221,8 +221,9 @@ export class DigitalCostosController {
       const margen = await this.repo.crearMargen(req.body || {}, usuarioId);
       return res.status(201).json(margen);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Error creando margen comercial";
       console.error("Error creando margen comercial:", error);
-      return res.status(500).json({ error: "Error creando margen comercial" });
+      return res.status(400).json({ error: message });
     }
   };
 
@@ -235,8 +236,9 @@ export class DigitalCostosController {
       }
       return res.json(margen);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Error actualizando margen comercial";
       console.error("Error actualizando margen comercial:", error);
-      return res.status(500).json({ error: "Error actualizando margen comercial" });
+      return res.status(400).json({ error: message });
     }
   };
 
