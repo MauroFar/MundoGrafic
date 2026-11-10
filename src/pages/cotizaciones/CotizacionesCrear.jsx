@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import Logo from "../../components/Logo";
 import axios from 'axios';
@@ -13,6 +13,7 @@ import CotizadorDigital from '../produccion/CotizadorDigital';
 
 function CotizacionesCrear() {
   const { id } = useParams();
+  const location = useLocation();
   const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
@@ -40,6 +41,7 @@ function CotizacionesCrear() {
   const textareaRefs = useRef([]);
   const selectionRangesRef = useRef({});
   const filaRefs = useRef([]); // Refs para hacer scroll automático a nuevas filas
+  const cotizadorRequestRef = useRef('');
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -346,6 +348,49 @@ function CotizacionesCrear() {
       })
       .catch(err => console.error('❌ Error cargando vendedores:', err));
   }, []);
+
+  useEffect(() => {
+    const cotizadorData = location?.state?.cotizadorData;
+
+    if (!cotizadorData) {
+      cotizadorRequestRef.current = '';
+      return;
+    }
+
+    const signature = JSON.stringify({
+      cantidad: cotizadorData.cantidad || 1,
+      valor_unitario: cotizadorData.valor_unitario || 0,
+      valor_total: cotizadorData.valor_total || 0,
+      detalle: cotizadorData.detalle || 'Cotizador digital',
+      tipo: cotizadorData.tipo || 'Cotizador digital',
+    });
+
+    if (cotizadorRequestRef.current === signature) return;
+    cotizadorRequestRef.current = signature;
+
+    const nuevaFila = {
+      cantidad: String(cotizadorData.cantidad || 1),
+      detalle: cotizadorData.detalle || 'Cotizador digital',
+      valor_unitario: normalizarDecimalInput(cotizadorData.valor_unitario || 0),
+      valor_total: Number(cotizadorData.valor_total || 0),
+      usa_escalas: false,
+      escalas: [],
+      imagenes: [],
+      alineacion_imagenes: 'horizontal',
+      posicion_imagen: 'abajo',
+      texto_negrita: false,
+      tipo_trabajo: cotizadorData.tipo || 'Cotizador digital',
+      descripcion_trabajo: cotizadorData.detalle || 'Cotizador digital',
+    };
+
+    setFilas((prev) => {
+      const items = [...prev, nuevaFila];
+      calcularTotales(items);
+      return items;
+    });
+
+    navigate('/cotizaciones/crear', { replace: true, state: null });
+  }, [location.key, location.state]);
 
   // Cargar datos de la cotización si estamos en modo edición
   useEffect(() => {

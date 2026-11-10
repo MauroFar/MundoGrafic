@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   obtenerMaterialesDigitales,
   obtenerProcesosDigitales,
@@ -23,6 +24,12 @@ const formatMoney = (value, decimals = 2) =>
   }).format(Number(value || 0));
 
 const toNumber = (value) => Number(value || 0);
+
+const bloquearScrollNumero = (event) => {
+  if (event?.target?.type === 'number') {
+    event.preventDefault();
+  }
+};
 
 const validarMargenBase = (valor) => {
   const numero = Number(valor ?? 0);
@@ -62,6 +69,7 @@ const redondearDecimalAEntero = (valor) => {
 };
 
 const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) => {
+  const navigate = useNavigate();
   const [tiposProducto, setTiposProducto] = useState([]);
   const [materiales, setMateriales] = useState([]);
   const [procesos, setProcesos] = useState([]);
@@ -347,17 +355,31 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
   };
 
   const handleApplyCotizador = () => {
-    if (typeof onApply !== 'function') return;
-
     const cantidadAplicar = Number(cantidad || 0);
     const cantidadFinal = cantidadAplicar > 0 ? cantidadAplicar : 1;
     const valorUnitarioAplicado = roundNumber(valorUnitarioConCredito || 0, 4);
     const totalAplicado = roundNumber(cantidadFinal * valorUnitarioAplicado, 2);
 
-    onApply({
-      cantidad: cantidadFinal,
-      valor_unitario: valorUnitarioAplicado,
-      valor_total: totalAplicado,
+    if (typeof onApply === 'function') {
+      onApply({
+        cantidad: cantidadFinal,
+        valor_unitario: valorUnitarioAplicado,
+        valor_total: totalAplicado,
+      });
+      return;
+    }
+
+    const productoNombre = tiposProducto.find((item) => Number(item.id) === productoIdSeleccionado)?.nombre || 'Cotizador digital';
+    navigate('/cotizaciones/crear', {
+      state: {
+        cotizadorData: {
+          cantidad: cantidadFinal,
+          valor_unitario: valorUnitarioAplicado,
+          valor_total: totalAplicado,
+          detalle: `Cotizador digital - ${productoNombre}`,
+          tipo: 'Cotizador digital',
+        },
+      },
     });
   };
 
@@ -395,6 +417,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                   min="0"
                   value={cantidad}
                   onChange={(e) => setCantidad(e.target.value)}
+                  onWheel={bloquearScrollNumero}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -434,6 +457,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                                 const nextValue = e.target.value;
                                 actualizarMargenLocal(margen.id, nextValue);
                               }}
+                              onWheel={bloquearScrollNumero}
                               className="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             />
                             <span className="text-xs text-slate-500">%</span>
@@ -475,6 +499,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                                   if (!target) return;
                                   actualizarPlazoLocal(target.id, nextValue);
                                 }}
+                                onWheel={bloquearScrollNumero}
                                 className="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
                               />
                               <span className="text-xs text-slate-500">%</span>
@@ -507,6 +532,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.anchoEtiqueta}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, anchoEtiqueta: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -517,6 +543,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.altoEtiqueta}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, altoEtiqueta: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -527,6 +554,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.anchoImpresion}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, anchoImpresion: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -537,6 +565,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.largoMaterial}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, largoMaterial: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -547,6 +576,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.separacionAncho}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAncho: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -557,6 +587,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                     step="0.01"
                     value={cabidaInputs.separacionAvance}
                     onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAvance: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onWheel={bloquearScrollNumero}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -579,6 +610,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                       step="0.01"
                       value={metrosExcedenteManual}
                       onChange={(e) => setMetrosExcedenteManual(e.target.value)}
+                      onWheel={bloquearScrollNumero}
                       className="w-full border border-red-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white text-red-600"
                     />
                   </div>
@@ -814,8 +846,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
               <button
                 type="button"
                 onClick={handleApplyCotizador}
-                disabled={typeof onApply !== 'function'}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700"
               >
                 Aplicar a la cotización
               </button>
