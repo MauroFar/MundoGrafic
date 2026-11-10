@@ -25,7 +25,7 @@ export class PgProduccionRepository {
         NULL::text AS lote_material, NULL::text AS lote_produccion,
         dot.tamano, dot.tamano_abierto_1, dot.tamano_cerrado_1,
         dot.impresion, dot.instrucciones_impresion, dot.instrucciones_acabados,
-        dot.instrucciones_empacado, dot.observaciones, NULL::text AS prensa_seleccionada,
+        dot.instrucciones_empacado, dot.observaciones, dot.prensa_seleccionada,
         (SELECT concepto FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS concepto,
         (SELECT cantidad::text FROM productos_orden_offset WHERE orden_trabajo_id = ot.id ORDER BY orden LIMIT 1) AS cantidad,
         ot.created_at, ot.updated_at

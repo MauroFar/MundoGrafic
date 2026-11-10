@@ -21,6 +21,7 @@ export interface UpsertDetalleOffsetInput {
   impresion?: string | null;
   observaciones?: string | null;
   numero_salida?: string | null;
+  prensa_seleccionada?: string | null;
   trazabilidad_proceso?: any;
   // Responsables
   vendedor?: string | null;
@@ -95,22 +96,22 @@ export class PgOrdenOffsetRepository {
         orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
         tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
         instrucciones_acabados, instrucciones_empacado, material, impresion, observaciones,
-        numero_salida, vendedor, preprensa, prensa, terminados, facturado,
+        numero_salida, prensa_seleccionada, vendedor, preprensa, prensa, terminados, facturado,
         vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
         terminados_cantidad_final, trazabilidad_proceso
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-        $16,$17,$18,$19,$20,$21,$22,$23,$24,$25::jsonb
+        $16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb
       )
       ON CONFLICT (orden_trabajo_id) DO UPDATE SET
         corte_material=$2, cantidad_pliegos_compra=$3, exceso=$4, total_pliegos=$5,
         tamano=$6, tamano_abierto_1=$7, tamano_cerrado_1=$8,
         instrucciones_impresion=$9, instrucciones_acabados=$10, instrucciones_empacado=$11,
         material=$12, impresion=$13, observaciones=$14, numero_salida=$15,
-        vendedor=$16, preprensa=$17, prensa=$18, terminados=$19, facturado=$20,
-        vendedor_cantidad_final=$21, preprensa_cantidad_final=$22,
-        prensa_cantidad_final=$23, terminados_cantidad_final=$24,
-        trazabilidad_proceso=$25::jsonb, updated_at=CURRENT_TIMESTAMP`,
+        prensa_seleccionada=$16, vendedor=$17, preprensa=$18, prensa=$19, terminados=$20,
+        facturado=$21, vendedor_cantidad_final=$22, preprensa_cantidad_final=$23,
+        prensa_cantidad_final=$24, terminados_cantidad_final=$25,
+        trazabilidad_proceso=$26::jsonb, updated_at=CURRENT_TIMESTAMP`,
       [
         v.orden_trabajo_id,
         v.corte_material ?? null,
@@ -127,6 +128,7 @@ export class PgOrdenOffsetRepository {
         v.impresion ?? null,
         v.observaciones ?? null,
         v.numero_salida ?? null,
+        v.prensa_seleccionada ?? null,
         v.vendedor ?? null,
         v.preprensa ?? null,
         v.prensa ?? null,

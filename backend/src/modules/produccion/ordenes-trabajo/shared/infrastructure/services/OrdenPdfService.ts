@@ -631,7 +631,8 @@ export class OrdenPdfService {
     const pdfBuffer = await page.pdf({
       format: 'A4', printBackground: true,
       margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
-      scale: 0.95,
+      scale: 1,
+      preferCSSPageSize: true,
     });
     await browser.close();
     return Buffer.from(pdfBuffer);
@@ -641,13 +642,15 @@ export class OrdenPdfService {
 
   private parseTrazabilidad(raw: any): any {
     const base: Record<string, any> = {};
-    const keys = ['preprensa','impresion','laminado','barnizado','troquelado_flexible',
-      'troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible',
-      'corte_termoencogible','terminado','liberacion_producto'];
-    const empty = { fecha_inicio:'', hora_inicio:'', fecha_fin:'', hora_fin:'',
-      cantidad:'', observaciones:'', firma:'' };
+    const keys = [
+      'preprensa','guillotinado','impresion','barnizado','plastificado','troquelado','pegado',
+      'encolado','grapado','anillado','estampado','terminado','terminados_externos','laminado',
+      'troquelado_flexible','troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible',
+      'corte_termoencogible','liberacion_producto'
+    ];
+    const empty = { fecha_inicio:'', hora_inicio:'', fecha_fin:'', hora_fin:'', cantidad:'', observaciones:'', firma:'' };
     keys.forEach(k => { base[k] = { ...empty }; });
-    if (!raw) return { ...base, procesos_seleccionados: [...keys], mostrar_total_cantidades: true, mostrar_total_metros: true, mostrar_observaciones_info_tecnica: true };
+    if (!raw) return { ...base, procesos_seleccionados: ['preprensa','impresion','laminado','barnizado','troquelado_flexible','troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible','corte_termoencogible','terminado','liberacion_producto','guillotinado','plastificado','troquelado','pegado','encolado','grapado','anillado','estampado','terminados_externos'], mostrar_total_cantidades: true, mostrar_total_metros: true, mostrar_observaciones_info_tecnica: true };
     let parsed = raw;
     if (typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch { parsed = {}; } }
     const result: any = {};
@@ -655,7 +658,8 @@ export class OrdenPdfService {
     result.troquelado = { ...empty, ...(parsed.troquelado_flexible || parsed.troquelado || {}) };
     result.terminados = { ...empty, ...(parsed.terminado || parsed.terminados || {}) };
     result.procesos_seleccionados = Array.isArray(parsed.procesos_seleccionados)
-      ? parsed.procesos_seleccionados.filter((k: any) => keys.includes(k)) : [...keys];
+      ? parsed.procesos_seleccionados.filter((k: any) => keys.includes(k))
+      : ['preprensa','impresion','laminado','barnizado','troquelado_flexible','troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible','corte_termoencogible','terminado','liberacion_producto','guillotinado','plastificado','troquelado','pegado','encolado','grapado','anillado','estampado','terminados_externos'];
     result.mostrar_total_cantidades = parsed.mostrar_total_cantidades === undefined || parsed.mostrar_total_cantidades === null
       ? true
       : parsed.mostrar_total_cantidades === true || parsed.mostrar_total_cantidades === 'true';
@@ -688,72 +692,111 @@ export class OrdenPdfService {
   private buildHtmlOffset(orden: any, detalle: any, logo: string, _salida: string): string {
     const traza = this.parseTrazabilidad(detalle?.trazabilidad_proceso);
     const lib = traza.liberacion_producto || {};
+    const productosConcepto = (detalle.productos_offset || [])
+      .map((p: any) => p.concepto || '')
+      .filter((v: string) => !!v)
+      .join(' | ');
+    const productosCantidad = (detalle.productos_offset || [])
+      .map((p: any) => p.cantidad != null && p.cantidad !== '' ? String(p.cantidad) : '')
+      .filter((v: string) => !!v)
+      .join(' | ');
+    const conceptoTexto = detalle.concepto || productosConcepto || '';
+    const cantidadTexto = detalle.cantidad != null && detalle.cantidad !== ''
+      ? String(detalle.cantidad)
+      : productosCantidad || '';
     const filas = this.buildTrazabilidadRows(detalle, [
-      { key:'preprensa', titulo:'PREPRENSA', responsable: detalle.preprensa, cantidadFinal: detalle.preprensa_cantidad_final },
-      { key:'impresion', titulo:'IMPRESION', responsable: detalle.prensa,    cantidadFinal: detalle.prensa_cantidad_final },
-      { key:'terminados',titulo:'TERMINADOS',responsable: detalle.terminados,cantidadFinal: detalle.terminados_cantidad_final },
+      { key:'preprensa', titulo:'Pre prensa', responsable: detalle.preprensa, cantidadFinal: detalle.preprensa_cantidad_final },
+      { key:'guillotinado', titulo:'Guillotinado', responsable: detalle.guillotinado, cantidadFinal: detalle.guillotinado_cantidad_final },
+      { key:'impresion', titulo:'Prensa', responsable: detalle.prensa || detalle.impresion, cantidadFinal: detalle.prensa_cantidad_final },
+      { key:'barnizado', titulo:'Barnizado', responsable: detalle.barnizado, cantidadFinal: detalle.barnizado_cantidad_final },
+      { key:'plastificado', titulo:'Plastificado', responsable: detalle.plastificado, cantidadFinal: detalle.plastificado_cantidad_final },
+      { key:'troquelado', titulo:'Troquelado', responsable: detalle.troquelado, cantidadFinal: detalle.troquelado_cantidad_final },
+      { key:'pegado', titulo:'Pegado de cajas', responsable: detalle.pegado, cantidadFinal: detalle.pegado_cantidad_final },
+      { key:'encolado', titulo:'Encolado', responsable: detalle.encolado, cantidadFinal: detalle.encolado_cantidad_final },
+      { key:'grapado', titulo:'Grapado', responsable: detalle.grapado, cantidadFinal: detalle.grapado_cantidad_final },
+      { key:'anillado', titulo:'Anillado', responsable: detalle.anillado, cantidadFinal: detalle.anillado_cantidad_final },
+      { key:'estampado', titulo:'Estampado', responsable: detalle.estampado, cantidadFinal: detalle.estampado_cantidad_final },
+      { key:'terminado', titulo:'Terminados MG', responsable: detalle.terminado || detalle.terminados, cantidadFinal: detalle.terminado_cantidad_final || detalle.terminados_cantidad_final },
+      { key:'terminados_externos', titulo:'Terminados externos', responsable: detalle.terminados_externos, cantidadFinal: detalle.terminados_externos_cantidad_final },
     ]);
-    const productos = (detalle.productos_offset || []).map((p: any) =>
-      `${p.concepto||''} (${p.cantidad||''})`.trim().replace(/\(\)$/,'')).join(' | ');
-    const css = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:12px;font-size:9px;color:#333}
-.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:8px}
-.hdr img{height:35px}.hdr-r{text-align:right;font-size:8px}.hdr-n{font-size:14px;font-weight:bold}
-.tit{text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px}
-.sec{margin-bottom:6px;border:1px solid #ddd;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f0f0f0;padding:3px 6px;font-weight:bold;font-size:9px;border-bottom:1px solid #ddd}
-.sec-c{padding:5px}.fila{display:flex;gap:6px;margin-bottom:3px}.campo{flex:1}
-.lbl{font-size:7px;color:#666;margin-bottom:1px;font-weight:bold}.val{border:1px solid #ddd;padding:3px 5px;font-size:8px;background:white;min-height:20px}
-.trz{width:100%;border-collapse:collapse}
-.tc{border:1px solid #d7d7d7;padding:4px;font-size:8px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}
-.tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:60px;height:30px}`;
+    const css = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:14px;font-size:11px;color:#333;line-height:1.4}img{max-width:100%}
+.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
+.hdr img{height:42px}.hdr-r{text-align:right;font-size:10px}.hdr-n{font-size:18px;font-weight:bold}
+.tit{text-align:center;font-size:20px;font-weight:bold;margin:10px 0 14px}
+.sec{margin-bottom:12px;border:1px solid #d5d5d5;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f3f4f6;padding:6px 10px;font-weight:bold;font-size:12px;border-bottom:1px solid #d5d5d5}
+.sec-c{padding:10px}.fila{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}.campo{flex:1;min-width:120px}
+.lbl{font-size:9px;color:#555;margin-bottom:3px;font-weight:bold}.val{border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trz{width:100%;border-collapse:collapse;margin-top:8px}
+.tc{border:1px solid #d7d7d7;padding:5px 6px;font-size:10px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}.tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:72px;height:30px}`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
 <div class="hdr"><div>${logo ? `<img src="${logo}">` : '<strong>MUNDOGRAFIC</strong>'}</div>
 <div class="hdr-r"><div class="hdr-n">Orden de Trabajo OFFSET</div>
-<div>Orden Nº: <strong>${orden.numero_orden||''}</strong></div>
-<div>Orden de Compra: ${orden.orden_compra||''}</div><div>Cotización Nº: ${orden.numero_cotizacion||''}</div></div></div>
+<div>Orden N°: <strong>${orden.numero_orden||''}</strong></div>
+<div>Cotización N°: ${orden.numero_cotizacion||''}</div>
+<div>Orden de Compra: ${orden.orden_compra||''}</div></div></div>
 <div class="tit">ORDEN DE TRABAJO - OFFSET</div>
-<div class="sec"><div class="sec-t">Información del Cliente</div><div class="sec-c">
-<div class="fila">
-<div class="campo" style="flex:2"><div class="lbl">CLIENTE</div><div class="val">${orden.nombre_cliente||''}</div></div>
-<div class="campo"><div class="lbl">CONTACTO</div><div class="val">${orden.contacto||''}</div></div>
-<div class="campo"><div class="lbl">TELÉFONO</div><div class="val">${orden.telefono||''}</div></div>
-<div class="campo" style="flex:1.5"><div class="lbl">EMAIL</div><div class="val">${orden.email||''}</div></div>
-</div></div></div>
+<div class="sec"><div class="sec-t">Información General</div><div class="sec-c">
+<div class="grid3">
+  <div class="campo"><div class="lbl">Orden N°:</div><div class="val">${orden.numero_orden||''}</div></div>
+  <div class="campo"><div class="lbl">Cotización N°:</div><div class="val">${orden.numero_cotizacion||''}</div></div>
+  <div class="campo"><div class="lbl">Orden de Compra:</div><div class="val">${orden.orden_compra||''}</div></div>
+  <div class="campo"><div class="lbl">Fecha Creación:</div><div class="val">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
+  <div class="campo"><div class="lbl">Artes Aprobados:</div><div class="val">${orden.artes_aprobados ? 'Sí' : 'No'}</div></div>
+  <div class="campo"><div class="lbl">Fecha Aprobación Artes:</div><div class="val">${orden.fecha_aprobacion_artes ? new Date(orden.fecha_aprobacion_artes).toLocaleDateString('es-EC') : ''}</div></div>
+  <div class="campo"><div class="lbl">Fecha Entrega:</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
+  <div class="campo"><div class="lbl">Cliente:</div><div class="val">${orden.nombre_cliente||''}</div></div>
+  <div class="campo"><div class="lbl">Contacto:</div><div class="val">${orden.contacto||''}</div></div>
+  <div class="campo"><div class="lbl">Teléfono:</div><div class="val">${orden.telefono||''}</div></div>
+  <div class="campo"><div class="lbl">Email:</div><div class="val">${orden.email||''}</div></div>
+</div>
+</div></div>
 <div class="sec"><div class="sec-t">Información del Trabajo</div><div class="sec-c">
 <div class="fila">
-<div class="campo" style="flex:2"><div class="lbl">CONCEPTO</div><div class="val">${productos}</div></div>
-<div class="campo"><div class="lbl">FECHA CREACIÓN</div><div class="val">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
-<div class="campo"><div class="lbl">FECHA ENTREGA</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Cantidad</div><div class="val">${cantidadTexto || detalle.cantidad || orden.cantidad || ''}</div></div>
+  <div class="campo" style="flex:3"><div class="lbl">Concepto</div><div class="val">${conceptoTexto}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Tamaño Abierto</div><div class="val">${detalle.tamano_abierto_1 || detalle.tamano || ''}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${detalle.tamano_cerrado_1 || detalle.tamano || ''}</div></div>
 </div></div></div>
-<div class="sec"><div class="sec-t">Material y Pliegos</div><div class="sec-c"><div class="fila">
-<div class="campo" style="flex:2"><div class="lbl">MATERIAL</div><div class="val">${detalle.material||''}</div></div>
-<div class="campo"><div class="lbl">CORTE MATERIAL</div><div class="val">${detalle.corte_material||''}</div></div>
-<div class="campo"><div class="lbl">PLIEGOS COMPRA</div><div class="val">${detalle.cantidad_pliegos_compra||''}</div></div>
-<div class="campo"><div class="lbl">EXCESO</div><div class="val">${detalle.exceso||''}</div></div>
-<div class="campo"><div class="lbl">TOTAL</div><div class="val">${detalle.total_pliegos||''}</div></div>
+<div class="sec"><div class="sec-t">Material y Corte</div><div class="sec-c">
+<div class="grid2">
+  <div class="campo"><div class="lbl">Material</div><div class="val">${detalle.material || ''}</div></div>
+  <div class="campo"><div class="lbl">Corte de Material</div><div class="val">${detalle.corte_material || ''}</div></div>
 </div></div></div>
-<div class="sec"><div class="sec-t">Impresión y Acabados</div><div class="sec-c"><div class="fila">
-<div class="campo"><div class="lbl">IMPRESIÓN</div><div class="val">${detalle.impresion||''}</div></div>
-<div class="campo" style="flex:2"><div class="lbl">INSTRUCCIONES IMPRESIÓN</div><div class="val">${detalle.instrucciones_impresion||''}</div></div>
-</div><div class="fila">
-<div class="campo"><div class="lbl">INSTRUCCIONES ACABADOS</div><div class="val">${detalle.instrucciones_acabados||''}</div></div>
-<div class="campo"><div class="lbl">INSTRUCCIONES EMPACADO</div><div class="val">${detalle.instrucciones_empacado||''}</div></div>
+<div class="sec"><div class="sec-t">Cantidad de Pliegos</div><div class="sec-c">
+<div class="grid3">
+  <div class="campo"><div class="lbl">Pliegos de Compra</div><div class="val">${detalle.cantidad_pliegos_compra || ''}</div></div>
+  <div class="campo"><div class="lbl">Exceso</div><div class="val">${detalle.exceso || ''}</div></div>
+  <div class="campo"><div class="lbl">Total</div><div class="val">${detalle.total_pliegos || ''}</div></div>
+</div></div></div>
+<div class="sec"><div class="sec-t">Impresión y Acabados</div><div class="sec-c">
+<div class="grid2">
+  <div class="campo"><div class="lbl">Impresión</div><div class="val">${detalle.impresion || ''}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val">${detalle.instrucciones_impresion || ''}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Acabados</div><div class="val">${detalle.instrucciones_acabados || ''}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val">${detalle.instrucciones_empacado || ''}</div></div>
+</div></div></div>
+<div class="sec"><div class="sec-t">Prensa y Observaciones</div><div class="sec-c">
+<div class="grid3">
+  <div class="campo"><div class="lbl">Seleccionar Prensa</div><div class="val">${detalle.prensa_seleccionada || detalle.prensa || ''}</div></div>
+  <div class="campo"><div class="lbl">Observaciones Generales</div><div class="val">${detalle.observaciones || orden.notas_observaciones || ''}</div></div>
+  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val">${orden.notas_observaciones || detalle.notas_observaciones || ''}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
-<div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
+<div class="fila" style="margin-bottom:6px"><div class="campo" style="flex:1"><div class="lbl">Vendedor</div><div class="val">${detalle.vendedor || ''}</div></div></div>
 <table class="trz"><thead><tr>
 <th class="tc th">Proceso</th><th class="tc th">Responsable</th><th class="tc th">F. Inicio</th>
 <th class="tc th">H. Inicio</th><th class="tc th">F. Fin</th><th class="tc th">H. Fin</th>
 <th class="tc th">Cantidad</th><th class="tc th">Observaciones</th><th class="tc th">Firma</th>
 </tr></thead><tbody>${filas}</tbody></table></div></div>
-<div class="sec"><div class="sec-t">Liberación Producto</div><div class="sec-c">
+<div class="sec"><div class="sec-t">Liberación de Producto</div><div class="sec-c">
 <table class="trz"><thead><tr>
 <th class="tc th">Responsable</th><th class="tc th">Fecha</th><th class="tc th">Hora</th>
 <th class="tc th">Cantidad</th><th class="tc th">Observaciones</th><th class="tc th">Firma</th>
 </tr></thead><tbody><tr>
-<td class="tc">${detalle.liberacion_producto||''}</td>
-<td class="tc">${lib.fecha_inicio||''}</td><td class="tc">${lib.hora_inicio||''}</td>
-<td class="tc">${lib.cantidad||detalle.liberacion_producto_cantidad_final||''}</td>
-<td class="tc to">${lib.observaciones||''}</td><td class="tc tf"></td>
+<td class="tc">${detalle.liberacion_producto || ''}</td>
+<td class="tc">${lib.fecha_inicio || ''}</td><td class="tc">${lib.hora_inicio || ''}</td>
+<td class="tc">${lib.cantidad || detalle.liberacion_producto_cantidad_final || ''}</td>
+<td class="tc to">${lib.observaciones || ''}</td><td class="tc tf"></td>
 </tr></tbody></table></div></div>
 </body></html>`;
   }

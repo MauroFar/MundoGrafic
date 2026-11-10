@@ -50,14 +50,14 @@ const CotizadorDigital = () => {
   const [cantidad, setCantidad] = useState('');
   const [metros, setMetros] = useState('');
   const [cabidaInputs, setCabidaInputs] = useState({
-    anchoEtiqueta: 31.5,
-    altoEtiqueta: 100,
+    anchoEtiqueta: '',
+    altoEtiqueta: '',
     anchoImpresion: 31.5,
     largoMaterial: 100,
     separacionAncho: 0.3,
     separacionAvance: 0.5,
   });
-  const [metrosExcedenteManual, setMetrosExcedenteManual] = useState(50);
+  const [metrosExcedenteManual, setMetrosExcedenteManual] = useState('50');
   const [selecciones, setSelecciones] = useState({ materiales: {}, procesos: {}, operativos: {} });
   const [loading, setLoading] = useState(true);
 
@@ -190,16 +190,16 @@ const CotizadorDigital = () => {
     const metrosExcedente = Number(metrosExcedenteManual || 0);
 
     const etiquetasAncho = anchoImpresion > 0 && anchoEtiqueta + separacionAncho > 0
-      ? Math.floor(anchoImpresion / (anchoEtiqueta + separacionAncho))
+      ? Math.round(anchoImpresion / (anchoEtiqueta + separacionAncho))
       : 0;
     const etiquetasLargo = largoMaterial > 0 && altoEtiqueta + separacionAvance > 0
-      ? Math.floor(largoMaterial / (altoEtiqueta + separacionAvance))
+      ? Math.round(largoMaterial / (altoEtiqueta + separacionAvance))
       : 0;
 
     const cabidaMetro = etiquetasAncho > 0 && etiquetasLargo > 0 ? etiquetasAncho * etiquetasLargo : 0;
-    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? (cantidadNumero * cabidaMetro) / 1000 : 0;
+    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? cantidadNumero / cabidaMetro : 0;
     const metrosUsar = metrosNetos + metrosExcedente;
-    const etiquetasQueSalen = cabidaMetro > 0 ? Math.ceil(cantidadNumero / cabidaMetro) : 0;
+    const etiquetasQueSalen = cabidaMetro > 0 ? metrosUsar * cabidaMetro : 0;
 
     return {
       etiquetasAncho,
@@ -286,12 +286,32 @@ const CotizadorDigital = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1">Ancho etiqueta (cm)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={cabidaInputs.anchoEtiqueta}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, anchoEtiqueta: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1">Alto etiqueta (cm)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={cabidaInputs.altoEtiqueta}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, altoEtiqueta: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1">Ancho impresión (cm) - fijo</label>
                   <input
                     type="number"
                     step="0.01"
                     value={cabidaInputs.anchoImpresion}
-                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, anchoImpresion: Number(e.target.value || 0) }))}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, anchoImpresion: e.target.value === '' ? '' : Number(e.target.value) }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -301,7 +321,7 @@ const CotizadorDigital = () => {
                     type="number"
                     step="0.01"
                     value={cabidaInputs.largoMaterial}
-                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, largoMaterial: Number(e.target.value || 0) }))}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, largoMaterial: e.target.value === '' ? '' : Number(e.target.value) }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -311,7 +331,7 @@ const CotizadorDigital = () => {
                     type="number"
                     step="0.01"
                     value={cabidaInputs.separacionAncho}
-                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAncho: Number(e.target.value || 0) }))}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAncho: e.target.value === '' ? '' : Number(e.target.value) }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -321,7 +341,7 @@ const CotizadorDigital = () => {
                     type="number"
                     step="0.01"
                     value={cabidaInputs.separacionAvance}
-                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAvance: Number(e.target.value || 0) }))}
+                    onChange={(e) => setCabidaInputs((prev) => ({ ...prev, separacionAvance: e.target.value === '' ? '' : Number(e.target.value) }))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -343,7 +363,7 @@ const CotizadorDigital = () => {
                       type="number"
                       step="0.01"
                       value={metrosExcedenteManual}
-                      onChange={(e) => setMetrosExcedenteManual(Number(e.target.value || 0))}
+                      onChange={(e) => setMetrosExcedenteManual(e.target.value)}
                       className="w-full border border-red-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white text-red-600"
                     />
                   </div>

@@ -64,6 +64,14 @@ const ParametrosCostos = () => {
   const [plazoForm, setPlazoForm] = useState(emptyPlazo);
   const [margenEditId, setMargenEditId] = useState(null);
   const [plazoEditId, setPlazoEditId] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirmar',
+    cancelText: 'Cancelar',
+    onConfirm: null,
+  });
 
   useEffect(() => {
     const cargarDigital = async () => {
@@ -102,6 +110,14 @@ const ParametrosCostos = () => {
     navigate('/administracion');
   };
 
+  const abrirConfirmacion = ({ title, message, onConfirm, confirmText = 'Confirmar', cancelText = 'Cancelar' }) => {
+    setConfirmModal({ isOpen: true, title, message, confirmText, cancelText, onConfirm });
+  };
+
+  const cerrarConfirmacion = () => {
+    setConfirmModal({ isOpen: false, title: '', message: '', confirmText: 'Confirmar', cancelText: 'Cancelar', onConfirm: null });
+  };
+
   const handleTipoProductoSubmit = async (e) => {
     e.preventDefault();
 
@@ -115,34 +131,43 @@ const ParametrosCostos = () => {
       return;
     }
 
-    setIsSubmittingTipoProducto(true);
-    setTipoProductoFeedback({ type: '', message: '' });
+    abrirConfirmacion({
+      title: tipoProductoEditId ? 'Actualizar tipo de producto' : 'Agregar tipo de producto',
+      message: tipoProductoEditId
+        ? `¿Deseas guardar los cambios del tipo de producto "${nombre}"?`
+        : `¿Deseas agregar el tipo de producto "${nombre}"?`,
+      confirmText: tipoProductoEditId ? 'Guardar cambios' : 'Agregar',
+      onConfirm: async () => {
+        setIsSubmittingTipoProducto(true);
+        setTipoProductoFeedback({ type: '', message: '' });
 
-    try {
-      if (tipoProductoEditId) {
-        const updated = await actualizarTipoProductoDigital(Number(tipoProductoEditId), {
-          nombre,
-          activo: tipoProductoForm.activo,
-        });
-        setTiposProducto((prev) => prev.map((item) => item.id === tipoProductoEditId ? updated : item));
-        setTipoProductoEditId(null);
-        setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto actualizado correctamente.' });
-      } else {
-        const created = await crearTipoProductoDigital({
-          nombre,
-          activo: tipoProductoForm.activo,
-        });
-        setTiposProducto((prev) => [...prev, created]);
-        setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto agregado correctamente.' });
-      }
-      setTipoProductoForm(emptyTipoProducto);
-    } catch (error) {
-      console.error('Error guardando tipo de producto:', error);
-      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'No se pudo guardar el tipo de producto. Revisa permisos o conexión con la base de datos.';
-      setTipoProductoFeedback({ type: 'error', message: errorMessage });
-    } finally {
-      setIsSubmittingTipoProducto(false);
-    }
+        try {
+          if (tipoProductoEditId) {
+            const updated = await actualizarTipoProductoDigital(Number(tipoProductoEditId), {
+              nombre,
+              activo: tipoProductoForm.activo,
+            });
+            setTiposProducto((prev) => prev.map((item) => item.id === tipoProductoEditId ? updated : item));
+            setTipoProductoEditId(null);
+            setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto actualizado correctamente.' });
+          } else {
+            const created = await crearTipoProductoDigital({
+              nombre,
+              activo: tipoProductoForm.activo,
+            });
+            setTiposProducto((prev) => [...prev, created]);
+            setTipoProductoFeedback({ type: 'success', message: 'Tipo de producto agregado correctamente.' });
+          }
+          setTipoProductoForm(emptyTipoProducto);
+        } catch (error) {
+          console.error('Error guardando tipo de producto:', error);
+          const errorMessage = error?.response?.data?.error || error?.response?.data?.message || 'No se pudo guardar el tipo de producto. Revisa permisos o conexión con la base de datos.';
+          setTipoProductoFeedback({ type: 'error', message: errorMessage });
+        } finally {
+          setIsSubmittingTipoProducto(false);
+        }
+      },
+    });
   };
 
   const toggleSeleccionProducto = (listaActual, productoId) => {
@@ -159,95 +184,122 @@ const ParametrosCostos = () => {
     e.preventDefault();
     if (!materialForm.nombre.trim()) return;
 
-    try {
-      if (materialEditId) {
-        const updated = await actualizarMaterialDigital(Number(materialEditId), {
-          nombre: materialForm.nombre,
-          unidad: materialForm.unidad,
-          tipo_cobro: materialForm.tipo_cobro,
-          tipo_producto_ids: materialForm.tipo_producto_ids,
-          costo_unitario: Number(materialForm.costo_unitario),
-          estado: materialForm.estado,
-        });
-        setMateriales((prev) => prev.map((item) => item.id === materialEditId ? updated : item));
-        setMaterialEditId(null);
-      } else {
-        const created = await crearMaterialDigital({
-          nombre: materialForm.nombre,
-          unidad: materialForm.unidad,
-          tipo_cobro: materialForm.tipo_cobro,
-          tipo_producto_ids: materialForm.tipo_producto_ids,
-          costo_unitario: Number(materialForm.costo_unitario),
-          estado: materialForm.estado,
-        });
-        setMateriales((prev) => [...prev, created]);
-      }
-      setMaterialForm(emptyMaterial);
-    } catch (error) {
-      console.error('Error guardando material:', error);
-    }
+    abrirConfirmacion({
+      title: materialEditId ? 'Actualizar material' : 'Agregar material',
+      message: materialEditId
+        ? `¿Deseas guardar los cambios del material "${materialForm.nombre.trim()}"?`
+        : `¿Deseas agregar el material "${materialForm.nombre.trim()}"?`,
+      confirmText: materialEditId ? 'Guardar cambios' : 'Agregar',
+      onConfirm: async () => {
+        try {
+          if (materialEditId) {
+            const updated = await actualizarMaterialDigital(Number(materialEditId), {
+              nombre: materialForm.nombre,
+              unidad: materialForm.unidad,
+              tipo_cobro: materialForm.tipo_cobro,
+              tipo_producto_ids: materialForm.tipo_producto_ids,
+              costo_unitario: Number(materialForm.costo_unitario),
+              estado: materialForm.estado,
+            });
+            setMateriales((prev) => prev.map((item) => item.id === materialEditId ? updated : item));
+            setMaterialEditId(null);
+          } else {
+            const created = await crearMaterialDigital({
+              nombre: materialForm.nombre,
+              unidad: materialForm.unidad,
+              tipo_cobro: materialForm.tipo_cobro,
+              tipo_producto_ids: materialForm.tipo_producto_ids,
+              costo_unitario: Number(materialForm.costo_unitario),
+              estado: materialForm.estado,
+            });
+            setMateriales((prev) => [...prev, created]);
+          }
+          setMaterialForm(emptyMaterial);
+        } catch (error) {
+          console.error('Error guardando material:', error);
+        }
+      },
+    });
   };
 
   const handleProcesoSubmit = async (e) => {
     e.preventDefault();
     if (!procesoForm.nombre.trim()) return;
 
-    try {
-      if (procesoEditId) {
-        const updated = await actualizarProcesoDigital(Number(procesoEditId), {
-          nombre: procesoForm.nombre,
-          tipo_cobro: procesoForm.tipo_cobro,
-          tipo_producto_ids: procesoForm.tipo_producto_ids,
-          precio: Number(procesoForm.precio),
-          estado: procesoForm.estado,
-        });
-        setProcesos((prev) => prev.map((item) => item.id === procesoEditId ? updated : item));
-        setProcesoEditId(null);
-      } else {
-        const created = await crearProcesoDigital({
-          nombre: procesoForm.nombre,
-          tipo_cobro: procesoForm.tipo_cobro,
-          tipo_producto_ids: procesoForm.tipo_producto_ids,
-          precio: Number(procesoForm.precio),
-          estado: procesoForm.estado,
-        });
-        setProcesos((prev) => [...prev, created]);
-      }
-      setProcesoForm(emptyProceso);
-    } catch (error) {
-      console.error('Error guardando proceso:', error);
-    }
+    abrirConfirmacion({
+      title: procesoEditId ? 'Actualizar proceso' : 'Agregar proceso',
+      message: procesoEditId
+        ? `¿Deseas guardar los cambios del proceso "${procesoForm.nombre.trim()}"?`
+        : `¿Deseas agregar el proceso "${procesoForm.nombre.trim()}"?`,
+      confirmText: procesoEditId ? 'Guardar cambios' : 'Agregar',
+      onConfirm: async () => {
+        try {
+          if (procesoEditId) {
+            const updated = await actualizarProcesoDigital(Number(procesoEditId), {
+              nombre: procesoForm.nombre,
+              tipo_cobro: procesoForm.tipo_cobro,
+              tipo_producto_ids: procesoForm.tipo_producto_ids,
+              precio: Number(procesoForm.precio),
+              estado: procesoForm.estado,
+            });
+            setProcesos((prev) => prev.map((item) => item.id === procesoEditId ? updated : item));
+            setProcesoEditId(null);
+          } else {
+            const created = await crearProcesoDigital({
+              nombre: procesoForm.nombre,
+              tipo_cobro: procesoForm.tipo_cobro,
+              tipo_producto_ids: procesoForm.tipo_producto_ids,
+              precio: Number(procesoForm.precio),
+              estado: procesoForm.estado,
+            });
+            setProcesos((prev) => [...prev, created]);
+          }
+          setProcesoForm(emptyProceso);
+        } catch (error) {
+          console.error('Error guardando proceso:', error);
+        }
+      },
+    });
   };
 
   const handleOperativoSubmit = async (e) => {
     e.preventDefault();
     if (!operativoForm.concepto.trim()) return;
 
-    try {
-      if (operativoEditId) {
-        const updated = await actualizarCostoOperativoDigital(Number(operativoEditId), {
-          concepto: operativoForm.concepto,
-          tipo_cobro: operativoForm.tipo_cobro,
-          tipo_producto_ids: operativoForm.tipo_producto_ids,
-          costo_fijo: Number(operativoForm.costo_fijo),
-          estado: operativoForm.estado,
-        });
-        setOperativos((prev) => prev.map((item) => item.id === operativoEditId ? updated : item));
-        setOperativoEditId(null);
-      } else {
-        const created = await crearCostoOperativoDigital({
-          concepto: operativoForm.concepto,
-          tipo_cobro: operativoForm.tipo_cobro,
-          tipo_producto_ids: operativoForm.tipo_producto_ids,
-          costo_fijo: Number(operativoForm.costo_fijo),
-          estado: operativoForm.estado,
-        });
-        setOperativos((prev) => [...prev, created]);
-      }
-      setOperativoForm(emptyOperativo);
-    } catch (error) {
-      console.error('Error guardando costo operativo:', error);
-    }
+    abrirConfirmacion({
+      title: operativoEditId ? 'Actualizar costo operativo' : 'Agregar costo operativo',
+      message: operativoEditId
+        ? `¿Deseas guardar los cambios del concepto "${operativoForm.concepto.trim()}"?`
+        : `¿Deseas agregar el concepto "${operativoForm.concepto.trim()}"?`,
+      confirmText: operativoEditId ? 'Guardar cambios' : 'Agregar',
+      onConfirm: async () => {
+        try {
+          if (operativoEditId) {
+            const updated = await actualizarCostoOperativoDigital(Number(operativoEditId), {
+              concepto: operativoForm.concepto,
+              tipo_cobro: operativoForm.tipo_cobro,
+              tipo_producto_ids: operativoForm.tipo_producto_ids,
+              costo_fijo: Number(operativoForm.costo_fijo),
+              estado: operativoForm.estado,
+            });
+            setOperativos((prev) => prev.map((item) => item.id === operativoEditId ? updated : item));
+            setOperativoEditId(null);
+          } else {
+            const created = await crearCostoOperativoDigital({
+              concepto: operativoForm.concepto,
+              tipo_cobro: operativoForm.tipo_cobro,
+              tipo_producto_ids: operativoForm.tipo_producto_ids,
+              costo_fijo: Number(operativoForm.costo_fijo),
+              estado: operativoForm.estado,
+            });
+            setOperativos((prev) => [...prev, created]);
+          }
+          setOperativoForm(emptyOperativo);
+        } catch (error) {
+          console.error('Error guardando costo operativo:', error);
+        }
+      },
+    });
   };
 
   const handleMargenSubmit = async (e) => {
@@ -418,9 +470,16 @@ const ParametrosCostos = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          await eliminarTipoProductoDigital(item.id);
-                          setTiposProducto((prev) => prev.filter((i) => i.id !== item.id));
+                        onClick={() => {
+                          abrirConfirmacion({
+                            title: 'Eliminar tipo de producto',
+                            message: `¿Deseas eliminar el tipo de producto "${item.nombre}"?`,
+                            confirmText: 'Eliminar',
+                            onConfirm: async () => {
+                              await eliminarTipoProductoDigital(item.id);
+                              setTiposProducto((prev) => prev.filter((i) => i.id !== item.id));
+                            },
+                          });
                         }}
                         className="text-red-600 hover:text-red-800"
                         title="Eliminar"
@@ -602,9 +661,16 @@ const ParametrosCostos = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          await eliminarMaterialDigital(item.id);
-                          setMateriales((prev) => prev.filter((i) => i.id !== item.id));
+                        onClick={() => {
+                          abrirConfirmacion({
+                            title: 'Eliminar material',
+                            message: `¿Deseas eliminar el material "${item.nombre}"?`,
+                            confirmText: 'Eliminar',
+                            onConfirm: async () => {
+                              await eliminarMaterialDigital(item.id);
+                              setMateriales((prev) => prev.filter((i) => i.id !== item.id));
+                            },
+                          });
                         }}
                         className="text-red-600 hover:text-red-800"
                         title="Eliminar"
@@ -771,9 +837,16 @@ const ParametrosCostos = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          await eliminarProcesoDigital(item.id);
-                          setProcesos((prev) => prev.filter((i) => i.id !== item.id));
+                        onClick={() => {
+                          abrirConfirmacion({
+                            title: 'Eliminar proceso',
+                            message: `¿Deseas eliminar el proceso "${item.nombre}"?`,
+                            confirmText: 'Eliminar',
+                            onConfirm: async () => {
+                              await eliminarProcesoDigital(item.id);
+                              setProcesos((prev) => prev.filter((i) => i.id !== item.id));
+                            },
+                          });
                         }}
                         className="text-red-600 hover:text-red-800"
                         title="Eliminar"
@@ -940,9 +1013,16 @@ const ParametrosCostos = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          await eliminarCostoOperativoDigital(item.id);
-                          setOperativos((prev) => prev.filter((i) => i.id !== item.id));
+                        onClick={() => {
+                          abrirConfirmacion({
+                            title: 'Eliminar costo operativo',
+                            message: `¿Deseas eliminar el concepto "${item.concepto}"?`,
+                            confirmText: 'Eliminar',
+                            onConfirm: async () => {
+                              await eliminarCostoOperativoDigital(item.id);
+                              setOperativos((prev) => prev.filter((i) => i.id !== item.id));
+                            },
+                          });
                         }}
                         className="text-red-600 hover:text-red-800"
                         title="Eliminar"
@@ -969,6 +1049,44 @@ const ParametrosCostos = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="bg-amber-100 text-amber-700 rounded-full p-2">
+                <FaEdit className="text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">{confirmModal.title}</h3>
+                <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{confirmModal.message}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={cerrarConfirmacion}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium"
+              >
+                {confirmModal.cancelText}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirmModal.onConfirm) {
+                    await confirmModal.onConfirm();
+                  }
+                  cerrarConfirmacion();
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalAbierto && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6">

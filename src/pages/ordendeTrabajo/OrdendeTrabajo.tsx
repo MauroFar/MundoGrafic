@@ -101,6 +101,10 @@ type TrazabilidadProceso = {
   troquelado_flexible: TrazabilidadProcesoItem;
   troquelado_plano: TrazabilidadProcesoItem;
   pegado: TrazabilidadProcesoItem;
+  encolado: TrazabilidadProcesoItem;
+  grapado: TrazabilidadProcesoItem;
+  anillado: TrazabilidadProcesoItem;
+  estampado: TrazabilidadProcesoItem;
   rebobinado: TrazabilidadProcesoItem;
   refilado_termoencogible: TrazabilidadProcesoItem;
   sellado_termoencogible: TrazabilidadProcesoItem;
@@ -135,6 +139,10 @@ const OFFSET_PROCESS_KEYS = [
   'plastificado',
   'troquelado',
   'pegado',
+  'encolado',
+  'grapado',
+  'anillado',
+  'estampado',
   'terminado',
   'terminados_externos',
 ] as const;
@@ -260,6 +268,10 @@ const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
     return {
       guillotinado: '',
       pegado: '',
+      encolado: '',
+      grapado: '',
+      anillado: '',
+      estampado: '',
       terminados_externos: '',
     };
   }
@@ -276,6 +288,10 @@ const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
   return {
     guillotinado: String(personalizados.guillotinado || ''),
     pegado: String(personalizados.pegado || ''),
+    encolado: String(personalizados.encolado || ''),
+    grapado: String(personalizados.grapado || ''),
+    anillado: String(personalizados.anillado || ''),
+    estampado: String(personalizados.estampado || ''),
     terminados_externos: String(personalizados.terminados_externos || ''),
   };
 };
@@ -310,6 +326,10 @@ const crearTrazabilidadProcesoVacia = (): TrazabilidadProceso => ({
   troquelado_flexible: crearTrazabilidadVacia(),
   troquelado_plano: crearTrazabilidadVacia(),
   pegado: crearTrazabilidadVacia(),
+  encolado: crearTrazabilidadVacia(),
+  grapado: crearTrazabilidadVacia(),
+  anillado: crearTrazabilidadVacia(),
+  estampado: crearTrazabilidadVacia(),
   rebobinado: crearTrazabilidadVacia(),
   refilado_termoencogible: crearTrazabilidadVacia(),
   sellado_termoencogible: crearTrazabilidadVacia(),
@@ -339,6 +359,10 @@ const normalizarTrazabilidadProceso = (valor: any): TrazabilidadProceso => {
     troquelado_flexible: { ...base.troquelado_flexible, ...(safe.troquelado_flexible || safe.troquelado || {}) },
     troquelado_plano: { ...base.troquelado_plano, ...(safe.troquelado_plano || {}) },
     pegado: { ...base.pegado, ...(safe.pegado || {}) },
+    encolado: { ...base.encolado, ...(safe.encolado || {}) },
+    grapado: { ...base.grapado, ...(safe.grapado || {}) },
+    anillado: { ...base.anillado, ...(safe.anillado || {}) },
+    estampado: { ...base.estampado, ...(safe.estampado || {}) },
     rebobinado: { ...base.rebobinado, ...(safe.rebobinado || {}) },
     refilado_termoencogible: { ...base.refilado_termoencogible, ...(safe.refilado_termoencogible || {}) },
     sellado_termoencogible: { ...base.sellado_termoencogible, ...(safe.sellado_termoencogible || {}) },
@@ -426,6 +450,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [liberacionProductoResponsable, setLiberacionProductoResponsable] = useState<string>('');
   const [guillotinadoResponsable, setGuillotinadoResponsable] = useState<string>('');
   const [pegadoResponsable, setPegadoResponsable] = useState<string>('');
+  const [encoladoResponsable, setEncoladoResponsable] = useState<string>('');
+  const [grapadoResponsable, setGrapadoResponsable] = useState<string>('');
+  const [anilladoResponsable, setAnilladoResponsable] = useState<string>('');
+  const [estampadoResponsable, setEstampadoResponsable] = useState<string>('');
   const [terminadosExternosResponsable, setTerminadosExternosResponsable] = useState<string>('');
   const [procesosDigitalSeleccionados, setProcesosDigitalSeleccionados] = useState<DigitalProcessKey[]>([]);
   const [showProcesosDropdown, setShowProcesosDropdown] = useState<boolean>(false);
@@ -555,6 +583,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
     responsables_offset_personalizados: {
       guillotinado: guillotinadoResponsable,
       pegado: pegadoResponsable,
+      encolado: encoladoResponsable,
+      grapado: grapadoResponsable,
+      anillado: anilladoResponsable,
+      estampado: estampadoResponsable,
       terminados_externos: terminadosExternosResponsable,
     },
   });
@@ -798,6 +830,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setLiberacionProductoResponsable('');
       setGuillotinadoResponsable('');
       setPegadoResponsable('');
+      setEncoladoResponsable('');
+      setGrapadoResponsable('');
+      setAnilladoResponsable('');
+      setEstampadoResponsable('');
       setTerminadosExternosResponsable('');
       setProcesosDigitalSeleccionados([]);
       setShowProcesosDropdown(false);
@@ -1206,6 +1242,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
     const responsablesOffsetPersonalizados = normalizarResponsablesOffsetPersonalizados(detalleResponsables.trazabilidad_proceso);
     setGuillotinadoResponsable(responsablesOffsetPersonalizados.guillotinado);
     setPegadoResponsable(responsablesOffsetPersonalizados.pegado);
+    setEncoladoResponsable(responsablesOffsetPersonalizados.encolado);
+    setGrapadoResponsable(responsablesOffsetPersonalizados.grapado);
+    setAnilladoResponsable(responsablesOffsetPersonalizados.anillado);
+    setEstampadoResponsable(responsablesOffsetPersonalizados.estampado);
     setTerminadosExternosResponsable(responsablesOffsetPersonalizados.terminados_externos);
     
     // Estado: usar los nuevos campos de catálogo (estado_offset_key / estado_digital_key)
@@ -2620,7 +2660,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
                         { key: 'barnizado', label: 'Barnizado' },
                         { key: 'plastificado', label: 'Plastificado' },
                         { key: 'troquelado', label: 'Troquelado' },
-                        { key: 'pegado', label: 'Pegado' },
+                        { key: 'pegado', label: 'Pegado de cajas' },
+                        { key: 'encolado', label: 'Encolado' },
+                        { key: 'grapado', label: 'Grapado' },
+                        { key: 'anillado', label: 'Anillado' },
+                        { key: 'estampado', label: 'Estampado' },
                         { key: 'terminado', label: 'Terminados MG' },
                         { key: 'terminados_externos', label: 'Terminados externos' },
                       ].map((proceso) => (
@@ -2698,9 +2742,37 @@ const OrdendeTrabajoEditar: React.FC = () => {
                         {
                           key: 'pegado',
                           trazabilidadKey: 'pegado',
-                          label: 'Pegado',
+                          label: 'Pegado de cajas',
                           responsable: pegadoResponsable,
                           setResponsable: setPegadoResponsable,
+                        },
+                        {
+                          key: 'encolado',
+                          trazabilidadKey: 'encolado',
+                          label: 'Encolado',
+                          responsable: encoladoResponsable,
+                          setResponsable: setEncoladoResponsable,
+                        },
+                        {
+                          key: 'grapado',
+                          trazabilidadKey: 'grapado',
+                          label: 'Grapado',
+                          responsable: grapadoResponsable,
+                          setResponsable: setGrapadoResponsable,
+                        },
+                        {
+                          key: 'anillado',
+                          trazabilidadKey: 'anillado',
+                          label: 'Anillado',
+                          responsable: anilladoResponsable,
+                          setResponsable: setAnilladoResponsable,
+                        },
+                        {
+                          key: 'estampado',
+                          trazabilidadKey: 'estampado',
+                          label: 'Estampado',
+                          responsable: estampadoResponsable,
+                          setResponsable: setEstampadoResponsable,
                         },
                         {
                           key: 'terminado',
