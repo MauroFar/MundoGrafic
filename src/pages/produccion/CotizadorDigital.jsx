@@ -48,7 +48,6 @@ const CotizadorDigital = () => {
   const [configuracion, setConfiguracion] = useState({ margenes: [], plazos: [] });
   const [productoSeleccionado, setProductoSeleccionado] = useState('');
   const [cantidad, setCantidad] = useState('');
-  const [metros, setMetros] = useState('');
   const [cabidaInputs, setCabidaInputs] = useState({
     anchoEtiqueta: '',
     altoEtiqueta: '',
@@ -159,25 +158,6 @@ const CotizadorDigital = () => {
     [operativosDelProducto, selecciones.operativos],
   );
 
-  const materialTotal = useMemo(
-    () => materialesIncluidos.reduce((sum, item) => sum + calcularValorItem(item, Number(metros || 0)), 0),
-    [materialesIncluidos, metros],
-  );
-
-  const procesoTotal = useMemo(
-    () => procesosIncluidos.reduce((sum, item) => sum + calcularValorItem(item, Number(metros || 0)), 0),
-    [procesosIncluidos, metros],
-  );
-
-  const operativoTotal = useMemo(
-    () => operativosIncluidos.reduce((sum, item) => sum + calcularValorItem(item, Number(metros || 0)), 0),
-    [operativosIncluidos, metros],
-  );
-
-  const subtotal = materialTotal + procesoTotal + operativoTotal;
-  const margenCalculado = subtotal * (margenActivo / 100);
-  const totalFinal = subtotal + margenCalculado;
-
   const cabidaCalculada = useMemo(() => {
     const anchoEtiqueta = Number(cabidaInputs.anchoEtiqueta || 0);
     const altoEtiqueta = Number(cabidaInputs.altoEtiqueta || 0);
@@ -186,7 +166,6 @@ const CotizadorDigital = () => {
     const separacionAncho = Number(cabidaInputs.separacionAncho || 0);
     const separacionAvance = Number(cabidaInputs.separacionAvance || 0);
     const cantidadNumero = Number(cantidad || 0);
-    const metrosNumero = Number(metros || 0);
     const metrosExcedente = Number(metrosExcedenteManual || 0);
 
     const etiquetasAncho = anchoImpresion > 0 && anchoEtiqueta + separacionAncho > 0
@@ -197,9 +176,9 @@ const CotizadorDigital = () => {
       : 0;
 
     const cabidaMetro = etiquetasAncho > 0 && etiquetasLargo > 0 ? etiquetasAncho * etiquetasLargo : 0;
-    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? cantidadNumero / cabidaMetro : 0;
+    const metrosNetos = cantidadNumero > 0 && cabidaMetro > 0 ? Math.floor(cantidadNumero / cabidaMetro) : 0;
     const metrosUsar = metrosNetos + metrosExcedente;
-    const etiquetasQueSalen = cabidaMetro > 0 ? metrosUsar * cabidaMetro : 0;
+    const etiquetasQueSalen = cabidaMetro > 0 ? Math.ceil(metrosUsar * cabidaMetro) : 0;
 
     return {
       etiquetasAncho,
@@ -210,7 +189,28 @@ const CotizadorDigital = () => {
       metrosUsar,
       etiquetasQueSalen,
     };
-  }, [cabidaInputs, cantidad, metros, metrosExcedenteManual]);
+  }, [cabidaInputs, cantidad, metrosExcedenteManual]);
+
+  const metrosParaCostos = useMemo(() => Number(cabidaCalculada.metrosUsar || 0), [cabidaCalculada.metrosUsar]);
+
+  const materialTotal = useMemo(
+    () => materialesIncluidos.reduce((sum, item) => sum + calcularValorItem(item, metrosParaCostos), 0),
+    [materialesIncluidos, metrosParaCostos],
+  );
+
+  const procesoTotal = useMemo(
+    () => procesosIncluidos.reduce((sum, item) => sum + calcularValorItem(item, metrosParaCostos), 0),
+    [procesosIncluidos, metrosParaCostos],
+  );
+
+  const operativoTotal = useMemo(
+    () => operativosIncluidos.reduce((sum, item) => sum + calcularValorItem(item, metrosParaCostos), 0),
+    [operativosIncluidos, metrosParaCostos],
+  );
+
+  const subtotal = materialTotal + procesoTotal + operativoTotal;
+  const margenCalculado = subtotal * (margenActivo / 100);
+  const totalFinal = subtotal + margenCalculado;
 
   if (loading) {
     return (
@@ -257,17 +257,6 @@ const CotizadorDigital = () => {
                   min="0"
                   value={cantidad}
                   onChange={(e) => setCantidad(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Metros</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={metros}
-                  onChange={(e) => setMetros(e.target.value)}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -355,7 +344,7 @@ const CotizadorDigital = () => {
                   <div className="px-3 py-2">{cabidaCalculada.etiquetasLargo}</div>
                   <div className="px-3 py-2 border-r border-slate-200 bg-slate-100">Cabida x metro</div>
                   <div className="px-3 py-2 font-bold text-emerald-700">{cabidaCalculada.cabidaMetro}</div>
-                  <div className="px-3 py-2 border-r border-slate-200 bg-slate-100">Metros netos (cantidad * cabida)</div>
+                  <div className="px-3 py-2 border-r border-slate-200 bg-slate-100">Metros netos (cantidad / cabida)</div>
                   <div className="px-3 py-2 font-bold text-slate-800">{cabidaCalculada.metrosNetos}</div>
                   <div className="px-3 py-2 border-r border-slate-200 bg-slate-100">Metros de excedente</div>
                   <div className="px-3 py-2 font-bold text-red-600">
@@ -421,7 +410,7 @@ const CotizadorDigital = () => {
                             <td className="px-4 py-3 text-slate-800">{item.nombre}</td>
                             <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                             <td className="px-4 py-3 text-slate-700">{item.unidad}</td>
-                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosParaCostos))}</td>
                           </tr>
                         ))
                       )}
@@ -469,7 +458,7 @@ const CotizadorDigital = () => {
                             <td className="px-4 py-3 text-slate-800">{item.nombre}</td>
                             <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                             <td className="px-4 py-3 text-slate-700">{formatMoney(item.precio)}</td>
-                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosParaCostos))}</td>
                           </tr>
                         ))
                       )}
@@ -517,7 +506,7 @@ const CotizadorDigital = () => {
                             <td className="px-4 py-3 text-slate-800">{item.concepto}</td>
                             <td className="px-4 py-3 text-slate-700">{getTipoCobroLabel(item.tipo_cobro)}</td>
                             <td className="px-4 py-3 text-slate-700">{formatMoney(item.costo_fijo)}</td>
-                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metros))}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800">{formatMoney(calcularValorItem(item, metrosParaCostos))}</td>
                           </tr>
                         ))
                       )}
@@ -536,7 +525,7 @@ const CotizadorDigital = () => {
             <div className="rounded-lg border border-emerald-500/30 bg-slate-800 p-3">
               <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-300">Producto</div>
               <div className="mt-1 font-semibold text-white">{tiposProducto.find((item) => Number(item.id) === productoIdSeleccionado)?.nombre || 'Sin producto'}</div>
-              <div className="text-slate-300">{cantidad} unidades · {metros} m</div>
+              <div className="text-slate-300">{cantidad} unidades · {cabidaCalculada.metrosUsar.toFixed(2)} m</div>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-300">Materiales</span>
