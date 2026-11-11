@@ -24,6 +24,7 @@ const announcementState: any = {
   votes: { agree: 0, disagree: 0, total: 0 },
   comments: [],
   users: {},
+  activity: [],
 };
 
 const getAnnouncementSnapshot = () => ({
@@ -38,7 +39,21 @@ const getAnnouncementSnapshot = () => ({
   },
   comments: Array.isArray(announcementState.comments) ? announcementState.comments.slice(0, 8) : [],
   users: announcementState.users || {},
+  activity: Array.isArray(announcementState.activity) ? announcementState.activity.slice(0, 20) : [],
 });
+
+const recordAnnouncementAction = (userId: string, action: string, extra: Record<string, any> = {}) => {
+  const safeUserId = String(userId || "anon").trim() || "anon";
+  const entry = {
+    userId: safeUserId,
+    action,
+    userName: extra.userName || safeUserId,
+    comment: extra.comment || "",
+    createdAt: new Date().toISOString(),
+  };
+
+  announcementState.activity = [entry, ...(announcementState.activity || [])].slice(0, 20);
+};
 
 const broadcastAnnouncement = (eventType: string, payload: any) => {
   const message = `event: announcement\ndata: ${JSON.stringify({ type: eventType, ...payload })}\n\n`;
@@ -59,6 +74,7 @@ const resetAnnouncement = () => {
   announcementState.votes = { agree: 0, disagree: 0, total: 0 };
   announcementState.comments = [];
   announcementState.users = {};
+  announcementState.activity = [];
 };
 
 // ── Logging ───────────────────────────────────────────────────────────────────
@@ -126,8 +142,31 @@ app.post("/api/system/announcement/clear", (_req: any, res: any) => {
   return res.json({ ok: true, announcement: payload, cleared: true });
 });
 
+app.post("/api/system/announcement/action", (req: any, res: any) => {
+  const { userId, userName, action, comment } = req.body || {};
+  const normalizedAction = String(action || "").trim();
+
+  if (!normalizedAction) {
+    return res.status(400).json({ message: "La acción no es válida." });
+  }
+
+  if (!announcementState.active) {
+    return res.status(409).json({ message: "No hay un aviso activo en este momento." });
+  }
+
+  const safeUserId = String(userId || req.ip || `guest-${Date.now()}`);
+  recordAnnouncementAction(safeUserId, normalizedAction, {
+    userName: String(userName || "").trim() || safeUserId,
+    comment: comment ? String(comment).trim().slice(0, 300) : "",
+  });
+
+  const payload = getAnnouncementSnapshot();
+  broadcastAnnouncement("announcement", payload);
+  return res.json({ ok: true, announcement: payload, action: normalizedAction });
+});
+
 app.post("/api/system/announcement/vote", (req: any, res: any) => {
-  const { userId, vote, comment } = req.body || {};
+  const { userId, userName, vote, comment } = req.body || {};
   const normalizedVote = vote === "agree" || vote === "disagree" ? vote : null;
 
   if (!normalizedVote) {
@@ -148,6 +187,11 @@ app.post("/api/system/announcement/vote", (req: any, res: any) => {
   announcementState.users[safeUserId] = normalizedVote;
   announcementState.votes[normalizedVote] = (announcementState.votes[normalizedVote] || 0) + 1;
   announcementState.votes.total = Object.keys(announcementState.users).length;
+
+  recordAnnouncementAction(safeUserId, normalizedVote, {
+    userName: String(userName || "").trim() || safeUserId,
+    comment: comment ? String(comment).trim().slice(0, 300) : "",
+  });
 
   if (normalizedVote === "disagree" && comment && String(comment).trim()) {
     const trimmedComment = String(comment).trim().slice(0, 300);

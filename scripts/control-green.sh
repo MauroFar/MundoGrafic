@@ -446,6 +446,22 @@ print(f"Comentarios: {len(comments)}")
 for i, comment in enumerate(comments[:5], start=1):
     text = comment.get('comment', '').strip()
     print(f"  {i}. {text}")
+
+activity = data.get('activity') or []
+print("\n=== Usuarios que respondieron / cerraron el aviso ===")
+if not activity:
+    print("Sin acciones registradas aún.")
+else:
+    for item in activity[:10]:
+        user = item.get('userName') or item.get('userId') or 'Usuario desconocido'
+        action = item.get('action') or 'acción'
+        action_label = {
+            'agree': 'estoy de acuerdo',
+            'disagree': 'no estoy de acuerdo',
+            'close': 'cerró el aviso',
+        }.get(action, action)
+        created = item.get('createdAt') or ''
+        print(f"- {created} | {user} | {action_label}")
 PY
 }
 

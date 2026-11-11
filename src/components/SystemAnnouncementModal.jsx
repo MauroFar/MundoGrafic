@@ -2,16 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
-const getUserId = () => {
+const getCurrentUser = () => {
   try {
     const persistedUser = localStorage.getItem('user');
     if (persistedUser) {
-      const user = JSON.parse(persistedUser);
-      if (user && user.id) return `user-${user.id}`;
+      return JSON.parse(persistedUser);
     }
   } catch {
     // Ignorar parse fallido y continuar con una clave generada.
   }
+
+  return null;
+};
+
+const getUserId = () => {
+  const user = getCurrentUser();
+  if (user && user.id) return `user-${user.id}`;
 
   const existing = sessionStorage.getItem('mg_user_announcement_id');
   if (existing) return existing;
@@ -19,6 +25,13 @@ const getUserId = () => {
   const generated = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   sessionStorage.setItem('mg_user_announcement_id', generated);
   return generated;
+};
+
+const getUserDisplayName = () => {
+  const user = getCurrentUser();
+  if (!user) return 'Usuario anónimo';
+  const nombreCompleto = [user.nombre, user.apellido].filter(Boolean).join(' ').trim();
+  return nombreCompleto || user.email || `Usuario ${user.id || 'sin id'}`;
 };
 
 const getAnnouncementDismissKey = (announcementId) => `mg_announcement_dismissed_${announcementId || 'current'}`;
@@ -97,7 +110,21 @@ const SystemAnnouncementModal = () => {
     return announcement.users[getUserId()] || null;
   }, [announcement]);
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
+    try {
+      await fetch(`${API_URL}/api/system/announcement/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: getUserId(),
+          userName: getUserDisplayName(),
+          action: 'close',
+        }),
+      });
+    } catch {
+      // Ignorar fallo del registro del cierre; el flujo visual debe seguir funcionando.
+    }
+
     if (announcement?.startedAt) {
       localStorage.setItem(getAnnouncementDismissKey(announcement.startedAt), '1');
     }
@@ -118,6 +145,7 @@ const SystemAnnouncementModal = () => {
         },
         body: JSON.stringify({
           userId: getUserId(),
+          userName: getUserDisplayName(),
           vote,
           comment: vote === 'disagree' ? comment.trim() : '',
         }),
