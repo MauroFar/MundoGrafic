@@ -474,7 +474,7 @@ function send_announcement() {
   echo ""
   echo "Escribe el título del aviso (opcional):"
   read -rp "Título: " title
-  echo "Escribe el texto que verán los usuarios en el modal. Presiona Ctrl+D al terminar:"
+  echo "Escribe el texto que verán los usuarios. Presiona Ctrl+D al terminar:"
   message=$(cat)
 
   if [ -z "$message" ]; then
@@ -500,9 +500,9 @@ PY
   echo ""
   info "✅ Aviso de actualización enviado a todos los usuarios conectados a GREEN."
   echo ""
-  info "Monitor activo. Presiona Ctrl+C para salir del monitor manualmente."
+  info "El aviso ya debe aparecer automáticamente en el sistema sin necesidad de recargar la página."
   echo ""
-  watch_announcement
+  info "Si necesitas ver la respuesta de usuarios, usa la opción 14 desde el menú."
 }
 
 function clear_announcement() {

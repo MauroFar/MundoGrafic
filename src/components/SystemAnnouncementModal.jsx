@@ -43,7 +43,8 @@ const SystemAnnouncementModal = () => {
 
         if (!response.ok) return;
         const data = await response.json();
-        if (data?.active) setAnnouncement(data);
+        const dismissed = data?.startedAt ? localStorage.getItem(getAnnouncementDismissKey(data.startedAt)) : null;
+        if (data?.active && !dismissed) setAnnouncement(data);
         else setAnnouncement(null);
       } catch {
         // Silenciar errores de red; el flujo SSE se encarga del estado vivo.
@@ -53,6 +54,10 @@ const SystemAnnouncementModal = () => {
     fetchCurrentAnnouncement();
 
     const source = new EventSource(`${API_URL}/api/system/announcement/stream`);
+
+    source.onopen = () => {
+      fetchCurrentAnnouncement();
+    };
 
     source.addEventListener('announcement', (event) => {
       try {
@@ -137,7 +142,7 @@ const SystemAnnouncementModal = () => {
   const isDisagreeVisible = !myVote || myVote === 'disagree';
 
   return (
-    <div className="fixed inset-x-0 top-5 z-[100] flex justify-center px-3">
+    <div className="fixed inset-x-0 top-5 z-[2147483647] flex justify-center px-3">
       <div className="w-full max-w-3xl rounded-2xl border border-amber-200 bg-white shadow-2xl ring-1 ring-slate-200">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-amber-50 px-5 py-3">
           <div className="min-w-0">
