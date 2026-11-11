@@ -14,6 +14,7 @@ GREEN_SERVICE="mundografic@green"       # instancia green (usa mundografic@.serv
 
 PORT_BLUE=3002
 PORT_GREEN=4001
+BACKEND_URL_GREEN="http://localhost:$PORT_GREEN"
 
 PROD_DB="sistema_mg"
 STAGING_DB="sistema_mg_staging"
@@ -81,6 +82,8 @@ function show_menu() {
   echo " 10) Ver logs de frontend green"
   echo " 11) Activar modo MANTENIMIENTO (bloquea el sitio)"
   echo " 12) Desactivar modo MANTENIMIENTO (reactiva el sitio)"
+  echo " 13) Enviar aviso de actualización"
+  echo " 14) Limpiar aviso de actualización"
   echo "  0) Salir"
   echo "======================================================"
 }
@@ -412,6 +415,46 @@ function disable_maintenance() {
     info "El modo mantenimiento no estaba activo en GREEN."
   fi
 }
+
+function send_announcement() {
+  echo ""
+  echo "Escribe el título del aviso (opcional):"
+  read -rp "Título: " title
+  echo "Escribe el texto que verán los usuarios en el modal. Presiona Ctrl+D al terminar:"
+  message=$(cat)
+
+  if [ -z "$message" ]; then
+    warn "No se envió ningún mensaje. Cancelado."
+    return
+  fi
+
+  payload=$(python3 - "$title" "$message" <<'PY'
+import json, sys
+print(json.dumps({
+    "title": sys.argv[1],
+    "message": sys.argv[2],
+}))
+PY
+)
+
+  curl -sS -X POST "$BACKEND_URL_GREEN/api/system/announcement" \
+    -H "Content-Type: application/json" \
+    -d "$payload"
+
+  echo ""
+  info "✅ Aviso de actualización enviado a todos los usuarios conectados a GREEN."
+}
+
+function clear_announcement() {
+  echo ""
+  warn "Esto limpia el aviso visible en el frontend de GREEN, sin tocar la actualización actual del sistema."
+  read -rp "¿Confirmar? (s/N): " confirm
+  [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+  curl -sS -X POST "$BACKEND_URL_GREEN/api/system/announcement/clear" -H "Content-Type: application/json"
+  echo ""
+  info "✅ Aviso limpiado del sistema en GREEN."
+}
 # ─── Menú principal ─────────────────────────────────────────────
 while true; do
   show_menu
@@ -429,6 +472,8 @@ while true; do
     10) show_frontend_logs ;;
     11) enable_maintenance ;;
     12) disable_maintenance ;;
+    13) send_announcement ;;
+    14) clear_announcement ;;
     0) info "Saliendo."; exit 0 ;;
     *) warn "Opción inválida: $opt" ;;
   esac
