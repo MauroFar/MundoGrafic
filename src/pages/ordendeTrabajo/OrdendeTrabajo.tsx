@@ -738,7 +738,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   // Listas fijas solicitadas por el usuario
   const VENDEDORES_FIJOS = ['HENRY','GUSTAVO','JUAN CARLOS','OSCAR','XAVIER','GEOVANNY','MARCO','ANDRES'];
   const PREPRENSA_OPTIONS = ['ROBINSON','GEOVANNY','ANDRES'];
-  const OPERACIONES_OPTIONS = ['FERNANDO','ROBINSON','GEOVANNY','CRISTIAN','WILLIAM','JUAN DAVID'];
+  const OPERACIONES_OPTIONS = ['FERNANDO','ROBINSON','GEOVANNY','CRISTIAN','WILLIAM','JUAN DAVID','DEYVI TORRES'];
   const ESTADOS_ETAPA_OPTIONS = ['pendiente', 'en_proceso', 'finalizado', 'rechazado'];
   const RESULTADO_CONTROL_OPTIONS = ['pendiente', 'aprobado', 'condicionado', 'rechazado'];
   const TURNOS_OPTIONS = ['Mañana', 'Tarde', 'Noche'];
