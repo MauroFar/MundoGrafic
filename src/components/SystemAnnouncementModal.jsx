@@ -35,15 +35,31 @@ const getUserDisplayName = () => {
 };
 
 const getAnnouncementDismissKey = (announcementId) => `mg_announcement_dismissed_${announcementId || 'current'}`;
-
+const isUserAuthenticated = () => {
+  try {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (!token || !user) return false;
+    const parsed = JSON.parse(user);
+    return Boolean(parsed && parsed.id);
+  } catch {
+    return false;
+  }
+};
 const SystemAnnouncementModal = () => {
   const [announcement, setAnnouncement] = useState(null);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
+    if (!isUserAuthenticated()) {
+      setAnnouncement(null);
+      setIsDismissed(false);
+      return undefined;
+    }
+
     const fetchCurrentAnnouncement = async () => {
       try {
         const response = await fetch(`${API_URL}/api/system/announcement`, {
@@ -166,44 +182,44 @@ const SystemAnnouncementModal = () => {
     }
   };
 
-  if (!announcement?.active || isDismissed) return null;
+  if (!isUserAuthenticated() || !announcement?.active || isDismissed) return null;
 
   const isDisagreeVisible = !myVote || myVote === 'disagree';
 
   return (
-    <div className="fixed inset-x-0 top-5 z-[2147483647] flex justify-center px-3">
-      <div className="w-full max-w-3xl rounded-2xl border border-amber-200 bg-white shadow-2xl ring-1 ring-slate-200">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-amber-50 px-5 py-3">
+    <div className="fixed inset-x-0 top-4 z-[2147483647] flex justify-center px-3">
+      <div className="w-full max-w-xl rounded-xl border border-amber-200 bg-white shadow-xl ring-1 ring-slate-200">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-amber-50 px-4 py-2.5">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-700">Aviso del sistema</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 line-clamp-2">{announcement.title || 'Actualización programada'}</h3>
+            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-amber-700">Aviso del sistema</p>
+            <h3 className="mt-1 text-base font-bold text-slate-900 line-clamp-2">{announcement.title || 'Actualización programada'}</h3>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setIsExpanded((prev) => !prev)}
-              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-400"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-slate-400"
             >
               {isExpanded ? 'Ver menos' : 'Ver aviso'}
             </button>
             <button
               type="button"
               onClick={handleDismiss}
-              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-400"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:border-slate-400"
             >
               Cerrar aviso
             </button>
           </div>
         </div>
 
-        <div className="space-y-4 p-5">
-          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-slate-700">
-            <p className="leading-6 whitespace-pre-line">{announcement.message}</p>
+        <div className="space-y-3 p-4">
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-slate-700">
+            <p className="leading-5 whitespace-pre-line line-clamp-3">{announcement.message}</p>
           </div>
 
           {isExpanded && (
             <>
-              <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
+              <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
               <div className="rounded-xl bg-emerald-50 p-3 border border-emerald-200">
                 <div className="text-[10px] uppercase tracking-wide text-emerald-700">Estoy de acuerdo</div>
                 <div className="mt-1 text-2xl font-bold text-emerald-600">{announcement.votes?.agree ?? 0}</div>
