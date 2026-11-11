@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
@@ -34,7 +35,10 @@ const getUserDisplayName = () => {
   return nombreCompleto || user.email || `Usuario ${user.id || 'sin id'}`;
 };
 
-const getAnnouncementDismissKey = (announcementId) => `mg_announcement_dismissed_${announcementId || 'current'}`;
+const getAnnouncementUserActionKey = (userId, announcementId) => `mg_announcement_user_action_${userId}_${announcementId || 'current'}`;
+
+const getAnnouncementDismissKey = (announcementId, userId = getUserId()) => `mg_announcement_dismissed_${userId}_${announcementId || 'current'}`;
+
 const isUserAuthenticated = () => {
   try {
     const token = localStorage.getItem('token');
@@ -46,7 +50,9 @@ const isUserAuthenticated = () => {
     return false;
   }
 };
+
 const SystemAnnouncementModal = () => {
+  const location = useLocation();
   const [announcement, setAnnouncement] = useState(null);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,9 +78,18 @@ const SystemAnnouncementModal = () => {
 
         if (!response.ok) return;
         const data = await response.json();
-        const dismissed = data?.startedAt ? localStorage.getItem(getAnnouncementDismissKey(data.startedAt)) : null;
-        if (data?.active && !dismissed) setAnnouncement(data);
-        else setAnnouncement(null);
+        const userId = getUserId();
+        const actionKey = data?.startedAt ? getAnnouncementUserActionKey(userId, data.startedAt) : null;
+        const dismissed = data?.startedAt ? localStorage.getItem(getAnnouncementDismissKey(data.startedAt, userId)) : null;
+        if (data?.active && !dismissed && !actionKey) {
+          setAnnouncement(data);
+        } else if (data?.active && !dismissed && actionKey) {
+          const hasUserAction = localStorage.getItem(actionKey);
+          if (!hasUserAction) setAnnouncement(data);
+          else setAnnouncement(null);
+        } else {
+          setAnnouncement(null);
+        }
       } catch {
         // Silenciar errores de red; el flujo SSE se encarga del estado vivo.
       }
@@ -99,11 +114,16 @@ const SystemAnnouncementModal = () => {
         }
 
         if (payload?.active) {
-          const dismissed = payload?.startedAt ? localStorage.getItem(getAnnouncementDismissKey(payload.startedAt)) : null;
-          if (dismissed) {
+          const userId = getUserId();
+          const actionKey = payload?.startedAt ? getAnnouncementUserActionKey(userId, payload.startedAt) : null;
+          const dismissed = payload?.startedAt ? localStorage.getItem(getAnnouncementDismissKey(payload.startedAt, userId)) : null;
+          const hasUserAction = actionKey ? localStorage.getItem(actionKey) : null;
+
+          if (dismissed || hasUserAction) {
             setAnnouncement(null);
             return;
           }
+
           setAnnouncement(payload);
           return;
         }
@@ -119,7 +139,7 @@ const SystemAnnouncementModal = () => {
     };
 
     return () => source.close();
-  }, []);
+  }, [location.pathname]);
 
   const myVote = useMemo(() => {
     if (!announcement?.users) return null;
@@ -143,7 +163,9 @@ const SystemAnnouncementModal = () => {
     }
 
     if (announcement?.startedAt) {
-      localStorage.setItem(getAnnouncementDismissKey(announcement.startedAt), '1');
+      const userId = getUserId();
+      localStorage.setItem(getAnnouncementUserActionKey(userId, announcement.startedAt), 'read');
+      localStorage.setItem(getAnnouncementDismissKey(announcement.startedAt, userId), '1');
     }
     setIsDismissed(true);
     setAnnouncement(null);
@@ -155,18 +177,23 @@ const SystemAnnouncementModal = () => {
     setIsSubmitting(true);
 
     try {
+      const userId = getUserId();
       const response = await fetch(`${API_URL}/api/system/announcement/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: getUserId(),
+          userId,
           userName: getUserDisplayName(),
           vote,
           comment: vote === 'disagree' ? comment.trim() : '',
         }),
       });
+
+      if (announcement?.startedAt) {
+        localStorage.setItem(getAnnouncementUserActionKey(userId, announcement.startedAt), vote);
+      }
 
       if (!response.ok) {
         throw new Error('No se pudo registrar la respuesta');
