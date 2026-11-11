@@ -34,7 +34,8 @@ show_menu() {
     echo "  4) Activar modo MANTENIMIENTO"
     echo "  5) Desactivar modo MANTENIMIENTO"
     echo "  6) Enviar aviso de actualización"
-    echo "  7) Limpiar aviso de actualización"
+    echo "  7) Ver respuestas del aviso"
+    echo "  8) Limpiar aviso de actualización"
     echo "  0) Salir"
     echo "=============================================="
 }
@@ -177,11 +178,84 @@ disable_maintenance() {
     fi
 }
 
+show_announcement_state() {
+    local response
+    response=$(curl -sS "$BACKEND_URL/api/system/announcement" 2>/dev/null || true)
+
+    if [ -z "$response" ] || [ "$response" = "null" ]; then
+        echo "No hay aviso activo en este momento."
+        return 0
+    fi
+
+    python3 - "$response" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+except Exception:
+    print("No se pudo leer el estado del aviso.")
+    raise SystemExit(0)
+
+print("\n=== Estado del aviso ===")
+print(f"Activo: {data.get('active', False)}")
+print(f"Título: {data.get('title', '') or 'Sin título'}")
+print(f"Mensaje: {data.get('message', '') or 'Sin mensaje'}")
+print(f"Votos a favor: {data.get('votes', {}).get('agree', 0)}")
+print(f"Votos en contra: {data.get('votes', {}).get('disagree', 0)}")
+print(f"Total: {data.get('votes', {}).get('total', 0)}")
+comments = data.get('comments') or []
+print(f"Comentarios: {len(comments)}")
+for i, comment in enumerate(comments[:5], start=1):
+    text = comment.get('comment', '').strip()
+    print(f"  {i}. {text}")
+
+activity = data.get('activity') or []
+print("\n=== Usuarios que respondieron / cerraron el aviso ===")
+if not activity:
+    print("Sin acciones registradas aún.")
+else:
+    for item in activity[:10]:
+        user = item.get('userName') or item.get('userId') or 'Usuario desconocido'
+        action = item.get('action') or 'acción'
+        action_label = {
+            'agree': 'estoy de acuerdo',
+            'disagree': 'no estoy de acuerdo',
+            'close': 'cerró el aviso',
+            'read': 'leyó el aviso',
+        }.get(action, action)
+        created = item.get('createdAt') or ''
+        print(f"- {created} | {user} | {action_label}")
+PY
+}
+
+watch_announcement() {
+    while true; do
+        clear
+        echo "=== Seguimiento en tiempo real del aviso ==="
+        show_announcement_state
+        echo ""
+        echo "Presiona Ctrl+C para salir del monitor."
+        sleep 5
+    done
+}
+
+monitor_announcement_responses() {
+    local response
+    response=$(curl -sS "$BACKEND_URL/api/system/announcement" 2>/dev/null || true)
+
+    if [ -z "$response" ] || [ "$response" = "null" ]; then
+        echo ""
+        warn "No hay un aviso activo en este momento."
+        return 0
+    fi
+
+    watch_announcement
+}
+
 send_announcement() {
     echo ""
     echo "Escribe el título del aviso (opcional):"
     read -rp "Título: " title
-    echo "Escribe el texto que verán los usuarios en el modal. Presiona Ctrl+D al terminar:"
+    echo "Escribe el texto que verán los usuarios. Presiona Ctrl+D al terminar:"
     message=$(cat)
 
     if [ -z "$message" ]; then
@@ -204,6 +278,10 @@ PY
 
     echo ""
     info "✅ Aviso de actualización enviado a todos los usuarios conectados."
+    echo ""
+    info "El aviso ya debe aparecer automáticamente en el sistema si el usuario está logueado."
+    echo ""
+    info "Si deseas ver las respuestas, usa la opción 7 desde el menú."
 }
 
 clear_announcement() {
@@ -228,7 +306,8 @@ while true; do
         4) enable_maintenance ;;
         5) disable_maintenance ;;
         6) send_announcement ;;
-        7) clear_announcement ;;
+        7) monitor_announcement_responses ;;
+        8) clear_announcement ;;
         0) echo "Saliendo."; exit 0 ;;
         *) echo "⚠️  Opción inválida: $opt" ;;
     esac
