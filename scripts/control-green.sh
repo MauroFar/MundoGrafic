@@ -459,6 +459,7 @@ else:
             'agree': 'estoy de acuerdo',
             'disagree': 'no estoy de acuerdo',
             'close': 'cerró el aviso',
+            'read': 'leyó el aviso',
         }.get(action, action)
         created = item.get('createdAt') or ''
         print(f"- {created} | {user} | {action_label}")

@@ -41,7 +41,7 @@ const SystemAnnouncementModal = () => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
     const fetchCurrentAnnouncement = async () => {
@@ -118,7 +118,8 @@ const SystemAnnouncementModal = () => {
         body: JSON.stringify({
           userId: getUserId(),
           userName: getUserDisplayName(),
-          action: 'close',
+          action: 'read',
+          comment: 'Cerró el aviso sin abrir el detalle',
         }),
       });
     } catch {
@@ -195,13 +196,14 @@ const SystemAnnouncementModal = () => {
           </div>
         </div>
 
-        {isExpanded && (
-          <div className="space-y-4 p-5">
-            <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-slate-700">
-              <p className="leading-6 whitespace-pre-line">{announcement.message}</p>
-            </div>
+        <div className="space-y-4 p-5">
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-slate-700">
+            <p className="leading-6 whitespace-pre-line">{announcement.message}</p>
+          </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
+          {isExpanded && (
+            <>
+              <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
               <div className="rounded-xl bg-emerald-50 p-3 border border-emerald-200">
                 <div className="text-[10px] uppercase tracking-wide text-emerald-700">Estoy de acuerdo</div>
                 <div className="mt-1 text-2xl font-bold text-emerald-600">{announcement.votes?.agree ?? 0}</div>
@@ -253,20 +255,21 @@ const SystemAnnouncementModal = () => {
               </div>
             )}
 
-            {announcement.comments && announcement.comments.length > 0 && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <h4 className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700">Sugerencias recibidas</h4>
-                <div className="space-y-2">
-                  {announcement.comments.slice(0, 3).map((item, index) => (
-                    <div key={`${item.createdAt}-${index}`} className="rounded-lg bg-white p-2 text-sm text-slate-700 border border-slate-200">
-                      {item.comment}
-                    </div>
-                  ))}
+              {announcement.comments && announcement.comments.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <h4 className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700">Sugerencias recibidas</h4>
+                  <div className="space-y-2">
+                    {announcement.comments.slice(0, 3).map((item, index) => (
+                      <div key={`${item.createdAt}-${index}`} className="rounded-lg bg-white p-2 text-sm text-slate-700 border border-slate-200">
+                        {item.comment}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
