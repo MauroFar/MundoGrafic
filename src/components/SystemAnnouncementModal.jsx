@@ -25,6 +25,7 @@ const SystemAnnouncementModal = () => {
   const [announcement, setAnnouncement] = useState(null);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     const fetchCurrentAnnouncement = async () => {
@@ -82,6 +83,11 @@ const SystemAnnouncementModal = () => {
     return announcement.users[getUserId()] || null;
   }, [announcement]);
 
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    setAnnouncement(null);
+  };
+
   const handleVote = async (vote) => {
     if (!announcement?.active || isSubmitting) return;
 
@@ -114,7 +120,7 @@ const SystemAnnouncementModal = () => {
     }
   };
 
-  if (!announcement?.active) return null;
+  if (!announcement?.active || isDismissed) return null;
 
   const isDisagreeVisible = !myVote || myVote === 'disagree';
 
@@ -127,7 +133,16 @@ const SystemAnnouncementModal = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">Aviso del sistema</p>
               <h3 className="mt-1 text-2xl font-bold text-slate-900">{announcement.title || 'Actualización programada'}</h3>
             </div>
-            <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Abierto</div>
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Abierto</div>
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-slate-400 hover:text-slate-800"
+              >
+                Cerrar aviso
+              </button>
+            </div>
           </div>
         </div>
 
