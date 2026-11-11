@@ -83,7 +83,8 @@ function show_menu() {
   echo " 11) Activar modo MANTENIMIENTO (bloquea el sitio)"
   echo " 12) Desactivar modo MANTENIMIENTO (reactiva el sitio)"
   echo " 13) Enviar aviso de actualización"
-  echo " 14) Limpiar aviso de actualización"
+  echo " 14) Ver respuestas del aviso"
+  echo " 15) Limpiar aviso de actualización"
   echo "  0) Salir"
   echo "======================================================"
 }
@@ -459,6 +460,16 @@ function watch_announcement() {
   done
 }
 
+function monitor_announcement_responses() {
+  if [ -z "${ANNOUNCEMENT_ACTIVE:-}" ]; then
+    echo ""
+    warn "No hay un aviso activo en este momento."
+    return 0
+  fi
+
+  watch_announcement
+}
+
 function send_announcement() {
   echo ""
   echo "Escribe el título del aviso (opcional):"
@@ -484,10 +495,12 @@ PY
     -H "Content-Type: application/json" \
     -d "$payload"
 
+  ANNOUNCEMENT_ACTIVE=1
+
   echo ""
   info "✅ Aviso de actualización enviado a todos los usuarios conectados a GREEN."
   echo ""
-  info "Monitoreando respuestas en tiempo real..."
+  info "Monitor activo. Presiona Ctrl+C para salir del monitor manualmente."
   echo ""
   watch_announcement
 }
@@ -520,7 +533,8 @@ while true; do
     11) enable_maintenance ;;
     12) disable_maintenance ;;
     13) send_announcement ;;
-    14) clear_announcement ;;
+    14) monitor_announcement_responses ;;
+    15) clear_announcement ;;
     0) info "Saliendo."; exit 0 ;;
     *) warn "Opción inválida: $opt" ;;
   esac
