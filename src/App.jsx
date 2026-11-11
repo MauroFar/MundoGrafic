@@ -7,6 +7,7 @@ import { useTheme } from "./hooks/useTheme";
 import PrivateRoute from "./components/PrivateRoute";
 import ToastNotificaciones from "./components/ToastNotificaciones";
 import MaintenanceWatcher from "./components/MaintenanceWatcher";
+import SystemAnnouncementModal from "./components/SystemAnnouncementModal";
 
 // Páginas
 import Login from "./pages/Login";
@@ -50,6 +51,7 @@ function App() {
       <Router>
         <ToastContainer position="top-right" autoClose={3000} />
         <ToastNotificaciones />
+        <SystemAnnouncementModal />
         <MaintenanceWatcher />
         <Routes>
           <Route path="/mantenimiento" element={<Mantenimiento />} />

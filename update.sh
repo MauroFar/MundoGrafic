@@ -6,6 +6,7 @@
 set -e
 
 BACKEND_SERVICE="mundografic-backend"
+BACKEND_URL="http://localhost:3002"
 FRONTEND_ACCESS_LOG="/var/log/nginx/mundografic_access.log"
 FRONTEND_ERROR_LOG="/var/log/nginx/mundografic_error.log"
 FALLBACK_FRONTEND_ACCESS_LOG="/var/log/nginx/access.log"
@@ -29,8 +30,12 @@ show_menu() {
     echo "=============================================="
     echo "  1) Actualizar sistema"
     echo "  2) Ver logs de backend"
-    echo "  3) Ver logs de frontend"    echo "  4) Activar modo MANTENIMIENTO"
-    echo "  5) Desactivar modo MANTENIMIENTO"    echo "  0) Salir"
+    echo "  3) Ver logs de frontend"
+    echo "  4) Activar modo MANTENIMIENTO"
+    echo "  5) Desactivar modo MANTENIMIENTO"
+    echo "  6) Enviar aviso de actualización"
+    echo "  7) Limpiar aviso de actualización"
+    echo "  0) Salir"
     echo "=============================================="
 }
 
@@ -172,6 +177,46 @@ disable_maintenance() {
     fi
 }
 
+send_announcement() {
+    echo ""
+    echo "Escribe el título del aviso (opcional):"
+    read -rp "Título: " title
+    echo "Escribe el texto que verán los usuarios en el modal. Presiona Ctrl+D al terminar:"
+    message=$(cat)
+
+    if [ -z "$message" ]; then
+        warn "No se envió ningún mensaje. Cancelado."
+        return
+    fi
+
+    payload=$(python3 - "$title" "$message" <<'PY'
+import json, sys
+print(json.dumps({
+    "title": sys.argv[1],
+    "message": sys.argv[2],
+}))
+PY
+)
+
+    curl -sS -X POST "$BACKEND_URL/api/system/announcement" \
+      -H "Content-Type: application/json" \
+      -d "$payload"
+
+    echo ""
+    info "✅ Aviso de actualización enviado a todos los usuarios conectados."
+}
+
+clear_announcement() {
+    echo ""
+    warn "Esto limpia el aviso visible en el frontend, sin tocar la actualización actual del sistema."
+    read -rp "¿Confirmar? (s/N): " confirm
+    [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
+
+    curl -sS -X POST "$BACKEND_URL/api/system/announcement/clear" -H "Content-Type: application/json"
+    echo ""
+    info "✅ Aviso limpiado del sistema."
+}
+
 while true; do
     show_menu
     read -rp "Opción: " opt
@@ -182,6 +227,8 @@ while true; do
         3) show_frontend_logs ;;
         4) enable_maintenance ;;
         5) disable_maintenance ;;
+        6) send_announcement ;;
+        7) clear_announcement ;;
         0) echo "Saliendo."; exit 0 ;;
         *) echo "⚠️  Opción inválida: $opt" ;;
     esac

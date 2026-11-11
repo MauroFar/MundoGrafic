@@ -15,12 +15,60 @@ dotenv.config();
 const app = express();
 const maintenanceFlagFile = process.env.MAINTENANCE_FLAG_FILE || "/var/www/mundografic/maintenance.on";
 const maintenanceHtmlFile = path.join(__dirname, "../public/maintenance.html");
+const announcementClients = new Set<any>();
+const announcementState: any = {
+  active: false,
+  title: "",
+  message: "",
+  startedAt: null,
+  votes: { agree: 0, disagree: 0, total: 0 },
+  comments: [],
+  users: {},
+};
+
+const getAnnouncementSnapshot = () => ({
+  active: Boolean(announcementState.active),
+  title: announcementState.title || "Actualización programada",
+  message: announcementState.message || "",
+  startedAt: announcementState.startedAt,
+  votes: {
+    agree: announcementState.votes?.agree || 0,
+    disagree: announcementState.votes?.disagree || 0,
+    total: announcementState.votes?.total || 0,
+  },
+  comments: Array.isArray(announcementState.comments) ? announcementState.comments.slice(0, 8) : [],
+  users: announcementState.users || {},
+});
+
+const broadcastAnnouncement = (eventType: string, payload: any) => {
+  const message = `event: announcement\ndata: ${JSON.stringify({ type: eventType, ...payload })}\n\n`;
+  for (const client of announcementClients) {
+    try {
+      client.write(message);
+    } catch {
+      // Ignorar clientes caídos.
+    }
+  }
+};
+
+const resetAnnouncement = () => {
+  announcementState.active = false;
+  announcementState.title = "";
+  announcementState.message = "";
+  announcementState.startedAt = null;
+  announcementState.votes = { agree: 0, disagree: 0, total: 0 };
+  announcementState.comments = [];
+  announcementState.users = {};
+};
 
 // ── Logging ───────────────────────────────────────────────────────────────────
 app.use((req: any, _res: any, next: any) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
+
+app.use(cors());
+app.use(express.json());
 
 // ── Estado de mantenimiento (sin auth, sin cors global) ───────────────────────
 app.get("/api/system/maintenance-status", cors(), (_req: any, res: any) => {
@@ -30,9 +78,95 @@ app.get("/api/system/maintenance-status", cors(), (_req: any, res: any) => {
   });
 });
 
+// ── Anuncios de actualización en vivo (SSE) ───────────────────────────────────
+app.get("/api/system/announcement", cors(), (_req: any, res: any) => {
+  res.json(getAnnouncementSnapshot());
+});
+
+app.get("/api/system/announcement/stream", cors(), (req: any, res: any) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  announcementClients.add(res);
+  res.write(`event: announcement\ndata: ${JSON.stringify({ type: "snapshot", ...getAnnouncementSnapshot() })}\n\n`);
+
+  req.on("close", () => {
+    announcementClients.delete(res);
+  });
+});
+
+app.post("/api/system/announcement", (req: any, res: any) => {
+  const { title, message } = req.body || {};
+  const titleText = String(title || "Actualización programada").trim();
+  const messageText = String(message || "").trim();
+
+  if (!messageText) {
+    return res.status(400).json({ message: "El mensaje es obligatorio." });
+  }
+
+  announcementState.active = true;
+  announcementState.title = titleText;
+  announcementState.message = messageText;
+  announcementState.startedAt = new Date().toISOString();
+  announcementState.votes = { agree: 0, disagree: 0, total: 0 };
+  announcementState.comments = [];
+  announcementState.users = {};
+
+  const payload = getAnnouncementSnapshot();
+  broadcastAnnouncement("announcement", payload);
+  return res.json({ ok: true, announcement: payload });
+});
+
+app.post("/api/system/announcement/clear", (_req: any, res: any) => {
+  const payload = getAnnouncementSnapshot();
+  resetAnnouncement();
+  broadcastAnnouncement("clear", { active: false, title: "", message: "", startedAt: null, votes: { agree: 0, disagree: 0, total: 0 }, comments: [], users: {} });
+  return res.json({ ok: true, announcement: payload, cleared: true });
+});
+
+app.post("/api/system/announcement/vote", (req: any, res: any) => {
+  const { userId, vote, comment } = req.body || {};
+  const normalizedVote = vote === "agree" || vote === "disagree" ? vote : null;
+
+  if (!normalizedVote) {
+    return res.status(400).json({ message: "La respuesta no es válida." });
+  }
+
+  if (!announcementState.active) {
+    return res.status(409).json({ message: "No hay un aviso activo en este momento." });
+  }
+
+  const safeUserId = String(userId || req.ip || `guest-${Date.now()}`);
+  const previousVote = announcementState.users[safeUserId];
+
+  if (previousVote && previousVote !== normalizedVote) {
+    announcementState.votes[previousVote] = Math.max(0, (announcementState.votes[previousVote] || 0) - 1);
+  }
+
+  announcementState.users[safeUserId] = normalizedVote;
+  announcementState.votes[normalizedVote] = (announcementState.votes[normalizedVote] || 0) + 1;
+  announcementState.votes.total = Object.keys(announcementState.users).length;
+
+  if (normalizedVote === "disagree" && comment && String(comment).trim()) {
+    const trimmedComment = String(comment).trim().slice(0, 300);
+    announcementState.comments = [{
+      userId: safeUserId,
+      comment: trimmedComment,
+      createdAt: new Date().toISOString(),
+    }, ...(announcementState.comments || [])].slice(0, 8);
+  }
+
+  const payload = getAnnouncementSnapshot();
+  broadcastAnnouncement("announcement", payload);
+  return res.json({ ok: true, announcement: payload, vote: normalizedVote });
+});
+
 // ── Middleware de mantenimiento ───────────────────────────────────────────────
 app.use((req: any, res: any, next: any) => {
   if (req.path === "/api/system/maintenance-status") return next();
+  if (req.path.startsWith("/api/system/announcement")) return next();
   if (!fs.existsSync(maintenanceFlagFile)) return next();
 
   if (req.path.startsWith("/api/")) {
@@ -43,8 +177,6 @@ app.use((req: any, res: any, next: any) => {
   });
 });
 
-app.use(cors());
-app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/storage", express.static(path.join(__dirname, "../storage")));
 app.use("/uploads", express.static(path.join(__dirname, "../storage/uploads")));
