@@ -541,10 +541,15 @@ const CertificadoForm: React.FC = () => {
             const toNumber = (v: any) => {
               if (v === null || v === undefined) return NaN;
               const s = String(v).toLowerCase().trim();
-              // extract first numeric occurrence
               const m = s.match(/[-+]?[0-9]*\.?[0-9]+/);
               if (!m) return NaN;
               return parseFloat(m[0].replace(',', '.'));
+            };
+
+            const mmToCm = (v: any) => {
+              const n = toNumber(v);
+              if (Number.isNaN(n)) return null;
+              return n / 10;
             };
 
             const fmt = (n: number) => {
@@ -553,34 +558,8 @@ const CertificadoForm: React.FC = () => {
               return String(Math.round(n * 100) / 100);
             };
 
-            // Determine ancho in cm
-            let anchoCm: number | null = null;
-            let altoCm: number | null = null;
-
-            // prefer explicit mm fields when present
-            if (medidaAncho_mm) {
-              const num = toNumber(medidaAncho_mm);
-              if (!isNaN(num)) anchoCm = num / 10;
-            }
-            if (medidaAlto_mm) {
-              const num = toNumber(medidaAlto_mm);
-              if (!isNaN(num)) altoCm = num / 10;
-            }
-
-            // fallback to raw values
-            if (anchoCm === null) {
-              const n = toNumber(medidaAncho);
-              if (!isNaN(n)) {
-                // heuristic: values > 100 likely in mm
-                anchoCm = n > 100 ? n / 10 : n;
-              }
-            }
-            if (altoCm === null) {
-              const n = toNumber(medidaAlto);
-              if (!isNaN(n)) {
-                altoCm = n > 100 ? n / 10 : n;
-              }
-            }
+            const anchoCm = mmToCm(medidaAncho_mm ?? medidaAncho);
+            const altoCm = mmToCm(medidaAlto_mm ?? medidaAlto);
 
             if (anchoCm === null || altoCm === null) return '';
             return `${fmt(anchoCm)}x${fmt(altoCm)}`;
