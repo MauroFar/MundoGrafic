@@ -71,6 +71,72 @@ export class OrdenPdfService {
       .replace(/'/g, '&#039;');
   }
 
+  private parseEstiloInfoTecnica(raw: any): { color: string; bold: boolean; underline: boolean } {
+    const base = { color: '#111827', bold: false, underline: false };
+    if (!raw) return base;
+
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return base;
+      return {
+        color: typeof parsed.color === 'string' && parsed.color ? parsed.color : base.color,
+        bold: Boolean(parsed.bold),
+        underline: Boolean(parsed.underline),
+      };
+    } catch {
+      return base;
+    }
+  }
+
+  private parseEstilosInfoTecnica(raw: any): Record<string, { color: string; bold: boolean; underline: boolean }> {
+    if (!raw) return {};
+
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return {};
+
+      return Object.fromEntries(
+        Object.entries(parsed).map(([key, value]) => {
+          const estilo = value && typeof value === 'object' ? value as any : {};
+          return [key, {
+            color: typeof estilo.color === 'string' && estilo.color ? estilo.color : '#111827',
+            bold: Boolean(estilo.bold),
+            underline: Boolean(estilo.underline),
+          }];
+        }),
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  private renderValorInfoTecnica(raw: any, estilo: { color: string; bold: boolean; underline: boolean }): string {
+    const value = raw ?? '';
+    const asString = String(value);
+
+    if (!asString.trim()) return '';
+
+    const hasHtml = /<[^>]+>/.test(asString);
+    if (hasHtml) {
+      return asString
+        .replace(/<script[^>]*>.*?<\/script>/gis, '')
+        .replace(/<iframe[^>]*>.*?<\/iframe>/gis, '')
+        .replace(/<object[^>]*>.*?<\/object>/gis, '')
+        .replace(/<embed[^>]*>/gi, '')
+        .replace(/on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        .replace(/style=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (match, styleValue) => {
+          const normalized = String(styleValue).replace(/^['\"]|['\"]$/g, '');
+          return `style="${normalized.replace(/<|>/g, '').replace(/javascript:/gi, '')}"`;
+        });
+    }
+
+    const safeValue = this.escapeHtml(asString);
+    const color = this.escapeHtml(estilo.color || '#111827');
+    const fontWeight = estilo.bold ? 700 : 400;
+    const textDecoration = estilo.underline ? 'underline' : 'none';
+    return `<span style="color:${color};font-weight:${fontWeight};text-decoration:${textDecoration}">${safeValue}</span>`;
+  }
+
   async generateEtiquetaPdfFromPayload(payload: any): Promise<Buffer> {
     const safePayload = {
       ...(payload || {}),
@@ -808,7 +874,7 @@ export class OrdenPdfService {
    * Genera los bloques HTML de Información Técnica específica por producto.
    * Solo renderiza los productos que tengan info_tecnica != null en la BD.
    */
-  private buildInfoTecnicaEspecificaHtml(productos: any[]): string {
+  private buildInfoTecnicaEspecificaHtml(productos: any[], estilosGlobal?: Record<string, { color: string; bold: boolean; underline: boolean }>): string {
     const conInfo = productos.filter((p: any) => {
       if (!p.info_tecnica) return false;
       // info_tecnica puede llegar como objeto (pg parsea JSONB automáticamente)
@@ -827,9 +893,11 @@ export class OrdenPdfService {
         : p.info_tecnica;
 
       const nombreProducto = it.nombreProducto || p.producto || `Producto ${p.orden || ''}`;
+      const estilosProducto = this.parseEstilosInfoTecnica(it?.estilo_informacion_tecnica || {});
+      const estiloPorCampo = (campo: string) => estilosProducto[campo] || estilosGlobal?.[campo] || { color: '#111827', bold: false, underline: false };
 
-      const campo = (lbl: string, val: string) =>
-        `<div class="campo"><div class="lbl">${lbl}</div><div class="val">${val || ''}</div></div>`;
+      const campo = (lbl: string, campoKey: string, val: any) =>
+        `<div class="campo"><div class="lbl">${lbl}</div><div class="val">${this.renderValorInfoTecnica(val, estiloPorCampo(campoKey))}</div></div>`;
 
       return `
 <div class="sec" style="border-left:3px solid #3b82f6">
@@ -839,22 +907,22 @@ export class OrdenPdfService {
   </div>
   <div class="sec-c">
     <div class="grid3">
-      ${campo('ADHERENCIA',           it.adherencia          || '')}
-      ${campo('MATERIAL',             it.material            || '')}
-      ${campo('PROVEEDOR MATERIAL',   it.proveedorMaterial   || '')}
-      ${campo('ESPESOR (Micras)',      it.espesor             || '')}
-      ${campo('LOTE MATERIAL',        it.loteMaterial        || '')}
-      ${campo('LOTE PRODUCCION',      it.loteProduccion      || '')}
-      ${campo('IMPRESIÓN',            it.impresion           || '')}
-      ${campo('TIPO IMPRESIÓN',       it.tipoImpresion       || '')}
-      ${campo('TROQUEL',              it.troquel             || '')}
-      ${campo('CÓDIGO TROQUEL',       it.codigoTroquel       || '')}
-      ${campo('TERMINADO ETIQUETA',   it.terminadoEtiqueta   || '')}
-      ${campo('TERMINADOS ESPECIALES',it.terminadosEspeciales|| '')}
-      ${campo('CANTIDAD POR ROLLO',   it.cantidadPorRollo    || '')}
+      ${campo('ADHERENCIA', 'adherencia',           it.adherencia          || '')}
+      ${campo('MATERIAL', 'material',                 it.material            || '')}
+      ${campo('PROVEEDOR MATERIAL', 'proveedorMaterial', it.proveedorMaterial   || '')}
+      ${campo('ESPESOR (Micras)', 'espesor',          it.espesor             || '')}
+      ${campo('LOTE MATERIAL', 'loteMaterial',        it.loteMaterial        || '')}
+      ${campo('LOTE PRODUCCION', 'loteProduccion',    it.loteProduccion      || '')}
+      ${campo('IMPRESIÓN', 'impresion',              it.impresion           || '')}
+      ${campo('TIPO IMPRESIÓN', 'tipoImpresion',      it.tipoImpresion       || '')}
+      ${campo('TROQUEL', 'troquel',                  it.troquel             || '')}
+      ${campo('CÓDIGO TROQUEL', 'codigoTroquel',      it.codigoTroquel       || '')}
+      ${campo('TERMINADO ETIQUETA', 'terminadoEtiqueta', it.terminadoEtiqueta   || '')}
+      ${campo('TERMINADOS ESPECIALES', 'terminadosEspeciales', it.terminadosEspeciales|| '')}
+      ${campo('CANTIDAD POR ROLLO', 'cantidadPorRollo', it.cantidadPorRollo    || '')}
     </div>
     ${(it.mostrarObservaciones !== false && it.mostrarObservaciones !== 'false' && it.mostrarObservaciones !== 0 && it.mostrarObservaciones !== '0') ? `<div class="fila" style="margin-top:8px">
-      ${campo('OBSERVACIONES', it.observaciones)}
+      ${campo('OBSERVACIONES', 'observaciones', it.observaciones || '')}
     </div>` : ''}
   </div>
 </div>`;
@@ -866,6 +934,8 @@ export class OrdenPdfService {
   private buildHtmlDigital(orden: any, detalle: any, logo: string, salida: string): string {
     const traza = this.parseTrazabilidad(detalle?.trazabilidad_proceso);
     const lib = traza.liberacion_producto || {};
+    const estilosInfoTecnica = this.parseEstilosInfoTecnica(detalle?.estilo_informacion_tecnica);
+    const renderValorInfoTecnica = (campo: string, valor: any) => this.renderValorInfoTecnica(valor, estilosInfoTecnica[campo] || { color: '#111827', bold: false, underline: false });
     let productos: any[] = [];
     try {
       productos = Array.isArray(detalle.productos_digital) ? detalle.productos_digital
@@ -955,22 +1025,22 @@ export class OrdenPdfService {
 </tr></tfoot>
 </table></div></div>
 <div class="sec"><div class="sec-t">Información Técnica</div><div class="sec-c"><div class="grid3">
-<div class="campo"><div class="lbl">ADHERENCIA</div><div class="val">${detalle.adherencia||''}</div></div>
-<div class="campo"><div class="lbl">MATERIAL</div><div class="val">${detalle.material||''}</div></div>
-<div class="campo"><div class="lbl">PROVEEDOR MATERIAL</div><div class="val">${detalle.proveedor_material||''}</div></div>
-<div class="campo"><div class="lbl">ESPESOR (Micras)</div><div class="val">${detalle.espesor||''}</div></div>
-<div class="campo"><div class="lbl">LOTE MATERIAL</div><div class="val">${detalle.lote_material||''}</div></div>
-<div class="campo"><div class="lbl">LOTE PRODUCCIÓN</div><div class="val">${detalle.lote_produccion||''}</div></div>
-<div class="campo"><div class="lbl">IMPRESIÓN</div><div class="val">${detalle.impresion||''}</div></div>
-<div class="campo"><div class="lbl">TIPO IMPRESIÓN</div><div class="val">${detalle.tipo_impresion||''}</div></div>
-<div class="campo"><div class="lbl">TROQUEL</div><div class="val">${detalle.troquel||''}</div></div>
-<div class="campo"><div class="lbl">CÓDIGO TROQUEL</div><div class="val">${detalle.codigo_troquel||''}</div></div>
-<div class="campo"><div class="lbl">TERMINADO ETIQUETA</div><div class="val">${detalle.terminado_etiqueta||''}</div></div>
-<div class="campo"><div class="lbl">TERMINADOS ESPECIALES</div><div class="val">${detalle.terminados_especiales||''}</div></div>
+<div class="campo"><div class="lbl">ADHERENCIA</div><div class="val">${renderValorInfoTecnica('adherencia', detalle.adherencia)}</div></div>
+<div class="campo"><div class="lbl">MATERIAL</div><div class="val">${renderValorInfoTecnica('material', detalle.material)}</div></div>
+<div class="campo"><div class="lbl">PROVEEDOR MATERIAL</div><div class="val">${renderValorInfoTecnica('proveedorMaterial', detalle.proveedor_material)}</div></div>
+<div class="campo"><div class="lbl">ESPESOR (Micras)</div><div class="val">${renderValorInfoTecnica('espesor', detalle.espesor)}</div></div>
+<div class="campo"><div class="lbl">LOTE MATERIAL</div><div class="val">${renderValorInfoTecnica('loteMaterial', detalle.lote_material)}</div></div>
+<div class="campo"><div class="lbl">LOTE PRODUCCIÓN</div><div class="val">${renderValorInfoTecnica('loteProduccion', detalle.lote_produccion)}</div></div>
+<div class="campo"><div class="lbl">IMPRESIÓN</div><div class="val">${renderValorInfoTecnica('impresion', detalle.impresion)}</div></div>
+<div class="campo"><div class="lbl">TIPO IMPRESIÓN</div><div class="val">${renderValorInfoTecnica('tipoImpresion', detalle.tipo_impresion)}</div></div>
+<div class="campo"><div class="lbl">TROQUEL</div><div class="val">${renderValorInfoTecnica('troquel', detalle.troquel)}</div></div>
+<div class="campo"><div class="lbl">CÓDIGO TROQUEL</div><div class="val">${renderValorInfoTecnica('codigoTroquel', detalle.codigo_troquel)}</div></div>
+<div class="campo"><div class="lbl">TERMINADO ETIQUETA</div><div class="val">${renderValorInfoTecnica('terminadoEtiqueta', detalle.terminado_etiqueta)}</div></div>
+<div class="campo"><div class="lbl">TERMINADOS ESPECIALES</div><div class="val">${renderValorInfoTecnica('terminadosEspeciales', detalle.terminados_especiales)}</div></div>
 </div>${traza.mostrar_observaciones_info_tecnica !== false ? `<div class="fila" style="margin-top:10px">
-<div class="campo"><div class="lbl">OBSERVACIONES</div><div class="val">${detalle.observaciones||orden.notas_observaciones||''}</div></div>
+<div class="campo"><div class="lbl">OBSERVACIONES</div><div class="val">${renderValorInfoTecnica('observaciones', detalle.observaciones || orden.notas_observaciones)}</div></div>
 </div>` : ''}</div></div>
-${this.buildInfoTecnicaEspecificaHtml(productos)}
+${this.buildInfoTecnicaEspecificaHtml(productos, estilosInfoTecnica)}
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
 <table class="trz"><thead><tr>

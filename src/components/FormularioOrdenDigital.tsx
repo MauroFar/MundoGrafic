@@ -43,6 +43,92 @@ interface ProductoDigital {
   tamano_papel_largo: string;
 }
 
+type EstiloCampoInfoTecnica = {
+  bold: boolean;
+  underline: boolean;
+  color: string;
+};
+
+type EstiloInfoTecnica = Record<string, EstiloCampoInfoTecnica>;
+
+const ESTILO_INFO_TECNICA_DEFAULT: EstiloCampoInfoTecnica = {
+  bold: false,
+  underline: false,
+  color: '#111827',
+};
+
+const INFO_TECNICA_COLORS = [
+  { color: '#111827', label: 'Negro' },
+  { color: '#1d4ed8', label: 'Azul' },
+  { color: '#dc2626', label: 'Rojo' },
+  { color: '#15803d', label: 'Verde' },
+  { color: '#7c3aed', label: 'Morado' },
+  { color: '#ea580c', label: 'Naranja' },
+  { color: '#0891b2', label: 'Celeste' },
+  { color: '#be185d', label: 'Rosa' },
+];
+
+const InfoTecnicaFieldLabel: React.FC<React.PropsWithChildren<{ style?: React.CSSProperties }>> = ({ children, style }) => (
+  <label
+    className="block text-sm font-medium text-gray-700 mb-1"
+    style={{
+      color: 'inherit',
+      fontWeight: 'inherit',
+      textDecoration: 'inherit',
+      ...style,
+    }}
+  >
+    {children}
+  </label>
+);
+
+const RichTextInfoField: React.FC<{
+  label: string;
+  fieldKey: string;
+  value: string;
+  onChange: (value: string) => void;
+  onFocus: () => void;
+  placeholder?: string;
+  rows?: number;
+  isTextarea?: boolean;
+  style?: React.CSSProperties;
+}> = ({ label, fieldKey, value, onChange, onFocus, placeholder, rows, isTextarea = false, style }) => {
+  const editorRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!editorRef.current) return;
+    const nextHtml = value || '';
+    if (editorRef.current.innerHTML !== nextHtml) {
+      editorRef.current.innerHTML = nextHtml;
+    }
+  }, [value]);
+
+  return (
+    <div>
+      <InfoTecnicaFieldLabel style={style}>{label}</InfoTecnicaFieldLabel>
+      <div
+        ref={editorRef}
+        data-field-key={fieldKey}
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck={false}
+        className={isTextarea
+          ? 'w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none'
+          : 'w-full min-h-[38px] px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500'}
+        style={{
+          color: '#111827',
+          whiteSpace: isTextarea ? 'pre-wrap' : 'normal',
+        }}
+        onFocus={onFocus}
+        onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        data-placeholder={placeholder}
+        onMouseUp={onFocus}
+        onKeyUp={onFocus}
+      />
+    </div>
+  );
+};
+
 interface FormularioOrdenDigitalProps {
   // Información del trabajo
   productos: ProductoDigital[];
@@ -51,6 +137,8 @@ interface FormularioOrdenDigitalProps {
   setMostrarTotalCantidades: (value: boolean) => void;
   mostrarTotalMetros: boolean;
   setMostrarTotalMetros: (value: boolean) => void;
+  infoTecnicaEstilo: EstiloInfoTecnica;
+  setInfoTecnicaEstilo: React.Dispatch<React.SetStateAction<EstiloInfoTecnica>>;
   
   // Información técnica
   adherencia: string;
@@ -95,6 +183,8 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   setMostrarTotalCantidades,
   mostrarTotalMetros,
   setMostrarTotalMetros,
+  infoTecnicaEstilo,
+  setInfoTecnicaEstilo,
   adherencia,
   setAdherencia,
   material,
@@ -150,7 +240,69 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
   // Tamaño de papel global para todos los productos (valores por defecto editables)
   const [tamanoPapelAncho, setTamanoPapelAncho] = React.useState<string>('315');
   const [tamanoPapelLargo, setTamanoPapelLargo] = React.useState<string>('1000');
+  const [campoEstiloActivo, setCampoEstiloActivo] = React.useState<string | null>(null);
   const productosContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  const infoTecnicaTextStyle: React.CSSProperties = {};
+  const infoTecnicaHeaderStyle: React.CSSProperties = {};
+
+  const getEstiloCampo = (campo: string): EstiloCampoInfoTecnica => infoTecnicaEstilo[campo] || ESTILO_INFO_TECNICA_DEFAULT;
+  const getEstiloCampoCss = (campo: string): React.CSSProperties => {
+    const estilo = getEstiloCampo(campo);
+    return {
+      color: estilo.color,
+      fontWeight: estilo.bold ? 700 : 400,
+      textDecoration: estilo.underline ? 'underline' : 'none',
+    };
+  };
+
+  const aplicarEstiloCampo = (campo: string, patch: Partial<EstiloCampoInfoTecnica>) => {
+    setInfoTecnicaEstilo((prev) => ({
+      ...prev,
+      [campo]: {
+        ...ESTILO_INFO_TECNICA_DEFAULT,
+        ...(prev[campo] ?? {}),
+        ...patch,
+      },
+    }));
+  };
+
+  const aplicarEstiloActivo = (patch: Partial<EstiloCampoInfoTecnica>) => {
+    if (!campoEstiloActivo) return;
+    aplicarEstiloCampo(campoEstiloActivo, patch);
+  };
+
+  const estiloActivo = campoEstiloActivo ? getEstiloCampo(campoEstiloActivo) : ESTILO_INFO_TECNICA_DEFAULT;
+
+  const ejecutarFormatoEnCampoActivo = (command: 'bold' | 'underline' | 'foreColor', color?: string) => {
+    const campo = campoEstiloActivo;
+    if (!campo) return;
+    const editor = document.querySelector(`[data-field-key="${campo}"]`) as HTMLDivElement | null;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand(command, false, color ?? undefined);
+
+    const nextHtml = editor.innerHTML;
+    switch (campo) {
+      case 'adherencia': setAdherencia(nextHtml); break;
+      case 'material': setMaterial(nextHtml); break;
+      case 'proveedorMaterial': setProveedorMaterial(nextHtml); break;
+      case 'espesor': setEspesor(nextHtml); break;
+      case 'loteMaterial': setLoteMaterial(nextHtml); break;
+      case 'loteProduccion': setLoteProduccion(nextHtml); break;
+      case 'impresion': setImpresion(nextHtml); break;
+      case 'tipoImpresion': setTipoImpresion(nextHtml); break;
+      case 'troquel': setTroquel(nextHtml); break;
+      case 'codigoTroquel': setCodigoTroquel(nextHtml); break;
+      case 'terminadoEtiqueta': setTerminadoEtiqueta(nextHtml); break;
+      case 'terminadosEspeciales': setTerminadosEspeciales(nextHtml); break;
+      case 'cantidadPorRollo': setCantidadPorRollo(nextHtml); break;
+      case 'observaciones': setObservaciones(nextHtml); break;
+      default: break;
+    }
+  };
+
+  const infoTecnicaValueStyle: React.CSSProperties = {};
 
   // Dropdown de acciones por fila de producto (índice del menú abierto, -1 = ninguno)
   const [accionesMenuAbierto, setAccionesMenuAbierto] = React.useState<number>(-1);
@@ -870,23 +1022,90 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
       {/* Información Técnica */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-200">
-          Información Técnica
-        </h3>
+        <div className="flex flex-col gap-3 mb-4 pb-2 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
+          <h3 className="text-lg font-bold text-gray-800" style={infoTecnicaHeaderStyle}>
+            Información Técnica
+          </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                ejecutarFormatoEnCampoActivo('bold');
+                aplicarEstiloActivo({ bold: !estiloActivo.bold });
+              }}
+              className={`px-2.5 py-1 rounded border text-sm font-bold ${estiloActivo.bold ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
+              title="Negrita"
+            >
+              B
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                ejecutarFormatoEnCampoActivo('underline');
+                aplicarEstiloActivo({ underline: !estiloActivo.underline });
+              }}
+              className={`px-2.5 py-1 rounded border text-sm font-semibold underline ${estiloActivo.underline ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
+              title="Subrayado"
+            >
+              U
+            </button>
+            <div className="flex items-center gap-1 flex-wrap pl-1">
+              {INFO_TECNICA_COLORS.map(({ color, label }) => (
+                <button
+                  key={color}
+                  type="button"
+                  aria-label={label}
+                  title={label}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    ejecutarFormatoEnCampoActivo('foreColor', color);
+                    aplicarEstiloActivo({ color });
+                  }}
+                  className="w-5 h-5 rounded-full border-2 transition-all"
+                  style={{
+                    backgroundColor: color,
+                    borderColor: estiloActivo.color === color ? '#1d4ed8' : 'transparent',
+                    boxShadow: estiloActivo.color === color ? '0 0 0 2px #fff, 0 0 0 4px #1d4ed8' : 'none',
+                  }}
+                />
+              ))}
+              <label
+                title="Color personalizado"
+                className="relative flex h-5 w-5 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-400 bg-white"
+              >
+                <input
+                  type="color"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  value={estiloActivo.color}
+                  onChange={(e) => {
+                    aplicarEstiloActivo({ color: e.target.value });
+                    ejecutarFormatoEnCampoActivo('foreColor', e.target.value);
+                  }}
+                />
+                <span className="text-[10px] text-gray-500">✦</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" style={infoTecnicaValueStyle}>
           {/* Adherencia: editable combo with explicit dropdown button */}
           <div className="relative" ref={adherenciaContainerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Adherencia</label>
             <div className="flex">
-              <input
-                ref={adherenciaInputRef}
-                placeholder="Seleccionar o escribir..."
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={adherencia}
-                onChange={(e) => setAdherencia(e.target.value)}
-                onFocus={() => {/* keep list closed on focus */}}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Adherencia"
+                  fieldKey="adherencia"
+                  value={adherencia}
+                  onChange={setAdherencia}
+                  onFocus={() => setCampoEstiloActivo('adherencia')}
+                  placeholder="Seleccionar o escribir..."
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAdherenciaOptions((s) => {
@@ -894,7 +1113,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                   if (next && adherenciaInputRef.current) adherenciaInputRef.current.focus();
                   return next;
                 })}
-                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50 self-end mb-0.5"
                 aria-label="Mostrar opciones de adherencia"
               >
                 ▾
@@ -917,15 +1136,18 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Material: editable combo with dropdown */}
           <div className="relative" ref={materialContainerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
             <div className="flex">
-              <input
-                ref={materialInputRef}
-                placeholder="Seleccionar o escribir..."
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={materialDisplay}
-                onChange={(e) => { setMaterial(e.target.value); setMaterialUnit(''); const esp = computeEspesor('', terminadoUnit); setEspesor(esp); }}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Material"
+                  fieldKey="material"
+                  value={materialDisplay}
+                  onChange={(next) => { setMaterial(next); setMaterialUnit(''); const esp = computeEspesor('', terminadoUnit); setEspesor(esp); }}
+                  onFocus={() => setCampoEstiloActivo('material')}
+                  placeholder="Seleccionar o escribir..."
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMaterialOptions((s) => {
@@ -933,7 +1155,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                   if (next && materialInputRef.current) materialInputRef.current.focus();
                   return next;
                 })}
-                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50 self-end mb-0.5"
                 aria-label="Mostrar opciones de material"
               >
                 ▾
@@ -956,15 +1178,18 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Proveedor de Material: editable combo */}
           <div className="relative" ref={proveedorContainerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor de Material</label>
             <div className="flex">
-              <input
-                ref={proveedorInputRef}
-                placeholder="Seleccionar o escribir..."
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={proveedorMaterial}
-                onChange={(e) => setProveedorMaterial(e.target.value)}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Proveedor de Material"
+                  fieldKey="proveedorMaterial"
+                  value={proveedorMaterial}
+                  onChange={setProveedorMaterial}
+                  onFocus={() => setCampoEstiloActivo('proveedorMaterial')}
+                  placeholder="Seleccionar o escribir..."
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setShowProveedorOptions((s) => {
@@ -972,7 +1197,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                   if (next && proveedorInputRef.current) proveedorInputRef.current.focus();
                   return next;
                 })}
-                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50 self-end mb-0.5"
                 aria-label="Mostrar opciones de proveedor"
               >
                 ▾
@@ -995,53 +1220,59 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Espesor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Espesor</label>
-            <input
-              type="text"
-              placeholder="mm"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Espesor"
+              fieldKey="espesor"
               value={espesor}
-              onChange={(e) => setEspesor(e.target.value)}
+              onChange={setEspesor}
+              onFocus={() => setCampoEstiloActivo('espesor')}
+              placeholder="mm"
+              style={infoTecnicaTextStyle}
             />
           </div>
 
           {/* Lote Material/Codigo Material */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lote Material/Codigo Material</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Lote Material/Codigo Material"
+              fieldKey="loteMaterial"
               value={loteMaterial}
-              onChange={(e) => setLoteMaterial(e.target.value)}
+              onChange={setLoteMaterial}
+              onFocus={() => setCampoEstiloActivo('loteMaterial')}
+              style={infoTecnicaTextStyle}
             />
           </div>
 
           {/* Lote de Producción */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lote de Producción</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Lote de Producción"
+              fieldKey="loteProduccion"
               value={loteProduccion}
-              readOnly
+              onChange={setLoteProduccion}
+              onFocus={() => setCampoEstiloActivo('loteProduccion')}
+              style={infoTecnicaTextStyle}
             />
           </div>
 
           {/* Impresión (editable combo) */}
           <div ref={impresionContainerRef} className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
             <div className="flex">
-              <input
-                ref={impresionInputRef}
-                placeholder="Seleccione opción"
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
-                value={impresion}
-                onChange={(e) => setImpresion(e.target.value)}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Impresión"
+                  fieldKey="impresion"
+                  value={impresion}
+                  onChange={setImpresion}
+                  onFocus={() => setCampoEstiloActivo('impresion')}
+                  placeholder="Seleccione opción"
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => { setShowImpresionOptions(s => !s); impresionInputRef.current?.focus(); }}
-                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50"
+                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50 self-end mb-0.5"
               >▾</button>
             </div>
             {showImpresionOptions && (
@@ -1055,19 +1286,22 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Tipo de Impresión (editable combo) */}
           <div ref={tipoImpresionContainerRef} className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Impresión</label>
             <div className="flex">
-              <input
-                ref={tipoImpresionInputRef}
-                placeholder="Seleccione opción"
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
-                value={tipoImpresion}
-                onChange={(e) => setTipoImpresion(e.target.value)}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Tipo de Impresión"
+                  fieldKey="tipoImpresion"
+                  value={tipoImpresion}
+                  onChange={setTipoImpresion}
+                  onFocus={() => setCampoEstiloActivo('tipoImpresion')}
+                  placeholder="Seleccione opción"
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => { setShowTipoImpresionOptions(s => !s); tipoImpresionInputRef.current?.focus(); }}
-                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50"
+                className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50 self-end mb-0.5"
               >▾</button>
             </div>
             {showTipoImpresionOptions && (
@@ -1081,15 +1315,18 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Troquel: editable combo */}
           <div className="relative" ref={troquelContainerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Troquel</label>
             <div className="flex">
-              <input
-                ref={troquelInputRef}
-                placeholder="Seleccionar o escribir..."
-                className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={troquel}
-                onChange={(e) => setTroquel(e.target.value)}
-              />
+              <div className="flex-1">
+                <RichTextInfoField
+                  label="Troquel"
+                  fieldKey="troquel"
+                  value={troquel}
+                  onChange={setTroquel}
+                  onFocus={() => setCampoEstiloActivo('troquel')}
+                  placeholder="Seleccionar o escribir..."
+                  style={infoTecnicaTextStyle}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setShowTroquelOptions((s) => {
@@ -1097,7 +1334,7 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
                   if (next && troquelInputRef.current) troquelInputRef.current.focus();
                   return next;
                 })}
-                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50"
+                className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50 self-end mb-0.5"
                 aria-label="Mostrar opciones de troquel"
               >
                 ▾
@@ -1120,25 +1357,28 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Código Troquel */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Código Troquel</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Código Troquel"
+              fieldKey="codigoTroquel"
               value={codigoTroquel}
-              onChange={(e) => setCodigoTroquel(e.target.value)}
+              onChange={setCodigoTroquel}
+              onFocus={() => setCampoEstiloActivo('codigoTroquel')}
+              style={infoTecnicaTextStyle}
             />
           </div>
 
           {/* Terminado de Etiqueta: editable combo */}
           <div className="relative" ref={terminadoContainerRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Terminado de Etiqueta</label>
+            <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Terminado de Etiqueta</InfoTecnicaFieldLabel>
             <div className="flex">
               <input
                 ref={terminadoInputRef}
                 placeholder="Seleccionar o escribir..."
                 className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+                style={getEstiloCampoCss('terminadoEtiqueta')}
                 value={terminadoDisplay}
                 onChange={(e) => { setTerminadoEtiqueta(e.target.value); setTerminadoUnit(''); const esp = computeEspesor(materialUnit, ''); setEspesor(esp); }}
+                onFocus={() => setCampoEstiloActivo('terminadoEtiqueta')}
               />
               <button
                 type="button"
@@ -1170,23 +1410,25 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
 
           {/* Terminados Especiales */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Terminados Especiales</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Terminados Especiales"
+              fieldKey="terminadosEspeciales"
               value={terminadosEspeciales}
-              onChange={(e) => setTerminadosEspeciales(e.target.value)}
+              onChange={setTerminadosEspeciales}
+              onFocus={() => setCampoEstiloActivo('terminadosEspeciales')}
+              style={infoTecnicaTextStyle}
             />
           </div>
 
           {/* Cantidad por Rollo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad por Rollo</label>
-            <input
-              type="text"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <RichTextInfoField
+              label="Cantidad por Rollo"
+              fieldKey="cantidadPorRollo"
               value={cantidadPorRollo}
-              onChange={(e) => setCantidadPorRollo(e.target.value)}
+              onChange={setCantidadPorRollo}
+              onFocus={() => setCampoEstiloActivo('cantidadPorRollo')}
+              style={infoTecnicaTextStyle}
             />
           </div>
 
@@ -1203,13 +1445,16 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
             />
             Mostrar observaciones en PDF
           </label>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
-          <textarea
-            className="w-full px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-            rows={3}
+          <RichTextInfoField
+            label="Observaciones"
+            fieldKey="observaciones"
             value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
+            onChange={setObservaciones}
+            onFocus={() => setCampoEstiloActivo('observaciones')}
             placeholder="Observaciones adicionales sobre la orden..."
+            rows={3}
+            isTextarea
+            style={infoTecnicaTextStyle}
           />
         </div>
       </div>
@@ -1228,6 +1473,12 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           tipoImpresionOptions={tipoImpresionOptions}
           onChange={actualizarInfoTecnicaProducto}
           onEliminar={eliminarInfoTecnicaProducto}
+          infoTecnicaHeaderStyle={infoTecnicaHeaderStyle}
+          infoTecnicaValueStyle={infoTecnicaValueStyle}
+          infoTecnicaTextStyle={infoTecnicaTextStyle}
+          infoTecnicaEstilo={infoTecnicaEstilo}
+          setInfoTecnicaEstilo={setInfoTecnicaEstilo}
+          onFieldFocus={setCampoEstiloActivo}
         />
       ))}
 
@@ -1295,6 +1546,12 @@ interface InfoTecnicaProductoCardProps {
   tipoImpresionOptions: string[];
   onChange: (productoIndex: number, campo: keyof InfoTecnicaProducto, valor: string | boolean) => void;
   onEliminar: (productoIndex: number) => void;
+  infoTecnicaHeaderStyle: React.CSSProperties;
+  infoTecnicaValueStyle: React.CSSProperties;
+  infoTecnicaTextStyle: React.CSSProperties;
+  infoTecnicaEstilo: EstiloInfoTecnica;
+  setInfoTecnicaEstilo: React.Dispatch<React.SetStateAction<EstiloInfoTecnica>>;
+  onFieldFocus: (field: string) => void;
 }
 
 const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
@@ -1308,6 +1565,12 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
   tipoImpresionOptions,
   onChange,
   onEliminar,
+  infoTecnicaHeaderStyle,
+  infoTecnicaValueStyle,
+  infoTecnicaTextStyle,
+  infoTecnicaEstilo,
+  setInfoTecnicaEstilo,
+  onFieldFocus,
 }) => {
   const [showAdherencia, setShowAdherencia] = React.useState(false);
   const [showMaterial, setShowMaterial] = React.useState(false);
@@ -1345,15 +1608,35 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
   const materialDisplay = MATERIALS.find((m) => m.name === info.material)?.display ?? info.material;
   const terminadoDisplay = TERMINADOS.find((t) => t.name === info.terminadoEtiqueta)?.display ?? info.terminadoEtiqueta;
 
+  const getEstiloCampo = (campo: string): EstiloCampoInfoTecnica => infoTecnicaEstilo[campo] || ESTILO_INFO_TECNICA_DEFAULT;
+  const getEstiloCampoCss = (campo: string): React.CSSProperties => {
+    const estilo = getEstiloCampo(campo);
+    return {
+      color: estilo.color,
+      fontWeight: estilo.bold ? 700 : 400,
+      textDecoration: estilo.underline ? 'underline' : 'none',
+    };
+  };
+  const aplicarEstiloCampo = (campo: string, patch: Partial<EstiloCampoInfoTecnica>) => {
+    setInfoTecnicaEstilo((prev) => ({
+      ...prev,
+      [campo]: {
+        ...ESTILO_INFO_TECNICA_DEFAULT,
+        ...(prev[campo] ?? {}),
+        ...patch,
+      },
+    }));
+  };
+
   const set = (campo: Exclude<keyof InfoTecnicaProducto, 'mostrarObservaciones'>) => (valor: string) =>
     onChange(info.productoIndex, campo, valor);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 border-blue-400">
       <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-        <h3 className="text-lg font-bold text-gray-800">
+        <h3 className="text-lg font-bold text-gray-800" style={infoTecnicaHeaderStyle}>
           Información Técnica{' '}
-          <span className="text-blue-600 font-semibold">— {info.nombreProducto || `Producto ${info.productoIndex + 1}`}</span>
+          <span style={infoTecnicaHeaderStyle}>— {info.nombreProducto || `Producto ${info.productoIndex + 1}`}</span>
         </h3>
         <button
           type="button"
@@ -1368,16 +1651,18 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
         </button>
       </div>
 
-      <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" style={infoTecnicaValueStyle}>
         {/* Adherencia */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Adherencia</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Adherencia</InfoTecnicaFieldLabel>
           <div className="flex">
             <input
               placeholder="Seleccionar o escribir..."
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_adherencia`)}
               value={info.adherencia}
               onChange={(e) => set('adherencia')(e.target.value)}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_adherencia`)}
             />
             <button type="button" onClick={() => setShowAdherencia((s) => !s)}
               className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
@@ -1394,13 +1679,15 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Material */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Material</InfoTecnicaFieldLabel>
           <div className="flex">
             <input
               placeholder="Seleccionar o escribir..."
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_material`)}
               value={materialDisplay}
               onChange={(e) => { set('material')(e.target.value); set('materialUnit')(''); set('espesor')(computeEspesor('', info.terminadoUnit)); }}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_material`)}
             />
             <button type="button" onClick={() => setShowMaterial((s) => !s)}
               className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
@@ -1423,13 +1710,15 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Proveedor de Material */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor de Material</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Proveedor de Material</InfoTecnicaFieldLabel>
           <div className="flex">
             <input
               placeholder="Seleccionar o escribir..."
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_proveedorMaterial`)}
               value={info.proveedorMaterial}
               onChange={(e) => set('proveedorMaterial')(e.target.value)}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_proveedorMaterial`)}
             />
             <button type="button" onClick={() => setShowProveedor((s) => !s)}
               className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
@@ -1446,42 +1735,50 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Espesor */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Espesor</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Espesor</InfoTecnicaFieldLabel>
           <input type="text" placeholder="mm"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_espesor`)}
             value={info.espesor}
             onChange={(e) => set('espesor')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_espesor`)}
           />
         </div>
 
         {/* Lote Material */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Lote Material/Codigo Material</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Lote Material/Codigo Material</InfoTecnicaFieldLabel>
           <input type="text"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_loteMaterial`)}
             value={info.loteMaterial}
             onChange={(e) => set('loteMaterial')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_loteMaterial`)}
           />
         </div>
 
         {/* Lote de Producción */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Lote de Producción</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Lote de Producción</InfoTecnicaFieldLabel>
           <input type="text"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_loteProduccion`)}
             value={info.loteProduccion}
             onChange={(e) => set('loteProduccion')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_loteProduccion`)}
           />
         </div>
 
         {/* Impresión */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Impresión</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Impresión</InfoTecnicaFieldLabel>
           <div className="flex">
             <input placeholder="Seleccione opción"
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_impresion`)}
               value={info.impresion}
               onChange={(e) => set('impresion')(e.target.value)}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_impresion`)}
             />
             <button type="button" onClick={() => setShowImpresion((s) => !s)}
               className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50">▾</button>
@@ -1498,12 +1795,14 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Tipo de Impresión */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Impresión</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Tipo de Impresión</InfoTecnicaFieldLabel>
           <div className="flex">
             <input placeholder="Seleccione opción"
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_tipoImpresion`)}
               value={info.tipoImpresion}
               onChange={(e) => set('tipoImpresion')(e.target.value)}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_tipoImpresion`)}
             />
             <button type="button" onClick={() => setShowTipoImpresion((s) => !s)}
               className="px-2 py-1 border border-gray-300 rounded-r bg-gray-50">▾</button>
@@ -1520,12 +1819,14 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Troquel */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Troquel</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Troquel</InfoTecnicaFieldLabel>
           <div className="flex">
             <input placeholder="Seleccionar o escribir..."
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_troquel`)}
               value={info.troquel}
               onChange={(e) => set('troquel')(e.target.value)}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_troquel`)}
             />
             <button type="button" onClick={() => setShowTroquel((s) => !s)}
               className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
@@ -1542,22 +1843,26 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Código Troquel */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Código Troquel</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Código Troquel</InfoTecnicaFieldLabel>
           <input type="text"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_codigoTroquel`)}
             value={info.codigoTroquel}
             onChange={(e) => set('codigoTroquel')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_codigoTroquel`)}
           />
         </div>
 
         {/* Terminado de Etiqueta */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Terminado de Etiqueta</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Terminado de Etiqueta</InfoTecnicaFieldLabel>
           <div className="flex">
             <input placeholder="Seleccionar o escribir..."
               className="flex-1 px-2 py-1.5 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={getEstiloCampoCss(`producto_${info.productoIndex}_terminadoEtiqueta`)}
               value={terminadoDisplay}
               onChange={(e) => { set('terminadoEtiqueta')(e.target.value); set('terminadoUnit')(''); set('espesor')(computeEspesor(info.materialUnit, '')); }}
+              onFocus={() => onFieldFocus(`producto_${info.productoIndex}_terminadoEtiqueta`)}
             />
             <button type="button" onClick={() => setShowTerminado((s) => !s)}
               className="px-3 py-1.5 border-t border-b border-r border-gray-300 rounded-r bg-white hover:bg-gray-50">▾</button>
@@ -1580,21 +1885,25 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
 
         {/* Terminados Especiales */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Terminados Especiales</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Terminados Especiales</InfoTecnicaFieldLabel>
           <input type="text"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_terminadosEspeciales`)}
             value={info.terminadosEspeciales}
             onChange={(e) => set('terminadosEspeciales')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_terminadosEspeciales`)}
           />
         </div>
 
         {/* Cantidad por Rollo */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad por Rollo</label>
+          <InfoTecnicaFieldLabel style={infoTecnicaTextStyle}>Cantidad por Rollo</InfoTecnicaFieldLabel>
           <input type="text"
             className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={getEstiloCampoCss(`producto_${info.productoIndex}_cantidadPorRollo`)}
             value={info.cantidadPorRollo}
             onChange={(e) => set('cantidadPorRollo')(e.target.value)}
+            onFocus={() => onFieldFocus(`producto_${info.productoIndex}_cantidadPorRollo`)}
           />
         </div>
       </div>
@@ -1610,12 +1919,14 @@ const InfoTecnicaProductoCard: React.FC<InfoTecnicaProductoCardProps> = ({
           />
           Mostrar observaciones en PDF
         </label>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+        <InfoTecnicaFieldLabel>Observaciones</InfoTecnicaFieldLabel>
         <textarea
           className="w-full px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+          style={getEstiloCampoCss(`producto_${info.productoIndex}_observaciones`)}
           rows={3}
           value={info.observaciones}
           onChange={(e) => set('observaciones')(e.target.value)}
+          onFocus={() => onFieldFocus(`producto_${info.productoIndex}_observaciones`)}
           placeholder="Observaciones adicionales sobre la orden..."
         />
       </div>

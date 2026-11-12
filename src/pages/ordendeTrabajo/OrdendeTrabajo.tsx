@@ -534,6 +534,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   // Estados específicos para formulario DIGITAL
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
   const [infoTecnicaProductosDigital, setInfoTecnicaProductosDigital] = useState<InfoTecnicaProducto[]>([]);
+  const [infoTecnicaEstilo, setInfoTecnicaEstilo] = useState<Record<string, { bold: boolean; underline: boolean; color: string }>>({});
   const [adherencia, setAdherencia] = useState<string>('');
   const [materialDigital, setMaterialDigital] = useState<string>('');
   const [proveedorMaterial, setProveedorMaterial] = useState<string>('');
@@ -1113,6 +1114,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setProveedorMaterial(ordenData.detalle?.proveedor_material || '');
         setImpresionDigital(ordenData.detalle?.impresion || '');
         setObservacionesDigital(ordenData.detalle?.observaciones || '');
+        const estiloInfoTecnica = typeof ordenData.detalle?.estilo_informacion_tecnica === 'string'
+          ? (() => { try { return JSON.parse(ordenData.detalle.estilo_informacion_tecnica); } catch { return null; } })()
+          : ordenData.detalle?.estilo_informacion_tecnica;
+        setInfoTecnicaEstilo(estiloInfoTecnica && typeof estiloInfoTecnica === 'object' ? estiloInfoTecnica : {});
         
         // Campos técnicos digitales
         setAdherencia(ordenData.detalle?.adherencia || '');
@@ -1682,9 +1687,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
         terminado_etiqueta: terminadoEtiqueta,
         terminados_especiales: terminadosEspeciales,
         cantidad_por_rollo: cantidadPorRollo,
-        observaciones: observacionesDigital
-        ,
+        observaciones: observacionesDigital,
         espesor: espesorDigital,
+        estilo_informacion_tecnica: infoTecnicaEstilo,
         trazabilidad_proceso: construirTrazabilidadParaPayload()
       } : {
         // Datos específicos de offset
@@ -2295,6 +2300,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setMostrarTotalCantidades={setMostrarTotalCantidadesDigital}
               mostrarTotalMetros={mostrarTotalMetrosDigital}
               setMostrarTotalMetros={setMostrarTotalMetrosDigital}
+              infoTecnicaEstilo={infoTecnicaEstilo}
+              setInfoTecnicaEstilo={setInfoTecnicaEstilo}
               adherencia={adherencia}
               setAdherencia={setAdherencia}
               material={materialDigital}
