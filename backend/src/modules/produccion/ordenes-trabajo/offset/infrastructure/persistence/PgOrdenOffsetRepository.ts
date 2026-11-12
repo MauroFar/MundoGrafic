@@ -23,6 +23,7 @@ export interface UpsertDetalleOffsetInput {
   numero_salida?: string | null;
   prensa_seleccionada?: string | null;
   trazabilidad_proceso?: any;
+  estilo_secciones_offset?: Record<string, { color: string; bold: boolean; underline: boolean }> | null;
   // Responsables
   vendedor?: string | null;
   preprensa?: string | null;
@@ -90,6 +91,7 @@ export class PgOrdenOffsetRepository {
   async upsertDetalleCompleto(input: UpsertDetalleOffsetInput): Promise<void> {
     const v = input;
     const trazJson = v.trazabilidad_proceso ? JSON.stringify(v.trazabilidad_proceso) : null;
+    const estilosJson = v.estilo_secciones_offset ? JSON.stringify(v.estilo_secciones_offset) : null;
 
     await this.client.query(
       `INSERT INTO detalle_orden_trabajo_offset (
@@ -98,10 +100,10 @@ export class PgOrdenOffsetRepository {
         instrucciones_acabados, instrucciones_empacado, material, impresion, observaciones,
         numero_salida, prensa_seleccionada, vendedor, preprensa, prensa, terminados, facturado,
         vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
-        terminados_cantidad_final, trazabilidad_proceso
+        terminados_cantidad_final, trazabilidad_proceso, estilo_secciones_offset
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-        $16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb
+        $16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb,$27::jsonb
       )
       ON CONFLICT (orden_trabajo_id) DO UPDATE SET
         corte_material=$2, cantidad_pliegos_compra=$3, exceso=$4, total_pliegos=$5,
@@ -111,7 +113,7 @@ export class PgOrdenOffsetRepository {
         prensa_seleccionada=$16, vendedor=$17, preprensa=$18, prensa=$19, terminados=$20,
         facturado=$21, vendedor_cantidad_final=$22, preprensa_cantidad_final=$23,
         prensa_cantidad_final=$24, terminados_cantidad_final=$25,
-        trazabilidad_proceso=$26::jsonb, updated_at=CURRENT_TIMESTAMP`,
+        trazabilidad_proceso=$26::jsonb, estilo_secciones_offset=$27::jsonb, updated_at=CURRENT_TIMESTAMP`,
       [
         v.orden_trabajo_id,
         v.corte_material ?? null,
@@ -139,6 +141,7 @@ export class PgOrdenOffsetRepository {
         v.prensa_cantidad_final ?? null,
         v.terminados_cantidad_final ?? null,
         trazJson,
+        estilosJson,
       ],
     );
   }

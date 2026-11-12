@@ -535,6 +535,13 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [productosDigital, setProductosDigital] = useState<any[]>([]);
   const [infoTecnicaProductosDigital, setInfoTecnicaProductosDigital] = useState<InfoTecnicaProducto[]>([]);
   const [infoTecnicaEstilo, setInfoTecnicaEstilo] = useState<Record<string, { bold: boolean; underline: boolean; color: string }>>({});
+  const [estilosOffset, setEstilosOffset] = useState<Record<string, { bold: boolean; underline: boolean; color: string }>>({
+    trabajo: { bold: false, underline: false, color: '#111827' },
+    material: { bold: false, underline: false, color: '#111827' },
+    pliegos: { bold: false, underline: false, color: '#111827' },
+    impresion: { bold: false, underline: false, color: '#111827' },
+    prensa: { bold: false, underline: false, color: '#111827' },
+  });
   const [adherencia, setAdherencia] = useState<string>('');
   const [materialDigital, setMaterialDigital] = useState<string>('');
   const [proveedorMaterial, setProveedorMaterial] = useState<string>('');
@@ -1089,6 +1096,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setMaterialEspesor(ordenData.detalle?.espesor_material || ordenData.detalle?.espesor || '');
         setImpresion(ordenData.detalle?.impresion || '');
         setObservaciones(ordenData.detalle?.observaciones || '');
+
+        const estiloOffsetRaw = typeof ordenData.detalle?.estilo_secciones_offset === 'string'
+          ? (() => { try { return JSON.parse(ordenData.detalle.estilo_secciones_offset); } catch { return null; } })()
+          : ordenData.detalle?.estilo_secciones_offset;
+        if (estiloOffsetRaw && typeof estiloOffsetRaw === 'object') {
+          setEstilosOffset((prev) => ({
+            trabajo: { ...prev.trabajo, ...(estiloOffsetRaw.trabajo || {}) },
+            material: { ...prev.material, ...(estiloOffsetRaw.material || {}) },
+            pliegos: { ...prev.pliegos, ...(estiloOffsetRaw.pliegos || {}) },
+            impresion: { ...prev.impresion, ...(estiloOffsetRaw.impresion || {}) },
+            prensa: { ...prev.prensa, ...(estiloOffsetRaw.prensa || {}) },
+          }));
+        }
         
         // Otros campos offset
         setCorteMaterial(ordenData.detalle?.corte_material || '');
@@ -1708,6 +1728,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         instrucciones_empacado: instruccionesEmpacado,
         observaciones: observaciones,
         prensa_seleccionada: prensaSeleccionada,
+        estilo_secciones_offset: estilosOffset,
         trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
       }
     };
@@ -1871,6 +1892,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             instrucciones_empacado: instruccionesEmpacado,
             observaciones: observaciones,
             prensa_seleccionada: prensaSeleccionada,
+            estilo_secciones_offset: estilosOffset,
             trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
           }
         }),
@@ -2023,6 +2045,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           instrucciones_empacado: instruccionesEmpacado,
           observaciones: observaciones,
           prensa_seleccionada: prensaSeleccionada,
+          estilo_secciones_offset: estilosOffset,
           trazabilidad_proceso: construirTrazabilidadOffsetParaPayload()
         }
       };
@@ -2370,6 +2393,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
               setObservaciones={setObservaciones}
               notasObservaciones={notasObservaciones}
               setNotasObservaciones={setNotasObservaciones}
+              estilos={estilosOffset}
+              setEstilos={setEstilosOffset}
             />
           )}
 

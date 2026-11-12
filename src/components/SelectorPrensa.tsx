@@ -13,13 +13,14 @@ interface SelectorPrensaProps {
   className?: string;
   label?: string;
   placeholder?: string;
+  inputStyle?: React.CSSProperties;
 }
 
 /**
  * Componente selector de prensa con opción de agregar nuevas
  * Permite seleccionar de una lista o agregar prensas dinámicamente
  */
-function SelectorPrensa({ value, onChange, className = '', label = 'Seleccionar Prensa', placeholder = 'Seleccionar o escribir prensa...' }: SelectorPrensaProps) {
+function SelectorPrensa({ value, onChange, className = '', label = 'Seleccionar Prensa', placeholder = 'Seleccionar o escribir prensa...', inputStyle }: SelectorPrensaProps) {
   const [prensas, setPrensas] = useState<Prensa[]>([]);
   const [loading, setLoading] = useState(false);
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
@@ -135,6 +136,7 @@ function SelectorPrensa({ value, onChange, className = '', label = 'Seleccionar 
           onChange={e => onChange(e.target.value)}
           onFocus={() => setMostrarDropdown(true)}
           placeholder={placeholder}
+          style={inputStyle}
         />
         <button
           type="button"

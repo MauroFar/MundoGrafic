@@ -122,6 +122,7 @@ export class UpdateOrdenCompletaUseCase {
           numero_salida: detalle?.numero_salida,
           prensa_seleccionada: detalle?.prensa_seleccionada ?? null,
           trazabilidad_proceso: detalle?.trazabilidad_proceso,
+          estilo_secciones_offset: detalle?.estilo_secciones_offset ?? null,
           vendedor: vendedor,
           preprensa: preprensa,
           prensa: prensa,

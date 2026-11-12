@@ -110,6 +110,21 @@ export class OrdenPdfService {
     }
   }
 
+  private sanitizeHtmlPreservingStyles(html: string): string {
+    return html
+      .replace(/<script[^>]*>.*?<\/script>/gis, '')
+      .replace(/<iframe[^>]*>.*?<\/iframe>/gis, '')
+      .replace(/<object[^>]*>.*?<\/object>/gis, '')
+      .replace(/<embed[^>]*>/gi, '')
+      .replace(/on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/style\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi, (_match, doubleQuoted, singleQuoted, bare) => {
+        const rawValue = String(doubleQuoted ?? singleQuoted ?? bare ?? '')
+          .replace(/<|>/g, '')
+          .replace(/javascript:/gi, '');
+        return `style="${this.escapeHtml(rawValue)}"`;
+      });
+  }
+
   private renderValorInfoTecnica(raw: any, estilo: { color: string; bold: boolean; underline: boolean }): string {
     const value = raw ?? '';
     const asString = String(value);
@@ -118,16 +133,44 @@ export class OrdenPdfService {
 
     const hasHtml = /<[^>]+>/.test(asString);
     if (hasHtml) {
-      return asString
-        .replace(/<script[^>]*>.*?<\/script>/gis, '')
-        .replace(/<iframe[^>]*>.*?<\/iframe>/gis, '')
-        .replace(/<object[^>]*>.*?<\/object>/gis, '')
-        .replace(/<embed[^>]*>/gi, '')
-        .replace(/on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        .replace(/style=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, (match, styleValue) => {
-          const normalized = String(styleValue).replace(/^['\"]|['\"]$/g, '');
-          return `style="${normalized.replace(/<|>/g, '').replace(/javascript:/gi, '')}"`;
-        });
+      return this.sanitizeHtmlPreservingStyles(asString);
+    }
+
+    const safeValue = this.escapeHtml(asString);
+    const color = this.escapeHtml(estilo.color || '#111827');
+    const fontWeight = estilo.bold ? 700 : 400;
+    const textDecoration = estilo.underline ? 'underline' : 'none';
+    return `<span style="color:${color};font-weight:${fontWeight};text-decoration:${textDecoration}">${safeValue}</span>`;
+  }
+
+  private parseEstiloSeccionOffset(raw: any): Record<string, { color: string; bold: boolean; underline: boolean }> {
+    const base = { trabajo: { color: '#111827', bold: false, underline: false }, material: { color: '#111827', bold: false, underline: false }, pliegos: { color: '#111827', bold: false, underline: false }, impresion: { color: '#111827', bold: false, underline: false }, prensa: { color: '#111827', bold: false, underline: false } };
+    if (!raw) return base;
+
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return base;
+
+      return {
+        trabajo: { ...base.trabajo, ...(parsed.trabajo || {}) },
+        material: { ...base.material, ...(parsed.material || {}) },
+        pliegos: { ...base.pliegos, ...(parsed.pliegos || {}) },
+        impresion: { ...base.impresion, ...(parsed.impresion || {}) },
+        prensa: { ...base.prensa, ...(parsed.prensa || {}) },
+      };
+    } catch {
+      return base;
+    }
+  }
+
+  private renderValorOffset(raw: any, estilo: { color: string; bold: boolean; underline: boolean }): string {
+    const value = raw ?? '';
+    const asString = String(value);
+    if (!asString.trim()) return '';
+
+    const hasHtml = /<[^>]+>/.test(asString);
+    if (hasHtml) {
+      return this.sanitizeHtmlPreservingStyles(asString);
     }
 
     const safeValue = this.escapeHtml(asString);
@@ -758,6 +801,8 @@ export class OrdenPdfService {
   private buildHtmlOffset(orden: any, detalle: any, logo: string, _salida: string): string {
     const traza = this.parseTrazabilidad(detalle?.trazabilidad_proceso);
     const lib = traza.liberacion_producto || {};
+    const estilosOffset = this.parseEstiloSeccionOffset(detalle?.estilo_secciones_offset);
+    const renderOffsetField = (campo: string, valor: any) => this.renderValorOffset(valor, estilosOffset[campo] || { color: '#111827', bold: false, underline: false });
     const productosConcepto = (detalle.productos_offset || [])
       .map((p: any) => p.concepto || '')
       .filter((v: string) => !!v)
@@ -818,34 +863,34 @@ export class OrdenPdfService {
 </div></div>
 <div class="sec"><div class="sec-t">Información del Trabajo</div><div class="sec-c">
 <div class="fila">
-  <div class="campo" style="flex:1"><div class="lbl">Cantidad</div><div class="val">${cantidadTexto || detalle.cantidad || orden.cantidad || ''}</div></div>
-  <div class="campo" style="flex:3"><div class="lbl">Concepto</div><div class="val">${conceptoTexto}</div></div>
-  <div class="campo" style="flex:1"><div class="lbl">Tamaño Abierto</div><div class="val">${detalle.tamano_abierto_1 || detalle.tamano || ''}</div></div>
-  <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${detalle.tamano_cerrado_1 || detalle.tamano || ''}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Cantidad</div><div class="val">${renderOffsetField('trabajo', cantidadTexto || detalle.cantidad || orden.cantidad || '')}</div></div>
+  <div class="campo" style="flex:3"><div class="lbl">Concepto</div><div class="val">${renderOffsetField('trabajo', conceptoTexto)}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Tamaño Abierto</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_abierto_1 || detalle.tamano || '')}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_cerrado_1 || detalle.tamano || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Material y Corte</div><div class="sec-c">
 <div class="grid2">
-  <div class="campo"><div class="lbl">Material</div><div class="val">${detalle.material || ''}</div></div>
-  <div class="campo"><div class="lbl">Corte de Material</div><div class="val">${detalle.corte_material || ''}</div></div>
+  <div class="campo"><div class="lbl">Material</div><div class="val">${renderOffsetField('material', detalle.material || '')}</div></div>
+  <div class="campo"><div class="lbl">Corte de Material</div><div class="val">${renderOffsetField('material', detalle.corte_material || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Cantidad de Pliegos</div><div class="sec-c">
 <div class="grid3">
-  <div class="campo"><div class="lbl">Pliegos de Compra</div><div class="val">${detalle.cantidad_pliegos_compra || ''}</div></div>
-  <div class="campo"><div class="lbl">Exceso</div><div class="val">${detalle.exceso || ''}</div></div>
-  <div class="campo"><div class="lbl">Total</div><div class="val">${detalle.total_pliegos || ''}</div></div>
+  <div class="campo"><div class="lbl">Pliegos de Compra</div><div class="val">${renderOffsetField('pliegos', detalle.cantidad_pliegos_compra || '')}</div></div>
+  <div class="campo"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', detalle.exceso || '')}</div></div>
+  <div class="campo"><div class="lbl">Total</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Impresión y Acabados</div><div class="sec-c">
 <div class="grid2">
-  <div class="campo"><div class="lbl">Impresión</div><div class="val">${detalle.impresion || ''}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val">${detalle.instrucciones_impresion || ''}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Acabados</div><div class="val">${detalle.instrucciones_acabados || ''}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val">${detalle.instrucciones_empacado || ''}</div></div>
+  <div class="campo"><div class="lbl">Impresión</div><div class="val">${renderOffsetField('impresion', detalle.impresion || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_impresion || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Acabados</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_acabados || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_empacado || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Prensa y Observaciones</div><div class="sec-c">
 <div class="grid3">
-  <div class="campo"><div class="lbl">Seleccionar Prensa</div><div class="val">${detalle.prensa_seleccionada || detalle.prensa || ''}</div></div>
-  <div class="campo"><div class="lbl">Observaciones Generales</div><div class="val">${detalle.observaciones || orden.notas_observaciones || ''}</div></div>
-  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val">${orden.notas_observaciones || detalle.notas_observaciones || ''}</div></div>
+  <div class="campo"><div class="lbl">Seleccionar Prensa</div><div class="val">${renderOffsetField('prensa', detalle.prensa_seleccionada || detalle.prensa || '')}</div></div>
+  <div class="campo"><div class="lbl">Observaciones Generales</div><div class="val">${renderOffsetField('prensa', detalle.observaciones || orden.notas_observaciones || '')}</div></div>
+  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val">${renderOffsetField('prensa', orden.notas_observaciones || detalle.notas_observaciones || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div class="fila" style="margin-bottom:6px"><div class="campo" style="flex:1"><div class="lbl">Vendedor</div><div class="val">${detalle.vendedor || ''}</div></div></div>

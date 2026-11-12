@@ -1028,30 +1028,36 @@ const FormularioOrdenDigital: React.FC<FormularioOrdenDigitalProps> = ({
           </h3>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                ejecutarFormatoEnCampoActivo('bold');
-                aplicarEstiloActivo({ bold: !estiloActivo.bold });
-              }}
-              className={`px-2.5 py-1 rounded border text-sm font-bold ${estiloActivo.bold ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
-              title="Negrita"
-            >
-              B
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                ejecutarFormatoEnCampoActivo('underline');
-                aplicarEstiloActivo({ underline: !estiloActivo.underline });
-              }}
-              className={`px-2.5 py-1 rounded border text-sm font-semibold underline ${estiloActivo.underline ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
-              title="Subrayado"
-            >
-              U
-            </button>
+            <div className="flex flex-col items-center gap-1">
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  ejecutarFormatoEnCampoActivo('bold');
+                  aplicarEstiloActivo({ bold: !estiloActivo.bold });
+                }}
+                className={`px-2.5 py-1 rounded border text-sm font-bold ${estiloActivo.bold ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
+                title="Negrita"
+              >
+                B
+              </button>
+              <span className="text-[10px] font-medium text-gray-600">Negrita</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  ejecutarFormatoEnCampoActivo('underline');
+                  aplicarEstiloActivo({ underline: !estiloActivo.underline });
+                }}
+                className={`px-2.5 py-1 rounded border text-sm font-semibold underline ${estiloActivo.underline ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'}`}
+                title="Subrayado"
+              >
+                U
+              </button>
+              <span className="text-[10px] font-medium text-gray-600">Subrayado</span>
+            </div>
             <div className="flex items-center gap-1 flex-wrap pl-1">
               {INFO_TECNICA_COLORS.map(({ color, label }) => (
                 <button
