@@ -144,13 +144,39 @@ show_frontend_logs() {
 }
 
 enable_maintenance() {
+    local custom_text=""
+    echo ""
+    echo "Escribe el detalle que quieres mostrar debajo de 'Actualizando' (opcional):"
+    read -rp "Detalle: " custom_text
+
     echo ""
     warn "Esto activará el modo mantenimiento: los usuarios verán la página de mantenimiento."
     read -rp "¿Confirmar? (s/N): " confirm
     [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
 
     if [ -f "$MAINTENANCE_SRC" ]; then
-        sudo cp "$MAINTENANCE_SRC" "$MAINTENANCE_PAGE"
+        python3 - "$MAINTENANCE_SRC" "$MAINTENANCE_PAGE" "$custom_text" <<'PY'
+import html
+import pathlib
+import sys
+
+src_path = pathlib.Path(sys.argv[1])
+dst_path = pathlib.Path(sys.argv[2])
+custom_text = sys.argv[3]
+
+content = src_path.read_text(encoding="utf-8")
+marker = "__MAINTENANCE_CUSTOM_TEXT__"
+if marker not in content:
+    raise SystemExit("No se encontró el marcador __MAINTENANCE_CUSTOM_TEXT__ en el archivo de mantenimiento.")
+
+replacement = ""
+if custom_text:
+    replacement = f"<span>{html.escape(custom_text, quote=False)}</span>"
+
+final_content = content.replace(marker, replacement)
+dst_path.write_text(final_content, encoding="utf-8")
+PY
+
         info "Página de mantenimiento copiada a $MAINTENANCE_PAGE"
     else
         warn "No se encontró $MAINTENANCE_SRC. Asegúrate de que existe el archivo en el repositorio."
