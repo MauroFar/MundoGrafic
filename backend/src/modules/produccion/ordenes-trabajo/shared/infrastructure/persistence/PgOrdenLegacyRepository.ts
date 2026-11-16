@@ -202,7 +202,8 @@ export class PgOrdenLegacyRepository implements IOrdenLegacyRepository {
                (SELECT poo.concepto FROM productos_orden_offset poo
                 WHERE poo.orden_trabajo_id = ot.id ORDER BY poo.orden ASC LIMIT 1)
              ) AS concepto,
-             ot.fecha_creacion, ot.tipo_orden, ot.id_cotizacion, ot.artes_aprobados,
+             ot.fecha_creacion, ot.fecha_entrega, ot.fecha_aprobacion_artes,
+             ot.tipo_orden, ot.id_cotizacion, ot.artes_aprobados,
              ot.estado_orden_digital_id,
              eod.key   AS estado_digital_key,   eod.titulo AS estado_digital_titulo,
              ot.estado_orden_offset_id,
