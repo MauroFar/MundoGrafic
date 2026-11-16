@@ -8,6 +8,7 @@ export interface DetalleOrdenOffsetData {
   
   // Campos comunes
   material?: string | null;
+  codigo_producto?: string | null;
   impresion?: string | null;
   observaciones?: string | null;
   
@@ -87,6 +88,7 @@ export interface EstadoOrdenOffsetHistorialData {
 export interface CreateDetalleOffsetInput {
   orden_trabajo_id: number;
   material?: string;
+  codigo_producto?: string;
   impresion?: string;
   observaciones?: string;
   corte_material?: string;

@@ -18,6 +18,7 @@ export interface UpsertDetalleOffsetInput {
   instrucciones_acabados?: string | null;
   instrucciones_empacado?: string | null;
   material?: string | null;
+  codigo_producto?: string | null;
   impresion?: string | null;
   observaciones?: string | null;
   numero_salida?: string | null;
@@ -55,13 +56,14 @@ export class PgOrdenOffsetRepository {
   async createDetalle(input: CreateDetalleOffsetInput): Promise<DetalleOrdenOffsetData> {
     const result = await this.client.query(
       `INSERT INTO detalle_orden_trabajo_offset (
-        orden_trabajo_id, material, impresion, observaciones, corte_material,
+        orden_trabajo_id, material, codigo_producto, impresion, observaciones, corte_material,
         cantidad_pliegos_compra, exceso, pliegos_impresos, tintas_frente, tintas_reverso,
         barniz, terminados, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW()) RETURNING *`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW()) RETURNING *`,
       [
         input.orden_trabajo_id,
         input.material || null,
+        input.codigo_producto || null,
         input.impresion || null,
         input.observaciones || null,
         input.corte_material || null,
@@ -97,23 +99,23 @@ export class PgOrdenOffsetRepository {
       `INSERT INTO detalle_orden_trabajo_offset (
         orden_trabajo_id, corte_material, cantidad_pliegos_compra, exceso, total_pliegos,
         tamano, tamano_abierto_1, tamano_cerrado_1, instrucciones_impresion,
-        instrucciones_acabados, instrucciones_empacado, material, impresion, observaciones,
+        instrucciones_acabados, instrucciones_empacado, material, codigo_producto, impresion, observaciones,
         numero_salida, prensa_seleccionada, vendedor, preprensa, prensa, terminados, facturado,
         vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
         terminados_cantidad_final, trazabilidad_proceso, estilo_secciones_offset
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-        $16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26::jsonb,$27::jsonb
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+        $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28
       )
       ON CONFLICT (orden_trabajo_id) DO UPDATE SET
         corte_material=$2, cantidad_pliegos_compra=$3, exceso=$4, total_pliegos=$5,
         tamano=$6, tamano_abierto_1=$7, tamano_cerrado_1=$8,
         instrucciones_impresion=$9, instrucciones_acabados=$10, instrucciones_empacado=$11,
-        material=$12, impresion=$13, observaciones=$14, numero_salida=$15,
-        prensa_seleccionada=$16, vendedor=$17, preprensa=$18, prensa=$19, terminados=$20,
-        facturado=$21, vendedor_cantidad_final=$22, preprensa_cantidad_final=$23,
-        prensa_cantidad_final=$24, terminados_cantidad_final=$25,
-        trazabilidad_proceso=$26::jsonb, estilo_secciones_offset=$27::jsonb, updated_at=CURRENT_TIMESTAMP`,
+        material=$12, codigo_producto=$13, impresion=$14, observaciones=$15, numero_salida=$16,
+        prensa_seleccionada=$17, vendedor=$18, preprensa=$19, prensa=$20, terminados=$21,
+        facturado=$22, vendedor_cantidad_final=$23, preprensa_cantidad_final=$24,
+        prensa_cantidad_final=$25, terminados_cantidad_final=$26,
+        trazabilidad_proceso=$27::jsonb, estilo_secciones_offset=$28::jsonb, updated_at=CURRENT_TIMESTAMP`,
       [
         v.orden_trabajo_id,
         v.corte_material ?? null,
@@ -127,6 +129,7 @@ export class PgOrdenOffsetRepository {
         v.instrucciones_acabados ?? null,
         v.instrucciones_empacado ?? null,
         v.material ?? null,
+        v.codigo_producto ?? null,
         v.impresion ?? null,
         v.observaciones ?? null,
         v.numero_salida ?? null,

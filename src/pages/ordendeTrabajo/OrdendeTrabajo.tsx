@@ -17,6 +17,7 @@ interface OrdenData {
     tipo_orden?: string;
     empresa_cliente?: string;
     orden_compra?: string;
+    codigo_producto?: string;
     vendedor_cantidad_final?: string;
     preprensa_cantidad_final?: string;
     prensa_cantidad_final?: string;
@@ -149,11 +150,7 @@ const OFFSET_PROCESS_KEYS = [
 
 type OffsetProcessKey = typeof OFFSET_PROCESS_KEYS[number];
 
-const DEFAULT_OFFSET_PROCESS_KEYS: OffsetProcessKey[] = [
-  'preprensa',
-  'impresion',
-  'terminado',
-];
+const DEFAULT_OFFSET_PROCESS_KEYS: OffsetProcessKey[] = [];
 
 const normalizarCantidadFormulario = (valor: unknown): string => {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -243,7 +240,7 @@ const calcularTotalCantidadDigital = (productos: any[]): string => {
 };
 
 const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] => {
-  if (!valor) return [...DEFAULT_OFFSET_PROCESS_KEYS];
+  if (!valor) return [];
 
   const parsed = typeof valor === 'string' ? (() => {
     try {
@@ -254,13 +251,13 @@ const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] =
   })() : valor;
 
   const lista = parsed?.procesos_offset_seleccionados;
-  if (!Array.isArray(lista)) return [...DEFAULT_OFFSET_PROCESS_KEYS];
+  if (!Array.isArray(lista)) return [];
 
   const validos = lista.filter((item: any): item is OffsetProcessKey =>
     typeof item === 'string' && (OFFSET_PROCESS_KEYS as readonly string[]).includes(item)
   );
 
-  return validos.length > 0 ? validos : [...DEFAULT_OFFSET_PROCESS_KEYS];
+  return validos;
 };
 
 const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
@@ -397,6 +394,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [contacto, setContacto] = useState<string>(''); // Nombre de la persona de contacto
   const [numero_cotizacion, setNumero_cotizacion] = useState<string>('');
   const [orden_compra, setOrden_compra] = useState<string>('');
+  const [codigo_producto, setCodigo_producto] = useState<string>('');
   const [ordenData, setOrdenData] = useState<OrdenData | null>(null);
   const [fechaCreacion, setFechaCreacion] = useState<string>(() => {
     return new Date().toISOString().split("T")[0];
@@ -458,7 +456,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [procesosDigitalSeleccionados, setProcesosDigitalSeleccionados] = useState<DigitalProcessKey[]>([]);
   const [showProcesosDropdown, setShowProcesosDropdown] = useState<boolean>(false);
   const procesosDropdownRef = useRef<HTMLDivElement>(null);
-  const [procesosOffsetSeleccionados, setProcesosOffsetSeleccionados] = useState<OffsetProcessKey[]>([...DEFAULT_OFFSET_PROCESS_KEYS]);
+  const [procesosOffsetSeleccionados, setProcesosOffsetSeleccionados] = useState<OffsetProcessKey[]>([]);
   const [showProcesosOffsetDropdown, setShowProcesosOffsetDropdown] = useState<boolean>(false);
   const procesosOffsetDropdownRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -643,14 +641,18 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }
   }, [artesAprobados, fechaEntrega]);
 
+  useEffect(() => {
+    if ((fechaAprobacionArtes || fechaEntrega) && !artesAprobados) {
+      setArtesAprobados(true);
+    }
+  }, [fechaAprobacionArtes, fechaEntrega, artesAprobados]);
+
   // Solo limpiar fecha_entrega cuando el usuario DESactiva "artes aprobados".
-  // Usamos una ref para evitar que la limpieza se dispare al pre-cargar
-  // la fecha desde el pedido de origen (que llega con artesAprobados = false).
+  // Si el pedido trae fechas pre-cargadas, el checkbox se mantiene activo y no se borra.
   const prevArtesAprobadosRef = useRef<boolean>(false);
   useEffect(() => {
     const wasApproved = prevArtesAprobadosRef.current;
     prevArtesAprobadosRef.current = artesAprobados;
-    // Solo limpiar si el usuario acaba de pasar de true → false
     if (wasApproved && !artesAprobados) {
       setFechaEntrega('');
       setFechaAprobacionArtes('');
@@ -660,6 +662,45 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   const apiUrl = import.meta.env.VITE_API_URL;
   const [vendedoresList, setVendedoresList] = useState<any[]>([]);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const cerrarPreview = () => {
+    setShowPreview(false);
+    setPreviewUrl(null);
+  };
+
+  const verPDF = async (id: number) => {
+    try {
+      setPreviewUrl(null);
+      setShowPreview(true);
+      setPreviewLoading(true);
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${apiUrl}/api/ordenTrabajo/${id}/preview`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener el PDF');
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.pdf) {
+        throw new Error('Respuesta inválida al generar vista previa');
+      }
+
+      setPreviewUrl(data.pdf);
+    } catch (error: any) {
+      toast.error('Error al cargar el PDF: ' + (error.message || 'Error desconocido'));
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // Componente interno: desplegable editable (input + lista de opciones)
   const EditableCombo: React.FC<{
@@ -787,7 +828,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
     const tieneContextoPedido = Boolean(
       (location.state as any)?.clienteId ||
       (location.state as any)?.pedidoCliente ||
-      (location.state as any)?.pedidoId
+      (location.state as any)?.pedidoId ||
+      (location.state as any)?.pedidoFechaAprobacion ||
+      (location.state as any)?.pedidoFechaEntrega
     );
 
     // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
@@ -799,6 +842,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setContacto('');
       setNumero_cotizacion('');
       setOrden_compra('');
+      setCodigo_producto('');
       setTelefono_cliente('');
       setEmail_cliente('');
       setDireccion_cliente('');
@@ -820,6 +864,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setPrensasCabidaImpresion('');
       setPrensasTotalImpresion('');
       setFechaEntrega('');
+      setFechaAprobacionArtes('');
       setArtesAprobados(false);
       setEstado('');
       setNotasObservaciones('');
@@ -845,7 +890,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTerminadosExternosResponsable('');
       setProcesosDigitalSeleccionados([]);
       setShowProcesosDropdown(false);
-      setProcesosOffsetSeleccionados([...DEFAULT_OFFSET_PROCESS_KEYS]);
+      setProcesosOffsetSeleccionados([]);
       setShowProcesosOffsetDropdown(false);
       setMostrarTotalCantidadesDigital(true);
       setMostrarObservacionesInfoTecnicaDigital(true);
@@ -909,10 +954,19 @@ const OrdendeTrabajoEditar: React.FC = () => {
           console.error("Error al cargar orden existente:", error);
           toast.error('Error al cargar la orden');
         });
-    } else if ((location.state as any)?.clienteId || (location.state as any)?.pedidoCliente || (location.state as any)?.pedidoId) {
+    } else if (
+      (location.state as any)?.clienteId ||
+      (location.state as any)?.pedidoCliente ||
+      (location.state as any)?.pedidoId ||
+      (location.state as any)?.pedidoFechaAprobacion ||
+      (location.state as any)?.pedidoFechaEntrega
+    ) {
       const clienteIdState = (location.state as any)?.clienteId ?? null;
       const clienteNombreState = (location.state as any)?.pedidoCliente ?? '';
       const pedidoIdState = (location.state as any)?.pedidoId ?? null;
+      const pedidoFechaAprobacion = (location.state as any)?.pedidoFechaAprobacion ?? null;
+      const pedidoFechaEntrega = (location.state as any)?.pedidoFechaEntrega ?? null;
+
       if (clienteIdState) {
         void cargarClientePorId(clienteIdState);
       } else if (clienteNombreState) {
@@ -926,15 +980,42 @@ const OrdendeTrabajoEditar: React.FC = () => {
       if ((location.state as any)?.pedidoCantidad) {
         setCantidad(normalizarCantidadFormulario((location.state as any).pedidoCantidad));
       }
-      // Pre-rellenar fecha de entrega desde el pedido (queda guardada; se muestra
-      // en el campo en cuanto el usuario marque "Artes aprobados").
-      if ((location.state as any)?.pedidoFechaEntrega) {
-        setFechaEntrega(String((location.state as any).pedidoFechaEntrega).slice(0, 10));
+
+      if (pedidoFechaAprobacion) {
+        setFechaAprobacionArtes(String(pedidoFechaAprobacion).slice(0, 10));
       }
+      if (pedidoFechaEntrega) {
+        setFechaEntrega(String(pedidoFechaEntrega).slice(0, 10));
+      }
+      if (pedidoFechaAprobacion || pedidoFechaEntrega) {
+        setArtesAprobados(true);
+      }
+
+      if (!pedidoFechaAprobacion && !pedidoFechaEntrega && pedidoIdState) {
+        const token = localStorage.getItem('token');
+        void fetch(`${apiUrl}/api/lista-pedidos/${pedidoIdState}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(async (res) => {
+            if (!res.ok) return;
+            const response = await res.json();
+            const pedido = response?.pedido ?? null;
+            const aprobacion = pedido?.fecha_aprobacion ? String(pedido.fecha_aprobacion).slice(0, 10) : '';
+            const entrega = pedido?.fecha_entrega ? String(pedido.fecha_entrega).slice(0, 10) : '';
+            if (aprobacion) setFechaAprobacionArtes(aprobacion);
+            if (entrega) setFechaEntrega(entrega);
+            if (aprobacion || entrega) setArtesAprobados(true);
+          })
+          .catch(() => undefined);
+      }
+
       setOrdenData({
         nombre_cliente: clienteNombreState || '',
         concepto: (location.state as any)?.pedidoDescripcion || '',
         cantidad: (location.state as any)?.pedidoCantidad ? String((location.state as any).pedidoCantidad) : '',
+        artes_aprobados: Boolean(pedidoFechaAprobacion || pedidoFechaEntrega),
+        fecha_entrega: pedidoFechaEntrega ? String(pedidoFechaEntrega).slice(0, 10) : '',
+        fecha_aprobacion_artes: pedidoFechaAprobacion ? String(pedidoFechaAprobacion).slice(0, 10) : '',
       } as OrdenData);
       const token = localStorage.getItem('token');
       fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
@@ -1215,6 +1296,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setContacto(ordenData.contacto || ordenData.nombre_cliente || ''); // Nombre de la persona de contacto
     setNumero_cotizacion(ordenData.numero_cotizacion || '');
     setOrden_compra(ordenData.orden_compra || '');
+    setCodigo_producto((ordenData as any).codigo_producto || ordenData.detalle?.codigo_producto || '');
     setTelefono_cliente(ordenData.telefono_cliente || ordenData.telefono || '');
     setEmail_cliente(ordenData.email_cliente || ordenData.email || '');
     setDireccion_cliente(ordenData.direccion_cliente || '');
@@ -1619,6 +1701,17 @@ const OrdendeTrabajoEditar: React.FC = () => {
       return;
     }
     
+const pedidoTieneFechasPreCargadas = Boolean(
+      (location.state as any)?.pedidoFechaAprobacion ||
+      (location.state as any)?.pedidoFechaEntrega ||
+      fechaAprobacionArtes ||
+      fechaEntrega
+    );
+
+    if (pedidoTieneFechasPreCargadas && !artesAprobados) {
+      setArtesAprobados(true);
+    }
+
     const errores = validarCampos();
     if (errores.length > 0) {
       console.log('❌ FRONTEND - Errores de validación:', errores);
@@ -1651,6 +1744,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       // Datos generales
       nombre_cliente,
       orden_compra,
+      codigo_producto: tipoOrdenSeleccionado === 'offset' ? codigo_producto : undefined,
       contacto: contacto,
       email: email_cliente,
       telefono: telefono_cliente,
@@ -1714,6 +1808,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       } : {
         // Datos específicos de offset
         material: material,
+        codigo_producto: codigo_producto,
         espesor_material: materialEspesor,
         corte_material: corteMaterial,
         cantidad_pliegos_compra: cantidadPliegosCompra,
@@ -1827,6 +1922,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           // Datos generales
           nombre_cliente,
           orden_compra,
+          codigo_producto: tipoOrdenSeleccionado === 'offset' ? codigo_producto : undefined,
           contacto: contacto,
           email: email_cliente,
           telefono: telefono_cliente,
@@ -1878,6 +1974,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
           } : {
             // Datos específicos de offset
             material: material,
+            codigo_producto: codigo_producto,
             espesor_material: materialEspesor,
             corte_material: corteMaterial,
             cantidad_pliegos_compra: cantidadPliegosCompra,
@@ -1978,6 +2075,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         // Datos generales
         nombre_cliente,
         orden_compra,
+        codigo_producto: tipoOrdenSeleccionado === 'offset' ? codigo_producto : undefined,
         contacto: contacto,
         email: email_cliente,
         telefono: telefono_cliente,
@@ -2032,6 +2130,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         } : {
           // Detalle offset
           material: material,
+          codigo_producto: codigo_producto,
           corte_material: corteMaterial,
           cantidad_pliegos_compra: cantidadPliegosCompra,
           exceso: exceso,
@@ -2207,6 +2306,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
                     value={orden_compra}
                     onChange={(e) => setOrden_compra(e.target.value)}
                     placeholder="Nº O.C."
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-700">Código Producto:</label>
+                  <input
+                    className="border border-gray-300 rounded px-2 py-1 text-gray-700 text-sm w-32"
+                    type="text"
+                    value={codigo_producto}
+                    onChange={(e) => setCodigo_producto(e.target.value)}
+                    placeholder="Código"
                   />
                 </div>
               </div>
@@ -2975,8 +3084,12 @@ const OrdendeTrabajoEditar: React.FC = () => {
                
                
                {ordenId && (
-                 <button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => window.print()}>
-                   Imprimir
+                 <button
+                   type="button"
+                   className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+                   onClick={() => { if (ordenId) void verPDF(Number(ordenId)); }}
+                 >
+                   Ver PDF/Imprimir
                  </button>
                )}
                
@@ -3021,6 +3134,42 @@ const OrdendeTrabajoEditar: React.FC = () => {
            </div>
         </div>
       </div>
+
+      {/* Modal de Preview de PDF */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Vista Previa del PDF</h2>
+              <button
+                type="button"
+                onClick={cerrarPreview}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {previewLoading ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Generando vista previa...</p>
+                  </div>
+                </div>
+              ) : (
+                <object
+                  data={previewUrl || ''}
+                  type="application/pdf"
+                  className="w-full h-full"
+                >
+                  <p>No se puede mostrar el PDF. Por favor, intente nuevamente.</p>
+                </object>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de errores de validación */}
       {showValidationModal && (

@@ -759,16 +759,19 @@ export class OrdenPdfService {
     ];
     const empty = { fecha_inicio:'', hora_inicio:'', fecha_fin:'', hora_fin:'', cantidad:'', observaciones:'', firma:'' };
     keys.forEach(k => { base[k] = { ...empty }; });
-    if (!raw) return { ...base, procesos_seleccionados: ['preprensa','impresion','laminado','barnizado','troquelado_flexible','troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible','corte_termoencogible','terminado','liberacion_producto','guillotinado','plastificado','troquelado','pegado','encolado','grapado','anillado','estampado','terminados_externos'], mostrar_total_cantidades: true, mostrar_total_metros: true, mostrar_observaciones_info_tecnica: true };
+    if (!raw) return { ...base, procesos_seleccionados: [], mostrar_total_cantidades: true, mostrar_total_metros: true, mostrar_observaciones_info_tecnica: true };
     let parsed = raw;
     if (typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch { parsed = {}; } }
     const result: any = {};
     keys.forEach(k => { result[k] = { ...empty, ...(parsed[k] || {}) }; });
     result.troquelado = { ...empty, ...(parsed.troquelado_flexible || parsed.troquelado || {}) };
     result.terminados = { ...empty, ...(parsed.terminado || parsed.terminados || {}) };
+    result.responsables_offset_personalizados = parsed.responsables_offset_personalizados && typeof parsed.responsables_offset_personalizados === 'object'
+      ? parsed.responsables_offset_personalizados
+      : {};
     result.procesos_seleccionados = Array.isArray(parsed.procesos_seleccionados)
       ? parsed.procesos_seleccionados.filter((k: any) => keys.includes(k))
-      : ['preprensa','impresion','laminado','barnizado','troquelado_flexible','troquelado_plano','rebobinado','refilado_termoencogible','sellado_termoencogible','corte_termoencogible','terminado','liberacion_producto','guillotinado','plastificado','troquelado','pegado','encolado','grapado','anillado','estampado','terminados_externos'];
+      : [];
     result.mostrar_total_cantidades = parsed.mostrar_total_cantidades === undefined || parsed.mostrar_total_cantidades === null
       ? true
       : parsed.mostrar_total_cantidades === true || parsed.mostrar_total_cantidades === 'true';
@@ -781,13 +784,22 @@ export class OrdenPdfService {
 
   private buildTrazabilidadRows(detalle: any, procesos: any[]): string {
     const traza = this.parseTrazabilidad(detalle?.trazabilidad_proceso);
-    const selected = Array.isArray(traza.procesos_seleccionados) ? new Set(traza.procesos_seleccionados) : null;
+    const responsablesPersonalizados = traza.responsables_offset_personalizados || {};
+    const selected = Array.isArray(traza.procesos_seleccionados) ? new Set(traza.procesos_seleccionados) : new Set();
+
     return procesos
-      .filter((p: any) => !selected || selected.has(p.key))
+      .filter((p: any) => selected.size === 0 ? false : selected.has(p.key))
       .map((p: any) => {
         const t = traza[p.key] || {};
+        const responsable =
+          responsablesPersonalizados[p.key]
+          || detalle?.[`${p.key}_responsable`]
+          || detalle?.[p.key]
+          || p.responsable
+          || '';
+
         return `<tr>
-          <td class="tc tp">${p.titulo}</td><td class="tc">${p.responsable||''}</td>
+          <td class="tc tp">${p.titulo}</td><td class="tc">${responsable}</td>
           <td class="tc">${t.fecha_inicio||''}</td><td class="tc">${t.hora_inicio||''}</td>
           <td class="tc">${t.fecha_fin||''}</td><td class="tc">${t.hora_fin||''}</td>
           <td class="tc">${t.cantidad||p.cantidadFinal||''}</td>
@@ -816,19 +828,19 @@ export class OrdenPdfService {
       ? String(detalle.cantidad)
       : productosCantidad || '';
     const filas = this.buildTrazabilidadRows(detalle, [
-      { key:'preprensa', titulo:'Pre prensa', responsable: detalle.preprensa, cantidadFinal: detalle.preprensa_cantidad_final },
-      { key:'guillotinado', titulo:'Guillotinado', responsable: detalle.guillotinado, cantidadFinal: detalle.guillotinado_cantidad_final },
-      { key:'impresion', titulo:'Prensa', responsable: detalle.prensa || detalle.impresion, cantidadFinal: detalle.prensa_cantidad_final },
-      { key:'barnizado', titulo:'Barnizado', responsable: detalle.barnizado, cantidadFinal: detalle.barnizado_cantidad_final },
-      { key:'plastificado', titulo:'Plastificado', responsable: detalle.plastificado, cantidadFinal: detalle.plastificado_cantidad_final },
-      { key:'troquelado', titulo:'Troquelado', responsable: detalle.troquelado, cantidadFinal: detalle.troquelado_cantidad_final },
-      { key:'pegado', titulo:'Pegado de cajas', responsable: detalle.pegado, cantidadFinal: detalle.pegado_cantidad_final },
-      { key:'encolado', titulo:'Encolado', responsable: detalle.encolado, cantidadFinal: detalle.encolado_cantidad_final },
-      { key:'grapado', titulo:'Grapado', responsable: detalle.grapado, cantidadFinal: detalle.grapado_cantidad_final },
-      { key:'anillado', titulo:'Anillado', responsable: detalle.anillado, cantidadFinal: detalle.anillado_cantidad_final },
-      { key:'estampado', titulo:'Estampado', responsable: detalle.estampado, cantidadFinal: detalle.estampado_cantidad_final },
-      { key:'terminado', titulo:'Terminados MG', responsable: detalle.terminado || detalle.terminados, cantidadFinal: detalle.terminado_cantidad_final || detalle.terminados_cantidad_final },
-      { key:'terminados_externos', titulo:'Terminados externos', responsable: detalle.terminados_externos, cantidadFinal: detalle.terminados_externos_cantidad_final },
+      { key:'preprensa', titulo:'Pre prensa', responsable: detalle.preprensa_responsable || detalle.preprensa, cantidadFinal: detalle.preprensa_cantidad_final },
+      { key:'guillotinado', titulo:'Guillotinado', responsable: detalle.guillotinado_responsable || detalle.guillotinado, cantidadFinal: detalle.guillotinado_cantidad_final },
+      { key:'impresion', titulo:'Prensa', responsable: detalle.prensa_responsable || detalle.prensa || detalle.impresion, cantidadFinal: detalle.prensa_cantidad_final },
+      { key:'barnizado', titulo:'Barnizado', responsable: detalle.barnizado_responsable || detalle.barnizado, cantidadFinal: detalle.barnizado_cantidad_final },
+      { key:'plastificado', titulo:'Plastificado', responsable: detalle.laminado_responsable || detalle.plastificado, cantidadFinal: detalle.plastificado_cantidad_final },
+      { key:'troquelado', titulo:'Troquelado', responsable: detalle.troquelado_flexible_responsable || detalle.troquelado, cantidadFinal: detalle.troquelado_cantidad_final },
+      { key:'pegado', titulo:'Pegado de cajas', responsable: detalle.pegado_responsable || detalle.pegado, cantidadFinal: detalle.pegado_cantidad_final },
+      { key:'encolado', titulo:'Encolado', responsable: detalle.encolado_responsable || detalle.encolado, cantidadFinal: detalle.encolado_cantidad_final },
+      { key:'grapado', titulo:'Grapado', responsable: detalle.grapado_responsable || detalle.grapado, cantidadFinal: detalle.grapado_cantidad_final },
+      { key:'anillado', titulo:'Anillado', responsable: detalle.anillado_responsable || detalle.anillado, cantidadFinal: detalle.anillado_cantidad_final },
+      { key:'estampado', titulo:'Estampado', responsable: detalle.estampado_responsable || detalle.estampado, cantidadFinal: detalle.estampado_cantidad_final },
+      { key:'terminado', titulo:'Terminados MG', responsable: detalle.terminado_responsable || detalle.terminado || detalle.terminados, cantidadFinal: detalle.terminado_cantidad_final || detalle.terminados_cantidad_final },
+      { key:'terminados_externos', titulo:'Terminados externos', responsable: detalle.terminados_externos_responsable || detalle.terminados_externos, cantidadFinal: detalle.terminados_externos_cantidad_final },
     ]);
     const css = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:14px;font-size:11px;color:#333;line-height:1.4}img{max-width:100%}
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
@@ -837,7 +849,7 @@ export class OrdenPdfService {
 .sec{margin-bottom:12px;border:1px solid #d5d5d5;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f3f4f6;padding:6px 10px;font-weight:bold;font-size:12px;border-bottom:1px solid #d5d5d5}
 .sec-c{padding:10px}.fila{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}.campo{flex:1;min-width:120px}
 .lbl{font-size:9px;color:#555;margin-bottom:3px;font-weight:bold}.val{border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word}
-.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trz{width:100%;border-collapse:collapse;margin-top:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.compact-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trz{width:100%;border-collapse:collapse;margin-top:8px}
 .tc{border:1px solid #d7d7d7;padding:5px 6px;font-size:10px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}.tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:72px;height:30px}`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
 <div class="hdr"><div>${logo ? `<img src="${logo}">` : '<strong>MUNDOGRAFIC</strong>'}</div>
@@ -846,25 +858,21 @@ export class OrdenPdfService {
 <div>Cotización N°: ${orden.numero_cotizacion||''}</div>
 <div>Orden de Compra: ${orden.orden_compra||''}</div></div></div>
 <div class="tit">ORDEN DE TRABAJO - OFFSET</div>
-<div class="sec"><div class="sec-t">Información General</div><div class="sec-c">
-<div class="grid3">
-  <div class="campo"><div class="lbl">Orden N°:</div><div class="val">${orden.numero_orden||''}</div></div>
-  <div class="campo"><div class="lbl">Cotización N°:</div><div class="val">${orden.numero_cotizacion||''}</div></div>
-  <div class="campo"><div class="lbl">Orden de Compra:</div><div class="val">${orden.orden_compra||''}</div></div>
-  <div class="campo"><div class="lbl">Fecha Creación:</div><div class="val">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
-  <div class="campo"><div class="lbl">Artes Aprobados:</div><div class="val">${orden.artes_aprobados ? 'Sí' : 'No'}</div></div>
-  <div class="campo"><div class="lbl">Fecha Aprobación Artes:</div><div class="val">${orden.fecha_aprobacion_artes ? new Date(orden.fecha_aprobacion_artes).toLocaleDateString('es-EC') : ''}</div></div>
-  <div class="campo"><div class="lbl">Fecha Entrega:</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
-  <div class="campo"><div class="lbl">Cliente:</div><div class="val">${orden.nombre_cliente||''}</div></div>
-  <div class="campo"><div class="lbl">Contacto:</div><div class="val">${orden.contacto||''}</div></div>
-  <div class="campo"><div class="lbl">Teléfono:</div><div class="val">${orden.telefono||''}</div></div>
-  <div class="campo"><div class="lbl">Email:</div><div class="val">${orden.email||''}</div></div>
+<div class="sec"><div class="sec-t">Información del Cliente</div><div class="sec-c">
+<div class="compact-grid">
+  <div class="campo"><div class="lbl">CLIENTE</div><div class="val">${orden.nombre_cliente||''}</div></div>
+  <div class="campo"><div class="lbl">CONTACTO</div><div class="val">${orden.contacto||''}</div></div>
+  <div class="campo"><div class="lbl">TELÉFONO</div><div class="val">${orden.telefono||''}</div></div>
+  <div class="campo"><div class="lbl">EMAIL</div><div class="val">${orden.email||''}</div></div>
+  <div class="campo"><div class="lbl">FECHA CREACIÓN</div><div class="val">${orden.fecha_creacion ? new Date(orden.fecha_creacion).toLocaleDateString('es-EC') : ''}</div></div>
+  <div class="campo"><div class="lbl">FECHA ENTREGA</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
 </div>
 </div></div>
 <div class="sec"><div class="sec-t">Información del Trabajo</div><div class="sec-c">
 <div class="fila">
   <div class="campo" style="flex:1"><div class="lbl">Cantidad</div><div class="val">${renderOffsetField('trabajo', cantidadTexto || detalle.cantidad || orden.cantidad || '')}</div></div>
   <div class="campo" style="flex:3"><div class="lbl">Concepto</div><div class="val">${renderOffsetField('trabajo', conceptoTexto)}</div></div>
+  <div class="campo" style="flex:1"><div class="lbl">Código Producto</div><div class="val">${renderOffsetField('trabajo', detalle.codigo_producto || orden.codigo_producto || '')}</div></div>
   <div class="campo" style="flex:1"><div class="lbl">Tamaño Abierto</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_abierto_1 || detalle.tamano || '')}</div></div>
   <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_cerrado_1 || detalle.tamano || '')}</div></div>
 </div></div></div>
@@ -1023,7 +1031,7 @@ export class OrdenPdfService {
       { key:'terminado',               titulo:'TERMINADO',               responsable: detalle.terminado_responsable||detalle.terminados,           cantidadFinal: detalle.terminados_cantidad_final },
     ]);
 
-    const mostrarLib = !Array.isArray(traza.procesos_seleccionados) || traza.procesos_seleccionados.length === 0 || traza.procesos_seleccionados.includes('liberacion_producto');
+    const mostrarLib = Array.isArray(traza.procesos_seleccionados) && traza.procesos_seleccionados.includes('liberacion_producto');
 
     const css = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;font-size:11px;color:#333}
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:15px}

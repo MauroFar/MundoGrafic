@@ -161,6 +161,7 @@ export class CreateOrdenCompletaUseCase {
           instrucciones_acabados: detalle?.instrucciones_acabados,
           instrucciones_empacado: detalle?.instrucciones_empacado,
           material: detalle?.material,
+          codigo_producto: detalle?.codigo_producto,
           impresion: detalle?.impresion,
           observaciones: detalle?.observaciones,
           numero_salida: detalle?.numero_salida,

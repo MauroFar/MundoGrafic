@@ -726,6 +726,7 @@ const ListaPedidos: React.FC = () => {
         pedidoCliente: fila.cliente,
         pedidoDescripcion: fila.descripcion_producto,
         pedidoCantidad: fila.cantidad,
+        pedidoFechaAprobacion: fila.fecha_aprobacion || null,
         pedidoFechaEntrega: fila.fecha_entrega || null,
       },
     });
@@ -1448,7 +1449,7 @@ const ListaPedidos: React.FC = () => {
                                   onClick={() => { setMenuAccionAbierto(null); if (guardados[fila.id]) abrirOrdenTrabajo(fila); }}
                                   className={`w-full px-3 py-2 text-left text-xs transition ${!guardados[fila.id] || guardandoFilaId === fila.id ? "cursor-not-allowed text-slate-400" : "text-slate-700 hover:bg-violet-50 hover:text-violet-700"}`}
                                 >
-                                  Orden de trabajo
+                                  Crear orden de trabajo
                                 </button>
                               )}
                               <button
