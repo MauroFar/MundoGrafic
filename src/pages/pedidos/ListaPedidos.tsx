@@ -1392,9 +1392,14 @@ const ListaPedidos: React.FC = () => {
                       ))}
                       <div className="flex items-center justify-center gap-2">
                         {fila.orden_trabajo_id && (
-                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                            OT
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/ordendeTrabajo/editar/${fila.orden_trabajo_id}`)}
+                            className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-200 hover:text-emerald-800"
+                            title={`Editar orden de trabajo ${fila.no_op || fila.orden_trabajo_id}`}
+                          >
+                            {fila.no_op ? `OT ${fila.no_op}` : 'OT'}
+                          </button>
                         )}
                         <div className="relative">
                           <button

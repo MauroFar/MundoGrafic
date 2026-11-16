@@ -160,13 +160,18 @@ const Sidebar = () => {
           <button
             className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-md"
             onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+                return;
+              }
+
               if (location.pathname.startsWith("/admin") || location.pathname === "/administracion") {
                 navigate('/welcome');
               } else {
                 navigate('/produccion/kanban');
               }
             }}
-            title="Regresar al menú principal"
+            title="Regresar a la pantalla anterior"
           >
             ⬅️ Regresar
           </button>
