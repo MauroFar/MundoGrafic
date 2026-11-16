@@ -13,9 +13,12 @@ export class UpdateOrdenCompletaUseCase {
   constructor(private readonly deps: UpdateOrdenCompletaDeps) {}
 
   async execute(id: number, body: any, userId: number): Promise<any> {
+    const hasField = (field: string) => Object.prototype.hasOwnProperty.call(body, field);
+    const pick = (field: string) => (hasField(field) ? body[field] : undefined);
+
     const {
-      nombre_cliente, orden_compra, concepto, fecha_creacion, fecha_entrega,
-      artes_aprobados, telefono, email, contacto, cantidad, notas_observaciones,
+      nombre_cliente, concepto, fecha_creacion,
+      telefono, email, contacto, cantidad, notas_observaciones,
       vendedor, preprensa, prensa, terminados, facturado, laminado_barnizado, troquelado,
       liberacion_producto, preprensa_responsable, impresion_responsable, laminado_responsable,
       barnizado_responsable, troquelado_flexible_responsable, troquelado_plano_responsable,
@@ -26,38 +29,53 @@ export class UpdateOrdenCompletaUseCase {
       liberacion_producto_cantidad_final, id_detalle_cotizacion, tipo_orden, detalle,
     } = body;
 
-    const artesAprobados = artes_aprobados === undefined ? null : Boolean(artes_aprobados);
-    const fechaEntregaPersistida = artesAprobados === false ? null : fecha_entrega;
+    const ordenCompra = pick('orden_compra');
+    const fechaEntrega = pick('fecha_entrega');
+    const artesAprobadosBody = pick('artes_aprobados');
+    const fechaAprobacionArtesBody = pick('fecha_aprobacion_artes');
+    const artesAprobados = artesAprobadosBody === undefined ? undefined : Boolean(artesAprobadosBody);
+    const fechaEntregaPersistida = fechaEntrega === undefined
+      ? undefined
+      : (artesAprobados === false ? null : (fechaEntrega === null ? null : String(fechaEntrega).slice(0, 10)));
+    const tienePayloadDetalle = Boolean(
+      body.detalle !== undefined ||
+      ['material','corte_material','cantidad_pliegos_compra','exceso','total_pliegos','tamano','tamano_abierto_1','tamano_cerrado_1','instrucciones_impresion','instrucciones_acabados','instrucciones_empacado','codigo_producto','impresion','observaciones','numero_salida','prensa_seleccionada','trazabilidad_proceso','estilo_secciones_offset','adherencia','lote_material','lote_produccion','tipo_impresion','troquel','codigo_troquel','terminado_etiqueta','terminados_especiales','cantidad_por_rollo','proveedor_material','espesor','vendedor','preprensa','prensa','terminados','facturado','vendedor_cantidad_final','preprensa_cantidad_final','prensa_cantidad_final','terminados_cantidad_final','laminado_barnizado','troquelado','liberacion_producto','laminado_responsable','barnizado_responsable','troquelado_flexible_responsable','troquelado_plano_responsable','rebobinado_responsable','refilado_termoencogible_responsable','sellado_termoencogible_responsable','corte_termoencogible_responsable','terminado_responsable','preprensa_responsable','impresion_responsable','terminados_externos_responsable','productos_digital','productos_offset']
+        .some((campo) => Object.prototype.hasOwnProperty.call(body, campo))
+    );
     // Respetar la fecha enviada desde el frontend si está presente; si no,
     // mantener la lógica anterior (undefined cuando no se incluye el campo,
     // la fecha actual cuando se aprueban artes y no se envía fecha, o null si se desaprueba).
     const fechaAprobacionArtesPersistida =
-      body.fecha_aprobacion_artes !== undefined
-        ? (body.fecha_aprobacion_artes === null ? null : String(body.fecha_aprobacion_artes).slice(0, 10))
-        : (artes_aprobados === undefined
+      fechaAprobacionArtesBody !== undefined
+        ? (fechaAprobacionArtesBody === null ? null : String(fechaAprobacionArtesBody).slice(0, 10))
+        : (artesAprobadosBody === undefined
             ? undefined
-            : artesAprobados
+            : artesAprobados === true
               ? new Date().toISOString().slice(0, 10)
               : null);
 
     return this.deps.runInTransaction(async () => {
       const ordenActualizada = await this.deps.ordenRepo.update(id, {
-        nombre_cliente,
-        orden_compra: orden_compra ?? null,
-        contacto: contacto ?? null,
-        email: email ?? null,
-        telefono: telefono ?? null,
-        fecha_creacion: fecha_creacion ?? null,
-        fecha_entrega: fechaEntregaPersistida ?? null,
+        nombre_cliente: hasField('nombre_cliente') ? nombre_cliente : undefined,
+        orden_compra: hasField('orden_compra') ? (ordenCompra ?? null) : undefined,
+        contacto: hasField('contacto') ? (contacto ?? null) : undefined,
+        email: hasField('email') ? (email ?? null) : undefined,
+        telefono: hasField('telefono') ? (telefono ?? null) : undefined,
+        fecha_creacion: hasField('fecha_creacion') ? (fecha_creacion ?? null) : undefined,
+        fecha_entrega: fechaEntregaPersistida,
         fecha_aprobacion_artes: fechaAprobacionArtesPersistida,
-        notas_observaciones: notas_observaciones ?? null,
-        id_detalle_cotizacion: id_detalle_cotizacion ?? null,
-        tipo_orden,
-        artes_aprobados: artesAprobados ?? undefined,
+        notas_observaciones: hasField('notas_observaciones') ? (notas_observaciones ?? null) : undefined,
+        id_detalle_cotizacion: hasField('id_detalle_cotizacion') ? (id_detalle_cotizacion ?? null) : undefined,
+        tipo_orden: hasField('tipo_orden') ? tipo_orden : undefined,
+        artes_aprobados: artesAprobadosBody === undefined ? undefined : (artesAprobados ?? null),
         updated_by: userId,
       });
 
       if (!ordenActualizada) throw new Error('Orden no encontrada');
+
+      if (!tienePayloadDetalle) {
+        return ordenActualizada;
+      }
 
       if (tipo_orden === 'digital') {
         const detalleInput: UpsertDetalleDigitalInput = {
