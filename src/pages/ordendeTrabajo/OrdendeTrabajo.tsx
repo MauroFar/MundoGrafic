@@ -891,7 +891,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setArtesAprobados(false);
       setEstado('');
       setNotasObservaciones('');
-      setVendedor('');
+      // Si el usuario logueado es vendedor, pre-llenar su nombre en lugar de limpiar
+      const _rolUsuario = localStorage.getItem('rol') ?? '';
+      const _nombreCompleto = localStorage.getItem('nombre_completo') ||
+        [localStorage.getItem('nombre'), localStorage.getItem('apellido')].filter(Boolean).join(' ').trim();
+      setVendedor(_rolUsuario.toLowerCase() === 'vendedor' && _nombreCompleto ? _nombreCompleto : '');
       setPreprensaResponsable('');
       setImpresionResponsable('');
       setLaminadoResponsable('');
