@@ -106,10 +106,20 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
         ]);
 
         const tiposActivos = (tiposProductoData || []).filter((item) => item.activo !== false);
+        const materialesOrdenados = [...(materialesData || [])]
+          .filter((item) => item.estado === 'Activo')
+          .sort((a, b) => Number(a.orden ?? 9999) - Number(b.orden ?? 9999) || String(a.nombre || '').localeCompare(String(b.nombre || '')));
+        const procesosOrdenados = [...(procesosData || [])]
+          .filter((item) => item.estado === 'Activo')
+          .sort((a, b) => Number(a.orden ?? 9999) - Number(b.orden ?? 9999) || String(a.nombre || '').localeCompare(String(b.nombre || '')));
+        const operativosOrdenados = [...(operativosData || [])]
+          .filter((item) => item.estado === 'Activo')
+          .sort((a, b) => Number(a.orden ?? 9999) - Number(b.orden ?? 9999) || String(a.concepto || '').localeCompare(String(b.concepto || '')));
+
         setTiposProducto(tiposActivos);
-        setMateriales((materialesData || []).filter((item) => item.estado === 'Activo'));
-        setProcesos((procesosData || []).filter((item) => item.estado === 'Activo'));
-        setOperativos((operativosData || []).filter((item) => item.estado === 'Activo'));
+        setMateriales(materialesOrdenados);
+        setProcesos(procesosOrdenados);
+        setOperativos(operativosOrdenados);
         const margenesOrdenados = [...((configData?.margenes || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || String(a.nombre || '').localeCompare(String(b.nombre || '')));
         const plazosOrdenados = [...((configData?.plazos || []) || [])].sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0) || Number(a.dias || 0) - Number(b.dias || 0));
         const margenPorDefecto = margenesOrdenados.find((item) => item.activo) || margenesOrdenados[0];
@@ -548,7 +558,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1">Ancho impresión (cm) - fijo</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1">Ancho máximo Impresión</label>
                   <input
                     type="number"
                     step="0.01"
@@ -679,7 +689,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
 
               <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
-                  <h2 className="font-bold text-slate-800">Procesos y acabados</h2>
+                  <h2 className="font-bold text-slate-800">Impresión y terminados</h2>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -790,7 +800,7 @@ const CotizadorDigital = ({ isModal = false, onApply = null, onClose = null }) =
               <span>{formatMoney(materialTotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-300">Impresión / Acabados</span>
+              <span className="text-slate-300">Impresión y terminados</span>
               <span>{formatMoney(procesoTotal)}</span>
             </div>
             <div className="flex justify-between">

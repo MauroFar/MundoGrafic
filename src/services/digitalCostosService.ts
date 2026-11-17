@@ -19,6 +19,7 @@ export type MaterialDigital = {
   tipo_cobro: string;
   costo_unitario: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
 };
 
@@ -28,6 +29,7 @@ export type ProcesoDigital = {
   tipo_cobro: string;
   precio: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
 };
 
@@ -37,6 +39,7 @@ export type CostoOperativoDigital = {
   tipo_cobro: string;
   costo_fijo: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
 };
 

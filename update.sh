@@ -15,6 +15,7 @@ FALLBACK_FRONTEND_ERROR_LOG="/var/log/nginx/error.log"
 # Mantenimiento
 MAINTENANCE_FLAG="/var/www/mundografic/maintenance.on"
 MAINTENANCE_PAGE="/var/www/mundografic/maintenance.html"
+MAINTENANCE_MESSAGE_FILE="/var/www/mundografic/maintenance-message.txt"
 MAINTENANCE_SRC="./backend/public/maintenance.html"
 
 # Colores
@@ -182,6 +183,13 @@ PY
         warn "No se encontró $MAINTENANCE_SRC. Asegúrate de que existe el archivo en el repositorio."
     fi
 
+    if [ -n "$custom_text" ]; then
+        printf '%s\n' "$custom_text" | sudo tee "$MAINTENANCE_MESSAGE_FILE" >/dev/null
+        info "Mensaje personalizado guardado en $MAINTENANCE_MESSAGE_FILE"
+    else
+        sudo rm -f "$MAINTENANCE_MESSAGE_FILE"
+    fi
+
     sudo touch "$MAINTENANCE_FLAG"
     sudo nginx -t && sudo systemctl reload nginx
     info "✅ Modo mantenimiento ACTIVADO."
@@ -196,7 +204,7 @@ disable_maintenance() {
     [[ "$confirm" =~ ^[sS]$ ]] || { info "Cancelado."; return; }
 
     if [ -f "$MAINTENANCE_FLAG" ]; then
-        sudo rm -f "$MAINTENANCE_FLAG"
+        sudo rm -f "$MAINTENANCE_FLAG" "$MAINTENANCE_MESSAGE_FILE"
         sudo nginx -t && sudo systemctl reload nginx
         info "✅ Modo mantenimiento DESACTIVADO. El sistema está disponible."
     else

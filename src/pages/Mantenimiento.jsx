@@ -45,6 +45,7 @@ const Mantenimiento = () => {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [maintenanceActive, setMaintenanceActive] = useState(true);
+  const [customMessage, setCustomMessage] = useState('');
   const returnPath = useMemo(() => getSafeReturnTarget(), []);
 
   useEffect(() => {
@@ -91,6 +92,30 @@ const Mantenimiento = () => {
     return () => window.removeEventListener('beforeunload', saveReturnPath);
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadCustomMessage = async () => {
+      try {
+        const response = await fetch('/maintenance-message.txt', { cache: 'no-store' });
+        if (!response.ok) {
+          if (!isCancelled) setCustomMessage('');
+          return;
+        }
+
+        const text = await response.text();
+        if (!isCancelled) setCustomMessage(text.trim());
+      } catch {
+        if (!isCancelled) setCustomMessage('');
+      }
+    };
+
+    loadCustomMessage();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   return (
     <div style={styles.page}>
       <div style={styles.glowOne} />
@@ -100,7 +125,7 @@ const Mantenimiento = () => {
         <div style={styles.badge}>Mantenimiento activo</div>
         <h1 style={styles.title}>Estamos actualizando el sistema</h1>
         <p style={styles.lead}>
-          El servicio está temporalmente pausado para corregir errores y aplicar mejoras.
+          {customMessage || 'El servicio está temporalmente pausado para corregir errores y aplicar mejoras.'}
         </p>
 
         <div style={styles.progressShell}>

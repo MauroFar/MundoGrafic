@@ -30,9 +30,9 @@ import {
 const MARGEN_MINIMO = 30;
 
 const emptyTipoProducto = { nombre: '', activo: true };
-const emptyMaterial = { nombre: '', unidad: 'Metro', tipo_cobro: 'metro', costo_unitario: '', estado: 'Activo', tipo_producto_ids: [] };
-const emptyProceso = { nombre: '', tipo_cobro: 'metro', precio: '', estado: 'Activo', tipo_producto_ids: [] };
-const emptyOperativo = { concepto: '', tipo_cobro: 'metro', costo_fijo: '', estado: 'Activo', tipo_producto_ids: [] };
+const emptyMaterial = { nombre: '', unidad: 'Metro', tipo_cobro: 'metro', costo_unitario: '', estado: 'Activo', orden: 9999, tipo_producto_ids: [] };
+const emptyProceso = { nombre: '', tipo_cobro: 'metro', precio: '', estado: 'Activo', orden: 9999, tipo_producto_ids: [] };
+const emptyOperativo = { concepto: '', tipo_cobro: 'metro', costo_fijo: '', estado: 'Activo', orden: 9999, tipo_producto_ids: [] };
 const emptyMargen = { nombre: '', porcentaje: '', activo: true, orden: 1 };
 const emptyPlazo = { nombre: '', dias: '', recargo_porcentaje: '', activo: true, orden: 1 };
 
@@ -183,6 +183,104 @@ const ParametrosCostos = () => {
     return [...ids];
   };
 
+  const reorderItems = (items, draggedId, targetId) => {
+    if (!draggedId || !targetId || String(draggedId) === String(targetId)) {
+      return items;
+    }
+
+    const next = [...items];
+    const fromIndex = next.findIndex((item) => String(item.id) === String(draggedId));
+    const toIndex = next.findIndex((item) => String(item.id) === String(targetId));
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return items;
+    }
+
+    const [movedItem] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, movedItem);
+
+    return next.map((item, index) => ({
+      ...item,
+      orden: index + 1,
+    }));
+  };
+
+  const handleReorderMateriales = async (draggedId, targetId) => {
+    const reordered = reorderItems(materiales, draggedId, targetId);
+    if (reordered === materiales || reordered.length === 0) return;
+
+    try {
+      setMateriales(reordered);
+      await Promise.all(
+        reordered.map((item) =>
+          actualizarMaterialDigital(item.id, {
+            nombre: item.nombre,
+            unidad: item.unidad,
+            tipo_cobro: item.tipo_cobro || 'metro',
+            tipo_producto_ids: item.tipo_producto_ids || [],
+            costo_unitario: Number(item.costo_unitario || 0),
+            estado: item.estado,
+            orden: Number(item.orden ?? 9999),
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error reordenando materiales:', error);
+      const refreshed = await obtenerMaterialesDigitales();
+      setMateriales(refreshed || []);
+    }
+  };
+
+  const handleReorderProcesos = async (draggedId, targetId) => {
+    const reordered = reorderItems(procesos, draggedId, targetId);
+    if (reordered === procesos || reordered.length === 0) return;
+
+    try {
+      setProcesos(reordered);
+      await Promise.all(
+        reordered.map((item) =>
+          actualizarProcesoDigital(item.id, {
+            nombre: item.nombre,
+            tipo_cobro: item.tipo_cobro,
+            tipo_producto_ids: item.tipo_producto_ids || [],
+            precio: Number(item.precio || 0),
+            estado: item.estado,
+            orden: Number(item.orden ?? 9999),
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error reordenando procesos:', error);
+      const refreshed = await obtenerProcesosDigitales();
+      setProcesos(refreshed || []);
+    }
+  };
+
+  const handleReorderOperativos = async (draggedId, targetId) => {
+    const reordered = reorderItems(operativos, draggedId, targetId);
+    if (reordered === operativos || reordered.length === 0) return;
+
+    try {
+      setOperativos(reordered);
+      await Promise.all(
+        reordered.map((item) =>
+          actualizarCostoOperativoDigital(item.id, {
+            concepto: item.concepto,
+            tipo_cobro: item.tipo_cobro || 'metro',
+            tipo_producto_ids: item.tipo_producto_ids || [],
+            costo_fijo: Number(item.costo_fijo || 0),
+            estado: item.estado,
+            orden: Number(item.orden ?? 9999),
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error reordenando costos operativos:', error);
+      const refreshed = await obtenerCostosOperativosDigitales();
+      setOperativos(refreshed || []);
+    }
+  };
+
   const handleMaterialSubmit = async (e) => {
     e.preventDefault();
     if (!materialForm.nombre.trim()) return;
@@ -203,6 +301,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: materialForm.tipo_producto_ids,
               costo_unitario: Number(materialForm.costo_unitario),
               estado: materialForm.estado,
+              orden: Number(materialForm.orden ?? 9999),
             });
             setMateriales((prev) => prev.map((item) => item.id === materialEditId ? updated : item));
             setMaterialEditId(null);
@@ -214,6 +313,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: materialForm.tipo_producto_ids,
               costo_unitario: Number(materialForm.costo_unitario),
               estado: materialForm.estado,
+              orden: Number(materialForm.orden ?? 9999),
             });
             setMateriales((prev) => [...prev, created]);
           }
@@ -244,6 +344,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: procesoForm.tipo_producto_ids,
               precio: Number(procesoForm.precio),
               estado: procesoForm.estado,
+              orden: Number(procesoForm.orden ?? 9999),
             });
             setProcesos((prev) => prev.map((item) => item.id === procesoEditId ? updated : item));
             setProcesoEditId(null);
@@ -254,6 +355,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: procesoForm.tipo_producto_ids,
               precio: Number(procesoForm.precio),
               estado: procesoForm.estado,
+              orden: Number(procesoForm.orden ?? 9999),
             });
             setProcesos((prev) => [...prev, created]);
           }
@@ -284,6 +386,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: operativoForm.tipo_producto_ids,
               costo_fijo: Number(operativoForm.costo_fijo),
               estado: operativoForm.estado,
+              orden: Number(operativoForm.orden ?? 9999),
             });
             setOperativos((prev) => prev.map((item) => item.id === operativoEditId ? updated : item));
             setOperativoEditId(null);
@@ -294,6 +397,7 @@ const ParametrosCostos = () => {
               tipo_producto_ids: operativoForm.tipo_producto_ids,
               costo_fijo: Number(operativoForm.costo_fijo),
               estado: operativoForm.estado,
+              orden: Number(operativoForm.orden ?? 9999),
             });
             setOperativos((prev) => [...prev, created]);
           }
@@ -586,6 +690,17 @@ const ParametrosCostos = () => {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Orden de aparición</label>
+            <input
+              type="number"
+              min="1"
+              value={materialForm.orden}
+              onChange={(e) => setMaterialForm({ ...materialForm, orden: e.target.value === '' ? 9999 : Number(e.target.value) })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
             <select
               value={materialForm.estado}
@@ -631,17 +746,33 @@ const ParametrosCostos = () => {
                 <th className="px-4 py-3 font-semibold text-slate-700">Unidad</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Tipo cobro</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Costo</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Orden</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {materiales.map((item) => (
-                <tr key={item.id} className="border-t border-slate-200">
+                <tr
+                  key={item.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(item.id));
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    handleReorderMateriales(draggedId, item.id);
+                  }}
+                  className="border-t border-slate-200 cursor-move hover:bg-emerald-50"
+                >
                   <td className="px-4 py-3 text-gray-800">{item.nombre}</td>
                   <td className="px-4 py-3 text-gray-700">{item.unidad}</td>
                   <td className="px-4 py-3 text-gray-700">{item.tipo_cobro || 'metro'}</td>
                   <td className="px-4 py-3 text-gray-700">${Number(item.costo_unitario || 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-700">{Number(item.orden ?? 9999)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {item.estado}
@@ -659,6 +790,7 @@ const ParametrosCostos = () => {
                             tipo_cobro: item.tipo_cobro || 'metro',
                             costo_unitario: item.costo_unitario,
                             estado: item.estado,
+                            orden: Number(item.orden ?? 9999),
                             tipo_producto_ids: item.tipo_producto_ids || [],
                           });
                         }}
@@ -765,6 +897,17 @@ const ParametrosCostos = () => {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Orden de aparición</label>
+            <input
+              type="number"
+              min="1"
+              value={procesoForm.orden}
+              onChange={(e) => setProcesoForm({ ...procesoForm, orden: e.target.value === '' ? 9999 : Number(e.target.value) })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
             <select
               value={procesoForm.estado}
@@ -809,16 +952,32 @@ const ParametrosCostos = () => {
                 <th className="px-4 py-3 font-semibold text-slate-700">Nombre</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Tipo</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Precio</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Orden</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {procesos.map((item) => (
-                <tr key={item.id} className="border-t border-slate-200">
+                <tr
+                  key={item.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(item.id));
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    handleReorderProcesos(draggedId, item.id);
+                  }}
+                  className="border-t border-slate-200 cursor-move hover:bg-emerald-50"
+                >
                   <td className="px-4 py-3 text-gray-800">{item.nombre}</td>
                   <td className="px-4 py-3 text-gray-700">{item.tipo_cobro}</td>
                   <td className="px-4 py-3 text-gray-700">${Number(item.precio).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-700">{Number(item.orden ?? 9999)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {item.estado}
@@ -836,6 +995,7 @@ const ParametrosCostos = () => {
                             tipo_producto_ids: item.tipo_producto_ids || [],
                             precio: item.precio,
                             estado: item.estado,
+                            orden: Number(item.orden ?? 9999),
                           });
                         }}
                         className="text-blue-600 hover:text-blue-800"
@@ -941,6 +1101,17 @@ const ParametrosCostos = () => {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Orden de aparición</label>
+            <input
+              type="number"
+              min="1"
+              value={operativoForm.orden}
+              onChange={(e) => setOperativoForm({ ...operativoForm, orden: e.target.value === '' ? 9999 : Number(e.target.value) })}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
             <select
               value={operativoForm.estado}
@@ -985,16 +1156,32 @@ const ParametrosCostos = () => {
                 <th className="px-4 py-3 font-semibold text-slate-700">Concepto</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Tipo cobro</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Costo fijo</th>
+                <th className="px-4 py-3 font-semibold text-slate-700">Orden</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
                 <th className="px-4 py-3 font-semibold text-slate-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {operativos.map((item) => (
-                <tr key={item.id} className="border-t border-slate-200">
+                <tr
+                  key={item.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(item.id));
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    handleReorderOperativos(draggedId, item.id);
+                  }}
+                  className="border-t border-slate-200 cursor-move hover:bg-emerald-50"
+                >
                   <td className="px-4 py-3 text-gray-800">{item.concepto}</td>
                   <td className="px-4 py-3 text-gray-700">{item.tipo_cobro || 'metro'}</td>
                   <td className="px-4 py-3 text-gray-700">${Number(item.costo_fijo || 0).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-700">{Number(item.orden ?? 9999)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${item.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {item.estado}
@@ -1012,6 +1199,7 @@ const ParametrosCostos = () => {
                             tipo_producto_ids: item.tipo_producto_ids || [],
                             costo_fijo: item.costo_fijo,
                             estado: item.estado,
+                            orden: Number(item.orden ?? 9999),
                           });
                         }}
                         className="text-blue-600 hover:text-blue-800"

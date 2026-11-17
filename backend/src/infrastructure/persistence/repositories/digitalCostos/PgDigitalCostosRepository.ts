@@ -17,6 +17,7 @@ export type MaterialDigital = {
   tipo_cobro: string;
   costo_unitario: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
@@ -30,6 +31,7 @@ export type ProcesoDigital = {
   tipo_cobro: string;
   precio: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
@@ -43,6 +45,7 @@ export type CostoOperativoDigital = {
   tipo_cobro: string;
   costo_fijo: number;
   estado: string;
+  orden?: number;
   tipo_producto_ids?: number[];
   usuario_creacion_id?: number | null;
   usuario_modificacion_id?: number | null;
@@ -179,8 +182,8 @@ export class PgDigitalCostosRepository {
               ) AS tipo_producto_ids
        FROM materiales_digitales m
        LEFT JOIN materiales_digitales_tipos_productos mtp ON mtp.material_digital_id = m.id
-       GROUP BY m.id, m.nombre, m.unidad, m.tipo_cobro, m.costo_unitario, m.estado, m.usuario_creacion_id, m.usuario_modificacion_id, m.created_at, m.updated_at
-       ORDER BY m.nombre ASC`,
+       GROUP BY m.id, m.nombre, m.unidad, m.tipo_cobro, m.costo_unitario, m.estado, m.orden, m.usuario_creacion_id, m.usuario_modificacion_id, m.created_at, m.updated_at
+       ORDER BY COALESCE(m.orden, 9999) ASC, m.nombre ASC`,
     );
     return result.rows.map((row) => ({
       ...row,
@@ -189,12 +192,12 @@ export class PgDigitalCostosRepository {
   }
 
   async crearMaterial(input: Partial<MaterialDigital>, usuarioId: number | null): Promise<MaterialDigital> {
-    const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids } = input;
+    const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
-      `INSERT INTO materiales_digitales (nombre, unidad, tipo_cobro, costo_unitario, estado, usuario_creacion_id, usuario_modificacion_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $6)
+      `INSERT INTO materiales_digitales (nombre, unidad, tipo_cobro, costo_unitario, estado, orden, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, 9999), $7, $7)
        RETURNING *`,
-      [nombre, unidad || "Metro", tipo_cobro || "metro", costo_unitario, estado || "Activo", usuarioId],
+      [nombre, unidad || "Metro", tipo_cobro || "metro", costo_unitario, estado || "Activo", orden ?? null, usuarioId],
     );
 
     const created = result.rows[0];
@@ -216,7 +219,7 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids } = input;
+const { nombre, unidad, tipo_cobro, costo_unitario, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
       `UPDATE materiales_digitales
        SET nombre = COALESCE($1, nombre),
@@ -224,11 +227,12 @@ export class PgDigitalCostosRepository {
            tipo_cobro = COALESCE($3, tipo_cobro),
            costo_unitario = COALESCE($4, costo_unitario),
            estado = COALESCE($5, estado),
-           usuario_modificacion_id = $6,
+           orden = COALESCE($6, orden),
+           usuario_modificacion_id = $7,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
+       WHERE id = $8
        RETURNING *`,
-      [nombre, unidad, tipo_cobro, costo_unitario, estado, usuarioId, id],
+      [nombre, unidad, tipo_cobro, costo_unitario, estado, orden ?? null, usuarioId, id],
     );
 
     const updated = result.rows[0];
@@ -265,8 +269,8 @@ export class PgDigitalCostosRepository {
               ) AS tipo_producto_ids
        FROM procesos_digitales p
        LEFT JOIN procesos_digitales_tipos_productos ptp ON ptp.proceso_digital_id = p.id
-       GROUP BY p.id, p.nombre, p.tipo_cobro, p.precio, p.estado, p.usuario_creacion_id, p.usuario_modificacion_id, p.created_at, p.updated_at
-       ORDER BY p.nombre ASC`,
+       GROUP BY p.id, p.nombre, p.tipo_cobro, p.precio, p.estado, p.orden, p.usuario_creacion_id, p.usuario_modificacion_id, p.created_at, p.updated_at
+       ORDER BY COALESCE(p.orden, 9999) ASC, p.nombre ASC`,
     );
     return result.rows.map((row) => ({
       ...row,
@@ -275,12 +279,12 @@ export class PgDigitalCostosRepository {
   }
 
   async crearProceso(input: Partial<ProcesoDigital>, usuarioId: number | null): Promise<ProcesoDigital> {
-    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids } = input;
+    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
-      `INSERT INTO procesos_digitales (nombre, tipo_cobro, precio, estado, usuario_creacion_id, usuario_modificacion_id)
-       VALUES ($1, $2, $3, $4, $5, $5)
+      `INSERT INTO procesos_digitales (nombre, tipo_cobro, precio, estado, orden, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $4, COALESCE($5, 9999), $6, $6)
        RETURNING *`,
-      [nombre, tipo_cobro || "metro", precio, estado || "Activo", usuarioId],
+      [nombre, tipo_cobro || "metro", precio, estado || "Activo", orden ?? null, usuarioId],
     );
 
     const created = result.rows[0];
@@ -298,18 +302,19 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids } = input;
+    const { nombre, tipo_cobro, precio, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
       `UPDATE procesos_digitales
        SET nombre = COALESCE($1, nombre),
            tipo_cobro = COALESCE($2, tipo_cobro),
            precio = COALESCE($3, precio),
            estado = COALESCE($4, estado),
-           usuario_modificacion_id = $5,
+           orden = COALESCE($5, orden),
+           usuario_modificacion_id = $6,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $7
        RETURNING *`,
-      [nombre, tipo_cobro, precio, estado, usuarioId, id],
+      [nombre, tipo_cobro, precio, estado, orden ?? null, usuarioId, id],
     );
 
     const updated = result.rows[0];
@@ -342,8 +347,8 @@ export class PgDigitalCostosRepository {
               ) AS tipo_producto_ids
        FROM costos_operativos_digitales c
        LEFT JOIN costos_operativos_digitales_tipos_productos ctp ON ctp.costo_operativo_digital_id = c.id
-       GROUP BY c.id, c.concepto, c.tipo_cobro, c.costo_fijo, c.estado, c.usuario_creacion_id, c.usuario_modificacion_id, c.created_at, c.updated_at
-       ORDER BY c.concepto ASC`,
+       GROUP BY c.id, c.concepto, c.tipo_cobro, c.costo_fijo, c.estado, c.orden, c.usuario_creacion_id, c.usuario_modificacion_id, c.created_at, c.updated_at
+       ORDER BY COALESCE(c.orden, 9999) ASC, c.concepto ASC`,
     );
     return result.rows.map((row) => ({
       ...row,
@@ -352,12 +357,12 @@ export class PgDigitalCostosRepository {
   }
 
   async crearCostoOperativo(input: Partial<CostoOperativoDigital>, usuarioId: number | null): Promise<CostoOperativoDigital> {
-    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids } = input;
+    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
-      `INSERT INTO costos_operativos_digitales (concepto, tipo_cobro, costo_fijo, estado, usuario_creacion_id, usuario_modificacion_id)
-       VALUES ($1, $2, $3, $4, $5, $5)
+      `INSERT INTO costos_operativos_digitales (concepto, tipo_cobro, costo_fijo, estado, orden, usuario_creacion_id, usuario_modificacion_id)
+       VALUES ($1, $2, $3, $4, COALESCE($5, 9999), $6, $6)
        RETURNING *`,
-      [concepto, tipo_cobro || "metro", costo_fijo, estado || "Activo", usuarioId],
+      [concepto, tipo_cobro || "metro", costo_fijo, estado || "Activo", orden ?? null, usuarioId],
     );
 
     const created = result.rows[0];
@@ -375,18 +380,19 @@ export class PgDigitalCostosRepository {
       return null;
     }
 
-    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids } = input;
+    const { concepto, tipo_cobro, costo_fijo, estado, tipo_producto_ids, orden } = input;
     const result = await this.client.query(
       `UPDATE costos_operativos_digitales
        SET concepto = COALESCE($1, concepto),
            tipo_cobro = COALESCE($2, tipo_cobro),
            costo_fijo = COALESCE($3, costo_fijo),
            estado = COALESCE($4, estado),
-           usuario_modificacion_id = $5,
+           orden = COALESCE($5, orden),
+           usuario_modificacion_id = $6,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $7
        RETURNING *`,
-      [concepto, tipo_cobro, costo_fijo, estado, usuarioId, id],
+      [concepto, tipo_cobro, costo_fijo, estado, orden ?? null, usuarioId, id],
     );
 
     const updated = result.rows[0];
