@@ -386,6 +386,90 @@ declare global {
   }
 }
 
+// ─── EditableCombo ────────────────────────────────────────────────────────────
+// Definido fuera del componente padre para que React no lo destruya en cada
+// render (lo que causaba pérdida de foco al escribir).
+const EditableCombo: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}> = ({ value, onChange, options, placeholder }) => {
+  const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const handleOpen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 2,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
+    setOpen(s => !s);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-1">
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none text-center"
+        />
+        <button
+          type="button"
+          onMouseDown={handleOpen}
+          className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
+        >
+          ▾
+        </button>
+      </div>
+      {open && ReactDOM.createPortal(
+        <div
+          style={dropdownStyle}
+          className="bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-auto"
+        >
+          {options.map(opt => (
+            <div
+              key={opt}
+              onMouseDown={(e) => { e.preventDefault(); onChange(opt); setOpen(false); }}
+              className="px-2 py-1 hover:bg-blue-50 hover:text-blue-700 cursor-pointer text-sm text-center"
+            >
+              {opt}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
 const OrdendeTrabajoEditar: React.FC = () => {
   const { verificarYMostrarError } = usePermisos();
   
@@ -700,88 +784,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
     } finally {
       setPreviewLoading(false);
     }
-  };
-
-  // Componente interno: desplegable editable (input + lista de opciones)
-  const EditableCombo: React.FC<{
-    value: string;
-    onChange: (v: string) => void;
-    options: string[];
-    placeholder?: string;
-  }> = ({ value, onChange, options, placeholder }) => {
-    const [open, setOpen] = useState(false);
-    const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
-
-    useEffect(() => {
-      const onDoc = (e: MouseEvent) => {
-        if (!containerRef.current) return;
-        if (!containerRef.current.contains(e.target as Node)) setOpen(false);
-      };
-      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-      document.addEventListener('mousedown', onDoc);
-      document.addEventListener('keydown', onKey);
-      return () => {
-        document.removeEventListener('mousedown', onDoc);
-        document.removeEventListener('keydown', onKey);
-      };
-    }, []);
-
-    const handleOpen = (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setDropdownStyle({
-          position: 'fixed',
-          top: rect.bottom + 2,
-          left: rect.left,
-          width: rect.width,
-          zIndex: 9999,
-        });
-      }
-      setOpen(s => !s);
-      inputRef.current?.focus();
-    };
-
-    return (
-      <div ref={containerRef} className="relative">
-        <div className="flex items-center gap-1">
-          <input
-            ref={inputRef}
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none text-center"
-          />
-          <button
-            type="button"
-            onMouseDown={handleOpen}
-            className="px-2 py-1 border border-gray-300 rounded bg-gray-50"
-          >
-            ▾
-          </button>
-        </div>
-        {open && ReactDOM.createPortal(
-          <div
-            style={dropdownStyle}
-            className="bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-auto"
-          >
-            {options.map(opt => (
-              <div
-                key={opt}
-                onMouseDown={(e) => { e.preventDefault(); onChange(opt); setOpen(false); }}
-                className="px-2 py-1 hover:bg-blue-50 hover:text-blue-700 cursor-pointer text-sm text-center"
-              >
-                {opt}
-              </div>
-            ))}
-          </div>,
-          document.body
-        )}
-      </div>
-    );
   };
 
   // Listas fijas solicitadas por el usuario
