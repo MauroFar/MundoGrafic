@@ -16,6 +16,7 @@ function CotizacionesVer() {
     fechaDesde: "",
     fechaHasta: "",
   });
+  const [tipoFiltro, setTipoFiltro] = useState('todos');
   const [loading, setLoading] = useState(true);
 
   // Scroll horizontal sincronizado (arriba y abajo)
@@ -89,7 +90,7 @@ function CotizacionesVer() {
   const [showSugerenciasBusqueda, setShowSugerenciasBusqueda] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [hayMas, setHayMas] = useState(true);
-  const LIMITE_POR_PAGINA = 15;
+  const LIMITE_POR_PAGINA = 20;
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [productosCotizacion, setProductosCotizacion] = useState([]);
   const [selectedProductos, setSelectedProductos] = useState([]);
@@ -104,7 +105,6 @@ function CotizacionesVer() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [buscarGlobal, setBuscarGlobal] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [cotizacionDetalle, setCotizacionDetalle] = useState(null);
   const [showAprobarModal, setShowAprobarModal] = useState(false);
@@ -144,22 +144,25 @@ function CotizacionesVer() {
     cargarCotizaciones(true);
   }, []);
 
-  const cargarCotizaciones = async (reset = false, busquedaDirecta = null) => {
+  const cargarCotizaciones = async (reset = false, busquedaDirecta = null, tipoDirecto = null, pageNumberOverride = null) => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams();
       const busquedaValor = busquedaDirecta !== null ? busquedaDirecta : filtros.busqueda;
+      const tipoActual = tipoDirecto ?? tipoFiltro;
+      const pageNumber = pageNumberOverride ?? (reset ? 1 : pagina);
+      const offset = (pageNumber - 1) * LIMITE_POR_PAGINA;
+
       if (busquedaValor) queryParams.append("busqueda", busquedaValor);
       if (filtros.fechaDesde) queryParams.append("fechaDesde", filtros.fechaDesde);
       if (filtros.fechaHasta) queryParams.append("fechaHasta", filtros.fechaHasta);
-      queryParams.append("limite", LIMITE_POR_PAGINA);
-      queryParams.append("ordenar", "fecha_desc");
-      if (buscarGlobal) queryParams.append("global", "true");
+      if (tipoActual && tipoActual !== 'todos') queryParams.append("tipo", tipoActual);
+      queryParams.append("limite", String(LIMITE_POR_PAGINA));
+      queryParams.append("offset", String(offset));
 
       const url = `${apiUrl}/api/cotizaciones/todas?${queryParams}`;
       console.log('Realizando petición a:', url);
-      console.log('Filtros actuales:', filtros);
-      
+
       const token = localStorage.getItem("token");
       const response = await fetch(url, {
         headers: {
@@ -172,39 +175,21 @@ function CotizacionesVer() {
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      
-      console.log('Datos recibidos:', data);
-      console.log('Número de cotizaciones recibidas:', data.length);
-      console.log('IDs de cotizaciones:', data.map(c => c.id));
-      
+
       if (!Array.isArray(data)) {
-        console.error('Los datos recibidos no son un array:', data);
         setCotizaciones([]);
         setHayMas(false);
         return;
       }
-      
-      console.log('Estado anterior de cotizaciones:', cotizaciones.length);
-      
-      // Eliminar duplicados por ID
-      const eliminarDuplicados = (array) => {
-        return array.filter((item, index, self) => 
-          index === self.findIndex(t => t.id === item.id)
-        );
-      };
-      
+
+      const eliminarDuplicados = (array) => array.filter((item, index, self) => index === self.findIndex(t => t.id === item.id));
+
       if (reset) {
-        console.log('Reseteando cotizaciones con', data.length, 'elementos');
-        const cotizacionesUnicas = eliminarDuplicados(data);
-        console.log('Cotizaciones únicas después de eliminar duplicados:', cotizacionesUnicas.length);
-        setCotizaciones(cotizacionesUnicas);
+        setCotizaciones(eliminarDuplicados(data));
       } else {
-        console.log('Agregando', data.length, 'elementos a las', cotizaciones.length, 'existentes');
-        const nuevasCotizaciones = [...cotizaciones, ...data];
-        const cotizacionesUnicas = eliminarDuplicados(nuevasCotizaciones);
-        console.log('Cotizaciones únicas después de eliminar duplicados:', cotizacionesUnicas.length);
-        setCotizaciones(cotizacionesUnicas);
+        setCotizaciones(prev => eliminarDuplicados([...prev, ...data]));
       }
+
       setHayMas(data.length === LIMITE_POR_PAGINA);
     } catch (error) {
       console.error("Error al cargar cotizaciones:", error);
@@ -248,9 +233,9 @@ function CotizacionesVer() {
       fechaDesde: "",
       fechaHasta: "",
     });
-    setBuscarGlobal(false);
+    setTipoFiltro('todos');
     setPagina(1);
-    cargarCotizaciones(true);
+    cargarCotizaciones(true, '', 'todos', 1);
   };
 
   const editarCotizacion = (id) => {
@@ -904,8 +889,15 @@ function CotizacionesVer() {
 
   // Función para cargar más cotizaciones
   const cargarMasCotizaciones = async () => {
-    setPagina(prev => prev + 1);
-    await cargarCotizaciones(false);
+    const siguiente = pagina + 1;
+    setPagina(siguiente);
+    await cargarCotizaciones(false, null, tipoFiltro, siguiente);
+  };
+
+  const cambiarTipoFiltro = (nuevoTipo) => {
+    setTipoFiltro(nuevoTipo);
+    setPagina(1);
+    cargarCotizaciones(true, null, nuevoTipo, 1);
   };
 
   const irACrearOrdenTrabajo = (cotizacionId, state) => {
@@ -987,6 +979,25 @@ function CotizacionesVer() {
       </div>
 
       {/* Filtros Simplificados */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {['todos', 'offset', 'digital'].map((tipo) => {
+          const active = tipoFiltro === tipo;
+          const label = tipo === 'todos' ? 'Todos' : tipo === 'offset' ? 'Offset' : 'Digital';
+          return (
+            <button
+              key={tipo}
+              type="button"
+              onClick={() => cambiarTipoFiltro(tipo)}
+              className={`px-4 py-2 rounded-full font-medium transition-colors ${
+                active ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       <form onSubmit={aplicarFiltros} className="bg-gray-50 p-4 rounded-lg mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
           <div>
@@ -999,22 +1010,6 @@ function CotizacionesVer() {
               className="w-full border border-gray-300 rounded-md p-2"
               placeholder="Número, cliente o descripción"
               />
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                id="buscarGlobal"
-                type="checkbox"
-                checked={buscarGlobal}
-                onChange={(e) => {
-                  setBuscarGlobal(e.target.checked);
-                  setPagina(1);
-                  cargarCotizaciones(true);
-                }}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-              />
-              <label htmlFor="buscarGlobal" className="text-sm text-gray-700">
-                Buscar en toda la base de datos
-              </label>
-            </div>
           </div>
           <div className="flex flex-col items-start">
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Desde</label>
@@ -1055,6 +1050,20 @@ function CotizacionesVer() {
       </form>
 
       {/* Tabla de Cotizaciones */}
+      {cotizaciones.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          {hayMas && (
+            <button
+              type="button"
+              onClick={cargarMasCotizaciones}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 disabled:opacity-60"
+            >
+              {loading ? 'Cargando...' : 'Mostrar más'}
+            </button>
+          )}
+        </div>
+      )}
       {/* Scrollbar superior sincronizado */}
       <div
         ref={scrollTopRef}

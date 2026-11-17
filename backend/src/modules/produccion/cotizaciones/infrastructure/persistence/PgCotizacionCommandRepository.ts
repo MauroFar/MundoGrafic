@@ -23,6 +23,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
         descuento,
         total,
         estado,
+        tipo_cotizacion,
         ruc_id,
         usuario_id,
         tiempo_entrega,
@@ -37,7 +38,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
         created_by,
         created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
       RETURNING *
     `;
 
@@ -49,6 +50,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
       input.descuento,
       input.total,
       estado,
+      input.tipo_cotizacion && ["offset", "digital"].includes(input.tipo_cotizacion) ? input.tipo_cotizacion : null,
       input.ruc_id,
       input.userId,
       input.tiempo_entrega,
@@ -108,9 +110,10 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
           nombre_ejecutivo = $14,
           realizado_por = $15,
           mostrar_datos_bancarios = $16,
-          updated_by = $17,
+          tipo_cotizacion = $17,
+          updated_by = $18,
           updated_at = NOW()
-      WHERE id = $18
+      WHERE id = $19
       RETURNING *
     `;
 
@@ -131,6 +134,7 @@ export class PgCotizacionCommandRepository implements CotizacionCommandRepositor
       input.nombre_ejecutivo || null,
       input.realizado_por || null,
       input.mostrar_datos_bancarios !== false,
+      input.tipo_cotizacion && ["offset", "digital"].includes(input.tipo_cotizacion) ? input.tipo_cotizacion : null,
       input.updatedBy,
       input.id,
     ]);

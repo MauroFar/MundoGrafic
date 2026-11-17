@@ -5,6 +5,12 @@ import { DeleteCotizacionUseCase } from "../../application/use-cases/DeleteCotiz
 import { ApproveCotizacionUseCase } from "../../application/use-cases/ApproveCotizacionUseCase";
 import { RejectCotizacionUseCase } from "../../application/use-cases/RejectCotizacionUseCase";
 
+const normalizarTipoCotizacion = (valor: unknown): "offset" | "digital" | null => {
+  if (typeof valor !== "string") return null;
+  const normalizado = valor.trim().toLowerCase();
+  return normalizado === "offset" || normalizado === "digital" ? normalizado : null;
+};
+
 export class CotizacionCommandController {
   constructor(
     private readonly createCotizacionUseCase: CreateCotizacionUseCase,
@@ -17,11 +23,13 @@ export class CotizacionCommandController {
   crear = async (req: Request, res: Response) => {
     try {
       const user = (req as any).user || {};
-      const cotizacion = await this.createCotizacionUseCase.execute({
+      const payload = {
         ...req.body,
+        tipo_cotizacion: normalizarTipoCotizacion((req.body as any)?.tipo_cotizacion ?? (req.body as any)?.tipoCotizacion),
         userId: user.id,
         userNombre: user.nombre,
-      });
+      };
+      const cotizacion = await this.createCotizacionUseCase.execute(payload);
 
       return res.json(cotizacion);
     } catch (error) {
@@ -41,6 +49,7 @@ export class CotizacionCommandController {
       const result = await this.updateCotizacionUseCase.execute({
         id,
         ...req.body,
+        tipo_cotizacion: normalizarTipoCotizacion((req.body as any)?.tipo_cotizacion ?? (req.body as any)?.tipoCotizacion),
         updatedBy: user.id,
       });
 

@@ -5,7 +5,10 @@ export class PgCotizacionQueryRepository implements CotizacionQueryRepository {
   constructor(private readonly client: Client) {}
 
   async listCotizaciones(input: ListCotizacionesInput): Promise<any[]> {
-    const { busqueda, fechaDesde, fechaHasta, limite, global, userId, userRol } = input;
+    const { busqueda, fechaDesde, fechaHasta, limite, offset = 0, tipo, userId, userRol } = input;
+    const paginaLimit = Number.isFinite(limite as number) && Number(limite) > 0 ? Number(limite) : 20;
+    const paginaOffset = Number.isFinite(offset as number) && Number(offset) >= 0 ? Number(offset) : 0;
+    const tipoNormalizado = typeof tipo === "string" ? tipo.trim().toLowerCase() : null;
 
     let query = `
       SELECT
@@ -19,6 +22,7 @@ export class PgCotizacionQueryRepository implements CotizacionQueryRepository {
         c.motivo_rechazo,
         c.observacion_aprobacion,
         c.total,
+        c.tipo_cotizacion,
         r.ruc,
         r.descripcion as ruc_descripcion,
         COALESCE(c.nombre_ejecutivo, TRIM(CONCAT_WS(' ', u.nombre, u.apellido))) AS nombre_ejecutivo,
@@ -63,6 +67,12 @@ export class PgCotizacionQueryRepository implements CotizacionQueryRepository {
       paramCount += 1;
     }
 
+    if (tipoNormalizado && ["offset", "digital"].includes(tipoNormalizado)) {
+      query += ` AND c.tipo_cotizacion = $${paramCount}`;
+      params.push(tipoNormalizado);
+      paramCount += 1;
+    }
+
     if (fechaDesde) {
       query += ` AND DATE(c.fecha) >= DATE($${paramCount})`;
       params.push(fechaDesde);
@@ -75,20 +85,14 @@ export class PgCotizacionQueryRepository implements CotizacionQueryRepository {
       paramCount += 1;
     }
 
-    const isGlobal = !!global;
-    if (!isGlobal && userRol === "ejecutivo" && userId) {
+    if (userRol === "ejecutivo" && userId) {
       query += ` AND c.usuario_id = $${paramCount}`;
       params.push(userId);
       paramCount += 1;
     }
 
-    query += " ORDER BY c.id DESC";
-
-    if (!busqueda && !fechaDesde && !fechaHasta && !isGlobal) {
-      query += ` LIMIT ${limite || 15}`;
-    } else if (!isGlobal) {
-      query += ` LIMIT ${limite || 15}`;
-    }
+    query += ` ORDER BY c.id DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(paginaLimit, paginaOffset);
 
     const result = await this.client.query(query, params);
     return result.rows;

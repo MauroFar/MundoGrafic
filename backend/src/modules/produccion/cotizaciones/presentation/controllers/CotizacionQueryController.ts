@@ -11,15 +11,16 @@ export class CotizacionQueryController {
   listarTodas = async (req: Request, res: Response) => {
     try {
       const user = (req as any).user || {};
-      const { busqueda, fechaDesde, fechaHasta, limite, global } = req.query as any;
-      const isGlobal = typeof global === "string" ? global.toLowerCase() === "true" : !!global;
+      const { busqueda, fechaDesde, fechaHasta, limite, offset, tipo } = req.query as any;
+      const tipoNormalizado = typeof tipo === "string" ? tipo.trim().toLowerCase() : undefined;
 
       const cotizaciones = await this.listCotizacionesUseCase.execute({
         busqueda,
         fechaDesde,
         fechaHasta,
-        limite: limite ? Number(limite) : undefined,
-        global: isGlobal,
+        limite: limite ? Number(limite) : 20,
+        offset: offset ? Number(offset) : 0,
+        tipo: tipoNormalizado,
         userId: user?.id,
         userRol: user?.rol,
       });

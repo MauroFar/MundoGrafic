@@ -3,7 +3,8 @@ export interface ListCotizacionesInput {
   fechaDesde?: string;
   fechaHasta?: string;
   limite?: number;
-  global?: boolean;
+  offset?: number;
+  tipo?: string;
   userId?: number;
   userRol?: string;
 }

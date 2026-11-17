@@ -4,6 +4,7 @@ export interface CreateCotizacionInput {
   iva: number;
   descuento: number;
   total: number;
+  tipo_cotizacion?: "offset" | "digital" | null;
   ruc_id: number;
   cliente_id: number;
   tiempo_entrega?: string | null;
@@ -26,6 +27,7 @@ export interface UpdateCotizacionInput {
   iva: number;
   descuento: number;
   total: number;
+  tipo_cotizacion?: "offset" | "digital" | null;
   ruc_id: number;
   cliente_id: number;
   tiempo_entrega?: string | null;

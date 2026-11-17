@@ -84,7 +84,19 @@ app.use((req: any, _res: any, next: any) => {
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.use((err: any, _req: any, res: any, _next: any) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({
+      error: 'Payload demasiado grande.',
+      message: 'La cotización o imagen enviada excede el tamaño permitido por el servidor.'
+    });
+  }
+
+  return res.status(500).json({ error: 'Error interno del servidor' });
+});
 
 // ── Estado de mantenimiento (sin auth, sin cors global) ───────────────────────
 app.get("/api/system/maintenance-status", cors(), (_req: any, res: any) => {

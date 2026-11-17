@@ -45,6 +45,17 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({
+      error: 'Payload demasiado grande.',
+      message: 'La solicitud excede el tamaño permitido por el servidor.'
+    });
+  }
+
+  return next(err);
+});
+
 // Configurar el middleware para servir archivos estáticos
 app.use('/storage/pdfs', express.static(path.join(__dirname, '../storage/pdfs')));
 

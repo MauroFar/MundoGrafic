@@ -81,11 +81,58 @@ function CotizacionesCrear() {
     const nombreCompleto = localStorage.getItem('nombre_completo') || [nombre, apellido].filter(Boolean).join(' ').trim();
     return nombreCompleto || [nombre, apellido].filter(Boolean).join(' ').trim();
   };
+
+  const sanitizarParaJson = (value) => {
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+    if (typeof value === 'function') return undefined;
+    if (value instanceof Date) return value.toISOString();
+
+    if (Array.isArray(value)) {
+      return value
+        .map(item => sanitizarParaJson(item))
+        .filter(item => item !== undefined);
+    }
+
+    if (typeof value === 'object') {
+      const seen = new WeakSet();
+
+      const limpiar = (obj) => {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (seen.has(obj)) return undefined;
+        seen.add(obj);
+
+        if (Array.isArray(obj)) {
+          return obj.map(item => limpiar(item)).filter(item => item !== undefined);
+        }
+
+        const limpio = {};
+        Object.keys(obj).forEach((key) => {
+          const itemLimpio = limpiar(obj[key]);
+          if (itemLimpio !== undefined) {
+            limpio[key] = itemLimpio;
+          }
+        });
+
+        return limpio;
+      };
+
+      return limpiar(value);
+    }
+
+    return String(value);
+  };
+
+  const serializarSeguro = (payload) => JSON.stringify(sanitizarParaJson(payload));
   const [realizadoPor, setRealizadoPor] = useState(obtenerNombreCompletoUsuario());
   const [usarRealizadoPor, setUsarRealizadoPor] = useState(true);
   const [aplicarIva, setAplicarIva] = useState(true); // Checkbox para IVA, marcado por defecto
   const [mostrarTotales, setMostrarTotales] = useState(true); // Mostrar subtotal/iva/descuento/total por defecto
   const [mostrarDatosBancarios, setMostrarDatosBancarios] = useState(true); // Mostrar datos bancarios en el PDF por defecto
+  const [tipoCotizacion, setTipoCotizacion] = useState(null);
+  const [tipoCotizacionOriginal, setTipoCotizacionOriginal] = useState(null);
+  const [tipoCotizacionPendingAction, setTipoCotizacionPendingAction] = useState(null);
+  const [showTipoCotizacionModal, setShowTipoCotizacionModal] = useState(!id);
   const [vendedores, setVendedores] = useState([]);
   const [esVendedor, setEsVendedor] = useState(false);
   const [mostrarVendedores, setMostrarVendedores] = useState(false);
@@ -476,6 +523,10 @@ function CotizacionesCrear() {
       setFormaPago(cotizacionData.forma_pago ?? "50% anticipo, 50% contra entrega");
       setValidezProforma(cotizacionData.validez_proforma ?? "15 días");
       setObservaciones(cotizacionData.observaciones ?? "");
+      const tipoGuardado = normalizarTipoCotizacion(cotizacionData.tipo_cotizacion);
+      setTipoCotizacion(tipoGuardado);
+      setTipoCotizacionOriginal(tipoGuardado);
+      setShowTipoCotizacionModal(false);
       
       // Configurar el ejecutivo
       const nombreCompletoUsuarioEditar = obtenerNombreCompletoUsuario();
@@ -741,7 +792,29 @@ function CotizacionesCrear() {
 
   //////////////////////////guardar cotizaciones en la bbdd ////////////////////
 
-  const handleGuardarTodo = async () => {
+  const normalizarTipoCotizacion = (valor) => {
+    if (typeof valor !== 'string') return null;
+    const tipoNormalizado = valor.trim().toLowerCase();
+    return (tipoNormalizado === 'offset' || tipoNormalizado === 'digital') ? tipoNormalizado : null;
+  };
+
+  const obtenerTipoCotizacionVigente = () => {
+    const posibles = [tipoCotizacion, tipoCotizacionOriginal];
+
+    for (const valor of posibles) {
+      const tipoNormalizado = normalizarTipoCotizacion(valor);
+      if (tipoNormalizado) return tipoNormalizado;
+    }
+
+    return null;
+  };
+
+  const abrirModalTipoCotizacion = (accion) => {
+    setTipoCotizacionPendingAction(accion);
+    setShowTipoCotizacionModal(true);
+  };
+
+  const handleGuardarTodo = async (tipoSeleccionado = tipoCotizacion) => {
     if (isSaving) {
       console.log("Ya se está guardando, ignorando clic adicional");
       return; // Prevenir doble guardado
@@ -752,6 +825,8 @@ function CotizacionesCrear() {
       return;
     }
 
+    const tipoFinal = normalizarTipoCotizacion(tipoSeleccionado) || obtenerTipoCotizacionVigente();
+
     console.log("Iniciando guardado de cotización...");
     try {
       // Validaciones iniciales
@@ -761,6 +836,10 @@ function CotizacionesCrear() {
       }
       if (!nombreCliente) {
         alert("Por favor ingrese el nombre del cliente");
+        return;
+      }
+      if (!tipoFinal) {
+        abrirModalTipoCotizacion(id ? 'update' : 'create');
         return;
       }
       // Validar que haya al menos un producto con detalle y valores
@@ -777,7 +856,7 @@ function CotizacionesCrear() {
 
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
-        await continuarGuardadoCotizacion(selectedClienteId);
+        await continuarGuardadoCotizacion(selectedClienteId, tipoFinal);
         return;
       }
       // Si no hay cliente seleccionado, buscar coincidencia exacta en sugerencias
@@ -786,7 +865,7 @@ function CotizacionesCrear() {
       );
       if (clienteCoincidencia) {
         setSelectedClienteId(clienteCoincidencia.id);
-        await continuarGuardadoCotizacion(clienteCoincidencia.id);
+        await continuarGuardadoCotizacion(clienteCoincidencia.id, tipoFinal);
         return;
       }
       // Si no hay coincidencia en sugerencias, buscar por nombre en la base de datos
@@ -805,7 +884,7 @@ function CotizacionesCrear() {
           // Cliente existente
           const clienteId = clientesEncontrados[0].id;
           setSelectedClienteId(clienteId);
-          await continuarGuardadoCotizacion(clienteId);
+          await continuarGuardadoCotizacion(clienteId, tipoFinal);
           return;
         }
       } catch (error) {
@@ -824,7 +903,7 @@ function CotizacionesCrear() {
       setShowConfirmacionClienteModal(true);
       setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
         setSelectedClienteId(nuevoClienteId);
-        await continuarGuardadoCotizacion(nuevoClienteId);
+        await continuarGuardadoCotizacion(nuevoClienteId, tipoFinal);
       });
       return; // Detener flujo hasta que se confirme
     } catch (error) {
@@ -836,9 +915,19 @@ function CotizacionesCrear() {
   };
 
   // Nueva función auxiliar para continuar el guardado de la cotización
-  const continuarGuardadoCotizacion = async (clienteId) => {
+  const continuarGuardadoCotizacion = async (clienteId, tipoSeleccionado = tipoCotizacion) => {
     try {
       const token = localStorage.getItem("token");
+      const tipoFinal = normalizarTipoCotizacion(tipoSeleccionado) || obtenerTipoCotizacionVigente();
+
+      if (!tipoFinal) {
+        abrirModalTipoCotizacion(id ? 'update' : 'create');
+        return;
+      }
+
+      setTipoCotizacion(tipoFinal);
+      setTipoCotizacionOriginal(tipoFinal);
+
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
         cantidad: fila.usa_escalas ? 0 : parseCantidadEntera(fila.cantidad),
@@ -871,6 +960,7 @@ function CotizacionesCrear() {
         iva: mostrarTotales ? (parseFloat(iva) || 0) : null,
         descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
         total: mostrarTotales ? (parseFloat(total) || 0) : null,
+        tipo_cotizacion: tipoFinal || null,
         mostrar_totales: mostrarTotales,
         mostrar_datos_bancarios: mostrarDatosBancarios,
         ruc_id: selectedRuc?.id || null,
@@ -895,7 +985,7 @@ function CotizacionesCrear() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(cotizacionData)
+          body: serializarSeguro(cotizacionData)
         });
         if (!updateResponse.ok) {
           throw new Error("Error al actualizar la cotización");
@@ -923,7 +1013,7 @@ function CotizacionesCrear() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ detalles: detallesActualizados })
+          body: serializarSeguro({ detalles: detallesActualizados })
         });
 
         if (!detallesResponse.ok) {
@@ -952,7 +1042,7 @@ function CotizacionesCrear() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(cotizacionData)
+          body: serializarSeguro(cotizacionData)
         });
         if (!createResponse.ok) {
           throw new Error("Error al crear la cotización");
@@ -971,7 +1061,7 @@ function CotizacionesCrear() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ detalles: filasData })
+            body: serializarSeguro({ detalles: filasData })
           });
 
           if (!detallesResponse.ok) {
@@ -1002,11 +1092,12 @@ function CotizacionesCrear() {
   };
 
   // Nueva función para guardar como nueva cotización
-  const handleGuardarComoNueva = async () => {
+  const handleGuardarComoNueva = async (tipoSeleccionado = tipoCotizacion) => {
     if (isSaving) {
       console.log("Ya se está guardando, ignorando clic adicional");
       return; // Prevenir doble guardado
     }
+    const tipoFinal = normalizarTipoCotizacion(tipoSeleccionado) || obtenerTipoCotizacionVigente();
     console.log("Iniciando guardado como nueva cotización...");
     try {
       // Validaciones iniciales
@@ -1016,6 +1107,10 @@ function CotizacionesCrear() {
       }
       if (!nombreCliente.trim()) {
         alert("El nombre del cliente es requerido");
+        return;
+      }
+      if (!tipoFinal) {
+        abrirModalTipoCotizacion('save-as-new');
         return;
       }
       const erroresProductos = filas
@@ -1031,7 +1126,7 @@ function CotizacionesCrear() {
 
       // 2. Si hay un cliente seleccionado, usar su id directamente
       if (selectedClienteId) {
-        await guardarCotizacionComoNueva(selectedClienteId);
+        await guardarCotizacionComoNueva(selectedClienteId, tipoFinal);
         return;
       }
 
@@ -1041,7 +1136,7 @@ function CotizacionesCrear() {
       );
       if (clienteCoincidencia) {
         setSelectedClienteId(clienteCoincidencia.id);
-        await guardarCotizacionComoNueva(clienteCoincidencia.id);
+        await guardarCotizacionComoNueva(clienteCoincidencia.id, tipoFinal);
         return;
       }
 
@@ -1061,7 +1156,7 @@ function CotizacionesCrear() {
           // Cliente existente
           const clienteId = clientesEncontrados[0].id;
           setSelectedClienteId(clienteId);
-          await guardarCotizacionComoNueva(clienteId);
+          await guardarCotizacionComoNueva(clienteId, tipoFinal);
           return;
         }
       } catch (error) {
@@ -1080,7 +1175,7 @@ function CotizacionesCrear() {
       setShowConfirmacionClienteModal(true);
       setOnNuevoClienteConfirm(() => async (nuevoClienteId) => {
         setSelectedClienteId(nuevoClienteId);
-        await guardarCotizacionComoNueva(nuevoClienteId);
+        await guardarCotizacionComoNueva(nuevoClienteId, tipoFinal);
       });
       return; // Detener flujo hasta que se confirme
     } catch (error) {
@@ -1373,7 +1468,7 @@ function CotizacionesCrear() {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: serializarSeguro({ 
               imagenRuta,
               cotizacionId: id
             })
@@ -1742,9 +1837,19 @@ function CotizacionesCrear() {
     }
   };
 
-  const guardarCotizacionComoNueva = async (clienteId) => {
+  const guardarCotizacionComoNueva = async (clienteId, tipoSeleccionado = tipoCotizacion) => {
     try {
       const token = localStorage.getItem("token");
+      const tipoFinal = normalizarTipoCotizacion(tipoSeleccionado) || obtenerTipoCotizacionVigente();
+
+      if (!tipoFinal) {
+        abrirModalTipoCotizacion('save-as-new');
+        return;
+      }
+
+      setTipoCotizacion(tipoFinal);
+      setTipoCotizacionOriginal(tipoFinal);
+
       // Preparar los datos de las filas incluyendo el array de imágenes
       const filasData = filas.map(fila => ({
         cantidad: fila.usa_escalas ? 0 : parseCantidadEntera(fila.cantidad),
@@ -1778,6 +1883,7 @@ function CotizacionesCrear() {
         iva: mostrarTotales ? (parseFloat(iva) || 0) : null,
         descuento: mostrarTotales ? (parseFloat(descuento) || 0) : null,
         total: mostrarTotales ? (parseFloat(total) || 0) : null,
+        tipo_cotizacion: tipoFinal || null,
         mostrar_totales: mostrarTotales,
         mostrar_datos_bancarios: mostrarDatosBancarios,
         ruc_id: selectedRuc?.id || null,
@@ -1800,7 +1906,7 @@ function CotizacionesCrear() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(cotizacionData),
+        body: serializarSeguro(cotizacionData),
       });
 
       if (!responseCotizacion.ok) {
@@ -1834,7 +1940,7 @@ function CotizacionesCrear() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(detalleData),
+          body: serializarSeguro(detalleData),
         });
 
         if (!responseDetalle.ok) {
@@ -1891,7 +1997,7 @@ function CotizacionesCrear() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
+          body: serializarSeguro({
             nombre: nuevoClienteDatos.nombre,
             empresa: nuevoClienteDatos.empresa,
             ruc_cedula: nuevoClienteDatos.ruc_cedula,
@@ -1935,12 +2041,107 @@ function CotizacionesCrear() {
       ? 'JUAN CARLOS PANCHI BURBANO'
       : 'CORPORACION MUNDO GRAFIC';
 
+  const tituloPrincipalCotizacion = (() => {
+    const tipo = (tipoCotizacion || tipoCotizacionOriginal || '').toString().toLowerCase();
+    if (id) {
+      return tipo === 'offset' ? 'Editar Cotización Offset' : tipo === 'digital' ? 'Editar Cotización Digital' : 'Editar Cotización';
+    }
+    return tipo === 'offset' ? 'Nueva Cotización Offset' : tipo === 'digital' ? 'Nueva Cotización Digital' : 'Nueva Cotización';
+  })();
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      {showTipoCotizacionModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6">
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-bold text-gray-800">Tipo de cotización</h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const siguienteTipo = 'offset';
+                  setTipoCotizacion(siguienteTipo);
+                  setTipoCotizacionOriginal(siguienteTipo);
+                  setShowTipoCotizacionModal(false);
+                  const accion = tipoCotizacionPendingAction;
+                  setTipoCotizacionPendingAction(null);
+
+                  if (accion === 'create') {
+                    setTimeout(() => handleGuardarTodo(siguienteTipo), 0);
+                  } else if (accion === 'save-as-new') {
+                    setTimeout(() => handleGuardarComoNueva(siguienteTipo), 0);
+                  } else if (accion === 'update') {
+                    setTimeout(() => {
+                      if (selectedClienteId) {
+                        continuarGuardadoCotizacion(selectedClienteId, siguienteTipo);
+                        return;
+                      }
+                      handleGuardarTodo(siguienteTipo);
+                    }, 0);
+                  }
+                }}
+                className="bg-orange-600 hover:bg-orange-700 text-white rounded-xl p-5 text-center transition-colors shadow-sm text-xl font-bold"
+              >
+                Offset
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const siguienteTipo = 'digital';
+                  setTipoCotizacion(siguienteTipo);
+                  setTipoCotizacionOriginal(siguienteTipo);
+                  setShowTipoCotizacionModal(false);
+                  const accion = tipoCotizacionPendingAction;
+                  setTipoCotizacionPendingAction(null);
+
+                  if (accion === 'create') {
+                    setTimeout(() => handleGuardarTodo(siguienteTipo), 0);
+                  } else if (accion === 'save-as-new') {
+                    setTimeout(() => handleGuardarComoNueva(siguienteTipo), 0);
+                  } else if (accion === 'update') {
+                    setTimeout(() => {
+                      if (selectedClienteId) {
+                        continuarGuardadoCotizacion(selectedClienteId, siguienteTipo);
+                        return;
+                      }
+                      handleGuardarTodo(siguienteTipo);
+                    }, 0);
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl p-5 text-center transition-colors shadow-sm text-xl font-bold"
+              >
+                Digital
+              </button>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setTipoCotizacion(null);
+                  setTipoCotizacionOriginal(null);
+                  setTipoCotizacionPendingAction(null);
+                  setShowTipoCotizacionModal(false);
+                  navigate('/cotizaciones', { replace: true });
+                }}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="container mx-auto px-4 py-8">
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h1 className="text-3xl font-bold text-gray-800">
-          {id ? "Editar Cotización" : "Nueva Cotización"}
+          {tituloPrincipalCotizacion}
         </h1>
         <div className="flex gap-2">
           {id ? (
@@ -3239,7 +3440,7 @@ function CotizacionesCrear() {
                           "Content-Type": "application/json",
                           Authorization: `Bearer ${token}`,
                         },
-                        body: JSON.stringify({
+                        body: serializarSeguro({
                           nombre: nuevoClienteDatos.nombre,
                           empresa: nuevoClienteDatos.empresa,
                           ruc_cedula: nuevoClienteDatos.ruc_cedula,
@@ -3500,6 +3701,7 @@ function CotizacionesCrear() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
