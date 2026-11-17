@@ -785,7 +785,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   };
 
   // Listas fijas solicitadas por el usuario
-  const VENDEDORES_FIJOS = ['HENRY','GUSTAVO','JUAN CARLOS','OSCAR','XAVIER','GEOVANNY','MARCO','ANDRES'];
   const PREPRENSA_OPTIONS = ['ROBINSON','GEOVANNY','ANDRES'];
   const OPERACIONES_OPTIONS = ['FERNANDO','ROBINSON','GEOVANNY','CRISTIAN','WILLIAM','JUAN DAVID','DEYVI TORRES'];
   const ESTADOS_ETAPA_OPTIONS = ['pendiente', 'en_proceso', 'finalizado', 'rechazado'];
@@ -795,8 +794,32 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const RESPONSABLES_FIJOS = [...new Set([...PREPRENSA_OPTIONS, ...OPERACIONES_OPTIONS, 'DAVID'])];
 
   useEffect(() => {
-    // Usar lista fija de vendedores según solicitaste
-    setVendedoresList(VENDEDORES_FIJOS.map(name => ({ id: name, nombre: name })));
+    // Detectar rol del usuario logueado
+    const rolUsuario = localStorage.getItem('rol') ?? '';
+    const nombreCompleto = localStorage.getItem('nombre_completo') ||
+      [localStorage.getItem('nombre'), localStorage.getItem('apellido')].filter(Boolean).join(' ').trim();
+    const esVendedorActual = rolUsuario.toLowerCase() === 'vendedor';
+
+    // Si es vendedor y es una OT nueva, pre-llenar su nombre
+    if (esVendedorActual && nombreCompleto && !ordenId) {
+      setVendedor(nombreCompleto);
+    }
+
+    // Cargar vendedores desde la BD
+    const token = localStorage.getItem('token');
+    fetch(`${apiUrl}/api/usuarios/vendedores`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          setVendedoresList(data);
+        }
+      })
+      .catch(() => {
+        // Si falla, quedarse con lista vacía (no romper el formulario)
+        setVendedoresList([]);
+      });
   }, []);
 
   // Helper: extrae la primera línea de un texto y elimina etiquetas HTML
@@ -2521,7 +2544,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
                     <EditableCombo
                       value={vendedor}
                       onChange={setVendedor}
-                      options={vendedoresList.map(v => v.nombre)}
+                      options={vendedoresList.map(v => [v.nombre, v.apellido].filter(Boolean).join(' '))}
                       placeholder="-- Seleccione vendedor --"
                     />
                   </div>
@@ -2775,11 +2798,11 @@ const pedidoTieneFechasPreCargadas = Boolean(
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
-                    <input
-                      className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none"
-                      type="text"
+                    <EditableCombo
                       value={vendedor}
-                      onChange={e => setVendedor(e.target.value)}
+                      onChange={setVendedor}
+                      options={vendedoresList.map(v => [v.nombre, v.apellido].filter(Boolean).join(' '))}
+                      placeholder="-- Seleccione vendedor --"
                     />
                   </div>
                 </div>
