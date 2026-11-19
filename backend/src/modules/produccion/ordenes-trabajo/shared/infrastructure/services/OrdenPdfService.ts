@@ -900,9 +900,15 @@ export class OrdenPdfService {
 </div></div></div>
 <div class="sec"><div class="sec-t">Material y Corte</div><div class="sec-c">
 <div style="display:flex;gap:10px;align-items:flex-start">
-  <div style="width:34%">
-    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px">Material</div>
-    <div style="border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word;margin-bottom:8px">${renderOffsetField('material', detalle.material || '')}</div>
+  <div style="width:45%">
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+  <span style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;white-space:nowrap">
+    Material:
+  </span>
+  <span style="border:1px solid #d9d9d9;padding:3px 7px;font-size:11px;background:#fff;border-radius:3px">
+  ${renderOffsetField('material', detalle.material || '')}
+  </span>
+</div>
     <div style="display:flex;gap:4px;align-items:flex-end">
       <div style="width:60px"><div class="lbl">Tamaño Pliego</div><div class="val">${detalle.tamano_pliego || ''}</div></div>
       <div style="width:36px"><div class="lbl">Cab. Prod.</div><div class="val">${detalle.cabida_producto || ''}</div></div>
@@ -910,10 +916,10 @@ export class OrdenPdfService {
       <div style="flex:1"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', detalle.exceso || '')}</div></div>
     </div>
   </div>
-  <div style="width:30%">
+  <div style="width:25%">
     <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Guillotina</div>
     <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="flex:1"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
+      <div style="width:60px"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
       <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${detalle.tamano_corte || ''}</div></div>
       <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${detalle.cabida_corte || ''}</div></div>
     </div>
@@ -921,9 +927,9 @@ export class OrdenPdfService {
   <div style="flex:1">
     <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Prensas</div>
     <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="flex:1"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.formatos_a_imprimir || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.formatos_a_imprimir || ''}</div></div>
       <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${detalle.cabida_imp_formato || ''}</div></div>
-      <div style="flex:1"><div class="lbl">Total Impresión</div><div class="val">${detalle.total_impresion || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Total Impresión</div><div class="val">${detalle.total_impresion || ''}</div></div>
     </div>
   </div>
 </div>
