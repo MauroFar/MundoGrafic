@@ -105,11 +105,21 @@ interface FormularioOrdenOffsetProps {
   setCorteMaterial: (value: string) => void;
 
   // Cantidad de Pliegos
+  cabidaProducto: string;
+  setCabidaProducto: (value: string) => void;
   cantidadPliegosCompra: string;
   setCantidadPliegosCompra: (value: string) => void;
   exceso: string;
   setExceso: (value: string) => void;
   totalPliegos: string;
+
+  // Guillotina
+  cabidaCorte: string;
+  setCabidaCorte: (value: string) => void;
+  formatosAImprimir: string;
+  cabidaImpFormato: string;
+  setCabidaImpFormato: (value: string) => void;
+  totalImpresion: string;
 
   // Impresión y Acabados
   impresion: string;
@@ -193,11 +203,19 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   setMaterialEspesor,
   corteMaterial,
   setCorteMaterial,
+  cabidaProducto,
+  setCabidaProducto,
   cantidadPliegosCompra,
   setCantidadPliegosCompra,
   exceso,
   setExceso,
   totalPliegos,
+  cabidaCorte,
+  setCabidaCorte,
+  formatosAImprimir,
+  cabidaImpFormato,
+  setCabidaImpFormato,
+  totalImpresion,
   impresion,
   setImpresion,
   instruccionesImpresion,
@@ -375,7 +393,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
         </div>
       </div>
 
-      {/* Material y Corte - Diseño horizontal */}
+      {/* Material y Corte + Cantidad de Pliegos */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-4">
         <div className="flex flex-col gap-3 mb-4 pb-2 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
           <h3 className="text-lg font-bold text-gray-800">
@@ -407,173 +425,139 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
           />
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RichTextOffsetField
-            label="Material"
-            fieldKey="material"
-            value={material}
-            onChange={(value) => {
-              setMaterial(value);
-              setMaterialEspesor('');
-            }}
-            onFocus={() => setCampoEstiloActivo('material')}
-            placeholder="Escribir material de offset..."
-            inputClassName="w-full min-h-[38px] px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
-          />
+        <div className="flex gap-4 items-start">
 
-          <RichTextOffsetField
-            label="Corte de Material"
-            fieldKey="corte_material"
-            value={corteMaterial}
-            onChange={setCorteMaterial}
-            onFocus={() => setCampoEstiloActivo('corte_material')}
-            isTextarea={true}
-            placeholder="Instrucciones de corte..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 resize-none"
-          />
-        </div>
-      </div>
-
-      {/* Cantidad de Pliegos - Diseño compacto */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-        <div className="flex flex-col gap-3 mb-4 pb-2 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-lg font-bold text-gray-800">
-            Cantidad de Pliegos
-          </h3>
-          <FormatoToolbarSeccion
-            estilo={obtenerEstiloSeccion('pliegos')}
-            onToggleBold={() => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('bold');
-                return;
-              }
-              actualizarEstiloSeccion('pliegos', { bold: !obtenerEstiloSeccion('pliegos').bold });
-            }}
-            onToggleUnderline={() => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('underline');
-                return;
-              }
-              actualizarEstiloSeccion('pliegos', { underline: !obtenerEstiloSeccion('pliegos').underline });
-            }}
-            onSetColor={(color) => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('foreColor', color);
-                return;
-              }
-              actualizarEstiloSeccion('pliegos', { color });
-            }}
-          />
-        </div>
-        
-        <div className="flex gap-4">
-          <RichTextOffsetField
-            label="Pliegos de Compra"
-            fieldKey="cantidad_pliegos_compra"
-            value={cantidadPliegosCompra}
-            onChange={setCantidadPliegosCompra}
-            onFocus={() => setCampoEstiloActivo('cantidad_pliegos_compra')}
-            inputClassName="w-24 min-h-[38px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-          />
-
-          <RichTextOffsetField
-            label="Exceso"
-            fieldKey="exceso"
-            value={exceso}
-            onChange={setExceso}
-            onFocus={() => setCampoEstiloActivo('exceso')}
-            inputClassName="w-24 min-h-[38px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Total</label>
-            <input 
-              className="w-24 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed" 
-              type="text" 
-              value={totalPliegos}
-              readOnly
-              style={estiloCampo('pliegos')}
+          {/* Columna 1 — Material (más ancha) */}
+          <div className="flex flex-col gap-2 w-[38%]">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-1">Material</p>
+            <RichTextOffsetField
+              label="Material"
+              fieldKey="material"
+              value={material}
+              onChange={(value) => {
+                setMaterial(value);
+                setMaterialEspesor('');
+              }}
+              onFocus={() => setCampoEstiloActivo('material')}
+              placeholder="Escribir material..."
+              isTextarea={true}
+              inputClassName="w-full min-h-[32px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm resize-none"
             />
+            <div className="flex flex-wrap gap-3 mt-1">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tamaño Pliego</label>
+                <input
+                  type="text"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  placeholder="65x90"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cabida Prod.</label>
+                <input
+                  type="number"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  placeholder="0"
+                  value={cabidaProducto}
+                  onChange={(e) => setCabidaProducto(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de Pliegos</label>
+                <input
+                  type="text"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  value={cantidadPliegosCompra}
+                  readOnly
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Exceso</label>
+                <RichTextOffsetField
+                  label=""
+                  fieldKey="exceso"
+                  value={exceso}
+                  onChange={setExceso}
+                  onFocus={() => setCampoEstiloActivo('exceso')}
+                  inputClassName="w-16 min-h-[32px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Impresión y Acabados - Diseño horizontal */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-        <div className="flex flex-col gap-3 mb-4 pb-2 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
-          <h3 className="text-lg font-bold text-gray-800">
-            Impresión y Acabados
-          </h3>
-          <FormatoToolbarSeccion
-            estilo={obtenerEstiloSeccion('impresion')}
-            onToggleBold={() => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('bold');
-                return;
-              }
-              actualizarEstiloSeccion('impresion', { bold: !obtenerEstiloSeccion('impresion').bold });
-            }}
-            onToggleUnderline={() => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('underline');
-                return;
-              }
-              actualizarEstiloSeccion('impresion', { underline: !obtenerEstiloSeccion('impresion').underline });
-            }}
-            onSetColor={(color) => {
-              if (campoEstiloActivo) {
-                ejecutarFormatoEnCampoActivo('foreColor', color);
-                return;
-              }
-              actualizarEstiloSeccion('impresion', { color });
-            }}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RichTextOffsetField
-            label="Impresión"
-            fieldKey="impresion"
-            value={impresion}
-            onChange={setImpresion}
-            onFocus={() => setCampoEstiloActivo('impresion')}
-            isTextarea={true}
-            placeholder="Especificaciones de impresión..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
-          />
+          {/* Columna 2 — Guillotina */}
+          <div className="flex flex-col gap-2 w-[27%]">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-1">Guillotina</p>
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Pliegos a Cortar</label>
+                <input
+                  type="text"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  value={totalPliegos}
+                  readOnly
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tamaño de Corte</label>
+                <input
+                  type="text"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  placeholder="65x90"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cabida Corte</label>
+                <input
+                  type="number"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  placeholder="0"
+                  value={cabidaCorte}
+                  onChange={(e) => setCabidaCorte(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
 
-          <RichTextOffsetField
-            label="Instrucciones de Impresión"
-            fieldKey="instrucciones_impresion"
-            value={instruccionesImpresion}
-            onChange={setInstruccionesImpresion}
-            onFocus={() => setCampoEstiloActivo('instrucciones_impresion')}
-            isTextarea={true}
-            placeholder="Instrucciones específicas..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
-          />
+          {/* Columna 3 — Prensas (un poco más grande) */}
+          <div className="flex flex-col gap-2 flex-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-1">Prensas</p>
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Formatos a Imprimir</label>
+                <input
+                  type="text"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  value={formatosAImprimir}
+                  readOnly
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cabida Imp. en Formato</label>
+                <input
+                  type="number"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 text-sm"
+                  placeholder="0"
+                  value={cabidaImpFormato}
+                  onChange={(e) => setCabidaImpFormato(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Total de Impresión</label>
+                <input
+                  type="text"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded bg-gray-50 text-sm font-semibold text-gray-700 cursor-not-allowed"
+                  value={totalImpresion}
+                  readOnly
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
 
-          <RichTextOffsetField
-            label="Instrucciones de Acabados"
-            fieldKey="instrucciones_acabados"
-            value={instruccionesAcabados}
-            onChange={setInstruccionesAcabados}
-            onFocus={() => setCampoEstiloActivo('instrucciones_acabados')}
-            isTextarea={true}
-            placeholder="Instrucciones de acabados..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-          />
-
-          <RichTextOffsetField
-            label="Instrucciones de Empacado"
-            fieldKey="instrucciones_empacado"
-            value={instruccionesEmpacado}
-            onChange={setInstruccionesEmpacado}
-            onFocus={() => setCampoEstiloActivo('instrucciones_empacado')}
-            isTextarea={true}
-            placeholder="Instrucciones de empacado..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-          />
         </div>
       </div>
 
@@ -642,6 +626,85 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
             isTextarea={true}
             placeholder="Añadir notas adicionales aquí..."
             inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+          />
+        </div>
+      </div>
+
+      {/* Impresión y Acabados - Diseño horizontal */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+        <div className="flex flex-col gap-3 mb-4 pb-2 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
+          <h3 className="text-lg font-bold text-gray-800">
+            Impresión y Acabados
+          </h3>
+          <FormatoToolbarSeccion
+            estilo={obtenerEstiloSeccion('impresion')}
+            onToggleBold={() => {
+              if (campoEstiloActivo) {
+                ejecutarFormatoEnCampoActivo('bold');
+                return;
+              }
+              actualizarEstiloSeccion('impresion', { bold: !obtenerEstiloSeccion('impresion').bold });
+            }}
+            onToggleUnderline={() => {
+              if (campoEstiloActivo) {
+                ejecutarFormatoEnCampoActivo('underline');
+                return;
+              }
+              actualizarEstiloSeccion('impresion', { underline: !obtenerEstiloSeccion('impresion').underline });
+            }}
+            onSetColor={(color) => {
+              if (campoEstiloActivo) {
+                ejecutarFormatoEnCampoActivo('foreColor', color);
+                return;
+              }
+              actualizarEstiloSeccion('impresion', { color });
+            }}
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RichTextOffsetField
+            label="Instrucciones de Impresión"
+            fieldKey="instrucciones_impresion"
+            value={instruccionesImpresion}
+            onChange={setInstruccionesImpresion}
+            onFocus={() => setCampoEstiloActivo('instrucciones_impresion')}
+            isTextarea={true}
+            placeholder="Instrucciones específicas..."
+            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+          />
+
+          <RichTextOffsetField
+            label="Instrucciones de Acabados y Terminados"
+            fieldKey="instrucciones_acabados"
+            value={instruccionesAcabados}
+            onChange={setInstruccionesAcabados}
+            onFocus={() => setCampoEstiloActivo('instrucciones_acabados')}
+            isTextarea={true}
+            placeholder="Instrucciones de acabados y terminados..."
+            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+          />
+
+          <RichTextOffsetField
+            label="Instrucciones de Empacado"
+            fieldKey="instrucciones_empacado"
+            value={instruccionesEmpacado}
+            onChange={setInstruccionesEmpacado}
+            onFocus={() => setCampoEstiloActivo('instrucciones_empacado')}
+            isTextarea={true}
+            placeholder="Instrucciones de empacado..."
+            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+          />
+
+          <RichTextOffsetField
+            label="Notas Adicionales"
+            fieldKey="impresion"
+            value={impresion}
+            onChange={setImpresion}
+            onFocus={() => setCampoEstiloActivo('impresion')}
+            isTextarea={true}
+            placeholder="Notas adicionales..."
+            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
           />
         </div>
       </div>

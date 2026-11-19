@@ -520,6 +520,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [vendedor, setVendedor] = useState<string>('');
   const [preprensaResponsable, setPreprensaResponsable] = useState<string>('');
   const [impresionResponsable, setImpresionResponsable] = useState<string>('');
+  const [prensaOffsetResponsable, setPrensaOffsetResponsable] = useState<string>('');
   const [laminadoResponsable, setLaminadoResponsable] = useState<string>('');
   const [barnizadoResponsable, setBarnizadoResponsable] = useState<string>('');
   const [troqueladoFlexibleResponsable, setTroqueladoFlexibleResponsable] = useState<string>('');
@@ -537,6 +538,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [anilladoResponsable, setAnilladoResponsable] = useState<string>('');
   const [estampadoResponsable, setEstampadoResponsable] = useState<string>('');
   const [terminadosExternosResponsable, setTerminadosExternosResponsable] = useState<string>('');
+  const [facturadoResponsable, setFacturadoResponsable] = useState<string>('');
   const [procesosDigitalSeleccionados, setProcesosDigitalSeleccionados] = useState<DigitalProcessKey[]>([]);
   const [showProcesosDropdown, setShowProcesosDropdown] = useState<boolean>(false);
   const procesosDropdownRef = useRef<HTMLDivElement>(null);
@@ -560,9 +562,14 @@ const OrdendeTrabajoEditar: React.FC = () => {
    const [material, setMaterial] = useState<string>('');
   const [materialEspesor, setMaterialEspesor] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
+   const [cabidaProducto, setCabidaProducto] = useState<string>('');
    const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState<string>('');
    const [exceso, setExceso] = useState<string>('');
    const [totalPliegos, setTotalPliegos] = useState<string>('');
+   const [cabidaCorte, setCabidaCorte] = useState<string>('');
+   const [formatosAImprimir, setFormatosAImprimir] = useState<string>('');
+   const [cabidaImpFormato, setCabidaImpFormato] = useState<string>('');
+   const [totalImpresion, setTotalImpresion] = useState<string>('');
    const [tamano, setTamano] = useState<string>('');
        const [tamanoAbierto1, setTamanoAbierto1] = useState<string>('');
     const [tamanoCerrado1, setTamanoCerrado1] = useState<string>('');
@@ -696,17 +703,49 @@ const OrdendeTrabajoEditar: React.FC = () => {
   };
 
   // Función para calcular el total de pliegos
-  const calcularTotalPliegos = () => {
+  // Calcula cantidad de pliegos = ceil(cantidad / cabidaProducto)
+  useEffect(() => {
+    const cant = parseFloat(String(cantidad).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+    const cabida = parseFloat(cabidaProducto.replace(',', '.')) || 0;
+    if (cant > 0 && cabida > 0) {
+      setCantidadPliegosCompra(Math.ceil(cant / cabida).toString());
+    } else {
+      setCantidadPliegosCompra('');
+    }
+  }, [cantidad, cabidaProducto]);
+
+  // Calcula pliegos a cortar = cantidad de pliegos + exceso
+  useEffect(() => {
     const pliegos = parseInt(cantidadPliegosCompra) || 0;
     const excesoNum = parseInt(exceso) || 0;
-    const total = pliegos + excesoNum;
-    setTotalPliegos(total.toString());
-  };
-
-  // Efecto para recalcular el total cuando cambien los valores
-  useEffect(() => {
-    calcularTotalPliegos();
+    if (pliegos > 0 || excesoNum > 0) {
+      setTotalPliegos((pliegos + excesoNum).toString());
+    } else {
+      setTotalPliegos('');
+    }
   }, [cantidadPliegosCompra, exceso]);
+
+  // Calcula formatos a imprimir = pliegos a cortar × cabida corte
+  useEffect(() => {
+    const pliegos = parseInt(totalPliegos) || 0;
+    const cabida = parseInt(cabidaCorte) || 0;
+    if (pliegos > 0 && cabida > 0) {
+      setFormatosAImprimir((pliegos * cabida).toString());
+    } else {
+      setFormatosAImprimir('');
+    }
+  }, [totalPliegos, cabidaCorte]);
+
+  // Calcula total de impresión = formatos a imprimir × cabida imp. en formato
+  useEffect(() => {
+    const formatos = parseInt(formatosAImprimir) || 0;
+    const cabida = parseInt(cabidaImpFormato) || 0;
+    if (formatos > 0 && cabida > 0) {
+      setTotalImpresion((formatos * cabida).toString());
+    } else {
+      setTotalImpresion('');
+    }
+  }, [formatosAImprimir, cabidaImpFormato]);
 
   // Generar lote de producción automáticamente a partir de la fecha de entrega (MGANOMESDIA)
   useEffect(() => {
@@ -753,6 +792,75 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const cerrarPreview = () => {
     setShowPreview(false);
     setPreviewUrl(null);
+  };
+
+  // Genera preview del PDF offset con los datos actuales del formulario, sin guardar en BD
+  const guardarYVerPDF = async () => {
+    try {
+      setPreviewUrl(null);
+      setShowPreview(true);
+      setPreviewLoading(true);
+
+      const token = localStorage.getItem('token');
+      const cantidadParaBackend = tipoOrdenSeleccionado === 'digital'
+        ? calcularTotalCantidadDigital(productosDigital)
+        : cantidad;
+
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/offset/preview-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          orden: {
+            numero_orden,
+            numero_cotizacion,
+            orden_compra,
+            nombre_cliente,
+            contacto,
+            telefono: telefono_cliente,
+            email: email_cliente,
+            fecha_creacion: fechaCreacion || null,
+            fecha_entrega: fechaEntrega || null,
+            notas_observaciones: notasObservaciones,
+            cantidad: cantidadParaBackend,
+          },
+          detalle: {
+            material, codigo_producto, espesor_material: materialEspesor,
+            corte_material: corteMaterial,
+            cabida_producto: cabidaProducto,
+            cantidad_pliegos_compra: cantidadPliegosCompra,
+            exceso, total_pliegos: totalPliegos,
+            cabida_corte: cabidaCorte,
+            formatos_a_imprimir: formatosAImprimir,
+            cabida_imp_formato: cabidaImpFormato,
+            total_impresion: totalImpresion,
+            tamano, tamano_abierto_1: tamanoAbierto1, tamano_cerrado_1: tamanoCerrado1,
+            concepto, cantidad: cantidadParaBackend,
+            impresion, instrucciones_impresion: instruccionesImpresion,
+            instrucciones_acabados: instruccionesAcabados,
+            instrucciones_empacado: instruccionesEmpacado,
+            observaciones, prensa_seleccionada: prensaSeleccionada,
+            vendedor,
+            preprensa_responsable: preprensaResponsable,
+            prensa: prensaOffsetResponsable,
+            terminados: terminadoResponsable,
+            facturado: facturadoResponsable || null,
+            liberacion_producto: liberacionProductoResponsable,
+            estilo_secciones_offset: estilosOffset,
+            trazabilidad_proceso: construirTrazabilidadOffsetParaPayload(),
+          },
+        }),
+      });
+
+      if (!res.ok) throw new Error('Error al generar el PDF');
+      const data = await res.json();
+      if (!data.success || !data.pdf) throw new Error('Respuesta inválida al generar vista previa');
+      setPreviewUrl(data.pdf);
+    } catch (error: any) {
+      toast.error('Error al cargar el PDF: ' + (error.message || 'Error desconocido'));
+      setShowPreview(false);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const verPDF = async (id: number) => {
@@ -900,6 +1008,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setVendedor(_rolUsuario.toLowerCase() === 'vendedor' && _nombreCompleto ? _nombreCompleto : '');
       setPreprensaResponsable('');
       setImpresionResponsable('');
+      setPrensaOffsetResponsable('');
       setLaminadoResponsable('');
       setBarnizadoResponsable('');
       setTroqueladoFlexibleResponsable('');
@@ -927,9 +1036,14 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       setMaterial('');
       setCorteMaterial('');
+      setCabidaProducto('');
       setCantidadPliegosCompra('');
       setExceso('');
       setTotalPliegos('');
+      setCabidaCorte('');
+      setFormatosAImprimir('');
+      setCabidaImpFormato('');
+      setTotalImpresion('');
       setTamano('');
       setTamanoAbierto1('');
       setTamanoCerrado1('');
@@ -1225,6 +1339,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setCantidadPliegosCompra(ordenData.detalle?.cantidad_pliegos_compra || '');
         setExceso(ordenData.detalle?.exceso || '');
         setTotalPliegos(ordenData.detalle?.total_pliegos || '');
+        setCabidaProducto(ordenData.detalle?.cabida_producto || '');
+        setCabidaCorte(ordenData.detalle?.cabida_corte || '');
+        setFormatosAImprimir(ordenData.detalle?.formatos_a_imprimir || '');
+        setCabidaImpFormato(ordenData.detalle?.cabida_imp_formato || '');
+        setTotalImpresion(ordenData.detalle?.total_impresion || '');
         setTamano(ordenData.detalle?.tamano || '');
         setTamanoAbierto1(ordenData.detalle?.tamano_abierto_1 || '');
         setTamanoCerrado1(ordenData.detalle?.tamano_cerrado_1 || '');
@@ -1356,7 +1475,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
     
     setVendedor(detalleResponsables.vendedor || '');
     setPreprensaResponsable(detalleResponsables.preprensa_responsable || detalleResponsables.preprensa || '');
-    setImpresionResponsable(detalleResponsables.impresion_responsable || detalleResponsables.prensa || '');
+    setImpresionResponsable(detalleResponsables.impresion_responsable || '');
+    setPrensaOffsetResponsable(detalleResponsables.prensa || detalleResponsables.prensa_offset_responsable || '');
     setLaminadoResponsable(detalleResponsables.laminado_responsable || detalleResponsables.laminado_barnizado || '');
     setBarnizadoResponsable(detalleResponsables.barnizado_responsable || '');
     setTroqueladoFlexibleResponsable(detalleResponsables.troquelado_flexible_responsable || detalleResponsables.troquelado || '');
@@ -1793,9 +1913,9 @@ const pedidoTieneFechasPreCargadas = Boolean(
       impresion_responsable: impresionResponsable,
       // Campos esperados por el upsert de detalle offset
       preprensa: preprensaResponsable,
-      prensa: impresionResponsable,
+      prensa: prensaOffsetResponsable,
       terminados: terminadoResponsable,
-      facturado: null,
+      facturado: facturadoResponsable || null,
       laminado_responsable: laminadoResponsable,
       barnizado_responsable: barnizadoResponsable,
       troquelado_flexible_responsable: troqueladoFlexibleResponsable,
@@ -1840,9 +1960,14 @@ const pedidoTieneFechasPreCargadas = Boolean(
         codigo_producto: codigo_producto,
         espesor_material: materialEspesor,
         corte_material: corteMaterial,
+        cabida_producto: cabidaProducto,
         cantidad_pliegos_compra: cantidadPliegosCompra,
         exceso: exceso,
         total_pliegos: totalPliegos,
+        cabida_corte: cabidaCorte,
+        formatos_a_imprimir: formatosAImprimir,
+        cabida_imp_formato: cabidaImpFormato,
+        total_impresion: totalImpresion,
         tamano: tamano,
         tamano_abierto_1: tamanoAbierto1,
         tamano_cerrado_1: tamanoCerrado1,
@@ -2512,11 +2637,19 @@ const pedidoTieneFechasPreCargadas = Boolean(
               setMaterialEspesor={setMaterialEspesor}
               corteMaterial={corteMaterial}
               setCorteMaterial={setCorteMaterial}
+              cabidaProducto={cabidaProducto}
+              setCabidaProducto={setCabidaProducto}
               cantidadPliegosCompra={cantidadPliegosCompra}
               setCantidadPliegosCompra={setCantidadPliegosCompra}
               exceso={exceso}
               setExceso={setExceso}
               totalPliegos={totalPliegos}
+              cabidaCorte={cabidaCorte}
+              setCabidaCorte={setCabidaCorte}
+              formatosAImprimir={formatosAImprimir}
+              cabidaImpFormato={cabidaImpFormato}
+              setCabidaImpFormato={setCabidaImpFormato}
+              totalImpresion={totalImpresion}
               impresion={impresion}
               setImpresion={setImpresion}
               instruccionesImpresion={instruccionesImpresion}
@@ -2885,8 +3018,8 @@ const pedidoTieneFechasPreCargadas = Boolean(
                           key: 'impresion',
                           trazabilidadKey: 'impresion',
                           label: 'Prensa',
-                          responsable: impresionResponsable,
-                          setResponsable: setImpresionResponsable,
+                          responsable: prensaOffsetResponsable,
+                          setResponsable: setPrensaOffsetResponsable,
                         },
                         {
                           key: 'barnizado',
@@ -2962,7 +3095,15 @@ const pedidoTieneFechasPreCargadas = Boolean(
                         procesosOffsetSeleccionados.includes(proceso.key as OffsetProcessKey) && (
                         <tr key={proceso.key} className="odd:bg-white even:bg-gray-50">
                           <td className="px-2 py-2 border font-medium">{proceso.label}</td>
-                          <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={proceso.responsable} onChange={e => proceso.setResponsable(e.target.value)} /></td>
+                          <td className="px-2 py-2 border min-w-[180px]">
+                            <input
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              type="text"
+                              value={proceso.responsable}
+                              onChange={e => proceso.setResponsable(e.target.value)}
+                              placeholder="Responsable"
+                            />
+                          </td>
                           <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].fecha_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'fecha_inicio', e.target.value)} /></td>
                           <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].hora_inicio} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'hora_inicio', e.target.value)} /></td>
                           <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso[proceso.trazabilidadKey as keyof TrazabilidadProceso].fecha_fin} onChange={e => actualizarCampoTrazabilidad(proceso.trazabilidadKey as keyof TrazabilidadProceso, 'fecha_fin', e.target.value)} /></td>
@@ -2972,6 +3113,44 @@ const pedidoTieneFechasPreCargadas = Boolean(
                         </tr>
                         )
                       ))}
+                      {/* Liberación de Producto - siempre visible */}
+                      <tr className="bg-green-50">
+                        <td className="px-2 py-2 border font-medium">Liberación Producto</td>
+                        <td className="px-2 py-2 border min-w-[180px]">
+                          <input
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            type="text"
+                            value={liberacionProductoResponsable}
+                            onChange={e => setLiberacionProductoResponsable(e.target.value)}
+                            placeholder="Responsable"
+                          />
+                        </td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso.liberacion_producto.fecha_inicio} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_inicio', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso.liberacion_producto.hora_inicio} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_inicio', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" value={trazabilidadProceso.liberacion_producto.fecha_fin} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'fecha_fin', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" value={trazabilidadProceso.liberacion_producto.hora_fin} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'hora_fin', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.cantidad} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'cantidad', e.target.value)} /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.observaciones} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'observaciones', e.target.value)} /></td>
+                      </tr>
+                      {/* Facturado - siempre visible */}
+                      <tr className="bg-blue-50">
+                        <td className="px-2 py-2 border font-medium">Facturado</td>
+                        <td className="px-2 py-2 border min-w-[180px]">
+                          <input
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            type="text"
+                            value={facturadoResponsable}
+                            onChange={e => setFacturadoResponsable(e.target.value)}
+                            placeholder="Responsable"
+                          />
+                        </td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="date" /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="time" /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" /></td>
+                        <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" /></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -3112,11 +3291,11 @@ const pedidoTieneFechasPreCargadas = Boolean(
              <div className="flex justify-end gap-4">
                
                
-               {ordenId && (
+               {tipoOrdenSeleccionado === 'offset' && (
                  <button
                    type="button"
                    className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
-                   onClick={() => { if (ordenId) void verPDF(Number(ordenId)); }}
+                   onClick={() => { void guardarYVerPDF(); }}
                  >
                    Ver PDF/Imprimir
                  </button>

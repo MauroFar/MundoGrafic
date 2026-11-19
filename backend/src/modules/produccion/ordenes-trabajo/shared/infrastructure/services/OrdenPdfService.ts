@@ -747,6 +747,28 @@ export class OrdenPdfService {
     return Buffer.from(pdfBuffer);
   }
 
+  async generateOffsetPdfFromPayload(orden: any, detalle: any): Promise<Buffer> {
+    const [logoBase64] = await Promise.all([
+      this.readAssetBase64('images/logo-mundografic.png'),
+    ]);
+    const html = this.buildHtmlOffset(orden, detalle, logoBase64, '');
+    const browser = await puppeteer.launch({
+      headless: 'new' as any,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4', printBackground: true,
+      margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
+      scale: 1,
+      preferCSSPageSize: true,
+    });
+    await browser.close();
+    return Buffer.from(pdfBuffer);
+  }
+
   // ─── HELPERS TRAZABILIDAD ────────────────────────────────────────────────
 
   private parseTrazabilidad(raw: any): any {
@@ -830,7 +852,7 @@ export class OrdenPdfService {
     const filas = this.buildTrazabilidadRows(detalle, [
       { key:'preprensa', titulo:'Pre prensa', responsable: detalle.preprensa_responsable || detalle.preprensa, cantidadFinal: detalle.preprensa_cantidad_final },
       { key:'guillotinado', titulo:'Guillotinado', responsable: detalle.guillotinado_responsable || detalle.guillotinado, cantidadFinal: detalle.guillotinado_cantidad_final },
-      { key:'impresion', titulo:'Prensa', responsable: detalle.prensa_responsable || detalle.prensa || detalle.impresion, cantidadFinal: detalle.prensa_cantidad_final },
+      { key:'impresion', titulo:'Prensa', responsable: detalle.prensa_responsable || detalle.prensa, cantidadFinal: detalle.prensa_cantidad_final },
       { key:'barnizado', titulo:'Barnizado', responsable: detalle.barnizado_responsable || detalle.barnizado, cantidadFinal: detalle.barnizado_cantidad_final },
       { key:'plastificado', titulo:'Plastificado', responsable: detalle.laminado_responsable || detalle.plastificado, cantidadFinal: detalle.plastificado_cantidad_final },
       { key:'troquelado', titulo:'Troquelado', responsable: detalle.troquelado_flexible_responsable || detalle.troquelado, cantidadFinal: detalle.troquelado_cantidad_final },
@@ -853,11 +875,11 @@ export class OrdenPdfService {
 .tc{border:1px solid #d7d7d7;padding:5px 6px;font-size:10px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}.tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:72px;height:30px}`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
 <div class="hdr"><div>${logo ? `<img src="${logo}">` : '<strong>MUNDOGRAFIC</strong>'}</div>
-<div class="hdr-r"><div class="hdr-n">Orden de Trabajo OFFSET</div>
+<div style="text-align:center;flex:1"><div class="hdr-n">ORDEN DE TRABAJO - OFFSET</div></div>
+<div class="hdr-r">
 <div>Orden N°: <strong>${orden.numero_orden||''}</strong></div>
 <div>Cotización N°: ${orden.numero_cotizacion||''}</div>
 <div>Orden de Compra: ${orden.orden_compra||''}</div></div></div>
-<div class="tit">ORDEN DE TRABAJO - OFFSET</div>
 <div class="sec"><div class="sec-t">Información del Cliente</div><div class="sec-c">
 <div class="compact-grid">
   <div class="campo"><div class="lbl">CLIENTE</div><div class="val">${orden.nombre_cliente||''}</div></div>
@@ -877,46 +899,58 @@ export class OrdenPdfService {
   <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_cerrado_1 || detalle.tamano || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Material y Corte</div><div class="sec-c">
-<div class="grid2">
-  <div class="campo"><div class="lbl">Material</div><div class="val">${renderOffsetField('material', detalle.material || '')}</div></div>
-  <div class="campo"><div class="lbl">Corte de Material</div><div class="val">${renderOffsetField('material', detalle.corte_material || '')}</div></div>
-</div></div></div>
-<div class="sec"><div class="sec-t">Cantidad de Pliegos</div><div class="sec-c">
-<div class="grid3">
-  <div class="campo"><div class="lbl">Pliegos de Compra</div><div class="val">${renderOffsetField('pliegos', detalle.cantidad_pliegos_compra || '')}</div></div>
-  <div class="campo"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', detalle.exceso || '')}</div></div>
-  <div class="campo"><div class="lbl">Total</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
-</div></div></div>
+<div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:34%">
+    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px">Material</div>
+    <div style="border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word;margin-bottom:8px">${renderOffsetField('material', detalle.material || '')}</div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="width:60px"><div class="lbl">Tamaño Pliego</div><div class="val">${detalle.tamano_pliego || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Prod.</div><div class="val">${detalle.cabida_producto || ''}</div></div>
+      <div style="flex:1"><div class="lbl">Cant. Pliegos</div><div class="val">${renderOffsetField('pliegos', detalle.cantidad_pliegos_compra || '')}</div></div>
+      <div style="flex:1"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', detalle.exceso || '')}</div></div>
+    </div>
+  </div>
+  <div style="width:30%">
+    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Guillotina</div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="flex:1"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
+      <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${detalle.tamano_corte || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${detalle.cabida_corte || ''}</div></div>
+    </div>
+  </div>
+  <div style="flex:1">
+    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Prensas</div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="flex:1"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.formatos_a_imprimir || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${detalle.cabida_imp_formato || ''}</div></div>
+      <div style="flex:1"><div class="lbl">Total Impresión</div><div class="val">${detalle.total_impresion || ''}</div></div>
+    </div>
+  </div>
+</div>
+</div></div>
+<div class="sec"><div class="sec-t">Prensa y Observaciones</div><div class="sec-c">
+<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+  <div style="min-width:140px;max-width:180px"><div class="lbl">Prensa</div><div class="val">${renderOffsetField('prensa', detalle.prensa_seleccionada || '')}</div></div>
+  <div style="flex:1"><div class="lbl">Observaciones Generales</div><div class="val">${renderOffsetField('prensa', detalle.observaciones || '')}</div></div>
+</div>
+<div><div class="lbl">Notas Adicionales</div><div class="val">${renderOffsetField('prensa', detalle.notas_observaciones || orden.notas_observaciones || '')}</div></div>
+</div></div>
 <div class="sec"><div class="sec-t">Impresión y Acabados</div><div class="sec-c">
 <div class="grid2">
-  <div class="campo"><div class="lbl">Impresión</div><div class="val">${renderOffsetField('impresion', detalle.impresion || '')}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_impresion || '')}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Acabados</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_acabados || '')}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val">${renderOffsetField('impresion', detalle.instrucciones_empacado || '')}</div></div>
-</div></div></div>
-<div class="sec"><div class="sec-t">Prensa y Observaciones</div><div class="sec-c">
-<div class="grid3">
-  <div class="campo"><div class="lbl">Seleccionar Prensa</div><div class="val">${renderOffsetField('prensa', detalle.prensa_seleccionada || detalle.prensa || '')}</div></div>
-  <div class="campo"><div class="lbl">Observaciones Generales</div><div class="val">${renderOffsetField('prensa', detalle.observaciones || orden.notas_observaciones || '')}</div></div>
-  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val">${renderOffsetField('prensa', orden.notas_observaciones || detalle.notas_observaciones || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_impresion || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Acabados y Terminados</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_acabados || '')}</div></div>
+  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_empacado || '')}</div></div>
+  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.impresion || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
-<div class="fila" style="margin-bottom:6px"><div class="campo" style="flex:1"><div class="lbl">Vendedor</div><div class="val">${detalle.vendedor || ''}</div></div></div>
-<table class="trz"><thead><tr>
-<th class="tc th">Proceso</th><th class="tc th">Responsable</th><th class="tc th">F. Inicio</th>
-<th class="tc th">H. Inicio</th><th class="tc th">F. Fin</th><th class="tc th">H. Fin</th>
-<th class="tc th">Cantidad</th><th class="tc th">Observaciones</th><th class="tc th">Firma</th>
-</tr></thead><tbody>${filas}</tbody></table></div></div>
-<div class="sec"><div class="sec-t">Liberación de Producto</div><div class="sec-c">
-<table class="trz"><thead><tr>
-<th class="tc th">Responsable</th><th class="tc th">Fecha</th><th class="tc th">Hora</th>
-<th class="tc th">Cantidad</th><th class="tc th">Observaciones</th><th class="tc th">Firma</th>
-</tr></thead><tbody><tr>
-<td class="tc">${detalle.liberacion_producto || ''}</td>
-<td class="tc">${lib.fecha_inicio || ''}</td><td class="tc">${lib.hora_inicio || ''}</td>
-<td class="tc">${lib.cantidad || detalle.liberacion_producto_cantidad_final || ''}</td>
-<td class="tc to">${lib.observaciones || ''}</td><td class="tc tf"></td>
-</tr></tbody></table></div></div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
+  <div><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor || ''}</div></div>
+  <div><div class="lbl">PREPRENSA</div><div class="val">${detalle.preprensa_responsable || detalle.preprensa || ''}</div></div>
+  <div><div class="lbl">PRENSA</div><div class="val">${detalle.prensa_responsable || detalle.prensa || ''}</div></div>
+  <div><div class="lbl">TERMINADOS</div><div class="val">${detalle.terminado_responsable || detalle.terminados || detalle.terminado || ''}</div></div>
+  <div><div class="lbl">FACTURADO</div><div class="val">${detalle.facturado || ''}</div></div>
+</div>
+</div></div>
 </body></html>`;
   }
 

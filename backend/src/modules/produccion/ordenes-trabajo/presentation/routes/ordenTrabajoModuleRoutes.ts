@@ -574,6 +574,17 @@ export function createOrdenesTrabajoModuleRoutes(client: Client) {
     }
   });
 
+  router.post('/offset/preview-data', authRequired(), async (req: any, res: any) => {
+    try {
+      const { orden, detalle } = req.body || {};
+      if (!orden || !detalle) return res.status(400).json({ success: false, error: 'Faltan datos' });
+      const pdfBuffer = await pdfService.generateOffsetPdfFromPayload(orden, detalle);
+      res.json({ success: true, pdf: `data:application/pdf;base64,${pdfBuffer.toString('base64')}` });
+    } catch (err) {
+      handle(res, err);
+    }
+  });
+
   // =========================================================================
   // PDF — DESCARGA, PREVIEW Y CORREO
   // =========================================================================
