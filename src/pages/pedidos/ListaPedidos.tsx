@@ -77,14 +77,18 @@ const fasesPermitidas = [
   "Entrega incompleta",
 ] as const;
 
-const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => ({
-  id, servidor_id: null, cliente_id: null, orden_trabajo_id: null, tipo,
-  aprobacion_desde_ot: false,
-  fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
-  fecha_aprobacion: "", fecha_entrega: "", responsable: "", cliente: "",
-  descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
-  estado: "", fase: "", no_factura: "", observaciones: "",
-});
+const crearFilaVacia = (id: number, tipo: TipoPedido): FilaPedido => {
+  const nombreCompleto = localStorage.getItem("nombre_completo") ||
+    [localStorage.getItem("nombre"), localStorage.getItem("apellido")].filter(Boolean).join(" ").trim();
+  return {
+    id, servidor_id: null, cliente_id: null, orden_trabajo_id: null, tipo,
+    aprobacion_desde_ot: false,
+    fecha_ingreso_pedido: new Date().toISOString().slice(0, 10),
+    fecha_aprobacion: "", fecha_entrega: "", responsable: nombreCompleto, cliente: "",
+    descripcion_producto: "", cantidad: "", no_oc: "", no_op: "",
+    estado: "", fase: "", no_factura: "", observaciones: "",
+  };
+};
 
 const formatearCantidadDesdeBackend = (valor: unknown): string => {
   if (valor === null || valor === undefined || valor === "") return "";
@@ -728,6 +732,8 @@ const ListaPedidos: React.FC = () => {
         pedidoCantidad: fila.cantidad,
         pedidoFechaAprobacion: fila.fecha_aprobacion || null,
         pedidoFechaEntrega: fila.fecha_entrega || null,
+        pedidoNoOc: fila.no_oc || null,
+        pedidoObservaciones: fila.observaciones || null,
       },
     });
   };

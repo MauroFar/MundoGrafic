@@ -1109,6 +1109,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       const pedidoIdState = (location.state as any)?.pedidoId ?? null;
       const pedidoFechaAprobacion = (location.state as any)?.pedidoFechaAprobacion ?? null;
       const pedidoFechaEntrega = (location.state as any)?.pedidoFechaEntrega ?? null;
+      const pedidoNoOc = (location.state as any)?.pedidoNoOc ?? null;
+      const pedidoObservaciones = (location.state as any)?.pedidoObservaciones ?? null;
 
       if (clienteIdState) {
         void cargarClientePorId(clienteIdState);
@@ -1159,6 +1161,9 @@ const OrdendeTrabajoEditar: React.FC = () => {
         artes_aprobados: Boolean(pedidoFechaAprobacion || pedidoFechaEntrega),
         fecha_entrega: pedidoFechaEntrega ? String(pedidoFechaEntrega).slice(0, 10) : '',
         fecha_aprobacion_artes: pedidoFechaAprobacion ? String(pedidoFechaAprobacion).slice(0, 10) : '',
+        orden_compra: pedidoNoOc ? String(pedidoNoOc) : '',
+        tipo_orden: (location.state as any)?.tipoOrden || 'offset',
+        detalle: pedidoObservaciones ? { observaciones: String(pedidoObservaciones) } : undefined,
       } as OrdenData);
       const token = localStorage.getItem('token');
       fetch(`${apiUrl}/api/ordenTrabajo/proximoNumero`, {
@@ -2405,7 +2410,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
                 <Logo/>
               </div>
               <h2 className="text-xl font-bold text-gray-800 flex-1 text-center">
-                Orden de Trabajo
+                Orden de Trabajo {tipoOrdenSeleccionado === 'digital' ? 'Digital' : 'Offset'}
               </h2>
             </div>
 
