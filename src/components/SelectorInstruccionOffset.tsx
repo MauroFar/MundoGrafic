@@ -149,7 +149,7 @@ const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
           suppressContentEditableWarning
           spellCheck={false}
           className={`${inputClassName} pr-10`}
-          style={{ color: '#111827', whiteSpace: 'nowrap' }}
+          style={{ color: '#111827', whiteSpace: 'pre-wrap' }}
           onFocus={onFocus}
           onInput={(event) => onChange(event.currentTarget.innerHTML)}
           onMouseUp={onFocus}

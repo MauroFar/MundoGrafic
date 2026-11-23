@@ -603,6 +603,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   const { cotizacionId: cotizacionIdParam, ordenId } = useParams();
   const [searchParams] = useSearchParams();
+  const modoSoloLectura = searchParams.get('modo') === 'lectura';
   const cotizacionId = cotizacionIdParam || searchParams.get('cotizacionId') || undefined;
   const navigate = useNavigate();
   const location = useLocation();
@@ -1852,6 +1853,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
 
   // Modificar crearOrdenTrabajo para mostrar modal de éxito y redirigir
   const crearOrdenTrabajo = async (forzarSinArtes = false) => {
+    if (modoSoloLectura) return;
     console.log('🚀 FRONTEND - Iniciando creación de orden');
     console.log('🔍 FRONTEND - Verificando que la función se ejecute');
     
@@ -2036,6 +2038,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
 
   // Función para mostrar modal de confirmación de actualización
   const confirmarActualizacion = () => {
+    if (modoSoloLectura) return;
     if (!puedeActualizarOrden) {
       toast.info('Esta orden ya fue enviada a producción y solo un usuario admin puede actualizarla. Usa Crear como Nueva.');
       return;
@@ -2044,6 +2047,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
   };
   // Función para ejecutar la actualización después de confirmar
   const ejecutarActualizacion = async () => {
+    if (modoSoloLectura) return;
     setShowConfirmUpdateModal(false);
     console.log('🚀 FRONTEND - Iniciando actualización de orden');
     console.log('📋 FRONTEND - ordenId:', ordenId);
@@ -2190,11 +2194,13 @@ const pedidoTieneFechasPreCargadas = Boolean(
 
   // Función para mostrar modal de confirmación de crear como nueva
   const confirmarCrearComoNueva = () => {
+    if (modoSoloLectura) return;
     setShowConfirmCreateNewModal(true);
   };
 
   // Función para ejecutar la creación como nueva después de confirmar
   const ejecutarCrearComoNueva = async (forzarSinArtes = false) => {
+    if (modoSoloLectura) return;
     setShowConfirmCreateNewModal(false);
     console.log('🚀 FRONTEND - Iniciando creación de orden como nueva');
     console.log('📋 FRONTEND - ordenId actual:', ordenId);
@@ -2397,8 +2403,24 @@ const pedidoTieneFechasPreCargadas = Boolean(
     return 'Vas a crear una orden nueva sin artes aprobados.';
   };
 
+  if ((ordenId || cotizacionId) && !ordenData) {
+    return <p>Cargando orden de trabajo...</p>;
+  }
+
   return (
     <>
+      {modoSoloLectura && (
+        <div className="fixed top-3 right-3 z-[100] flex items-center gap-3 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          <span>Vista de solo lectura</span>
+          <button
+            type="button"
+            className="rounded bg-white/15 px-3 py-1 hover:bg-white/25"
+            onClick={() => navigate(-1)}
+          >
+            Volver
+          </button>
+        </div>
+      )}
       {/* Modal de selección de tipo de orden (solo creación) */}
       {showTipoOrdenModal && !ordenId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2422,7 +2444,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
           </div>
         </div>
       )}
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gray-100" inert={modoSoloLectura}>
         <div className="container mx-auto px-4 py-4">
           {/* Encabezado */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
@@ -3317,7 +3339,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
           </div>
 
                      {/* Botones */}
-           <div className="bg-white rounded-lg shadow-md p-4">
+           {!modoSoloLectura && <div className="bg-white rounded-lg shadow-md p-4">
              <div className="flex justify-end gap-4">
                
                
@@ -3368,8 +3390,8 @@ const pedidoTieneFechasPreCargadas = Boolean(
                >
                  Cancelar
                </button>
-             </div>
            </div>
+           </div>}
         </div>
       </div>
 
