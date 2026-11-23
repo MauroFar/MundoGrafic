@@ -29,21 +29,6 @@ const mensajeDeError = async (response: Response) => {
   return data.error || 'No se pudo completar la operación';
 };
 
-const convertirHtmlATexto = (html: string) => {
-  const documento = new DOMParser().parseFromString(html, 'text/html');
-  return documento.body.textContent || '';
-};
-
-const convertirTextoAHtml = (texto: string) =>
-  texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n/g, '<br>');
-
 const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
   categoria,
   fieldKey,
@@ -113,7 +98,7 @@ const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
 
   const abrirModalAgregar = () => {
     setNombre('');
-    setDescripcion(convertirHtmlATexto(value));
+    setDescripcion('');
     setError('');
     setMostrarDropdown(false);
     setMostrarModal(true);
@@ -135,13 +120,13 @@ const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
         },
         body: JSON.stringify({
           nombre: nombreNormalizado,
-          descripcion: descripcionNormalizada ? convertirTextoAHtml(descripcionNormalizada) : null,
+          descripcion: descripcionNormalizada || null,
         }),
       });
       if (!response.ok) throw new Error(await mensajeDeError(response));
       const creada: InstruccionOffset = await response.json();
       setInstrucciones((actuales) => [...actuales, creada].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      onChange(creada.descripcion || '');
+      onChange(creada.nombre);
       setMostrarModal(false);
       setMostrarDropdown(true);
       setNombre('');
@@ -164,7 +149,7 @@ const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
           suppressContentEditableWarning
           spellCheck={false}
           className={`${inputClassName} pr-10`}
-          style={{ color: '#111827', whiteSpace: 'pre-wrap' }}
+          style={{ color: '#111827', whiteSpace: 'nowrap' }}
           onFocus={onFocus}
           onInput={(event) => onChange(event.currentTarget.innerHTML)}
           onMouseUp={onFocus}
@@ -196,7 +181,7 @@ const SelectorInstruccionOffset: React.FC<SelectorInstruccionOffsetProps> = ({
                 key={instruccion.id}
                 className="block w-full px-3 py-2 text-left text-sm border-b border-gray-100 hover:bg-gray-50"
                 onClick={() => {
-                  onChange(instruccion.descripcion || '');
+                  onChange(instruccion.nombre);
                   setMostrarDropdown(false);
                 }}
               >

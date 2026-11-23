@@ -156,8 +156,9 @@ const RichTextOffsetField: React.FC<{
   placeholder?: string;
   rows?: number;
   isTextarea?: boolean;
+  oneLine?: boolean;
   inputClassName?: string;
-}> = ({ label, fieldKey, value, onChange, onFocus, placeholder, rows, isTextarea = false, inputClassName }) => {
+}> = ({ label, fieldKey, value, onChange, onFocus, placeholder, rows, isTextarea = false, oneLine = false, inputClassName }) => {
   const editorRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -182,7 +183,7 @@ const RichTextOffsetField: React.FC<{
           : 'w-full min-h-[38px] px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500')}
         style={{
           color: '#111827',
-          whiteSpace: isTextarea ? 'pre-wrap' : 'normal',
+          whiteSpace: oneLine ? 'nowrap' : isTextarea ? 'pre-wrap' : 'normal',
         }}
         onFocus={onFocus}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
@@ -685,7 +686,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setInstruccionesImpresion}
               onFocus={() => setCampoEstiloActivo('instrucciones_impresion')}
               placeholder="Instrucciones específicas..."
-              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+              inputClassName="w-full h-[38px] min-h-[38px] overflow-x-auto overflow-y-hidden px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
 
@@ -698,7 +699,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setInstruccionesAcabados}
               onFocus={() => setCampoEstiloActivo('instrucciones_acabados')}
               placeholder="Instrucciones de acabados y terminados..."
-              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+              inputClassName="w-full h-[38px] min-h-[38px] overflow-x-auto overflow-y-hidden px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
             />
           </div>
 
@@ -711,7 +712,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setInstruccionesEmpacado}
               onFocus={() => setCampoEstiloActivo('instrucciones_empacado')}
               placeholder="Instrucciones de empacado..."
-              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+              inputClassName="w-full h-[38px] min-h-[38px] overflow-x-auto overflow-y-hidden px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
             />
           </div>
 
@@ -722,8 +723,9 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
             onChange={setImpresion}
             onFocus={() => setCampoEstiloActivo('impresion')}
             isTextarea={true}
+            oneLine={true}
             placeholder="Notas adicionales..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+            inputClassName="w-full h-[38px] min-h-[38px] overflow-x-auto overflow-y-hidden px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
           />
         </div>
       </div>
