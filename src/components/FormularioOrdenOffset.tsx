@@ -1,5 +1,6 @@
 import React from 'react';
 import SelectorPrensa from './SelectorPrensa';
+import SelectorInstruccionOffset from './SelectorInstruccionOffset';
 
 type EstiloSeccionOffset = {
   bold: boolean;
@@ -103,6 +104,8 @@ interface FormularioOrdenOffsetProps {
   setMaterialEspesor: (value: string) => void;
   corteMaterial: string;
   setCorteMaterial: (value: string) => void;
+  tamanoPliego: string;
+  setTamanoPliego: (value: string) => void;
 
   // Cantidad de Pliegos
   cabidaProducto: string;
@@ -116,6 +119,8 @@ interface FormularioOrdenOffsetProps {
   // Guillotina
   cabidaCorte: string;
   setCabidaCorte: (value: string) => void;
+  guillotinaTamanoCorte: string;
+  setGuillotinaTamanoCorte: (value: string) => void;
   formatosAImprimir: string;
   cabidaImpFormato: string;
   setCabidaImpFormato: (value: string) => void;
@@ -203,6 +208,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   setMaterialEspesor,
   corteMaterial,
   setCorteMaterial,
+  tamanoPliego,
+  setTamanoPliego,
   cabidaProducto,
   setCabidaProducto,
   cantidadPliegosCompra,
@@ -212,6 +219,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   totalPliegos,
   cabidaCorte,
   setCabidaCorte,
+  guillotinaTamanoCorte,
+  setGuillotinaTamanoCorte,
   formatosAImprimir,
   cabidaImpFormato,
   setCabidaImpFormato,
@@ -450,6 +459,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
                   type="text"
                   className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   placeholder="65x90"
+                  value={tamanoPliego}
+                  onChange={(e) => setTamanoPliego(e.target.value)}
                 />
               </div>
               <div>
@@ -506,6 +517,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
                   type="text"
                   className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   placeholder="65x90"
+                  value={guillotinaTamanoCorte}
+                  onChange={(e) => setGuillotinaTamanoCorte(e.target.value)}
                 />
               </div>
               <div>
@@ -663,38 +676,44 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RichTextOffsetField
-            label="Instrucciones de Impresión"
-            fieldKey="instrucciones_impresion"
-            value={instruccionesImpresion}
-            onChange={setInstruccionesImpresion}
-            onFocus={() => setCampoEstiloActivo('instrucciones_impresion')}
-            isTextarea={true}
-            placeholder="Instrucciones específicas..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
-          />
+          <div>
+            <SelectorInstruccionOffset
+              categoria="impresion"
+              fieldKey="instrucciones_impresion"
+              label="Instrucciones de Impresión"
+              value={instruccionesImpresion}
+              onChange={setInstruccionesImpresion}
+              onFocus={() => setCampoEstiloActivo('instrucciones_impresion')}
+              placeholder="Instrucciones específicas..."
+              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 resize-none"
+            />
+          </div>
 
-          <RichTextOffsetField
-            label="Instrucciones de Acabados y Terminados"
-            fieldKey="instrucciones_acabados"
-            value={instruccionesAcabados}
-            onChange={setInstruccionesAcabados}
-            onFocus={() => setCampoEstiloActivo('instrucciones_acabados')}
-            isTextarea={true}
-            placeholder="Instrucciones de acabados y terminados..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-          />
+          <div>
+            <SelectorInstruccionOffset
+              categoria="acabados"
+              fieldKey="instrucciones_acabados"
+              label="Instrucciones de Acabados y Terminados"
+              value={instruccionesAcabados}
+              onChange={setInstruccionesAcabados}
+              onFocus={() => setCampoEstiloActivo('instrucciones_acabados')}
+              placeholder="Instrucciones de acabados y terminados..."
+              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+            />
+          </div>
 
-          <RichTextOffsetField
-            label="Instrucciones de Empacado"
-            fieldKey="instrucciones_empacado"
-            value={instruccionesEmpacado}
-            onChange={setInstruccionesEmpacado}
-            onFocus={() => setCampoEstiloActivo('instrucciones_empacado')}
-            isTextarea={true}
-            placeholder="Instrucciones de empacado..."
-            inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
-          />
+          <div>
+            <SelectorInstruccionOffset
+              categoria="empacado"
+              fieldKey="instrucciones_empacado"
+              label="Instrucciones de Empacado"
+              value={instruccionesEmpacado}
+              onChange={setInstruccionesEmpacado}
+              onFocus={() => setCampoEstiloActivo('instrucciones_empacado')}
+              placeholder="Instrucciones de empacado..."
+              inputClassName="w-full min-h-[88px] px-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+            />
+          </div>
 
           <RichTextOffsetField
             label="Notas Adicionales"

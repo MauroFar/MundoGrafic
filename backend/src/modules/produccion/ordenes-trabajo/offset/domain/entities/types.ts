@@ -16,6 +16,14 @@ export interface DetalleOrdenOffsetData {
   corte_material?: string | null;
   cantidad_pliegos_compra?: number | null;
   exceso?: number | null;
+  total_pliegos?: string | null;
+  tamano_pliego?: string | null;
+  cabida_producto?: string | null;
+  guillotina_tamano_corte?: string | null;
+  guillotina_cabida_corte?: string | null;
+  prensas_pliegos_imprimir?: string | null;
+  prensas_cabida_impresion?: string | null;
+  prensas_total_impresion?: string | null;
   pliegos_impresos?: number | null;
   tintas_frente?: string | null;
   tintas_reverso?: string | null;

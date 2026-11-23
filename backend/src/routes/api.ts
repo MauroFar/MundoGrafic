@@ -15,6 +15,7 @@ import { createFirmasRoutes }              from "../presentation/routes/firmas/f
 // ── Módulos migrados a arquitectura limpia ────────────────────────────────────
 import { createRucRoutes }                from "../presentation/routes/rucs/rucRoutes";
 import { createPrensaRoutes }             from "../presentation/routes/prensas/prensaRoutes";
+import { createInstruccionOffsetRoutes }  from "../presentation/routes/instruccionesOffset/instruccionOffsetRoutes";
 import { createReporteTrabajoRoutes }     from "../presentation/routes/reportesTrabajo/reporteTrabajoRoutes";
 import { createRegistroOperarioRoutes }   from "../presentation/routes/registrosOperario/registroOperarioRoutes";
 import { createListaPedidoRoutes }        from "../presentation/routes/listaPedidos/listaPedidoRoutes";
@@ -40,6 +41,7 @@ export default (client: Client) => {
   // ── Catálogos / referencia ──────────────────────────────────────────────────
   router.use("/rucs",    createRucRoutes(client));
   router.use("/prensas", createPrensaRoutes(client));
+  router.use("/instrucciones-offset", createInstruccionOffsetRoutes(client));
 
   // ── Clientes ────────────────────────────────────────────────────────────────
   router.use("/clientes", createClienteRoutes(client));

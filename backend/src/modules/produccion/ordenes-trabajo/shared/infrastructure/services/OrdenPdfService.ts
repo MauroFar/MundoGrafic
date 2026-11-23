@@ -920,16 +920,16 @@ export class OrdenPdfService {
     <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Guillotina</div>
     <div style="display:flex;gap:4px;align-items:flex-end">
       <div style="width:60px"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
-      <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${detalle.tamano_corte || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${detalle.cabida_corte || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${detalle.guillotina_tamano_corte || detalle.tamano_corte || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${detalle.guillotina_cabida_corte || detalle.cabida_corte || ''}</div></div>
     </div>
   </div>
   <div style="flex:1">
     <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Prensas</div>
     <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="width:60px"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.formatos_a_imprimir || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${detalle.cabida_imp_formato || ''}</div></div>
-      <div style="width:60px"><div class="lbl">Total Impresión</div><div class="val">${detalle.total_impresion || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.prensas_pliegos_imprimir || detalle.formatos_a_imprimir || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${detalle.prensas_cabida_impresion || detalle.cabida_imp_formato || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Total Impresión</div><div class="val">${detalle.prensas_total_impresion || detalle.total_impresion || ''}</div></div>
     </div>
   </div>
 </div>

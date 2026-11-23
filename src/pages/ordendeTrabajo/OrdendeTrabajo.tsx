@@ -507,6 +507,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [tipoPapelExceso, setTipoPapelExceso] = useState<string>('');
   const [guillotinaPliegosCortar, setGuillotinaPliegosCortar] = useState<string>('');
   const [guillotinaTamanoCorte, setGuillotinaTamanoCorte] = useState<string>('');
+  const [tamanoPliego, setTamanoPliego] = useState<string>('');
   const [guillotinaCabidaCorte, setGuillotinaCabidaCorte] = useState<string>('');
   const [prensasPliegosImprimir, setPrensasPliegosImprimir] = useState<string>('');
   const [prensasCabidaImpresion, setPrensasCabidaImpresion] = useState<string>('');
@@ -826,9 +827,11 @@ const OrdendeTrabajoEditar: React.FC = () => {
           detalle: {
             material, codigo_producto, espesor_material: materialEspesor,
             corte_material: corteMaterial,
+            tamano_pliego: tamanoPliego,
             cabida_producto: cabidaProducto,
             cantidad_pliegos_compra: cantidadPliegosCompra,
             exceso, total_pliegos: totalPliegos,
+            guillotina_tamano_corte: guillotinaTamanoCorte,
             cabida_corte: cabidaCorte,
             formatos_a_imprimir: formatosAImprimir,
             cabida_imp_formato: cabidaImpFormato,
@@ -992,6 +995,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTipoPapelExceso('');
       setGuillotinaPliegosCortar('');
       setGuillotinaTamanoCorte('');
+      setTamanoPliego('');
       setGuillotinaCabidaCorte('');
       setPrensasPliegosImprimir('');
       setPrensasCabidaImpresion('');
@@ -1310,6 +1314,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setTipoPapelExceso(ordenData.detalle?.tipo_papel_exceso || '');
       setGuillotinaPliegosCortar(ordenData.detalle?.guillotina_pliegos_cortar || '');
       setGuillotinaTamanoCorte(ordenData.detalle?.guillotina_tamano_corte || '');
+      setTamanoPliego(ordenData.detalle?.tamano_pliego || '');
       setGuillotinaCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || '');
       setPrensasPliegosImprimir(ordenData.detalle?.prensas_pliegos_imprimir || '');
       setPrensasCabidaImpresion(ordenData.detalle?.prensas_cabida_impresion || '');
@@ -1345,10 +1350,10 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setExceso(ordenData.detalle?.exceso || '');
         setTotalPliegos(ordenData.detalle?.total_pliegos || '');
         setCabidaProducto(ordenData.detalle?.cabida_producto || '');
-        setCabidaCorte(ordenData.detalle?.cabida_corte || '');
-        setFormatosAImprimir(ordenData.detalle?.formatos_a_imprimir || '');
-        setCabidaImpFormato(ordenData.detalle?.cabida_imp_formato || '');
-        setTotalImpresion(ordenData.detalle?.total_impresion || '');
+        setCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || ordenData.detalle?.cabida_corte || '');
+        setFormatosAImprimir(ordenData.detalle?.prensas_pliegos_imprimir || ordenData.detalle?.formatos_a_imprimir || '');
+        setCabidaImpFormato(ordenData.detalle?.prensas_cabida_impresion || ordenData.detalle?.cabida_imp_formato || '');
+        setTotalImpresion(ordenData.detalle?.prensas_total_impresion || ordenData.detalle?.total_impresion || '');
         setTamano(ordenData.detalle?.tamano || '');
         setTamanoAbierto1(ordenData.detalle?.tamano_abierto_1 || '');
         setTamanoCerrado1(ordenData.detalle?.tamano_cerrado_1 || '');
@@ -1965,10 +1970,12 @@ const pedidoTieneFechasPreCargadas = Boolean(
         codigo_producto: codigo_producto,
         espesor_material: materialEspesor,
         corte_material: corteMaterial,
+        tamano_pliego: tamanoPliego,
         cabida_producto: cabidaProducto,
         cantidad_pliegos_compra: cantidadPliegosCompra,
         exceso: exceso,
         total_pliegos: totalPliegos,
+        guillotina_tamano_corte: guillotinaTamanoCorte,
         cabida_corte: cabidaCorte,
         formatos_a_imprimir: formatosAImprimir,
         cabida_imp_formato: cabidaImpFormato,
@@ -2136,9 +2143,16 @@ const pedidoTieneFechasPreCargadas = Boolean(
             codigo_producto: codigo_producto,
             espesor_material: materialEspesor,
             corte_material: corteMaterial,
+            tamano_pliego: tamanoPliego,
             cantidad_pliegos_compra: cantidadPliegosCompra,
             exceso: exceso,
             total_pliegos: totalPliegos,
+            guillotina_tamano_corte: guillotinaTamanoCorte,
+            cabida_producto: cabidaProducto,
+            cabida_corte: cabidaCorte,
+            formatos_a_imprimir: formatosAImprimir,
+            cabida_imp_formato: cabidaImpFormato,
+            total_impresion: totalImpresion,
             tamano: tamano,
             tamano_abierto_1: tamanoAbierto1,
             tamano_cerrado_1: tamanoCerrado1,
@@ -2291,9 +2305,16 @@ const pedidoTieneFechasPreCargadas = Boolean(
           material: material,
           codigo_producto: codigo_producto,
           corte_material: corteMaterial,
+          tamano_pliego: tamanoPliego,
           cantidad_pliegos_compra: cantidadPliegosCompra,
           exceso: exceso,
           total_pliegos: totalPliegos,
+          guillotina_tamano_corte: guillotinaTamanoCorte,
+          cabida_producto: cabidaProducto,
+          cabida_corte: cabidaCorte,
+          formatos_a_imprimir: formatosAImprimir,
+          cabida_imp_formato: cabidaImpFormato,
+          total_impresion: totalImpresion,
           tamano: tamano,
           tamano_abierto_1: tamanoAbierto1,
           tamano_cerrado_1: tamanoCerrado1,
@@ -2642,6 +2663,8 @@ const pedidoTieneFechasPreCargadas = Boolean(
               setMaterialEspesor={setMaterialEspesor}
               corteMaterial={corteMaterial}
               setCorteMaterial={setCorteMaterial}
+              tamanoPliego={tamanoPliego}
+              setTamanoPliego={setTamanoPliego}
               cabidaProducto={cabidaProducto}
               setCabidaProducto={setCabidaProducto}
               cantidadPliegosCompra={cantidadPliegosCompra}
@@ -2651,6 +2674,8 @@ const pedidoTieneFechasPreCargadas = Boolean(
               totalPliegos={totalPliegos}
               cabidaCorte={cabidaCorte}
               setCabidaCorte={setCabidaCorte}
+              guillotinaTamanoCorte={guillotinaTamanoCorte}
+              setGuillotinaTamanoCorte={setGuillotinaTamanoCorte}
               formatosAImprimir={formatosAImprimir}
               cabidaImpFormato={cabidaImpFormato}
               setCabidaImpFormato={setCabidaImpFormato}
