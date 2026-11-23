@@ -155,6 +155,7 @@ ordenes-trabajo/
 - `DELETE /:id` - Eliminar orden
 
 ### Digital
+- `POST /digital/preview-data` - Preview del PDF digital con los datos actuales del formulario
 - `PUT /:id` - Actualizar orden digital (con detalles y productos)
 - `PUT /aprobar/:id` - Aprobar orden digital
 - `PUT /enviarProduccion/:id` - Enviar a producción

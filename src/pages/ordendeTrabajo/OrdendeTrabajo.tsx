@@ -263,13 +263,20 @@ const normalizarProcesosOffsetSeleccionados = (valor: any): OffsetProcessKey[] =
 const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
   if (!valor) {
     return {
+      preprensa: '',
       guillotinado: '',
+      impresion: '',
+      barnizado: '',
+      plastificado: '',
+      troquelado: '',
       pegado: '',
       encolado: '',
       grapado: '',
       anillado: '',
       estampado: '',
+      terminado: '',
       terminados_externos: '',
+      liberacion_producto: '',
     };
   }
 
@@ -283,13 +290,20 @@ const normalizarResponsablesOffsetPersonalizados = (valor: any) => {
 
   const personalizados = parsed?.responsables_offset_personalizados || {};
   return {
+    preprensa: String(personalizados.preprensa || ''),
     guillotinado: String(personalizados.guillotinado || ''),
+    impresion: String(personalizados.impresion || ''),
+    barnizado: String(personalizados.barnizado || ''),
+    plastificado: String(personalizados.plastificado || ''),
+    troquelado: String(personalizados.troquelado || ''),
     pegado: String(personalizados.pegado || ''),
     encolado: String(personalizados.encolado || ''),
     grapado: String(personalizados.grapado || ''),
     anillado: String(personalizados.anillado || ''),
     estampado: String(personalizados.estampado || ''),
+    terminado: String(personalizados.terminado || ''),
     terminados_externos: String(personalizados.terminados_externos || ''),
+    liberacion_producto: String(personalizados.liberacion_producto || ''),
   };
 };
 
@@ -680,13 +694,20 @@ const OrdendeTrabajoEditar: React.FC = () => {
     ...trazabilidadProceso,
     procesos_offset_seleccionados: procesosOffsetSeleccionados,
     responsables_offset_personalizados: {
+      preprensa: preprensaResponsable,
       guillotinado: guillotinadoResponsable,
+      impresion: prensaOffsetResponsable,
+      barnizado: barnizadoResponsable,
+      plastificado: laminadoResponsable,
+      troquelado: troqueladoFlexibleResponsable,
       pegado: pegadoResponsable,
       encolado: encoladoResponsable,
       grapado: grapadoResponsable,
       anillado: anilladoResponsable,
       estampado: estampadoResponsable,
+      terminado: terminadoResponsable,
       terminados_externos: terminadosExternosResponsable,
+      liberacion_producto: liberacionProductoResponsable,
     },
   });
 
@@ -808,7 +829,70 @@ const OrdendeTrabajoEditar: React.FC = () => {
         ? calcularTotalCantidadDigital(productosDigital)
         : cantidad;
 
-      const res = await fetch(`${apiUrl}/api/ordenTrabajo/offset/preview-data`, {
+      const esDigital = tipoOrdenSeleccionado === 'digital';
+      const detallePreview = esDigital ? {
+        productos_digital: productosDigital.map((producto, index) => ({
+          ...producto,
+          info_tecnica: infoTecnicaProductosDigital.find((item) => item.productoIndex === index) ?? null,
+        })),
+        adherencia,
+        material: materialDigital,
+        proveedor_material: proveedorMaterial,
+        impresion: impresionDigital,
+        tipo_impresion: tipoImpresion,
+        troquel,
+        codigo_troquel: codigoTroquel,
+        lote_material: loteMaterial,
+        lote_produccion: loteProduccion,
+        terminado_etiqueta: terminadoEtiqueta,
+        terminados_especiales: terminadosEspeciales,
+        cantidad_por_rollo: cantidadPorRollo,
+        observaciones: observacionesDigital,
+        espesor: espesorDigital,
+        vendedor,
+        preprensa_responsable: preprensaResponsable,
+        impresion_responsable: impresionResponsable,
+        laminado_responsable: laminadoResponsable,
+        barnizado_responsable: barnizadoResponsable,
+        troquelado_flexible_responsable: troqueladoFlexibleResponsable,
+        troquelado_plano_responsable: troqueladoPlanoResponsable,
+        rebobinado_responsable: rebobinadoResponsable,
+        refilado_termoencogible_responsable: refiladoTermoencogibleResponsable,
+        sellado_termoencogible_responsable: selladoTermoencogibleResponsable,
+        corte_termoencogible_responsable: corteTermoencogibleResponsable,
+        terminado_responsable: terminadoResponsable,
+        liberacion_producto: liberacionProductoResponsable,
+        facturado: facturadoResponsable || null,
+        trazabilidad_proceso: construirTrazabilidadParaPayload(),
+      } : {
+        material, codigo_producto, espesor_material: materialEspesor,
+        corte_material: corteMaterial,
+        tamano_pliego: tamanoPliego,
+        cabida_producto: cabidaProducto,
+        cantidad_pliegos_compra: cantidadPliegosCompra,
+        exceso, total_pliegos: totalPliegos,
+        guillotina_tamano_corte: guillotinaTamanoCorte,
+        cabida_corte: cabidaCorte,
+        formatos_a_imprimir: formatosAImprimir,
+        cabida_imp_formato: cabidaImpFormato,
+        total_impresion: totalImpresion,
+        tamano, tamano_abierto_1: tamanoAbierto1, tamano_cerrado_1: tamanoCerrado1,
+        concepto, cantidad: cantidadParaBackend,
+        impresion, instrucciones_impresion: instruccionesImpresion,
+        instrucciones_acabados: instruccionesAcabados,
+        instrucciones_empacado: instruccionesEmpacado,
+        observaciones, prensa_seleccionada: prensaSeleccionada,
+        vendedor,
+        preprensa_responsable: preprensaResponsable,
+        prensa: prensaOffsetResponsable,
+        terminados: terminadoResponsable,
+        facturado: facturadoResponsable || null,
+        liberacion_producto: liberacionProductoResponsable,
+        estilo_secciones_offset: estilosOffset,
+        trazabilidad_proceso: construirTrazabilidadOffsetParaPayload(),
+      };
+
+      const res = await fetch(`${apiUrl}/api/ordenTrabajo/${esDigital ? 'digital' : 'offset'}/preview-data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -825,33 +909,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
             notas_observaciones: notasObservaciones,
             cantidad: cantidadParaBackend,
           },
-          detalle: {
-            material, codigo_producto, espesor_material: materialEspesor,
-            corte_material: corteMaterial,
-            tamano_pliego: tamanoPliego,
-            cabida_producto: cabidaProducto,
-            cantidad_pliegos_compra: cantidadPliegosCompra,
-            exceso, total_pliegos: totalPliegos,
-            guillotina_tamano_corte: guillotinaTamanoCorte,
-            cabida_corte: cabidaCorte,
-            formatos_a_imprimir: formatosAImprimir,
-            cabida_imp_formato: cabidaImpFormato,
-            total_impresion: totalImpresion,
-            tamano, tamano_abierto_1: tamanoAbierto1, tamano_cerrado_1: tamanoCerrado1,
-            concepto, cantidad: cantidadParaBackend,
-            impresion, instrucciones_impresion: instruccionesImpresion,
-            instrucciones_acabados: instruccionesAcabados,
-            instrucciones_empacado: instruccionesEmpacado,
-            observaciones, prensa_seleccionada: prensaSeleccionada,
-            vendedor,
-            preprensa_responsable: preprensaResponsable,
-            prensa: prensaOffsetResponsable,
-            terminados: terminadoResponsable,
-            facturado: facturadoResponsable || null,
-            liberacion_producto: liberacionProductoResponsable,
-            estilo_secciones_offset: estilosOffset,
-            trazabilidad_proceso: construirTrazabilidadOffsetParaPayload(),
-          },
+          detalle: detallePreview,
         }),
       });
 
@@ -1485,19 +1543,21 @@ const OrdendeTrabajoEditar: React.FC = () => {
     });
     
     setVendedor(detalleResponsables.vendedor || '');
-    setPreprensaResponsable(detalleResponsables.preprensa_responsable || detalleResponsables.preprensa || '');
+    setFacturadoResponsable(detalleResponsables.facturado || '');
+    const responsablesOffsetPersonalizados = normalizarResponsablesOffsetPersonalizados(detalleResponsables.trazabilidad_proceso);
+    setPreprensaResponsable(responsablesOffsetPersonalizados.preprensa || detalleResponsables.preprensa_responsable || detalleResponsables.preprensa || '');
     setImpresionResponsable(detalleResponsables.impresion_responsable || '');
-    setPrensaOffsetResponsable(detalleResponsables.prensa || detalleResponsables.prensa_offset_responsable || '');
-    setLaminadoResponsable(detalleResponsables.laminado_responsable || detalleResponsables.laminado_barnizado || '');
-    setBarnizadoResponsable(detalleResponsables.barnizado_responsable || '');
-    setTroqueladoFlexibleResponsable(detalleResponsables.troquelado_flexible_responsable || detalleResponsables.troquelado || '');
+    setPrensaOffsetResponsable(responsablesOffsetPersonalizados.impresion || detalleResponsables.prensa || detalleResponsables.prensa_offset_responsable || '');
+    setLaminadoResponsable(responsablesOffsetPersonalizados.plastificado || detalleResponsables.laminado_responsable || detalleResponsables.laminado_barnizado || '');
+    setBarnizadoResponsable(responsablesOffsetPersonalizados.barnizado || detalleResponsables.barnizado_responsable || '');
+    setTroqueladoFlexibleResponsable(responsablesOffsetPersonalizados.troquelado || detalleResponsables.troquelado_flexible_responsable || detalleResponsables.troquelado || '');
     setTroqueladoPlanoResponsable(detalleResponsables.troquelado_plano_responsable || '');
     setRebobinadoResponsable(detalleResponsables.rebobinado_responsable || '');
     setRefiladoTermoencogibleResponsable(detalleResponsables.refilado_termoencogible_responsable || '');
     setSelladoTermoencogibleResponsable(detalleResponsables.sellado_termoencogible_responsable || '');
     setCorteTermoencogibleResponsable(detalleResponsables.corte_termoencogible_responsable || '');
-    setTerminadoResponsable(detalleResponsables.terminado_responsable || detalleResponsables.terminados || '');
-    setLiberacionProductoResponsable(detalleResponsables.liberacion_producto || '');
+    setTerminadoResponsable(responsablesOffsetPersonalizados.terminado || detalleResponsables.terminado_responsable || detalleResponsables.terminados || '');
+    setLiberacionProductoResponsable(responsablesOffsetPersonalizados.liberacion_producto || detalleResponsables.liberacion_producto || '');
 
     setTrazabilidadProceso(normalizarTrazabilidadProceso(detalleResponsables.trazabilidad_proceso));
     setProcesosDigitalSeleccionados(normalizarProcesosDigitalSeleccionados(detalleResponsables.trazabilidad_proceso));
@@ -1506,7 +1566,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
     setMostrarTotalMetrosDigital(normalizarMostrarTotalMetros(detalleResponsables.trazabilidad_proceso));
     setMostrarObservacionesInfoTecnicaDigital(normalizarMostrarObservacionesInfoTecnica(detalleResponsables.trazabilidad_proceso));
 
-    const responsablesOffsetPersonalizados = normalizarResponsablesOffsetPersonalizados(detalleResponsables.trazabilidad_proceso);
     setGuillotinadoResponsable(responsablesOffsetPersonalizados.guillotinado);
     setPegadoResponsable(responsablesOffsetPersonalizados.pegado);
     setEncoladoResponsable(responsablesOffsetPersonalizados.encolado);
@@ -2105,6 +2164,10 @@ const pedidoTieneFechasPreCargadas = Boolean(
           ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado }),
           notas_observaciones: notasObservaciones,
           vendedor,
+          facturado: facturadoResponsable || null,
+          preprensa: preprensaResponsable,
+          prensa: prensaOffsetResponsable,
+          terminados: terminadoResponsable,
           preprensa_responsable: preprensaResponsable,
           impresion_responsable: impresionResponsable,
           laminado_responsable: laminadoResponsable,
@@ -2268,6 +2331,10 @@ const pedidoTieneFechasPreCargadas = Boolean(
         ...(tipoOrdenSeleccionado === 'digital' ? {} : { estado: 'pendiente' }),
         notas_observaciones: notasObservaciones,
         vendedor,
+        facturado: facturadoResponsable || null,
+        preprensa: preprensaResponsable,
+        prensa: prensaOffsetResponsable,
+        terminados: terminadoResponsable,
         preprensa_responsable: preprensaResponsable,
         impresion_responsable: impresionResponsable,
         laminado_responsable: laminadoResponsable,
@@ -2843,6 +2910,19 @@ const pedidoTieneFechasPreCargadas = Boolean(
                         <td className="px-2 py-2 border"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.cantidad} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'cantidad', e.target.value)} /></td>
                         <td className="px-2 py-2 border min-w-[220px]"><input className="w-full border rounded px-2 py-1" type="text" value={trazabilidadProceso.liberacion_producto.observaciones} onChange={e => actualizarCampoTrazabilidad('liberacion_producto', 'observaciones', e.target.value)} /></td>
                       </tr>
+                      <tr className="bg-blue-50">
+                        <td className="px-2 py-2 border font-medium">Facturado</td>
+                        <td className="px-2 py-2 border min-w-[180px]">
+                          <input
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            type="text"
+                            value={facturadoResponsable}
+                            onChange={e => setFacturadoResponsable(e.target.value)}
+                            placeholder="Responsable"
+                          />
+                        </td>
+                        <td className="px-2 py-2 border" colSpan={7}></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -3343,15 +3423,13 @@ const pedidoTieneFechasPreCargadas = Boolean(
              <div className="flex justify-end gap-4">
                
                
-               {tipoOrdenSeleccionado === 'offset' && (
-                 <button
-                   type="button"
-                   className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
-                   onClick={() => { void guardarYVerPDF(); }}
-                 >
-                   Ver PDF/Imprimir
-                 </button>
-               )}
+               <button
+                 type="button"
+                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
+                 onClick={() => { void guardarYVerPDF(); }}
+               >
+                 Ver PDF/Imprimir
+               </button>
                
                {!ordenId ? (
                  <button type="button" className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors" onClick={() => { void crearOrdenTrabajo(); }}>

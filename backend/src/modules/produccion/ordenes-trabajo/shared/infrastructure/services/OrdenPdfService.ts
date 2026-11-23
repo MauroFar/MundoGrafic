@@ -769,6 +769,29 @@ export class OrdenPdfService {
     return Buffer.from(pdfBuffer);
   }
 
+  async generateDigitalPdfFromPayload(orden: any, detalle: any): Promise<Buffer> {
+    const [logoBase64, salidaBase64] = await Promise.all([
+      this.readAssetBase64('images/logo-mundografic.png'),
+      this.readAssetBase64('img/salidas.png'),
+    ]);
+    const html = this.buildHtmlDigital(orden, detalle, logoBase64, salidaBase64);
+    const browser = await puppeteer.launch({
+      headless: 'new' as any,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4', printBackground: true,
+      margin: { top: '8mm', right: '8mm', bottom: '8mm', left: '8mm' },
+      scale: 1,
+      preferCSSPageSize: true,
+    });
+    await browser.close();
+    return Buffer.from(pdfBuffer);
+  }
+
   // ─── HELPERS TRAZABILIDAD ────────────────────────────────────────────────
 
   private parseTrazabilidad(raw: any): any {
@@ -1135,7 +1158,10 @@ export class OrdenPdfService {
 </div>` : ''}</div></div>
 ${this.buildInfoTecnicaEspecificaHtml(productos, estilosInfoTecnica)}
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
-<div class="fila" style="margin-bottom:6px"><div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div></div>
+<div class="fila" style="margin-bottom:6px">
+<div class="campo"><div class="lbl">VENDEDOR</div><div class="val">${detalle.vendedor||''}</div></div>
+<div class="campo"><div class="lbl">FACTURADO</div><div class="val">${detalle.facturado||''}</div></div>
+</div>
 <table class="trz"><thead><tr>
 <th class="tc th">Proceso</th><th class="tc th">Responsable</th><th class="tc th">F. Inicio</th><th class="tc th">H. Inicio</th>
 <th class="tc th">F. Fin</th><th class="tc th">H. Fin</th><th class="tc th">Cantidad</th><th class="tc th">Observaciones</th><th class="tc th">Firma</th>
