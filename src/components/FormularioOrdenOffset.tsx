@@ -344,7 +344,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Cantidad de Pliegos</label>
-            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.cantidad_pliegos_compra} onChange={(event) => cambiarCampo('cantidad_pliegos_compra', event.target.value)} />
+            <input type="text" inputMode="numeric" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.cantidad_pliegos_compra} onChange={(event) => cambiarCampo('cantidad_pliegos_compra', event.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Exceso</label>
@@ -354,7 +354,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
         <div className="flex flex-wrap gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Pliegos a Cortar</label>
-            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_pliegos} onChange={(event) => cambiarCampo('total_pliegos', event.target.value)} />
+            <input type="text" inputMode="numeric" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_pliegos} onChange={(event) => cambiarCampo('total_pliegos', event.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño de Corte</label>
@@ -372,7 +372,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
         <div className="flex flex-wrap gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Formatos a Imprimir</label>
-            <input type="number" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.formatos_a_imprimir} onChange={(event) => cambiarCampo('formatos_a_imprimir', event.target.value)} />
+            <input type="text" inputMode="numeric" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.formatos_a_imprimir} onChange={(event) => cambiarCampo('formatos_a_imprimir', event.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Imp. en Formato</label>
@@ -380,7 +380,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Total de Impresión</label>
-            <input type="number" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_impresion} onChange={(event) => cambiarCampo('total_impresion', event.target.value)} />
+            <input type="text" inputMode="numeric" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_impresion} onChange={(event) => cambiarCampo('total_impresion', event.target.value)} />
           </div>
         </div>
       </div>
@@ -673,7 +673,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de Pliegos</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-16 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={cantidadPliegosCompra}
                   onChange={(e) => setCantidadPliegosCompra(e.target.value)}
@@ -696,7 +697,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Pliegos a Cortar</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-16 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={totalPliegos}
                   onChange={(e) => setTotalPliegos(e.target.value)}
@@ -733,7 +735,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Formatos a Imprimir</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-20 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={formatosAImprimir}
                   onChange={(e) => setFormatosAImprimir(e.target.value)}
@@ -753,7 +756,8 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Total de Impresión</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={totalImpresion}
                   onChange={(e) => setTotalImpresion(e.target.value)}
