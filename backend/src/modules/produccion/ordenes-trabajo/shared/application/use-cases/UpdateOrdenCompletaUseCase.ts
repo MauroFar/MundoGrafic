@@ -39,7 +39,7 @@ export class UpdateOrdenCompletaUseCase {
       : (artesAprobados === false ? null : (fechaEntrega === null ? null : String(fechaEntrega).slice(0, 10)));
     const tienePayloadDetalle = Boolean(
       body.detalle !== undefined ||
-      ['material','corte_material','cantidad_pliegos_compra','exceso','total_pliegos','tamano','tamano_abierto_1','tamano_cerrado_1','instrucciones_impresion','instrucciones_acabados','instrucciones_empacado','codigo_producto','impresion','observaciones','numero_salida','prensa_seleccionada','trazabilidad_proceso','estilo_secciones_offset','adherencia','lote_material','lote_produccion','tipo_impresion','troquel','codigo_troquel','terminado_etiqueta','terminados_especiales','cantidad_por_rollo','proveedor_material','espesor','vendedor','preprensa','prensa','terminados','facturado','vendedor_cantidad_final','preprensa_cantidad_final','prensa_cantidad_final','terminados_cantidad_final','laminado_barnizado','troquelado','liberacion_producto','laminado_responsable','barnizado_responsable','troquelado_flexible_responsable','troquelado_plano_responsable','rebobinado_responsable','refilado_termoencogible_responsable','sellado_termoencogible_responsable','corte_termoencogible_responsable','terminado_responsable','preprensa_responsable','impresion_responsable','terminados_externos_responsable','productos_digital','productos_offset']
+      ['material','materiales_adicionales','corte_material','cantidad_pliegos_compra','exceso','total_pliegos','tamano','tamano_abierto_1','tamano_cerrado_1','instrucciones_impresion','instrucciones_acabados','instrucciones_empacado','codigo_producto','impresion','observaciones','numero_salida','prensa_seleccionada','trazabilidad_proceso','estilo_secciones_offset','adherencia','lote_material','lote_produccion','tipo_impresion','troquel','codigo_troquel','terminado_etiqueta','terminados_especiales','cantidad_por_rollo','proveedor_material','espesor','vendedor','preprensa','prensa','terminados','facturado','vendedor_cantidad_final','preprensa_cantidad_final','prensa_cantidad_final','terminados_cantidad_final','laminado_barnizado','troquelado','liberacion_producto','laminado_responsable','barnizado_responsable','troquelado_flexible_responsable','troquelado_plano_responsable','rebobinado_responsable','refilado_termoencogible_responsable','sellado_termoencogible_responsable','corte_termoencogible_responsable','terminado_responsable','preprensa_responsable','impresion_responsable','terminados_externos_responsable','productos_digital','productos_offset']
         .some((campo) => Object.prototype.hasOwnProperty.call(body, campo))
     );
     // Respetar la fecha enviada desde el frontend si está presente; si no,
@@ -149,6 +149,7 @@ export class UpdateOrdenCompletaUseCase {
           prensa_seleccionada: detalle?.prensa_seleccionada ?? null,
           trazabilidad_proceso: detalle?.trazabilidad_proceso,
           estilo_secciones_offset: detalle?.estilo_secciones_offset ?? null,
+          materiales_adicionales: detalle?.materiales_adicionales ?? [],
           vendedor: vendedor,
           preprensa: preprensa ?? preprensa_responsable,
           prensa: prensa ?? impresion_responsable,

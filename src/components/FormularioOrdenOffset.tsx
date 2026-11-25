@@ -14,6 +14,63 @@ const ESTILO_OFFSET_DEFAULT: EstiloSeccionOffset = {
   color: '#111827',
 };
 
+export interface MaterialAdicionalOffset {
+  id: string;
+  material: string;
+  tamano_pliego: string;
+  cabida_producto: string;
+  cantidad_pliegos_compra: string;
+  exceso: string;
+  total_pliegos: string;
+  guillotina_tamano_corte: string;
+  cabida_corte: string;
+  formatos_a_imprimir: string;
+  cabida_imp_formato: string;
+  total_impresion: string;
+}
+
+export const crearMaterialAdicionalOffset = (): MaterialAdicionalOffset => ({
+  id: crypto.randomUUID(),
+  material: '',
+  tamano_pliego: '',
+  cabida_producto: '',
+  cantidad_pliegos_compra: '',
+  exceso: '',
+  total_pliegos: '',
+  guillotina_tamano_corte: '',
+  cabida_corte: '',
+  formatos_a_imprimir: '',
+  cabida_imp_formato: '',
+  total_impresion: '',
+});
+
+export const calcularMaterialAdicionalOffset = (
+  material: MaterialAdicionalOffset,
+  cantidad: string,
+): MaterialAdicionalOffset => {
+  const cantidadNumerica = parseFloat(String(cantidad).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+  const cabidaProducto = parseFloat(material.cabida_producto.replace(',', '.')) || 0;
+  const cantidadPliegos = cantidadNumerica > 0 && cabidaProducto > 0
+    ? Math.ceil(cantidadNumerica / cabidaProducto)
+    : 0;
+  const exceso = parseInt(material.exceso, 10) || 0;
+  const totalPliegos = cantidadPliegos > 0 || exceso > 0 ? cantidadPliegos + exceso : 0;
+  const cabidaCorte = parseInt(material.cabida_corte, 10) || 0;
+  const formatosImprimir = totalPliegos > 0 && cabidaCorte > 0 ? totalPliegos * cabidaCorte : 0;
+  const cabidaImpresion = parseInt(material.cabida_imp_formato, 10) || 0;
+  const totalImpresion = formatosImprimir > 0 && cabidaImpresion > 0
+    ? formatosImprimir * cabidaImpresion
+    : 0;
+
+  return {
+    ...material,
+    cantidad_pliegos_compra: cantidadPliegos ? String(cantidadPliegos) : '',
+    total_pliegos: totalPliegos ? String(totalPliegos) : '',
+    formatos_a_imprimir: formatosImprimir ? String(formatosImprimir) : '',
+    total_impresion: totalImpresion ? String(totalImpresion) : '',
+  };
+};
+
 const OFFSET_COLORS = [
   { color: '#111827', label: 'Negro' },
   { color: '#1d4ed8', label: 'Azul' },
@@ -87,8 +144,10 @@ const FormatoToolbarSeccion: React.FC<{
 );
 
 interface FormularioOrdenOffsetProps {
-  // Información del trabajo
   cantidad: string;
+  materialesAdicionales: MaterialAdicionalOffset[];
+  setMaterialesAdicionales: React.Dispatch<React.SetStateAction<MaterialAdicionalOffset[]>>;
+  // Información del trabajo
   setCantidad: (value: string) => void;
   concepto: string;
   setConcepto: (value: string) => void;
@@ -157,7 +216,8 @@ const RichTextOffsetField: React.FC<{
   rows?: number;
   isTextarea?: boolean;
   inputClassName?: string;
-}> = ({ label, fieldKey, value, onChange, onFocus, placeholder, rows, isTextarea = false, inputClassName }) => {
+  inputWidth?: number;
+}> = ({ label, fieldKey, value, onChange, onFocus, placeholder, rows, isTextarea = false, inputClassName, inputWidth }) => {
   const editorRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -169,7 +229,9 @@ const RichTextOffsetField: React.FC<{
   }, [value]);
 
   return (
-    <div>
+    <div
+      style={inputWidth ? { width: inputWidth, minWidth: inputWidth, flex: '0 0 auto' } : undefined}
+    >
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <div
         ref={editorRef}
@@ -183,6 +245,7 @@ const RichTextOffsetField: React.FC<{
         style={{
           color: '#111827',
           whiteSpace: isTextarea ? 'pre-wrap' : 'normal',
+          ...(inputWidth ? { width: inputWidth, minWidth: inputWidth, flexShrink: 0 } : {}),
         }}
         onFocus={onFocus}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
@@ -194,8 +257,105 @@ const RichTextOffsetField: React.FC<{
   );
 };
 
+const MaterialAdicionalOffsetCard: React.FC<{
+  material: MaterialAdicionalOffset;
+  cantidad: string;
+  numero: number;
+  onChange: (material: MaterialAdicionalOffset) => void;
+  onRemove: () => void;
+}> = ({ material, cantidad, numero, onChange, onRemove }) => {
+  const materialCalculado = calcularMaterialAdicionalOffset(material, cantidad);
+  const cambiarCampo = (campo: keyof MaterialAdicionalOffset, valor: string) => {
+    onChange({ ...material, [campo]: valor });
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="mb-3 flex items-center justify-between gap-3 border-b border-gray-200 pb-2">
+      <h4 className="font-semibold text-gray-800">Material adicional {numero}</h4>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded border border-red-300 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-50"
+      >
+        Eliminar
+      </button>
+    </div>
+
+    <div className="flex flex-wrap items-start gap-4">
+      <div className="flex w-full flex-col gap-2 md:w-[38%]">
+        <p className="border-b border-gray-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Material</p>
+        <label className="block text-sm font-medium text-gray-700">Material</label>
+        <textarea
+          className="min-h-[32px] w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+          placeholder="Escribir material..."
+          value={material.material}
+          onChange={(event) => cambiarCampo('material', event.target.value)}
+        />
+        <div className="mt-1 flex flex-wrap gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño Pliego</label>
+            <input type="text" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="65x90" value={material.tamano_pliego} onChange={(event) => cambiarCampo('tamano_pliego', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Prod.</label>
+            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0" value={material.cabida_producto} onChange={(event) => cambiarCampo('cabida_producto', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Cantidad de Pliegos</label>
+            <input type="text" className="w-16 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.cantidad_pliegos_compra} readOnly />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Exceso</label>
+            <input type="text" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0" value={material.exceso} onChange={(event) => cambiarCampo('exceso', event.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex w-full flex-col gap-2 md:w-[27%]">
+        <p className="border-b border-gray-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Guillotina</p>
+        <div className="flex flex-wrap gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Pliegos a Cortar</label>
+            <input type="text" className="w-16 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.total_pliegos} readOnly />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño de Corte</label>
+            <input type="text" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="65x90" value={material.guillotina_tamano_corte} onChange={(event) => cambiarCampo('guillotina_tamano_corte', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Corte</label>
+            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={material.cabida_corte} onChange={(event) => cambiarCampo('cabida_corte', event.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <p className="border-b border-gray-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Prensas</p>
+        <div className="flex flex-wrap gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Formatos a Imprimir</label>
+            <input type="text" className="w-20 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.formatos_a_imprimir} readOnly />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Imp. en Formato</label>
+            <input type="number" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="0" value={material.cabida_imp_formato} onChange={(event) => cambiarCampo('cabida_imp_formato', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Total de Impresión</label>
+            <input type="text" className="w-20 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.total_impresion} readOnly />
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  );
+};
+
 const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   cantidad,
+  materialesAdicionales,
+  setMaterialesAdicionales,
   setCantidad,
   concepto,
   setConcepto,
@@ -242,6 +402,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   estilos,
   setEstilos,
 }) => {
+  const [materialPendienteEliminar, setMaterialPendienteEliminar] = React.useState<string | null>(null);
   const [seccionesEstilo, setSeccionesEstilo] = React.useState<Record<string, EstiloSeccionOffset>>({
     trabajo: { ...ESTILO_OFFSET_DEFAULT },
     material: { ...ESTILO_OFFSET_DEFAULT },
@@ -362,6 +523,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setCantidad}
               onFocus={() => setCampoEstiloActivo('cantidad')}
               inputClassName="w-20 min-h-[38px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              inputWidth={112}
             />
           </div>
 
@@ -386,6 +548,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setTamanoAbierto1}
               onFocus={() => setCampoEstiloActivo('tamano_abierto_1')}
               inputClassName="w-20 min-h-[38px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              inputWidth={112}
             />
           </div>
 
@@ -397,6 +560,7 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               onChange={setTamanoCerrado1}
               onFocus={() => setCampoEstiloActivo('tamano_cerrado_1')}
               inputClassName="w-20 min-h-[38px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              inputWidth={112}
             />
           </div>
         </div>
@@ -572,6 +736,31 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
           </div>
 
         </div>
+
+        {materialesAdicionales.length > 0 && (
+          <div className="mt-4 space-y-4">
+            {materialesAdicionales.map((material, index) => (
+              <MaterialAdicionalOffsetCard
+                key={material.id}
+                material={material}
+                cantidad={cantidad}
+                numero={index + 2}
+                onChange={(materialActualizado) => setMaterialesAdicionales((actuales) =>
+                  actuales.map((actual) => actual.id === materialActualizado.id ? materialActualizado : actual)
+                )}
+                onRemove={() => setMaterialPendienteEliminar(material.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setMaterialesAdicionales((actuales) => [...actuales, crearMaterialAdicionalOffset()])}
+          className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          + Añadir material adicional
+        </button>
       </div>
 
       {/* Prensa y Observaciones - Diseño horizontal */}
@@ -727,6 +916,47 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
           />
         </div>
       </div>
+
+      {materialPendienteEliminar !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setMaterialPendienteEliminar(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-eliminar-material-titulo"
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="confirmar-eliminar-material-titulo" className="text-lg font-bold text-gray-900">
+              Eliminar material adicional
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              ¿Estás seguro de que deseas eliminar este cuadro?
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setMaterialPendienteEliminar(null)}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMaterialesAdicionales((actuales) => actuales.filter((material) => material.id !== materialPendienteEliminar));
+                  setMaterialPendienteEliminar(null);
+                }}
+                className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

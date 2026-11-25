@@ -175,6 +175,7 @@ export class CreateOrdenCompletaUseCase {
           prensa_seleccionada: detalle?.prensa_seleccionada ?? null,
           trazabilidad_proceso: detalle?.trazabilidad_proceso,
           estilo_secciones_offset: detalle?.estilo_secciones_offset ?? null,
+          materiales_adicionales: detalle?.materiales_adicionales ?? [],
           vendedor: vendedor,
           preprensa: preprensa ?? preprensa_responsable,
           prensa: prensa ?? impresion_responsable,

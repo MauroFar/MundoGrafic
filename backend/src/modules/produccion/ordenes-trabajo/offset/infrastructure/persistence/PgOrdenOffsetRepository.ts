@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { DetalleOrdenOffsetData, CreateDetalleOffsetInput } from '../../domain/entities/types';
+import { DetalleOrdenOffsetData, CreateDetalleOffsetInput, MaterialAdicionalOffsetData } from '../../domain/entities/types';
 
 /**
  * Tipos extendidos para el upsert completo desde los use-cases
@@ -35,6 +35,7 @@ export interface UpsertDetalleOffsetInput {
   prensa_seleccionada?: string | null;
   trazabilidad_proceso?: any;
   estilo_secciones_offset?: Record<string, { color: string; bold: boolean; underline: boolean }> | null;
+  materiales_adicionales?: MaterialAdicionalOffsetData[] | null;
   // Responsables
   vendedor?: string | null;
   preprensa?: string | null;
@@ -104,6 +105,7 @@ export class PgOrdenOffsetRepository {
     const v = input;
     const trazJson = v.trazabilidad_proceso ? JSON.stringify(v.trazabilidad_proceso) : null;
     const estilosJson = v.estilo_secciones_offset ? JSON.stringify(v.estilo_secciones_offset) : null;
+    const materialesAdicionalesJson = v.materiales_adicionales ? JSON.stringify(v.materiales_adicionales) : null;
 
     await this.client.query(
       `INSERT INTO detalle_orden_trabajo_offset (
@@ -114,10 +116,10 @@ export class PgOrdenOffsetRepository {
         instrucciones_acabados, instrucciones_empacado, material, codigo_producto, impresion, observaciones,
         numero_salida, prensa_seleccionada, vendedor, preprensa, prensa, terminados, facturado,
         vendedor_cantidad_final, preprensa_cantidad_final, prensa_cantidad_final,
-        terminados_cantidad_final, trazabilidad_proceso, estilo_secciones_offset
+        terminados_cantidad_final, trazabilidad_proceso, estilo_secciones_offset, materiales_adicionales
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35
+        $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36
       )
       ON CONFLICT (orden_trabajo_id) DO UPDATE SET
         corte_material=$2, cantidad_pliegos_compra=$3, exceso=$4, total_pliegos=$5,
@@ -130,7 +132,8 @@ export class PgOrdenOffsetRepository {
         prensa_seleccionada=$24, vendedor=$25, preprensa=$26, prensa=$27, terminados=$28,
         facturado=$29, vendedor_cantidad_final=$30, preprensa_cantidad_final=$31,
         prensa_cantidad_final=$32, terminados_cantidad_final=$33,
-        trazabilidad_proceso=$34::jsonb, estilo_secciones_offset=$35::jsonb, updated_at=CURRENT_TIMESTAMP`,
+        trazabilidad_proceso=$34::jsonb, estilo_secciones_offset=$35::jsonb,
+        materiales_adicionales=$36::jsonb, updated_at=CURRENT_TIMESTAMP`,
       [
         v.orden_trabajo_id,
         v.corte_material ?? null,
@@ -167,6 +170,7 @@ export class PgOrdenOffsetRepository {
         v.terminados_cantidad_final ?? null,
         trazJson,
         estilosJson,
+        materialesAdicionalesJson,
       ],
     );
   }

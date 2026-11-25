@@ -5,6 +5,7 @@
 export interface DetalleOrdenOffsetData {
   id?: number;
   orden_trabajo_id: number;
+  materiales_adicionales?: MaterialAdicionalOffsetData[] | null;
   
   // Campos comunes
   material?: string | null;
@@ -45,6 +46,21 @@ export interface DetalleOrdenOffsetData {
   
   created_at?: Date;
   updated_at?: Date;
+}
+
+export interface MaterialAdicionalOffsetData {
+  id?: string;
+  material?: string | null;
+  tamano_pliego?: string | null;
+  cabida_producto?: string | null;
+  cantidad_pliegos_compra?: string | null;
+  exceso?: string | null;
+  total_pliegos?: string | null;
+  guillotina_tamano_corte?: string | null;
+  cabida_corte?: string | null;
+  formatos_a_imprimir?: string | null;
+  cabida_imp_formato?: string | null;
+  total_impresion?: string | null;
 }
 
 /**

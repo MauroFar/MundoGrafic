@@ -5,11 +5,54 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
 import Logo from "../../components/Logo";
 import SelectorPrensa from '../../components/SelectorPrensa';
-import FormularioOrdenOffset from '../../components/FormularioOrdenOffset';
+import FormularioOrdenOffset, {
+  calcularMaterialAdicionalOffset,
+  crearMaterialAdicionalOffset,
+} from '../../components/FormularioOrdenOffset';
+import type { MaterialAdicionalOffset } from '../../components/FormularioOrdenOffset';
 import FormularioOrdenDigital from '../../components/FormularioOrdenDigital';
 import type { InfoTecnicaProducto } from '../../components/FormularioOrdenDigital';
 import "../../styles/ordenTrabajo/OrdenTrabajo.css";
 import { usePermisos } from '../../hooks/usePermisos';
+
+const normalizarMaterialesAdicionalesOffset = (valor: unknown): MaterialAdicionalOffset[] => {
+  const parsed: unknown = typeof valor === 'string' ? JSON.parse(valor) : valor;
+  if (parsed == null) return [];
+  if (!Array.isArray(parsed)) {
+    throw new Error('Los materiales adicionales de Offset tienen un formato inválido.');
+  }
+
+  return parsed.map((item: unknown, index: number) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`El material adicional ${index + 1} tiene un formato inválido.`);
+    }
+
+    const values = item as Record<string, unknown>;
+    const defaults = crearMaterialAdicionalOffset();
+    const asString = (value: unknown) => value == null ? '' : String(value);
+
+    return {
+      ...defaults,
+      id: typeof values.id === 'string' && values.id ? values.id : defaults.id,
+      material: asString(values.material),
+      tamano_pliego: asString(values.tamano_pliego),
+      cabida_producto: asString(values.cabida_producto),
+      cantidad_pliegos_compra: asString(values.cantidad_pliegos_compra),
+      exceso: asString(values.exceso),
+      total_pliegos: asString(values.total_pliegos),
+      guillotina_tamano_corte: asString(values.guillotina_tamano_corte),
+      cabida_corte: asString(values.cabida_corte),
+      formatos_a_imprimir: asString(values.formatos_a_imprimir),
+      cabida_imp_formato: asString(values.cabida_imp_formato),
+      total_impresion: asString(values.total_impresion),
+    };
+  });
+};
+
+const construirMaterialesAdicionalesPayload = (
+  materiales: MaterialAdicionalOffset[],
+  cantidad: string,
+) => materiales.map((material) => calcularMaterialAdicionalOffset(material, cantidad));
 
 // Tipos para los datos de la orden
 interface OrdenData {
@@ -575,6 +618,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
   
      // Nuevos estados para la información de trabajo
    const [material, setMaterial] = useState<string>('');
+  const [materialesAdicionales, setMaterialesAdicionales] = useState<MaterialAdicionalOffset[]>([]);
   const [materialEspesor, setMaterialEspesor] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
    const [cabidaProducto, setCabidaProducto] = useState<string>('');
@@ -866,6 +910,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
         trazabilidad_proceso: construirTrazabilidadParaPayload(),
       } : {
         material, codigo_producto, espesor_material: materialEspesor,
+        materiales_adicionales: construirMaterialesAdicionalesPayload(materialesAdicionales, cantidad),
         corte_material: corteMaterial,
         tamano_pliego: tamanoPliego,
         cabida_producto: cabidaProducto,
@@ -1028,6 +1073,8 @@ const OrdendeTrabajoEditar: React.FC = () => {
       (location.state as any)?.pedidoFechaEntrega
     );
 
+    if (!ordenId) setMaterialesAdicionales([]);
+
     // Si estamos en /ordendeTrabajo/crear (sin cotizacionId ni ordenId), limpiar todos los estados
     // salvo cuando viene desde un pedido ya guardado, en cuyo caso necesitamos conservar el cliente del pedido.
     if (!cotizacionId && !ordenId && !tieneContextoPedido) {
@@ -1098,6 +1145,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setMostrarTotalMetrosDigital(true);
       setTrazabilidadProceso(crearTrazabilidadProcesoVacia());
       setMaterial('');
+      setMaterialesAdicionales([]);
       setCorteMaterial('');
       setCabidaProducto('');
       setCantidadPliegosCompra('');
@@ -1386,6 +1434,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       if (ordenData.tipo_orden === 'offset' || !ordenData.tipo_orden) {
         // Material, impresion, observaciones para offset
         setMaterial(ordenData.detalle?.material || '');
+        setMaterialesAdicionales(normalizarMaterialesAdicionalesOffset(ordenData.detalle?.materiales_adicionales));
         setMaterialEspesor(ordenData.detalle?.espesor_material || ordenData.detalle?.espesor || '');
         setImpresion(ordenData.detalle?.impresion || '');
         setObservaciones(ordenData.detalle?.observaciones || '');
@@ -1423,6 +1472,7 @@ const OrdendeTrabajoEditar: React.FC = () => {
       
       // Sincronizar campos específicos para órdenes digitales
       if (ordenData.tipo_orden === 'digital') {
+        setMaterialesAdicionales([]);
         console.log('🔧 Sincronizando campos digitales del detalle:', ordenData.detalle);
         console.log('🔍 productos_digital RAW:', ordenData.detalle?.productos_digital);
         console.log('🔍 tipo de productos_digital:', typeof ordenData.detalle?.productos_digital);
@@ -2028,6 +2078,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
       } : {
         // Datos específicos de offset
         material: material,
+        materiales_adicionales: construirMaterialesAdicionalesPayload(materialesAdicionales, cantidad),
         codigo_producto: codigo_producto,
         espesor_material: materialEspesor,
         corte_material: corteMaterial,
@@ -2207,6 +2258,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
           } : {
             // Datos específicos de offset
             material: material,
+            materiales_adicionales: construirMaterialesAdicionalesPayload(materialesAdicionales, cantidad),
             codigo_producto: codigo_producto,
             espesor_material: materialEspesor,
             corte_material: corteMaterial,
@@ -2376,6 +2428,7 @@ const pedidoTieneFechasPreCargadas = Boolean(
         } : {
           // Detalle offset
           material: material,
+          materiales_adicionales: construirMaterialesAdicionalesPayload(materialesAdicionales, cantidad),
           codigo_producto: codigo_producto,
           corte_material: corteMaterial,
           tamano_pliego: tamanoPliego,
@@ -2739,6 +2792,8 @@ const pedidoTieneFechasPreCargadas = Boolean(
           ) : (
             <FormularioOrdenOffset
               cantidad={cantidad}
+              materialesAdicionales={materialesAdicionales}
+              setMaterialesAdicionales={setMaterialesAdicionales}
               setCantidad={setCantidad}
               concepto={concepto}
               setConcepto={setConcepto}

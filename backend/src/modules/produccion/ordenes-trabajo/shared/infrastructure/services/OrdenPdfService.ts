@@ -860,6 +860,58 @@ export class OrdenPdfService {
     const lib = traza.liberacion_producto || {};
     const estilosOffset = this.parseEstiloSeccionOffset(detalle?.estilo_secciones_offset);
     const renderOffsetField = (campo: string, valor: any) => this.renderValorOffset(valor, estilosOffset[campo] || { color: '#111827', bold: false, underline: false });
+    const notasObservaciones = [detalle?.notas_observaciones, orden?.notas_observaciones]
+      .find((valor) => valor != null && String(valor).trim() !== '') ?? '';
+    const notasObservacionesHtml = String(notasObservaciones).trim()
+      ? `<div><div class="lbl lbl-offset-titulo">Notas Adicionales</div><div class="val">${renderOffsetField('prensa', notasObservaciones)}</div></div>`
+      : '';
+    const renderMaterialCorte = (materialData: any) => `
+<div style="display:flex;gap:10px;align-items:flex-start">
+  <div style="width:45%">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <span class="lbl-offset-titulo" style="text-transform:uppercase;white-space:nowrap">Material:</span>
+      <span style="border:1px solid #d9d9d9;padding:3px 7px;font-size:11px;background:#fff;border-radius:3px">
+        ${renderOffsetField('material', materialData.material || '')}
+      </span>
+    </div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="width:60px"><div class="lbl">Tamaño Pliego</div><div class="val">${materialData.tamano_pliego || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Prod.</div><div class="val">${materialData.cabida_producto || ''}</div></div>
+      <div style="flex:1"><div class="lbl">Cant. Pliegos</div><div class="val">${renderOffsetField('pliegos', materialData.cantidad_pliegos_compra || '')}</div></div>
+      <div style="flex:1"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', materialData.exceso || '')}</div></div>
+    </div>
+  </div>
+  <div style="width:25%">
+    <div class="lbl-offset-titulo" style="text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Guillotina</div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="width:60px"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', materialData.total_pliegos || '')}</div></div>
+      <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${materialData.guillotina_tamano_corte || materialData.tamano_corte || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${materialData.guillotina_cabida_corte || materialData.cabida_corte || ''}</div></div>
+    </div>
+  </div>
+  <div style="flex:1">
+    <div class="lbl-offset-titulo" style="text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Prensas</div>
+    <div style="display:flex;gap:4px;align-items:flex-end">
+      <div style="width:60px"><div class="lbl">Formatos a Imprimir</div><div class="val">${materialData.prensas_pliegos_imprimir || materialData.formatos_a_imprimir || ''}</div></div>
+      <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${materialData.prensas_cabida_impresion || materialData.cabida_imp_formato || ''}</div></div>
+      <div style="width:60px"><div class="lbl">Total Impresión</div><div class="val">${materialData.prensas_total_impresion || materialData.total_impresion || ''}</div></div>
+    </div>
+  </div>
+</div>`;
+    const materialesAdicionalesRaw = detalle?.materiales_adicionales;
+    const materialesAdicionales = typeof materialesAdicionalesRaw === 'string'
+      ? JSON.parse(materialesAdicionalesRaw)
+      : materialesAdicionalesRaw || [];
+    if (!Array.isArray(materialesAdicionales)) {
+      throw new Error('Los materiales adicionales de Offset tienen un formato inválido.');
+    }
+    const materialesAdicionalesHtml = materialesAdicionales
+      .map((materialData: any, index: number) => `
+<div style="margin-top:10px;padding-top:8px;border-top:1px solid #d5d5d5">
+  <div class="lbl-offset-titulo" style="text-transform:uppercase;margin-bottom:4px">Material adicional ${index + 2}</div>
+  ${renderMaterialCorte(materialData)}
+</div>`)
+      .join('');
     const productosConcepto = (detalle.productos_offset || [])
       .map((p: any) => p.concepto || '')
       .filter((v: string) => !!v)
@@ -891,9 +943,9 @@ export class OrdenPdfService {
 .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
 .hdr img{height:42px}.hdr-r{text-align:right;font-size:10px}.hdr-n{font-size:18px;font-weight:bold}
 .tit{text-align:center;font-size:20px;font-weight:bold;margin:10px 0 14px}
-.sec{margin-bottom:12px;border:1px solid #d5d5d5;page-break-inside:avoid;break-inside:avoid}.sec-t{background:#f3f4f6;padding:6px 10px;font-weight:bold;font-size:12px;border-bottom:1px solid #d5d5d5}
-.sec-c{padding:10px}.fila{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}.campo{flex:1;min-width:120px}
-.lbl{font-size:9px;color:#555;margin-bottom:3px;font-weight:bold}.val{border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word}
+.sec{margin-bottom:12px;border:1px solid #d5d5d5;page-break-inside:avoid;break-inside:avoid}.sec-info{page-break-inside:auto;break-inside:auto}.sec-t{background:#f3f4f6;padding:6px 10px;font-weight:bold;font-size:12px;border-bottom:1px solid #d5d5d5}.sec-info-t{text-align:center}
+.sec-c{padding:10px}.fila{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}.fila-trabajo{flex-wrap:nowrap}.fila-trabajo .campo{flex:0 0 auto;min-width:60px}.fila-trabajo .campo:nth-child(2){flex:1 1 0;min-width:0}.fila-trabajo .campo:not(:nth-child(2)) .lbl{max-width:60px}.fila-trabajo .campo:not(:nth-child(2)) .val{white-space:nowrap;word-break:normal}.campo{flex:1;min-width:120px}
+.lbl{font-size:9px;color:#555;margin-bottom:3px;font-weight:bold}.lbl-offset-titulo{font-size:10px;font-weight:900;color:#111827}.val{border:1px solid #d9d9d9;padding:6px 8px;font-size:11px;background:white;min-height:28px;word-break:break-word}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.compact-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trz{width:100%;border-collapse:collapse;margin-top:8px}
 .tc{border:1px solid #d7d7d7;padding:5px 6px;font-size:10px;vertical-align:top}.th{background:#f3f4f6;font-weight:bold;text-align:center}.tp{font-weight:bold;white-space:nowrap}.to{min-width:150px}.tf{min-width:72px;height:30px}`;
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body>
@@ -913,63 +965,26 @@ export class OrdenPdfService {
   <div class="campo"><div class="lbl">FECHA ENTREGA</div><div class="val">${orden.fecha_entrega ? new Date(orden.fecha_entrega).toLocaleDateString('es-EC') : ''}</div></div>
 </div>
 </div></div>
-<div class="sec"><div class="sec-t">Información del Trabajo</div><div class="sec-c">
-<div class="fila">
-  <div class="campo" style="flex:1"><div class="lbl">Cantidad</div><div class="val">${renderOffsetField('trabajo', cantidadTexto || detalle.cantidad || orden.cantidad || '')}</div></div>
-  <div class="campo" style="flex:3"><div class="lbl">Concepto</div><div class="val">${renderOffsetField('trabajo', conceptoTexto)}</div></div>
-  <div class="campo" style="flex:1"><div class="lbl">Código Producto</div><div class="val">${renderOffsetField('trabajo', detalle.codigo_producto || orden.codigo_producto || '')}</div></div>
-  <div class="campo" style="flex:1"><div class="lbl">Tamaño Abierto</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_abierto_1 || detalle.tamano || '')}</div></div>
-  <div class="campo" style="flex:1"><div class="lbl">Tamaño Cerrado</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_cerrado_1 || detalle.tamano || '')}</div></div>
-</div></div></div>
-<div class="sec"><div class="sec-t">Material y Corte</div><div class="sec-c">
-<div style="display:flex;gap:10px;align-items:flex-start">
-  <div style="width:45%">
-<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-  <span style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;white-space:nowrap">
-    Material:
-  </span>
-  <span style="border:1px solid #d9d9d9;padding:3px 7px;font-size:11px;background:#fff;border-radius:3px">
-  ${renderOffsetField('material', detalle.material || '')}
-  </span>
+<div class="sec sec-info"><div class="sec-t sec-info-t">Información del trabajo (Material, prensa, impresión y acabados)</div><div class="sec-c">
+<div class="fila fila-trabajo">
+  <div class="campo"><div class="lbl">Cantidad</div><div class="val">${renderOffsetField('trabajo', cantidadTexto || detalle.cantidad || orden.cantidad || '')}</div></div>
+  <div class="campo"><div class="lbl">Concepto</div><div class="val">${renderOffsetField('trabajo', conceptoTexto)}</div></div>
+  <div class="campo"><div class="lbl">Código Producto</div><div class="val">${renderOffsetField('trabajo', detalle.codigo_producto || orden.codigo_producto || '')}</div></div>
+  <div class="campo"><div class="lbl">Tamaño Abierto</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_abierto_1 || detalle.tamano || '')}</div></div>
+  <div class="campo"><div class="lbl">Tamaño Cerrado</div><div class="val">${renderOffsetField('trabajo', detalle.tamano_cerrado_1 || detalle.tamano || '')}</div></div>
 </div>
-    <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="width:60px"><div class="lbl">Tamaño Pliego</div><div class="val">${detalle.tamano_pliego || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Prod.</div><div class="val">${detalle.cabida_producto || ''}</div></div>
-      <div style="flex:1"><div class="lbl">Cant. Pliegos</div><div class="val">${renderOffsetField('pliegos', detalle.cantidad_pliegos_compra || '')}</div></div>
-      <div style="flex:1"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', detalle.exceso || '')}</div></div>
-    </div>
-  </div>
-  <div style="width:25%">
-    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Guillotina</div>
-    <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="width:60px"><div class="lbl">Pliegos a Cortar</div><div class="val">${renderOffsetField('pliegos', detalle.total_pliegos || '')}</div></div>
-      <div style="width:60px"><div class="lbl">Tamaño Corte</div><div class="val">${detalle.guillotina_tamano_corte || detalle.tamano_corte || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Corte</div><div class="val">${detalle.guillotina_cabida_corte || detalle.cabida_corte || ''}</div></div>
-    </div>
-  </div>
-  <div style="flex:1">
-    <div style="font-size:9px;font-weight:bold;color:#555;text-transform:uppercase;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:2px">Prensas</div>
-    <div style="display:flex;gap:4px;align-items:flex-end">
-      <div style="width:60px"><div class="lbl">Formatos a Imprimir</div><div class="val">${detalle.prensas_pliegos_imprimir || detalle.formatos_a_imprimir || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Imp.</div><div class="val">${detalle.prensas_cabida_impresion || detalle.cabida_imp_formato || ''}</div></div>
-      <div style="width:60px"><div class="lbl">Total Impresión</div><div class="val">${detalle.prensas_total_impresion || detalle.total_impresion || ''}</div></div>
-    </div>
-  </div>
-</div>
-</div></div>
-<div class="sec"><div class="sec-t">Prensa y Observaciones</div><div class="sec-c">
+${renderMaterialCorte(detalle)}
+${materialesAdicionalesHtml}
 <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
-  <div style="min-width:140px;max-width:180px"><div class="lbl">Prensa</div><div class="val">${renderOffsetField('prensa', detalle.prensa_seleccionada || '')}</div></div>
-  <div style="flex:1"><div class="lbl">Observaciones Generales</div><div class="val">${renderOffsetField('prensa', detalle.observaciones || '')}</div></div>
+  <div style="min-width:140px;max-width:180px"><div class="lbl lbl-offset-titulo">Prensa/Maquina</div><div class="val">${renderOffsetField('prensa', detalle.prensa_seleccionada || '')}</div></div>
+  <div style="flex:1"><div class="lbl lbl-offset-titulo">Observaciones Generales</div><div class="val">${renderOffsetField('prensa', detalle.observaciones || '')}</div></div>
 </div>
-<div><div class="lbl">Notas Adicionales</div><div class="val">${renderOffsetField('prensa', detalle.notas_observaciones || orden.notas_observaciones || '')}</div></div>
-</div></div>
-<div class="sec"><div class="sec-t">Impresión y Acabados</div><div class="sec-c">
+${notasObservacionesHtml}
 <div class="grid2">
-  <div class="campo"><div class="lbl">Instrucciones de Impresión</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_impresion || '')}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Acabados y Terminados</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_acabados || '')}</div></div>
-  <div class="campo"><div class="lbl">Instrucciones de Empacado</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_empacado || '')}</div></div>
-  <div class="campo"><div class="lbl">Notas Adicionales</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.impresion || '')}</div></div>
+  <div class="campo"><div class="lbl lbl-offset-titulo">Instrucciones de Impresión</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_impresion || '')}</div></div>
+  <div class="campo"><div class="lbl lbl-offset-titulo">Instrucciones de Acabados y Terminados</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_acabados || '')}</div></div>
+  <div class="campo"><div class="lbl lbl-offset-titulo">Instrucciones de Empacado</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.instrucciones_empacado || '')}</div></div>
+  <div class="campo"><div class="lbl lbl-offset-titulo">Notas Adicionales</div><div class="val" style="font-size:11px">${renderOffsetField('impresion', detalle.impresion || '')}</div></div>
 </div></div></div>
 <div class="sec"><div class="sec-t">Responsables del Proceso</div><div class="sec-c">
 <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center">
