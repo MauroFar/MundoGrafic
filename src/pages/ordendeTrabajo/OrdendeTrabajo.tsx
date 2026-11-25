@@ -36,7 +36,6 @@ const normalizarMaterialesAdicionalesOffset = (valor: unknown): MaterialAdiciona
       id: typeof values.id === 'string' && values.id ? values.id : defaults.id,
       material: asString(values.material),
       tamano_pliego: asString(values.tamano_pliego),
-      cabida_producto: asString(values.cabida_producto),
       cantidad_pliegos_compra: asString(values.cantidad_pliegos_compra),
       exceso: asString(values.exceso),
       total_pliegos: asString(values.total_pliegos),
@@ -621,7 +620,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
   const [materialesAdicionales, setMaterialesAdicionales] = useState<MaterialAdicionalOffset[]>([]);
   const [materialEspesor, setMaterialEspesor] = useState<string>('');
    const [corteMaterial, setCorteMaterial] = useState<string>('');
-   const [cabidaProducto, setCabidaProducto] = useState<string>('');
    const [cantidadPliegosCompra, setCantidadPliegosCompra] = useState<string>('');
    const [exceso, setExceso] = useState<string>('');
    const [totalPliegos, setTotalPliegos] = useState<string>('');
@@ -769,17 +767,16 @@ const OrdendeTrabajoEditar: React.FC = () => {
     }));
   };
 
-  // Función para calcular el total de pliegos
-  // Calcula cantidad de pliegos = ceil(cantidad / cabidaProducto)
+  // Calcula cantidad de pliegos = ceil(cantidad / cabida de corte)
   useEffect(() => {
     const cant = parseFloat(String(cantidad).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-    const cabida = parseFloat(cabidaProducto.replace(',', '.')) || 0;
+    const cabida = parseFloat(cabidaCorte.replace(',', '.')) || 0;
     if (cant > 0 && cabida > 0) {
       setCantidadPliegosCompra(Math.ceil(cant / cabida).toString());
     } else {
       setCantidadPliegosCompra('');
     }
-  }, [cantidad, cabidaProducto]);
+  }, [cantidad, cabidaCorte]);
 
   // Calcula pliegos a cortar = cantidad de pliegos + exceso
   useEffect(() => {
@@ -913,7 +910,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         materiales_adicionales: construirMaterialesAdicionalesPayload(materialesAdicionales, cantidad),
         corte_material: corteMaterial,
         tamano_pliego: tamanoPliego,
-        cabida_producto: cabidaProducto,
         cantidad_pliegos_compra: cantidadPliegosCompra,
         exceso, total_pliegos: totalPliegos,
         guillotina_tamano_corte: guillotinaTamanoCorte,
@@ -1147,7 +1143,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
       setMaterial('');
       setMaterialesAdicionales([]);
       setCorteMaterial('');
-      setCabidaProducto('');
       setCantidadPliegosCompra('');
       setExceso('');
       setTotalPliegos('');
@@ -1457,7 +1452,6 @@ const OrdendeTrabajoEditar: React.FC = () => {
         setCantidadPliegosCompra(ordenData.detalle?.cantidad_pliegos_compra || '');
         setExceso(ordenData.detalle?.exceso || '');
         setTotalPliegos(ordenData.detalle?.total_pliegos || '');
-        setCabidaProducto(ordenData.detalle?.cabida_producto || '');
         setCabidaCorte(ordenData.detalle?.guillotina_cabida_corte || ordenData.detalle?.cabida_corte || '');
         setFormatosAImprimir(ordenData.detalle?.prensas_pliegos_imprimir || ordenData.detalle?.formatos_a_imprimir || '');
         setCabidaImpFormato(ordenData.detalle?.prensas_cabida_impresion || ordenData.detalle?.cabida_imp_formato || '');
@@ -2083,7 +2077,6 @@ const pedidoTieneFechasPreCargadas = Boolean(
         espesor_material: materialEspesor,
         corte_material: corteMaterial,
         tamano_pliego: tamanoPliego,
-        cabida_producto: cabidaProducto,
         cantidad_pliegos_compra: cantidadPliegosCompra,
         exceso: exceso,
         total_pliegos: totalPliegos,
@@ -2267,7 +2260,6 @@ const pedidoTieneFechasPreCargadas = Boolean(
             exceso: exceso,
             total_pliegos: totalPliegos,
             guillotina_tamano_corte: guillotinaTamanoCorte,
-            cabida_producto: cabidaProducto,
             cabida_corte: cabidaCorte,
             formatos_a_imprimir: formatosAImprimir,
             cabida_imp_formato: cabidaImpFormato,
@@ -2436,7 +2428,6 @@ const pedidoTieneFechasPreCargadas = Boolean(
           exceso: exceso,
           total_pliegos: totalPliegos,
           guillotina_tamano_corte: guillotinaTamanoCorte,
-          cabida_producto: cabidaProducto,
           cabida_corte: cabidaCorte,
           formatos_a_imprimir: formatosAImprimir,
           cabida_imp_formato: cabidaImpFormato,
@@ -2809,21 +2800,22 @@ const pedidoTieneFechasPreCargadas = Boolean(
               setCorteMaterial={setCorteMaterial}
               tamanoPliego={tamanoPliego}
               setTamanoPliego={setTamanoPliego}
-              cabidaProducto={cabidaProducto}
-              setCabidaProducto={setCabidaProducto}
               cantidadPliegosCompra={cantidadPliegosCompra}
               setCantidadPliegosCompra={setCantidadPliegosCompra}
               exceso={exceso}
               setExceso={setExceso}
               totalPliegos={totalPliegos}
+              setTotalPliegos={setTotalPliegos}
               cabidaCorte={cabidaCorte}
               setCabidaCorte={setCabidaCorte}
               guillotinaTamanoCorte={guillotinaTamanoCorte}
               setGuillotinaTamanoCorte={setGuillotinaTamanoCorte}
               formatosAImprimir={formatosAImprimir}
+              setFormatosAImprimir={setFormatosAImprimir}
               cabidaImpFormato={cabidaImpFormato}
               setCabidaImpFormato={setCabidaImpFormato}
               totalImpresion={totalImpresion}
+              setTotalImpresion={setTotalImpresion}
               impresion={impresion}
               setImpresion={setImpresion}
               instruccionesImpresion={instruccionesImpresion}

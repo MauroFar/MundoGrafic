@@ -18,7 +18,6 @@ export interface MaterialAdicionalOffset {
   id: string;
   material: string;
   tamano_pliego: string;
-  cabida_producto: string;
   cantidad_pliegos_compra: string;
   exceso: string;
   total_pliegos: string;
@@ -33,7 +32,6 @@ export const crearMaterialAdicionalOffset = (): MaterialAdicionalOffset => ({
   id: crypto.randomUUID(),
   material: '',
   tamano_pliego: '',
-  cabida_producto: '',
   cantidad_pliegos_compra: '',
   exceso: '',
   total_pliegos: '',
@@ -49,25 +47,31 @@ export const calcularMaterialAdicionalOffset = (
   cantidad: string,
 ): MaterialAdicionalOffset => {
   const cantidadNumerica = parseFloat(String(cantidad).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-  const cabidaProducto = parseFloat(material.cabida_producto.replace(',', '.')) || 0;
-  const cantidadPliegos = cantidadNumerica > 0 && cabidaProducto > 0
-    ? Math.ceil(cantidadNumerica / cabidaProducto)
-    : 0;
-  const exceso = parseInt(material.exceso, 10) || 0;
-  const totalPliegos = cantidadPliegos > 0 || exceso > 0 ? cantidadPliegos + exceso : 0;
   const cabidaCorte = parseInt(material.cabida_corte, 10) || 0;
-  const formatosImprimir = totalPliegos > 0 && cabidaCorte > 0 ? totalPliegos * cabidaCorte : 0;
-  const cabidaImpresion = parseInt(material.cabida_imp_formato, 10) || 0;
-  const totalImpresion = formatosImprimir > 0 && cabidaImpresion > 0
-    ? formatosImprimir * cabidaImpresion
+  const cantidadPliegosCalculada = cantidadNumerica > 0 && cabidaCorte > 0
+    ? Math.ceil(cantidadNumerica / cabidaCorte)
     : 0;
+  const cantidadPliegos = material.cantidad_pliegos_compra || (cantidadPliegosCalculada ? String(cantidadPliegosCalculada) : '');
+  const exceso = parseInt(material.exceso, 10) || 0;
+  const cantidadPliegosNumero = parseInt(cantidadPliegos, 10) || 0;
+  const totalPliegosCalculado = cantidadPliegosNumero > 0 || exceso > 0 ? cantidadPliegosNumero + exceso : 0;
+  const totalPliegos = material.total_pliegos || (totalPliegosCalculado ? String(totalPliegosCalculado) : '');
+  const totalPliegosNumero = parseInt(totalPliegos, 10) || 0;
+  const formatosImprimirCalculados = totalPliegosNumero > 0 && cabidaCorte > 0 ? totalPliegosNumero * cabidaCorte : 0;
+  const formatosImprimir = material.formatos_a_imprimir || (formatosImprimirCalculados ? String(formatosImprimirCalculados) : '');
+  const cabidaImpresion = parseInt(material.cabida_imp_formato, 10) || 0;
+  const formatosImprimirNumero = parseInt(formatosImprimir, 10) || 0;
+  const totalImpresionCalculado = formatosImprimirNumero > 0 && cabidaImpresion > 0
+    ? formatosImprimirNumero * cabidaImpresion
+    : 0;
+  const totalImpresion = material.total_impresion || (totalImpresionCalculado ? String(totalImpresionCalculado) : '');
 
   return {
     ...material,
-    cantidad_pliegos_compra: cantidadPliegos ? String(cantidadPliegos) : '',
-    total_pliegos: totalPliegos ? String(totalPliegos) : '',
-    formatos_a_imprimir: formatosImprimir ? String(formatosImprimir) : '',
-    total_impresion: totalImpresion ? String(totalImpresion) : '',
+    cantidad_pliegos_compra: cantidadPliegos,
+    total_pliegos: totalPliegos,
+    formatos_a_imprimir: formatosImprimir,
+    total_impresion: totalImpresion,
   };
 };
 
@@ -167,13 +171,12 @@ interface FormularioOrdenOffsetProps {
   setTamanoPliego: (value: string) => void;
 
   // Cantidad de Pliegos
-  cabidaProducto: string;
-  setCabidaProducto: (value: string) => void;
   cantidadPliegosCompra: string;
   setCantidadPliegosCompra: (value: string) => void;
   exceso: string;
   setExceso: (value: string) => void;
   totalPliegos: string;
+  setTotalPliegos: (value: string) => void;
 
   // Guillotina
   cabidaCorte: string;
@@ -181,9 +184,11 @@ interface FormularioOrdenOffsetProps {
   guillotinaTamanoCorte: string;
   setGuillotinaTamanoCorte: (value: string) => void;
   formatosAImprimir: string;
+  setFormatosAImprimir: (value: string) => void;
   cabidaImpFormato: string;
   setCabidaImpFormato: (value: string) => void;
   totalImpresion: string;
+  setTotalImpresion: (value: string) => void;
 
   // Impresión y Acabados
   impresion: string;
@@ -265,8 +270,44 @@ const MaterialAdicionalOffsetCard: React.FC<{
   onRemove: () => void;
 }> = ({ material, cantidad, numero, onChange, onRemove }) => {
   const materialCalculado = calcularMaterialAdicionalOffset(material, cantidad);
+  const cantidadAnterior = React.useRef(cantidad);
+
+  React.useEffect(() => {
+    if (cantidadAnterior.current === cantidad) return;
+    cantidadAnterior.current = cantidad;
+    onChange({
+      ...material,
+      cantidad_pliegos_compra: '',
+      total_pliegos: '',
+      formatos_a_imprimir: '',
+      total_impresion: '',
+    });
+  }, [cantidad, material, onChange]);
+
   const cambiarCampo = (campo: keyof MaterialAdicionalOffset, valor: string) => {
-    onChange({ ...material, [campo]: valor });
+    const actualizado = { ...material, [campo]: valor };
+    if (campo === 'cabida_corte') {
+      actualizado.cantidad_pliegos_compra = '';
+      actualizado.total_pliegos = '';
+      actualizado.formatos_a_imprimir = '';
+      actualizado.total_impresion = '';
+    } else if (campo === 'cantidad_pliegos_compra') {
+      actualizado.total_pliegos = '';
+      actualizado.formatos_a_imprimir = '';
+      actualizado.total_impresion = '';
+    } else if (campo === 'exceso') {
+      actualizado.total_pliegos = '';
+      actualizado.formatos_a_imprimir = '';
+      actualizado.total_impresion = '';
+    } else if (campo === 'total_pliegos') {
+      actualizado.formatos_a_imprimir = '';
+      actualizado.total_impresion = '';
+    } else if (campo === 'formatos_a_imprimir') {
+      actualizado.total_impresion = '';
+    } else if (campo === 'cabida_imp_formato') {
+      actualizado.total_impresion = '';
+    }
+    onChange(actualizado);
   };
 
   return (
@@ -292,32 +333,28 @@ const MaterialAdicionalOffsetCard: React.FC<{
           value={material.material}
           onChange={(event) => cambiarCampo('material', event.target.value)}
         />
-        <div className="mt-1 flex flex-wrap gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño Pliego</label>
-            <input type="text" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="65x90" value={material.tamano_pliego} onChange={(event) => cambiarCampo('tamano_pliego', event.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Prod.</label>
-            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0" value={material.cabida_producto} onChange={(event) => cambiarCampo('cabida_producto', event.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Cantidad de Pliegos</label>
-            <input type="text" className="w-16 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.cantidad_pliegos_compra} readOnly />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Exceso</label>
-            <input type="text" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0" value={material.exceso} onChange={(event) => cambiarCampo('exceso', event.target.value)} />
-          </div>
-        </div>
       </div>
 
       <div className="flex w-full flex-col gap-2 md:w-[27%]">
         <p className="border-b border-gray-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Guillotina</p>
         <div className="flex flex-wrap gap-3">
           <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño Pliego</label>
+            <input type="text" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="65x90" value={material.tamano_pliego} onChange={(event) => cambiarCampo('tamano_pliego', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Cantidad de Pliegos</label>
+            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.cantidad_pliegos_compra} onChange={(event) => cambiarCampo('cantidad_pliegos_compra', event.target.value)} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Exceso</label>
+            <input type="text" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" placeholder="0" value={material.exceso} onChange={(event) => cambiarCampo('exceso', event.target.value)} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Pliegos a Cortar</label>
-            <input type="text" className="w-16 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.total_pliegos} readOnly />
+            <input type="number" className="w-16 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_pliegos} onChange={(event) => cambiarCampo('total_pliegos', event.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Tamaño de Corte</label>
@@ -335,7 +372,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
         <div className="flex flex-wrap gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Formatos a Imprimir</label>
-            <input type="text" className="w-20 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.formatos_a_imprimir} readOnly />
+            <input type="number" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.formatos_a_imprimir} onChange={(event) => cambiarCampo('formatos_a_imprimir', event.target.value)} />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Cabida Imp. en Formato</label>
@@ -343,7 +380,7 @@ const MaterialAdicionalOffsetCard: React.FC<{
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Total de Impresión</label>
-            <input type="text" className="w-20 cursor-not-allowed rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm font-semibold text-gray-700" placeholder="0" value={materialCalculado.total_impresion} readOnly />
+            <input type="number" className="w-20 rounded border border-gray-300 px-2 py-1 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="0" value={materialCalculado.total_impresion} onChange={(event) => cambiarCampo('total_impresion', event.target.value)} />
           </div>
         </div>
       </div>
@@ -370,21 +407,22 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
   setCorteMaterial,
   tamanoPliego,
   setTamanoPliego,
-  cabidaProducto,
-  setCabidaProducto,
   cantidadPliegosCompra,
   setCantidadPliegosCompra,
   exceso,
   setExceso,
   totalPliegos,
+  setTotalPliegos,
   cabidaCorte,
   setCabidaCorte,
   guillotinaTamanoCorte,
   setGuillotinaTamanoCorte,
   formatosAImprimir,
+  setFormatosAImprimir,
   cabidaImpFormato,
   setCabidaImpFormato,
   totalImpresion,
+  setTotalImpresion,
   impresion,
   setImpresion,
   instruccionesImpresion,
@@ -616,7 +654,12 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               isTextarea={true}
               inputClassName="w-full min-h-[32px] px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm resize-none"
             />
-            <div className="flex flex-wrap gap-3 mt-1">
+          </div>
+
+          {/* Columna 2 — Guillotina */}
+          <div className="flex flex-col gap-2 w-[27%]">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-1">Guillotina</p>
+            <div className="flex flex-wrap gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Tamaño Pliego</label>
                 <input
@@ -628,22 +671,12 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Cabida Prod.</label>
-                <input
-                  type="number"
-                  className="w-16 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                  placeholder="0"
-                  value={cabidaProducto}
-                  onChange={(e) => setCabidaProducto(e.target.value)}
-                />
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de Pliegos</label>
                 <input
-                  type="text"
-                  className="w-16 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  type="number"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={cantidadPliegosCompra}
-                  readOnly
+                  onChange={(e) => setCantidadPliegosCompra(e.target.value)}
                   placeholder="0"
                 />
               </div>
@@ -659,19 +692,14 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
                 />
               </div>
             </div>
-          </div>
-
-          {/* Columna 2 — Guillotina */}
-          <div className="flex flex-col gap-2 w-[27%]">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 pb-1">Guillotina</p>
             <div className="flex flex-wrap gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Pliegos a Cortar</label>
                 <input
-                  type="text"
-                  className="w-16 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  type="number"
+                  className="w-16 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={totalPliegos}
-                  readOnly
+                  onChange={(e) => setTotalPliegos(e.target.value)}
                   placeholder="0"
                 />
               </div>
@@ -705,10 +733,10 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Formatos a Imprimir</label>
                 <input
-                  type="text"
-                  className="w-20 px-2 py-1 border border-gray-300 rounded bg-gray-50 font-semibold text-gray-700 cursor-not-allowed text-sm"
+                  type="number"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   value={formatosAImprimir}
-                  readOnly
+                  onChange={(e) => setFormatosAImprimir(e.target.value)}
                   placeholder="0"
                 />
               </div>
@@ -725,10 +753,10 @@ const FormularioOrdenOffset: React.FC<FormularioOrdenOffsetProps> = ({
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Total de Impresión</label>
                 <input
-                  type="text"
-                  className="w-20 px-2 py-1 border border-gray-300 rounded bg-gray-50 text-sm font-semibold text-gray-700 cursor-not-allowed"
+                  type="number"
+                  className="w-20 px-2 py-1 border border-gray-300 rounded text-sm font-semibold text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={totalImpresion}
-                  readOnly
+                  onChange={(e) => setTotalImpresion(e.target.value)}
                   placeholder="0"
                 />
               </div>

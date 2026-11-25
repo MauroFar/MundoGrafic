@@ -876,7 +876,6 @@ export class OrdenPdfService {
     </div>
     <div style="display:flex;gap:4px;align-items:flex-end">
       <div style="width:60px"><div class="lbl">Tamaño Pliego</div><div class="val">${materialData.tamano_pliego || ''}</div></div>
-      <div style="width:36px"><div class="lbl">Cab. Prod.</div><div class="val">${materialData.cabida_producto || ''}</div></div>
       <div style="flex:1"><div class="lbl">Cant. Pliegos</div><div class="val">${renderOffsetField('pliegos', materialData.cantidad_pliegos_compra || '')}</div></div>
       <div style="flex:1"><div class="lbl">Exceso</div><div class="val">${renderOffsetField('pliegos', materialData.exceso || '')}</div></div>
     </div>

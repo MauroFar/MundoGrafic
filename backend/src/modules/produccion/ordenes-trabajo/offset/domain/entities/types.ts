@@ -19,7 +19,6 @@ export interface DetalleOrdenOffsetData {
   exceso?: number | null;
   total_pliegos?: string | null;
   tamano_pliego?: string | null;
-  cabida_producto?: string | null;
   guillotina_tamano_corte?: string | null;
   guillotina_cabida_corte?: string | null;
   prensas_pliegos_imprimir?: string | null;
@@ -52,7 +51,6 @@ export interface MaterialAdicionalOffsetData {
   id?: string;
   material?: string | null;
   tamano_pliego?: string | null;
-  cabida_producto?: string | null;
   cantidad_pliegos_compra?: string | null;
   exceso?: string | null;
   total_pliegos?: string | null;

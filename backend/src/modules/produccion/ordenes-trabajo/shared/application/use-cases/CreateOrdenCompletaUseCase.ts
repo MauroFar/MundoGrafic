@@ -155,7 +155,6 @@ export class CreateOrdenCompletaUseCase {
           exceso: detalle?.exceso,
           total_pliegos: detalle?.total_pliegos,
           tamano_pliego: detalle?.tamano_pliego,
-          cabida_producto: detalle?.cabida_producto,
           guillotina_tamano_corte: detalle?.guillotina_tamano_corte,
           guillotina_cabida_corte: detalle?.cabida_corte,
           prensas_pliegos_imprimir: detalle?.formatos_a_imprimir,
